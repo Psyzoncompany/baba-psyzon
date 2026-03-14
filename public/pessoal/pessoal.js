@@ -45,6 +45,12 @@ const CHART_COLORS = {
 let chartInstances = {};
 let currentSection = 'overview';
 let currentPage = {};
+let overviewPeriod = 'month'; // 'month' or 'year'
+let notifications = [];
+
+const MAX_NOTIFICATIONS = 50;
+const MAX_BADGE_COUNT = 9;
+const HIGH_SPENDING_THRESHOLD = 0.8;
 
 // ─── 2. Data Management ────────────────────────────────────
 
@@ -151,6 +157,13 @@ function getMonthRange(date) {
   return { start: formatDateISO(start), end: formatDateISO(end) };
 }
 
+function getYearRange(date) {
+  const d = new Date(date || Date.now());
+  const start = new Date(d.getFullYear(), 0, 1);
+  const end = new Date(d.getFullYear(), 11, 31);
+  return { start: formatDateISO(start), end: formatDateISO(end) };
+}
+
 function getMonthLabel(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
@@ -212,6 +225,7 @@ function checkSpendingAlert(tx) {
   const settings = loadSettings();
   if (tx.amount >= settings.alertThreshold) {
     showToast(`Gasto alto detectado: ${formatCurrency(tx.amount)} — ${escapeHtml(tx.description)}`, 'warning');
+    addNotification(`Gasto alto: ${formatCurrency(tx.amount)} — ${tx.description}`, 'warning');
   }
 }
 
@@ -245,33 +259,40 @@ function renderSection(section) {
 function renderOverview(container) {
   const all = loadTransactions();
   const now = new Date();
-  const thisMonth = getMonthRange(now);
-  const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const prevMonth = getMonthRange(prevMonthDate);
+  const isYear = overviewPeriod === 'year';
 
-  const thisIncome = all.filter(t => t.type === 'income' && t.date >= thisMonth.start && t.date <= thisMonth.end).reduce((s, t) => s + t.amount, 0);
-  const thisExpense = all.filter(t => t.type === 'expense' && t.date >= thisMonth.start && t.date <= thisMonth.end).reduce((s, t) => s + t.amount, 0);
-  const prevIncome = all.filter(t => t.type === 'income' && t.date >= prevMonth.start && t.date <= prevMonth.end).reduce((s, t) => s + t.amount, 0);
-  const prevExpense = all.filter(t => t.type === 'expense' && t.date >= prevMonth.start && t.date <= prevMonth.end).reduce((s, t) => s + t.amount, 0);
+  const currentRange = isYear ? getYearRange(now) : getMonthRange(now);
+  const prevDate = isYear
+    ? new Date(now.getFullYear() - 1, 0, 1)
+    : new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevRange = isYear ? getYearRange(prevDate) : getMonthRange(prevDate);
+
+  const periodLabel = isYear ? 'do Ano' : 'do Mês';
+
+  const currentIncome = all.filter(t => t.type === 'income' && t.date >= currentRange.start && t.date <= currentRange.end).reduce((s, t) => s + t.amount, 0);
+  const currentExpense = all.filter(t => t.type === 'expense' && t.date >= currentRange.start && t.date <= currentRange.end).reduce((s, t) => s + t.amount, 0);
+  const prevIncome = all.filter(t => t.type === 'income' && t.date >= prevRange.start && t.date <= prevRange.end).reduce((s, t) => s + t.amount, 0);
+  const prevExpense = all.filter(t => t.type === 'expense' && t.date >= prevRange.start && t.date <= prevRange.end).reduce((s, t) => s + t.amount, 0);
 
   const totalIncome = all.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const totalExpense = all.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const balance = totalIncome - totalExpense;
-  const savings = thisIncome - thisExpense;
-  const spendPct = thisIncome > 0 ? ((thisExpense / thisIncome) * 100).toFixed(1) : 0;
+  const savings = currentIncome - currentExpense;
+  const spendPct = currentIncome > 0 ? ((currentExpense / currentIncome) * 100).toFixed(1) : 0;
 
-  const incTrend = calcTrend(thisIncome, prevIncome);
-  const expTrend = calcTrend(thisExpense, prevExpense);
+  const incTrend = calcTrend(currentIncome, prevIncome);
+  const expTrend = calcTrend(currentExpense, prevExpense);
   const savTrend = calcTrend(savings, prevIncome - prevExpense);
 
-  const recentTx = sortByDate(all).slice(0, 5);
+  const periodTx = all.filter(t => t.date >= currentRange.start && t.date <= currentRange.end);
+  const recentTx = sortByDate(periodTx).slice(0, isYear ? 10 : 5);
 
   container.innerHTML = `
     <div class="section-header">
       <h2 class="section-title">Visão Geral</h2>
       <div class="period-filters">
-        <button class="period-btn active" data-period="month">Mês</button>
-        <button class="period-btn" data-period="year">Ano</button>
+        <button class="period-btn ${overviewPeriod === 'month' ? 'active' : ''}" data-period="month">Mês</button>
+        <button class="period-btn ${overviewPeriod === 'year' ? 'active' : ''}" data-period="year">Ano</button>
       </div>
     </div>
 
@@ -290,8 +311,8 @@ function renderOverview(container) {
           <i class="fa-solid fa-arrow-trend-up"></i>
         </div>
         <div class="summary-info">
-          <div class="summary-label">Receitas do Mês</div>
-          <div class="summary-value amount-income">${formatCurrency(thisIncome)}</div>
+          <div class="summary-label">Receitas ${periodLabel}</div>
+          <div class="summary-value amount-income">${formatCurrency(currentIncome)}</div>
           <div class="summary-trend ${incTrend.dir === 'up' ? 'trend-up' : 'trend-down'}">
             <i class="fa-solid fa-arrow-${incTrend.dir === 'up' ? 'up' : 'down'}"></i> ${incTrend.pct}%
           </div>
@@ -302,8 +323,8 @@ function renderOverview(container) {
           <i class="fa-solid fa-arrow-trend-down"></i>
         </div>
         <div class="summary-info">
-          <div class="summary-label">Despesas do Mês</div>
-          <div class="summary-value amount-expense">${formatCurrency(thisExpense)}</div>
+          <div class="summary-label">Despesas ${periodLabel}</div>
+          <div class="summary-value amount-expense">${formatCurrency(currentExpense)}</div>
           <div class="summary-trend ${expTrend.dir === 'up' ? 'trend-down' : 'trend-up'}">
             <i class="fa-solid fa-arrow-${expTrend.dir === 'up' ? 'up' : 'down'}"></i> ${expTrend.pct}%
           </div>
@@ -314,7 +335,7 @@ function renderOverview(container) {
           <i class="fa-solid fa-piggy-bank"></i>
         </div>
         <div class="summary-info">
-          <div class="summary-label">Economia do Mês</div>
+          <div class="summary-label">Economia ${periodLabel}</div>
           <div class="summary-value ${savings < 0 ? 'negative-balance' : ''}">${formatCurrency(savings)}</div>
           <div class="summary-trend ${savTrend.dir === 'up' ? 'trend-up' : 'trend-down'}">
             <i class="fa-solid fa-arrow-${savTrend.dir === 'up' ? 'up' : 'down'}"></i> ${savTrend.pct}%
@@ -375,7 +396,16 @@ function renderOverview(container) {
     </div>
   `;
 
-  renderOverviewCharts(all);
+  // Wire up period buttons
+  container.querySelectorAll('.period-btn[data-period]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      overviewPeriod = btn.dataset.period;
+      destroyAllCharts();
+      renderOverview(container);
+    });
+  });
+
+  renderOverviewCharts(all, isYear);
 }
 
 // ─── 7. Chart Rendering ────────────────────────────────────
@@ -399,12 +429,21 @@ function chartDefaults() {
   };
 }
 
-function renderOverviewCharts(all) {
+function renderOverviewCharts(all, isYear) {
   const months = [];
   const now = new Date();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({ date: d, label: d.toLocaleDateString('pt-BR', { month: 'short' }), range: getMonthRange(d) });
+
+  if (isYear) {
+    // Show all 12 months of the current year
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), i, 1);
+      months.push({ date: d, label: d.toLocaleDateString('pt-BR', { month: 'short' }), range: getMonthRange(d) });
+    }
+  } else {
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ date: d, label: d.toLocaleDateString('pt-BR', { month: 'short' }), range: getMonthRange(d) });
+    }
   }
 
   const incomeData = months.map(m => all.filter(t => t.type === 'income' && t.date >= m.range.start && t.date <= m.range.end).reduce((s, t) => s + t.amount, 0));
@@ -426,11 +465,18 @@ function renderOverviewCharts(all) {
     });
   }
 
-  // Line chart – balance evolution (12 months)
+  // Line chart – balance evolution
   const lineMonths = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    lineMonths.push({ label: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }), range: getMonthRange(d) });
+  if (isYear) {
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), i, 1);
+      lineMonths.push({ label: d.toLocaleDateString('pt-BR', { month: 'short' }), range: getMonthRange(d) });
+    }
+  } else {
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      lineMonths.push({ label: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }), range: getMonthRange(d) });
+    }
   }
 
   let runBal = 0;
@@ -463,16 +509,17 @@ function renderOverviewCharts(all) {
     });
   }
 
-  // Doughnut – expenses by category this month
-  const thisMonth = getMonthRange(now);
-  const monthExpenses = all.filter(t => t.type === 'expense' && t.date >= thisMonth.start && t.date <= thisMonth.end);
+  // Doughnut – expenses by category for the selected period
+  const periodRange = isYear ? getYearRange(now) : getMonthRange(now);
+  const periodExpenses = all.filter(t => t.type === 'expense' && t.date >= periodRange.start && t.date <= periodRange.end);
   const catTotals = {};
-  monthExpenses.forEach(t => {
+  periodExpenses.forEach(t => {
     catTotals[t.category] = (catTotals[t.category] || 0) + t.amount;
   });
 
   const catEntries = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
   const doughEl = document.getElementById('chartDoughnut');
+  const emptyLabel = isYear ? 'Sem despesas este ano' : 'Sem despesas este mês';
   if (doughEl && catEntries.length) {
     chartInstances.doughnut = new Chart(doughEl, {
       type: 'doughnut',
@@ -494,7 +541,7 @@ function renderOverviewCharts(all) {
       }
     });
   } else if (doughEl) {
-    doughEl.parentElement.innerHTML = '<div class="empty-state" style="padding:40px 0"><i class="fa-solid fa-chart-pie"></i><p>Sem despesas este mês</p></div>';
+    doughEl.parentElement.innerHTML = `<div class="empty-state" style="padding:40px 0"><i class="fa-solid fa-chart-pie"></i><p>${emptyLabel}</p></div>`;
   }
 }
 
@@ -1413,7 +1460,121 @@ function seedSampleData() {
   saveTransactions(txs);
 }
 
-// ─── 20. Initialization ────────────────────────────────────
+// ─── 20. Notification System ───────────────────────────────
+
+function addNotification(message, type = 'info') {
+  const icons = { warning: 'fa-triangle-exclamation', info: 'fa-circle-info', danger: 'fa-circle-xmark', success: 'fa-circle-check' };
+  notifications.unshift({ id: uid(), message, type, icon: icons[type] || icons.info, time: new Date().toISOString() });
+  if (notifications.length > MAX_NOTIFICATIONS) notifications.pop();
+  updateNotificationBadge();
+  renderNotificationList();
+}
+
+function updateNotificationBadge() {
+  const badge = document.getElementById('notificationBadge');
+  if (!badge) return;
+  const count = notifications.length;
+  badge.textContent = count > MAX_BADGE_COUNT ? `${MAX_BADGE_COUNT}+` : count;
+  badge.classList.toggle('hidden', count === 0);
+}
+
+function renderNotificationList() {
+  const list = document.getElementById('notificationList');
+  if (!list) return;
+  if (notifications.length === 0) {
+    list.innerHTML = '<div class="empty-state" style="padding:24px 0"><i class="fa-solid fa-bell-slash"></i><p>Nenhuma notificação</p></div>';
+    return;
+  }
+  list.innerHTML = notifications.map(n => {
+    const timeAgo = getTimeAgo(n.time);
+    return `<div class="notification-item">
+      <div class="notif-icon ${n.type}"><i class="fa-solid ${n.icon}"></i></div>
+      <div class="notif-content">
+        <div class="notif-text">${escapeHtml(n.message)}</div>
+        <div class="notif-time">${timeAgo}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getTimeAgo(isoStr) {
+  const diff = Date.now() - new Date(isoStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Agora';
+  if (mins < 60) return `${mins}min atrás`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h atrás`;
+  return `${Math.floor(hrs / 24)}d atrás`;
+}
+
+function toggleNotificationPanel() {
+  const panel = document.getElementById('notificationPanel');
+  if (panel) panel.classList.toggle('hidden');
+}
+
+function generateMonthlyNotifications() {
+  const all = loadTransactions();
+  const now = new Date();
+  const thisMonth = getMonthRange(now);
+  const settings = loadSettings();
+
+  const monthExpenses = all.filter(t => t.type === 'expense' && t.date >= thisMonth.start && t.date <= thisMonth.end);
+  const monthIncome = all.filter(t => t.type === 'income' && t.date >= thisMonth.start && t.date <= thisMonth.end);
+  const totalExpense = monthExpenses.reduce((s, t) => s + t.amount, 0);
+  const totalIncome = monthIncome.reduce((s, t) => s + t.amount, 0);
+
+  // Check recurring expenses (bills) due this month
+  const billCategories = monthExpenses.filter(t => t.category === 'contas');
+  if (billCategories.length > 0) {
+    const billTotal = billCategories.reduce((s, t) => s + t.amount, 0);
+    addNotification(`Você tem ${billCategories.length} conta(s) este mês totalizando ${formatCurrency(billTotal)}`, 'info');
+  }
+
+  // High spending alert
+  if (totalIncome > 0 && totalExpense / totalIncome > HIGH_SPENDING_THRESHOLD) {
+    addNotification(`Atenção: seus gastos representam ${((totalExpense / totalIncome) * 100).toFixed(0)}% da sua receita este mês`, 'warning');
+  }
+
+  // Savings positive
+  if (totalIncome > totalExpense && totalIncome > 0) {
+    addNotification(`Boa notícia! Você está economizando ${formatCurrency(totalIncome - totalExpense)} este mês`, 'success');
+  }
+
+  // Alert threshold check on individual high expenses
+  const highExpenses = monthExpenses.filter(t => t.amount >= settings.alertThreshold);
+  if (highExpenses.length > 0) {
+    addNotification(`${highExpenses.length} despesa(s) acima do limite de ${formatCurrency(settings.alertThreshold)} detectada(s)`, 'danger');
+  }
+}
+
+// ─── 21. User Profile Photo ────────────────────────────────
+
+function updateUserAvatar() {
+  const avatarEl = document.getElementById('userAvatar');
+  if (!avatarEl) return;
+
+  const user = typeof window.firebaseAuth?.currentUser === 'function'
+    ? window.firebaseAuth.currentUser()
+    : null;
+
+  if (user && user.photoURL) {
+    const img = document.createElement('img');
+    img.src = user.photoURL;
+    img.alt = user.displayName || 'Perfil';
+    img.referrerPolicy = 'no-referrer';
+    avatarEl.textContent = '';
+    avatarEl.appendChild(img);
+  } else if (user && user.displayName) {
+    const initials = user.displayName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+    const div = document.createElement('div');
+    div.style.cssText = 'width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;color:#fff';
+    div.textContent = initials;
+    avatarEl.textContent = '';
+    avatarEl.appendChild(div);
+  }
+}
+
+// ─── 22. Initialization ────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
   // Seed data on first run
@@ -1451,7 +1612,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Logout button
   document.getElementById('logoutBtn').addEventListener('click', () => {
-    window.location.href = '../login.html';
+    if (typeof window.firebaseAuth?.logout === 'function') {
+      window.firebaseAuth.logout();
+    } else {
+      window.location.href = '../login.html';
+    }
+  });
+
+  // Notification panel toggle
+  const notifBtn = document.getElementById('notificationBtn');
+  if (notifBtn) {
+    notifBtn.addEventListener('click', toggleNotificationPanel);
+  }
+
+  // Clear notifications
+  const clearNotifBtn = document.getElementById('clearNotificationsBtn');
+  if (clearNotifBtn) {
+    clearNotifBtn.addEventListener('click', () => {
+      notifications = [];
+      updateNotificationBadge();
+      renderNotificationList();
+    });
+  }
+
+  // Close notification panel when clicking outside
+  document.addEventListener('click', (e) => {
+    const panel = document.getElementById('notificationPanel');
+    const btn = document.getElementById('notificationBtn');
+    if (panel && !panel.classList.contains('hidden') && !panel.contains(e.target) && !btn.contains(e.target)) {
+      panel.classList.add('hidden');
+    }
   });
 
   // Resize handler for charts
@@ -1462,6 +1652,14 @@ document.addEventListener('DOMContentLoaded', () => {
       Object.values(chartInstances).forEach(c => { try { c.resize(); } catch {} });
     }, 250);
   });
+
+  // Generate notifications based on financial data
+  generateMonthlyNotifications();
+
+  // Load user avatar from Firebase auth
+  updateUserAvatar();
+  setTimeout(updateUserAvatar, 1500);
+  setTimeout(updateUserAvatar, 4000);
 
   // Render initial view
   navigate('overview');
