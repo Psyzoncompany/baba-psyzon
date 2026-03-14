@@ -29,6 +29,9 @@ const DEFAULT_INCOME_CATEGORIES = [
 ];
 
 const ITEMS_PER_PAGE = 15;
+const PDF_PAGE_BOTTOM = 275;
+const PDF_TOP_MARGIN = 20;
+const PDF_DESC_MAX_LEN = 35;
 const CHART_COLORS = {
   grid: 'rgba(148,163,184,0.08)',
   text: '#94a3b8',
@@ -154,7 +157,8 @@ function getMonthLabel(dateStr) {
 }
 
 function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
 }
 
 function escapeHtml(text) {
@@ -207,7 +211,7 @@ function checkSpendingAlert(tx) {
   if (tx.type !== 'expense') return;
   const settings = loadSettings();
   if (tx.amount >= settings.alertThreshold) {
-    showToast(`Gasto alto detectado: ${formatCurrency(tx.amount)} — ${tx.description}`, 'warning');
+    showToast(`Gasto alto detectado: ${formatCurrency(tx.amount)} — ${escapeHtml(tx.description)}`, 'warning');
   }
 }
 
@@ -996,13 +1000,17 @@ function saveAlertSettings() {
   showToast('Configurações salvas!', 'success');
 }
 
+function sanitizeCategoryId(name) {
+  return name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+}
+
 function addCategory(type) {
   const inputId = type === 'income' ? 'newIncCatName' : 'newExpCatName';
   const name = document.getElementById(inputId)?.value.trim();
   if (!name) { showToast('Informe o nome da categoria', 'error'); return; }
   const cats = loadCategories();
   const list = type === 'income' ? cats.income : cats.expense;
-  const id = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  const id = sanitizeCategoryId(name);
   if (list.find(c => c.id === id)) { showToast('Categoria já existe', 'warning'); return; }
   list.push({ id, name, icon: 'fa-tag', color: '#6b7280' });
   saveCategories(cats);
@@ -1282,10 +1290,6 @@ function exportPDF() {
     doc.text(`Economia: ${formatCurrency(income - expense)}`, 14, 68);
 
     // Transaction table
-    const PDF_PAGE_BOTTOM = 275;
-    const PDF_TOP_MARGIN = 20;
-    const PDF_DESC_MAX_LEN = 35;
-
     let y = 80;
     doc.setFontSize(12);
     doc.text('Transações', 14, y);
