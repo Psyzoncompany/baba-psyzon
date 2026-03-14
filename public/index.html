@@ -71,6 +71,9 @@
                 class="desktop-nav-link text-cyan-400 font-bold drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]">INVESTIMENTOS</a>
               <a href="configuracoes.html" class="desktop-nav-link ">CONFIGURAÇÕES</a>
               <button onclick="window.firebaseAuth.logout()" class="desktop-nav-link desktop-nav-logout">Sair</button>
+              <div id="userAvatarNav" class="user-avatar-nav" title="">
+                <i class="fa-solid fa-circle-user" style="font-size:1.8rem;color:#94a3b8;"></i>
+              </div>
             </nav>
           </div>
         </div>
@@ -1454,6 +1457,35 @@
         msgEl.textContent = 'Reserva em bom nível para o momento.';
       }
     });
+  </script>
+  <script>
+    (function initUserAvatarNav() {
+        function trySetPhoto() {
+            try {
+                const user = window.firebaseAuth?.currentUser?.();
+                const el = document.getElementById('userAvatarNav');
+                if (!el) return false;
+                if (user && user.photoURL) {
+                    const img = document.createElement('img');
+                    img.src = user.photoURL;
+                    img.alt = user.displayName || 'Usuário';
+                    img.referrerPolicy = 'no-referrer';
+                    img.className = 'user-avatar-nav-img';
+                    img.title = user.displayName || user.email || '';
+                    el.innerHTML = '';
+                    el.appendChild(img);
+                    return true;
+                }
+                if (user && user.displayName) {
+                    el.title = user.displayName || user.email || '';
+                }
+            } catch { /* ignore */ }
+            return false;
+        }
+        if (!trySetPhoto()) {
+            window.addEventListener('backend-ready', trySetPhoto, { once: true });
+        }
+    })();
   </script>
 </body>
 

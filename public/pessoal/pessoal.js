@@ -242,17 +242,34 @@ function renderSection(section) {
 
 // ─── 6. Overview Section ───────────────────────────────────
 
-function renderOverview(container) {
+let overviewPeriod = 'month';
+
+function getYearRange(year) {
+  return { start: `${year}-01-01`, end: `${year}-12-31` };
+}
+
+function renderOverview(container, period) {
+  if (period) overviewPeriod = period;
   const all = loadTransactions();
   const now = new Date();
+  const year = now.getFullYear();
+  const isYear = overviewPeriod === 'year';
+
   const thisMonth = getMonthRange(now);
   const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const prevMonth = getMonthRange(prevMonthDate);
+  const thisYear = getYearRange(year);
+  const prevYear = getYearRange(year - 1);
 
-  const thisIncome = all.filter(t => t.type === 'income' && t.date >= thisMonth.start && t.date <= thisMonth.end).reduce((s, t) => s + t.amount, 0);
-  const thisExpense = all.filter(t => t.type === 'expense' && t.date >= thisMonth.start && t.date <= thisMonth.end).reduce((s, t) => s + t.amount, 0);
-  const prevIncome = all.filter(t => t.type === 'income' && t.date >= prevMonth.start && t.date <= prevMonth.end).reduce((s, t) => s + t.amount, 0);
-  const prevExpense = all.filter(t => t.type === 'expense' && t.date >= prevMonth.start && t.date <= prevMonth.end).reduce((s, t) => s + t.amount, 0);
+  const rangeA = isYear ? thisYear : thisMonth;
+  const rangeB = isYear ? prevYear : prevMonth;
+  const periodLabel = isYear ? `Ano ${year}` : 'do Mês';
+  const periodLabelB = isYear ? `Ano ${year - 1}` : 'Mês Anterior';
+
+  const thisIncome = all.filter(t => t.type === 'income' && t.date >= rangeA.start && t.date <= rangeA.end).reduce((s, t) => s + t.amount, 0);
+  const thisExpense = all.filter(t => t.type === 'expense' && t.date >= rangeA.start && t.date <= rangeA.end).reduce((s, t) => s + t.amount, 0);
+  const prevIncome = all.filter(t => t.type === 'income' && t.date >= rangeB.start && t.date <= rangeB.end).reduce((s, t) => s + t.amount, 0);
+  const prevExpense = all.filter(t => t.type === 'expense' && t.date >= rangeB.start && t.date <= rangeB.end).reduce((s, t) => s + t.amount, 0);
 
   const totalIncome = all.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const totalExpense = all.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
@@ -270,8 +287,8 @@ function renderOverview(container) {
     <div class="section-header">
       <h2 class="section-title">Visão Geral</h2>
       <div class="period-filters">
-        <button class="period-btn active" data-period="month">Mês</button>
-        <button class="period-btn" data-period="year">Ano</button>
+        <button class="period-btn ${!isYear ? 'active' : ''}" data-period="month">Mês</button>
+        <button class="period-btn ${isYear ? 'active' : ''}" data-period="year">Ano</button>
       </div>
     </div>
 
@@ -290,10 +307,10 @@ function renderOverview(container) {
           <i class="fa-solid fa-arrow-trend-up"></i>
         </div>
         <div class="summary-info">
-          <div class="summary-label">Receitas do Mês</div>
+          <div class="summary-label">Receitas ${periodLabel}</div>
           <div class="summary-value amount-income">${formatCurrency(thisIncome)}</div>
           <div class="summary-trend ${incTrend.dir === 'up' ? 'trend-up' : 'trend-down'}">
-            <i class="fa-solid fa-arrow-${incTrend.dir === 'up' ? 'up' : 'down'}"></i> ${incTrend.pct}%
+            <i class="fa-solid fa-arrow-${incTrend.dir === 'up' ? 'up' : 'down'}"></i> ${incTrend.pct}% vs ${periodLabelB}
           </div>
         </div>
       </div>
@@ -302,10 +319,10 @@ function renderOverview(container) {
           <i class="fa-solid fa-arrow-trend-down"></i>
         </div>
         <div class="summary-info">
-          <div class="summary-label">Despesas do Mês</div>
+          <div class="summary-label">Despesas ${periodLabel}</div>
           <div class="summary-value amount-expense">${formatCurrency(thisExpense)}</div>
           <div class="summary-trend ${expTrend.dir === 'up' ? 'trend-down' : 'trend-up'}">
-            <i class="fa-solid fa-arrow-${expTrend.dir === 'up' ? 'up' : 'down'}"></i> ${expTrend.pct}%
+            <i class="fa-solid fa-arrow-${expTrend.dir === 'up' ? 'up' : 'down'}"></i> ${expTrend.pct}% vs ${periodLabelB}
           </div>
         </div>
       </div>
@@ -314,7 +331,7 @@ function renderOverview(container) {
           <i class="fa-solid fa-piggy-bank"></i>
         </div>
         <div class="summary-info">
-          <div class="summary-label">Economia do Mês</div>
+          <div class="summary-label">Economia ${periodLabel}</div>
           <div class="summary-value ${savings < 0 ? 'negative-balance' : ''}">${formatCurrency(savings)}</div>
           <div class="summary-trend ${savTrend.dir === 'up' ? 'trend-up' : 'trend-down'}">
             <i class="fa-solid fa-arrow-${savTrend.dir === 'up' ? 'up' : 'down'}"></i> ${savTrend.pct}%
@@ -337,7 +354,7 @@ function renderOverview(container) {
 
     <div class="charts-grid">
       <div class="card">
-        <div class="card-header"><h3 class="card-title">Receitas vs Despesas</h3></div>
+        <div class="card-header"><h3 class="card-title">${isYear ? 'Receitas vs Despesas por Mês' : 'Receitas vs Despesas'}</h3></div>
         <div class="chart-wrapper"><canvas id="chartBar"></canvas></div>
       </div>
       <div class="card">
@@ -375,7 +392,16 @@ function renderOverview(container) {
     </div>
   `;
 
-  renderOverviewCharts(all);
+  // Attach period button handlers
+  container.querySelectorAll('.period-btn[data-period]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const main = document.getElementById('mainContent');
+      destroyAllCharts();
+      renderOverview(main, btn.dataset.period);
+    });
+  });
+
+  renderOverviewCharts(all, isYear ? year : null);
 }
 
 // ─── 7. Chart Rendering ────────────────────────────────────
@@ -399,12 +425,20 @@ function chartDefaults() {
   };
 }
 
-function renderOverviewCharts(all) {
+function renderOverviewCharts(all, year) {
   const months = [];
   const now = new Date();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({ date: d, label: d.toLocaleDateString('pt-BR', { month: 'short' }), range: getMonthRange(d) });
+  if (year) {
+    // Year view: show all 12 months of the selected year
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(year, i, 1);
+      months.push({ date: d, label: d.toLocaleDateString('pt-BR', { month: 'short' }), range: getMonthRange(d) });
+    }
+  } else {
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ date: d, label: d.toLocaleDateString('pt-BR', { month: 'short' }), range: getMonthRange(d) });
+    }
   }
 
   const incomeData = months.map(m => all.filter(t => t.type === 'income' && t.date >= m.range.start && t.date <= m.range.end).reduce((s, t) => s + t.amount, 0));
@@ -426,11 +460,13 @@ function renderOverviewCharts(all) {
     });
   }
 
-  // Line chart – balance evolution (12 months)
-  const lineMonths = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    lineMonths.push({ label: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }), range: getMonthRange(d) });
+  // Line chart – balance evolution
+  const lineMonths = year ? months : [];
+  if (!year) {
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      lineMonths.push({ label: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }), range: getMonthRange(d) });
+    }
   }
 
   let runBal = 0;
@@ -463,11 +499,11 @@ function renderOverviewCharts(all) {
     });
   }
 
-  // Doughnut – expenses by category this month
-  const thisMonth = getMonthRange(now);
-  const monthExpenses = all.filter(t => t.type === 'expense' && t.date >= thisMonth.start && t.date <= thisMonth.end);
+  // Doughnut – expenses by category (current period)
+  const periodRange = year ? getYearRange(year) : getMonthRange(now);
+  const periodExpenses = all.filter(t => t.type === 'expense' && t.date >= periodRange.start && t.date <= periodRange.end);
   const catTotals = {};
-  monthExpenses.forEach(t => {
+  periodExpenses.forEach(t => {
     catTotals[t.category] = (catTotals[t.category] || 0) + t.amount;
   });
 
@@ -494,7 +530,7 @@ function renderOverviewCharts(all) {
       }
     });
   } else if (doughEl) {
-    doughEl.parentElement.innerHTML = '<div class="empty-state" style="padding:40px 0"><i class="fa-solid fa-chart-pie"></i><p>Sem despesas este mês</p></div>';
+    doughEl.parentElement.innerHTML = `<div class="empty-state" style="padding:40px 0"><i class="fa-solid fa-chart-pie"></i><p>Sem despesas ${year ? 'este ano' : 'este mês'}</p></div>`;
   }
 }
 
@@ -1250,6 +1286,163 @@ function showToast(message, type = 'info') {
   }, 3000);
 }
 
+// ─── 15b. Notification Panel ──────────────────────────────
+
+const MAX_NOTIF_HIGH_SPEND = 3;
+const MAX_NOTIF_OVERDUE = 2;
+const MAX_BADGE_COUNT = 9;
+const NOTIF_PANEL_DELAY_MS = 10; // Allow current click event to settle before binding outside-click listener
+
+function buildNotifications() {
+  const all = loadTransactions();
+  const settings = loadSettings();
+  const now = new Date();
+  const thisMonth = getMonthRange(now);
+  const notifications = [];
+
+  // High-spending transactions this month
+  const highSpend = all.filter(t =>
+    t.type === 'expense' &&
+    t.date >= thisMonth.start &&
+    t.date <= thisMonth.end &&
+    t.amount >= settings.alertThreshold
+  );
+  highSpend.slice(0, MAX_NOTIF_HIGH_SPEND).forEach(t => {
+    notifications.push({
+      type: 'warning',
+      icon: 'fa-triangle-exclamation',
+      text: `Gasto alto: ${escapeHtml(t.description)} — ${formatCurrency(t.amount)}`
+    });
+  });
+
+  // Monthly balance alert
+  const monthIncome = all.filter(t => t.type === 'income' && t.date >= thisMonth.start && t.date <= thisMonth.end).reduce((s, t) => s + t.amount, 0);
+  const monthExpense = all.filter(t => t.type === 'expense' && t.date >= thisMonth.start && t.date <= thisMonth.end).reduce((s, t) => s + t.amount, 0);
+  if (monthExpense > monthIncome && monthIncome > 0) {
+    notifications.push({
+      type: 'error',
+      icon: 'fa-circle-exclamation',
+      text: `Despesas (${formatCurrency(monthExpense)}) superam receitas (${formatCurrency(monthIncome)}) este mês!`
+    });
+  }
+
+  // Check monthly bills from business dashboard localStorage
+  try {
+    const billsKey = Object.keys(localStorage).find(k => k.startsWith('bills_') || k === 'bills');
+    if (billsKey) {
+      const bills = JSON.parse(localStorage.getItem(billsKey) || '[]');
+      const todayStr = getToday();
+      const overdue = Array.isArray(bills) ? bills.filter(b => b.dueDate && b.dueDate < todayStr && b.status !== 'paid') : [];
+      overdue.slice(0, MAX_NOTIF_OVERDUE).forEach(b => {
+        notifications.push({
+          type: 'error',
+          icon: 'fa-file-invoice-dollar',
+          text: `Conta atrasada: ${escapeHtml(b.name || b.description || 'Conta')} — ${formatCurrency(b.amount || 0)}`
+        });
+      });
+    }
+  } catch { /* ignore */ }
+
+  if (notifications.length === 0) {
+    notifications.push({
+      type: 'success',
+      icon: 'fa-circle-check',
+      text: 'Tudo em ordem! Nenhum alerta financeiro.'
+    });
+  }
+
+  return notifications;
+}
+
+function updateNotificationBadge() {
+  const notifications = buildNotifications();
+  const badge = document.getElementById('notificationBadge');
+  if (!badge) return;
+  const alertCount = notifications.filter(n => n.type !== 'success').length;
+  if (alertCount > 0) {
+    badge.textContent = alertCount > MAX_BADGE_COUNT ? `${MAX_BADGE_COUNT}+` : String(alertCount);
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+function toggleNotificationPanel() {
+  let panel = document.getElementById('notificationPanel');
+  if (panel) {
+    panel.remove();
+    return;
+  }
+
+  const notifications = buildNotifications();
+  panel = document.createElement('div');
+  panel.id = 'notificationPanel';
+  panel.className = 'notification-panel';
+  panel.innerHTML = `
+    <div class="notification-panel-header">
+      <h3><i class="fa-solid fa-bell"></i> Notificações</h3>
+      <button class="notification-panel-close" onclick="document.getElementById('notificationPanel')?.remove()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="notification-list">
+      ${notifications.map(n => `
+        <div class="notification-item notification-${n.type}">
+          <i class="fa-solid ${n.icon} notification-icon"></i>
+          <span class="notification-text">${n.text}</span>
+        </div>
+      `).join('')}
+    </div>
+    <div class="notification-panel-footer">
+      <a href="../contas.html" class="notification-footer-link">
+        <i class="fa-solid fa-file-invoice"></i> Gerenciar Contas Mensais
+      </a>
+    </div>
+  `;
+
+  document.querySelector('.top-bar-right').appendChild(panel);
+
+  // Close when clicking outside — delay allows the triggering click to settle first
+  setTimeout(() => {
+    document.addEventListener('click', function outsideClick(e) {
+      if (!panel.contains(e.target) && !document.getElementById('notificationBtn').contains(e.target)) {
+        panel.remove();
+        document.removeEventListener('click', outsideClick);
+      }
+    });
+  }, NOTIF_PANEL_DELAY_MS);
+}
+
+// ─── 15c. User Avatar / Google Photo ─────────────────────
+
+function initUserAvatar() {
+  const avatarEl = document.getElementById('userAvatarEl');
+  if (!avatarEl) return;
+
+  const trySetPhoto = () => {
+    try {
+      const user = window.firebaseAuth?.currentUser?.();
+      if (user && user.photoURL) {
+        const img = document.createElement('img');
+        img.src = user.photoURL;
+        img.alt = user.displayName || 'Usuário';
+        img.className = 'user-avatar-photo';
+        img.referrerPolicy = 'no-referrer';
+        img.onerror = () => { img.remove(); };
+        avatarEl.innerHTML = '';
+        avatarEl.appendChild(img);
+        return true;
+      }
+    } catch { /* ignore */ }
+    return false;
+  };
+
+  if (!trySetPhoto()) {
+    // Retry when backend-ready fires
+    window.addEventListener('backend-ready', trySetPhoto, { once: true });
+  }
+}
+
 // ─── 16. Export Functions ──────────────────────────────────
 
 function downloadBlob(blob, filename) {
@@ -1453,6 +1646,19 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('logoutBtn').addEventListener('click', () => {
     window.location.href = '../login.html';
   });
+
+  // Notification button
+  const notifBtn = document.getElementById('notificationBtn');
+  if (notifBtn) {
+    notifBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleNotificationPanel();
+    });
+  }
+  updateNotificationBadge();
+
+  // User avatar (Google photo)
+  initUserAvatar();
 
   // Resize handler for charts
   let resizeTimeout;

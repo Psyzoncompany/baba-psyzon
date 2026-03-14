@@ -1141,6 +1141,162 @@ img { max-width: 100%; display: block; }
   }
 }
 
+/* ---------- Back to Business Dashboard Button ---------- */
+.back-to-business-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(6, 182, 212, 0.12);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.back-to-business-btn:hover {
+  background: rgba(6, 182, 212, 0.22);
+  border-color: var(--accent);
+}
+
+.back-to-business-btn i {
+  font-size: 0.75rem;
+}
+
+@media (max-width: 480px) {
+  .back-to-business-btn span {
+    display: none;
+  }
+}
+
+/* ---------- Notification Panel ---------- */
+.notification-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  overflow: hidden;
+  animation: fadeIn 0.18s ease;
+}
+
+.notification-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.notification-panel-header h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notification-panel-close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  color: var(--text-secondary);
+  transition: all var(--transition);
+}
+
+.notification-panel-close:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.notification-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-xs);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.notification-item.notification-warning {
+  background: rgba(234, 179, 8, 0.08);
+  border: 1px solid rgba(234, 179, 8, 0.2);
+}
+
+.notification-item.notification-error {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.notification-item.notification-success {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.notification-icon {
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.notification-item.notification-warning .notification-icon { color: var(--accent-yellow); }
+.notification-item.notification-error .notification-icon { color: var(--accent-red); }
+.notification-item.notification-success .notification-icon { color: var(--accent-green); }
+
+.notification-text {
+  color: var(--text-primary);
+}
+
+.notification-panel-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.notification-footer-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.notification-footer-link:hover {
+  text-decoration: underline;
+}
+
+/* ---------- User Avatar Photo ---------- */
+.user-avatar-photo {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent);
+}
+
 /* ---------- Print ---------- */
 @media print {
   .sidebar,

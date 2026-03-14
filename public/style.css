@@ -134,6 +134,23 @@ body {
   border-color: rgba(239, 68, 68, 0.2);
 }
 
+/* User avatar in desktop navbar */
+.user-avatar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+}
+
+.user-avatar-nav-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(6, 182, 212, 0.6);
+  display: block;
+}
+
 @media (max-width: 1023px) {
   .desktop-topbar {
     top: 0.5rem;
