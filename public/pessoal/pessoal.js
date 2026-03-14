@@ -48,6 +48,10 @@ let currentPage = {};
 let overviewPeriod = 'month'; // 'month' or 'year'
 let notifications = [];
 
+const MAX_NOTIFICATIONS = 50;
+const MAX_BADGE_COUNT = 9;
+const HIGH_SPENDING_THRESHOLD = 0.8;
+
 // ─── 2. Data Management ────────────────────────────────────
 
 function loadTransactions() {
@@ -1461,7 +1465,7 @@ function seedSampleData() {
 function addNotification(message, type = 'info') {
   const icons = { warning: 'fa-triangle-exclamation', info: 'fa-circle-info', danger: 'fa-circle-xmark', success: 'fa-circle-check' };
   notifications.unshift({ id: uid(), message, type, icon: icons[type] || icons.info, time: new Date().toISOString() });
-  if (notifications.length > 50) notifications.pop();
+  if (notifications.length > MAX_NOTIFICATIONS) notifications.pop();
   updateNotificationBadge();
   renderNotificationList();
 }
@@ -1470,7 +1474,7 @@ function updateNotificationBadge() {
   const badge = document.getElementById('notificationBadge');
   if (!badge) return;
   const count = notifications.length;
-  badge.textContent = count > 9 ? '9+' : count;
+  badge.textContent = count > MAX_BADGE_COUNT ? `${MAX_BADGE_COUNT}+` : count;
   badge.classList.toggle('hidden', count === 0);
 }
 
@@ -1527,7 +1531,7 @@ function generateMonthlyNotifications() {
   }
 
   // High spending alert
-  if (totalIncome > 0 && totalExpense / totalIncome > 0.8) {
+  if (totalIncome > 0 && totalExpense / totalIncome > HIGH_SPENDING_THRESHOLD) {
     addNotification(`Atenção: seus gastos representam ${((totalExpense / totalIncome) * 100).toFixed(0)}% da sua receita este mês`, 'warning');
   }
 
@@ -1554,10 +1558,19 @@ function updateUserAvatar() {
     : null;
 
   if (user && user.photoURL) {
-    avatarEl.innerHTML = `<img src="${escapeHtml(user.photoURL)}" alt="${escapeHtml(user.displayName || 'Perfil')}" referrerpolicy="no-referrer" />`;
+    const img = document.createElement('img');
+    img.src = user.photoURL;
+    img.alt = user.displayName || 'Perfil';
+    img.referrerPolicy = 'no-referrer';
+    avatarEl.textContent = '';
+    avatarEl.appendChild(img);
   } else if (user && user.displayName) {
     const initials = user.displayName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-    avatarEl.innerHTML = `<div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;color:#fff">${escapeHtml(initials)}</div>`;
+    const div = document.createElement('div');
+    div.style.cssText = 'width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;color:#fff';
+    div.textContent = initials;
+    avatarEl.textContent = '';
+    avatarEl.appendChild(div);
   }
 }
 

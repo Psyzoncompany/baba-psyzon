@@ -115,10 +115,20 @@ const init = () => {
         const photoEl = document.getElementById('user-profile-photo');
         if (!photoEl) return;
         if (user && user.photoURL) {
-            photoEl.innerHTML = `<img src="${user.photoURL}" alt="${user.displayName || 'Perfil'}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover" />`;
+            const img = document.createElement('img');
+            img.src = user.photoURL;
+            img.alt = user.displayName || 'Perfil';
+            img.referrerPolicy = 'no-referrer';
+            img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+            photoEl.textContent = '';
+            photoEl.appendChild(img);
         } else if (user && user.displayName) {
             const initials = user.displayName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-            photoEl.innerHTML = `<span style="font-weight:700;font-size:1rem;color:#06b6d4">${initials}</span>`;
+            const span = document.createElement('span');
+            span.style.cssText = 'font-weight:700;font-size:1rem;color:#06b6d4';
+            span.textContent = initials;
+            photoEl.textContent = '';
+            photoEl.appendChild(span);
         }
     };
 
