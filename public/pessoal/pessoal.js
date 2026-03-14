@@ -86,7 +86,7 @@ function saveCategories(cats) {
 
 function addTransaction(tx) {
   const all = loadTransactions();
-  tx.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  tx.id = uid();
   tx.createdAt = new Date().toISOString();
   all.push(tx);
   saveTransactions(all);
@@ -1282,6 +1282,10 @@ function exportPDF() {
     doc.text(`Economia: ${formatCurrency(income - expense)}`, 14, 68);
 
     // Transaction table
+    const PDF_PAGE_BOTTOM = 275;
+    const PDF_TOP_MARGIN = 20;
+    const PDF_DESC_MAX_LEN = 35;
+
     let y = 80;
     doc.setFontSize(12);
     doc.text('Transações', 14, y);
@@ -1297,9 +1301,9 @@ function exportPDF() {
 
     const sorted = sortByDate(month);
     sorted.forEach(tx => {
-      if (y > 275) { doc.addPage(); y = 20; }
+      if (y > PDF_PAGE_BOTTOM) { doc.addPage(); y = PDF_TOP_MARGIN; }
       doc.text(formatDate(tx.date), 14, y);
-      doc.text(tx.description.substring(0, 35), 40, y);
+      doc.text(tx.description.substring(0, PDF_DESC_MAX_LEN), 40, y);
       doc.text(tx.type === 'income' ? 'Receita' : 'Despesa', 110, y);
       doc.text(formatCurrency(tx.amount), 140, y);
       y += 6;
@@ -1366,17 +1370,18 @@ function seedSampleData() {
   const y = now.getFullYear();
   const m = now.getMonth();
 
+  const mm = String(m + 1).padStart(2, '0');
   const samples = [
-    { type: 'income', description: 'Salário', amount: 5500, category: 'salario', date: `${y}-${String(m + 1).padStart(2, '0')}-05` },
-    { type: 'income', description: 'Freelance website', amount: 1200, category: 'freelance', date: `${y}-${String(m + 1).padStart(2, '0')}-12` },
-    { type: 'expense', description: 'Aluguel', amount: 1800, category: 'moradia', date: `${y}-${String(m + 1).padStart(2, '0')}-01` },
-    { type: 'expense', description: 'Supermercado Pão de Açúcar', amount: 480, category: 'alimentacao', date: `${y}-${String(m + 1).padStart(2, '0')}-03` },
-    { type: 'expense', description: 'Conta de luz', amount: 185, category: 'contas', date: `${y}-${String(m + 1).padStart(2, '0')}-10` },
-    { type: 'expense', description: 'Gasolina', amount: 250, category: 'transporte', date: `${y}-${String(m + 1).padStart(2, '0')}-08` },
-    { type: 'expense', description: 'Curso Udemy', amount: 79.90, category: 'educacao', date: `${y}-${String(m + 1).padStart(2, '0')}-15` },
-    { type: 'expense', description: 'Netflix + Spotify', amount: 55.80, category: 'lazer', date: `${y}-${String(m + 1).padStart(2, '0')}-05` },
-    { type: 'expense', description: 'Farmácia', amount: 120, category: 'saude', date: `${y}-${String(m + 1).padStart(2, '0')}-07` },
-    { type: 'expense', description: 'Roupa nova', amount: 199, category: 'compras', date: `${y}-${String(m + 1).padStart(2, '0')}-18` },
+    { type: 'income', description: 'Salário', amount: 5500, category: 'salario', date: `${y}-${mm}-05` },
+    { type: 'income', description: 'Freelance website', amount: 1200, category: 'freelance', date: `${y}-${mm}-12` },
+    { type: 'expense', description: 'Aluguel', amount: 1800, category: 'moradia', date: `${y}-${mm}-01` },
+    { type: 'expense', description: 'Supermercado Pão de Açúcar', amount: 480, category: 'alimentacao', date: `${y}-${mm}-03` },
+    { type: 'expense', description: 'Conta de luz', amount: 185, category: 'contas', date: `${y}-${mm}-10` },
+    { type: 'expense', description: 'Gasolina', amount: 250, category: 'transporte', date: `${y}-${mm}-08` },
+    { type: 'expense', description: 'Curso Udemy', amount: 79.90, category: 'educacao', date: `${y}-${mm}-15` },
+    { type: 'expense', description: 'Netflix + Spotify', amount: 55.80, category: 'lazer', date: `${y}-${mm}-05` },
+    { type: 'expense', description: 'Farmácia', amount: 120, category: 'saude', date: `${y}-${mm}-07` },
+    { type: 'expense', description: 'Roupa nova', amount: 199, category: 'compras', date: `${y}-${mm}-18` },
 
     // Previous month
     { type: 'income', description: 'Salário', amount: 5500, category: 'salario', date: formatDateISO(new Date(y, m - 1, 5)) },
