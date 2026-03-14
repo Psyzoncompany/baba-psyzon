@@ -108,6 +108,18 @@ const init = () => {
             ? window.firebaseAuth.currentUser()
             : null;
         loggedAccountDisplayEl.textContent = resolveAccountLabel(user);
+        updateUserProfilePhoto(user);
+    };
+
+    const updateUserProfilePhoto = (user) => {
+        const photoEl = document.getElementById('user-profile-photo');
+        if (!photoEl) return;
+        if (user && user.photoURL) {
+            photoEl.innerHTML = `<img src="${user.photoURL}" alt="${user.displayName || 'Perfil'}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover" />`;
+        } else if (user && user.displayName) {
+            const initials = user.displayName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+            photoEl.innerHTML = `<span style="font-weight:700;font-size:1rem;color:#06b6d4">${initials}</span>`;
+        }
     };
 
     updateLoggedAccountDisplay();

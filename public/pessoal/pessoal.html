@@ -94,6 +94,10 @@
     <!-- Top Bar -->
     <header class="top-bar">
       <div class="top-bar-left">
+        <a href="../index.html" class="back-btn" title="Voltar ao Dashboard Empresarial">
+          <i class="fa-solid fa-arrow-left"></i>
+          <span>Empresarial</span>
+        </a>
         <button id="sidebarToggleBtn" class="sidebar-toggle-btn" aria-label="Abrir menu">
           <i class="fa-solid fa-bars"></i>
         </button>
@@ -107,11 +111,22 @@
           <i class="fa-solid fa-bell"></i>
           <span id="notificationBadge" class="notification-badge hidden">0</span>
         </button>
-        <div class="user-avatar">
+        <div id="userAvatar" class="user-avatar" title="Perfil">
           <i class="fa-solid fa-circle-user"></i>
         </div>
       </div>
     </header>
+
+    <!-- Notification Panel -->
+    <div id="notificationPanel" class="notification-panel hidden">
+      <div class="notification-panel-header">
+        <h3>Notificações</h3>
+        <button id="clearNotificationsBtn" class="btn-icon" title="Limpar todas"><i class="fa-solid fa-check-double"></i></button>
+      </div>
+      <div id="notificationList" class="notification-list">
+        <div class="empty-state" style="padding:24px 0"><i class="fa-solid fa-bell-slash"></i><p>Nenhuma notificação</p></div>
+      </div>
+    </div>
 
     <!-- Main Content -->
     <main id="mainContent" class="main-content"></main>
