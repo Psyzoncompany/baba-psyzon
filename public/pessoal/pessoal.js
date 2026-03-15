@@ -6,7 +6,9 @@
 const STORAGE_KEYS = {
   transactions: 'pessoal_transactions',
   categories: 'pessoal_categories',
-  settings: 'pessoal_settings'
+  settings: 'pessoal_settings',
+  bills: 'pessoal_bills',
+  billPayments: 'pessoal_bill_payments'
 };
 
 const DEFAULT_EXPENSE_CATEGORIES = [
@@ -91,6 +93,91 @@ function loadCategories() {
 
 function saveCategories(cats) {
   localStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(cats));
+}
+
+// ─── Bills Data Management ─────────────────────────────────
+
+function loadBills() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.bills);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveBills(data) {
+  localStorage.setItem(STORAGE_KEYS.bills, JSON.stringify(data));
+}
+
+function loadBillPayments() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.billPayments);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveBillPayments(data) {
+  localStorage.setItem(STORAGE_KEYS.billPayments, JSON.stringify(data));
+}
+
+function addBill(bill) {
+  const all = loadBills();
+  bill.id = uid();
+  bill.createdAt = new Date().toISOString();
+  all.push(bill);
+  saveBills(all);
+  return bill;
+}
+
+function updateBill(id, updates) {
+  const all = loadBills();
+  const idx = all.findIndex(b => b.id === id);
+  if (idx === -1) return null;
+  all[idx] = { ...all[idx], ...updates };
+  saveBills(all);
+  return all[idx];
+}
+
+function deleteBill(id) {
+  saveBills(loadBills().filter(b => b.id !== id));
+  const payments = loadBillPayments().filter(p => p.billId !== id);
+  saveBillPayments(payments);
+}
+
+function markBillPaid(billId, month) {
+  const payments = loadBillPayments();
+  const existing = payments.find(p => p.billId === billId && p.month === month);
+  if (existing) return existing;
+  const bill = loadBills().find(b => b.id === billId);
+  const payment = {
+    id: uid(),
+    billId,
+    month,
+    paidDate: getToday(),
+    paidAmount: bill ? bill.amount : 0
+  };
+  payments.push(payment);
+  saveBillPayments(payments);
+  return payment;
+}
+
+function unmarkBillPaid(billId, month) {
+  const payments = loadBillPayments().filter(p => !(p.billId === billId && p.month === month));
+  saveBillPayments(payments);
+}
+
+function isBillPaid(billId, month) {
+  return loadBillPayments().some(p => p.billId === billId && p.month === month);
+}
+
+function getBillStatus(bill, month) {
+  if (isBillPaid(bill.id, month)) return 'paid';
+  const now = new Date();
+  const [y, m] = month.split('-').map(Number);
+  const dueDate = new Date(y, m - 1, bill.dueDay);
+  if (now > dueDate) return 'overdue';
+  const daysUntil = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24));
+  if (daysUntil <= 3) return 'due-soon';
+  return 'pending';
 }
 
 function addTransaction(tx) {
@@ -247,6 +334,7 @@ function renderSection(section) {
     case 'overview': renderOverview(main); break;
     case 'income': renderIncome(main); break;
     case 'expenses': renderExpenses(main); break;
+    case 'bills': renderBills(main); break;
     case 'cashflow': renderCashFlow(main); break;
     case 'reports': renderReports(main); break;
     case 'settings': renderSettings(main); break;
@@ -717,6 +805,317 @@ function renderExpenseCategoryBreakdown() {
       </div>
     </div>
   `;
+}
+
+// ─── 9b. Monthly Bills Section ─────────────────────────────
+
+const BILL_CATEGORIES = [
+  { id: 'aluguel', name: 'Aluguel', icon: 'fa-house', color: '#f43f5e' },
+  { id: 'energia', name: 'Energia', icon: 'fa-bolt', color: '#eab308' },
+  { id: 'agua', name: 'Água', icon: 'fa-droplet', color: '#3b82f6' },
+  { id: 'internet', name: 'Internet', icon: 'fa-wifi', color: '#06b6d4' },
+  { id: 'telefone', name: 'Telefone', icon: 'fa-phone', color: '#8b5cf6' },
+  { id: 'streaming', name: 'Streaming', icon: 'fa-tv', color: '#ec4899' },
+  { id: 'seguro', name: 'Seguro', icon: 'fa-shield-halved', color: '#14b8a6' },
+  { id: 'cartao', name: 'Cartão de Crédito', icon: 'fa-credit-card', color: '#f97316' },
+  { id: 'emprestimo', name: 'Empréstimo', icon: 'fa-landmark', color: '#6366f1' },
+  { id: 'outros_conta', name: 'Outros', icon: 'fa-file-invoice', color: '#6b7280' }
+];
+
+function getBillCategory(catId) {
+  return BILL_CATEGORIES.find(c => c.id === catId) || { id: catId, name: catId, icon: 'fa-file-invoice', color: '#6b7280' };
+}
+
+let billsMonth = '';
+
+function renderBills(container) {
+  const now = new Date();
+  if (!billsMonth) billsMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const bills = loadBills();
+  const payments = loadBillPayments();
+  const [y, m] = billsMonth.split('-').map(Number);
+
+  const totalBills = bills.reduce((s, b) => s + b.amount, 0);
+  const paidBills = bills.filter(b => isBillPaid(b.id, billsMonth));
+  const totalPaid = paidBills.reduce((s, b) => s + b.amount, 0);
+  const totalPending = totalBills - totalPaid;
+  const overdueBills = bills.filter(b => getBillStatus(b, billsMonth) === 'overdue');
+
+  container.innerHTML = `
+    <div class="section-header">
+      <h2 class="section-title"><i class="fa-solid fa-file-invoice-dollar" style="color:var(--accent-yellow)"></i> Contas Mensais</h2>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input type="month" class="form-input" id="billsMonthPicker" value="${billsMonth}" style="max-width:200px" />
+        <button class="btn btn-primary" onclick="openBillModal()"><i class="fa-solid fa-plus"></i> Nova Conta</button>
+      </div>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-icon" style="background:rgba(234,179,8,0.12);color:#eab308">
+          <i class="fa-solid fa-file-invoice-dollar"></i>
+        </div>
+        <div class="summary-info">
+          <div class="summary-label">Total de Contas</div>
+          <div class="summary-value">${formatCurrency(totalBills)}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">${bills.length} conta(s)</div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-icon" style="background:rgba(16,185,129,0.12);color:#10b981">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div class="summary-info">
+          <div class="summary-label">Pagas</div>
+          <div class="summary-value amount-income">${formatCurrency(totalPaid)}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">${paidBills.length} de ${bills.length}</div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-icon" style="background:rgba(239,68,68,0.12);color:#ef4444">
+          <i class="fa-solid fa-clock"></i>
+        </div>
+        <div class="summary-info">
+          <div class="summary-label">Pendentes</div>
+          <div class="summary-value amount-expense">${formatCurrency(totalPending)}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">${bills.length - paidBills.length} pendente(s)</div>
+        </div>
+      </div>
+      ${overdueBills.length > 0 ? `
+      <div class="summary-card" style="border-color:var(--accent-red)">
+        <div class="summary-icon" style="background:rgba(239,68,68,0.12);color:#ef4444">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div class="summary-info">
+          <div class="summary-label">Atrasadas</div>
+          <div class="summary-value amount-expense">${overdueBills.length}</div>
+          <div style="font-size:0.75rem;color:var(--accent-red);margin-top:2px">${formatCurrency(overdueBills.reduce((s, b) => s + b.amount, 0))}</div>
+        </div>
+      </div>` : ''}
+    </div>
+
+    ${bills.length > 0 ? `
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Suas Contas</h3>
+      </div>
+      <div class="bills-list">
+        ${bills.map(bill => {
+          const cat = getBillCategory(bill.category);
+          const status = getBillStatus(bill, billsMonth);
+          const statusLabels = { paid: 'Paga', overdue: 'Atrasada', 'due-soon': 'Vence em breve', pending: 'Pendente' };
+          return `<div class="bill-item bill-status-${status}">
+            <div class="bill-item-left">
+              <div class="bill-icon" style="background:${cat.color}22;color:${cat.color}">
+                <i class="fa-solid ${cat.icon}"></i>
+              </div>
+              <div class="bill-info">
+                <div class="bill-name">${escapeHtml(bill.name)}</div>
+                <div class="bill-meta">
+                  <span class="category-tag" style="background:${cat.color}22;color:${cat.color};font-size:0.7rem;padding:2px 8px">${escapeHtml(cat.name)}</span>
+                  <span style="color:var(--text-muted);font-size:0.75rem">Vence dia ${bill.dueDay}</span>
+                </div>
+              </div>
+            </div>
+            <div class="bill-item-right">
+              <div class="bill-amount">${formatCurrency(bill.amount)}</div>
+              <span class="bill-status-badge status-${status}">${statusLabels[status]}</span>
+              <div class="bill-actions">
+                ${status !== 'paid'
+                  ? `<button class="btn btn-success btn-sm" onclick="handleMarkBillPaid('${bill.id}')" title="Marcar como paga"><i class="fa-solid fa-check"></i></button>`
+                  : `<button class="btn btn-outline btn-sm" onclick="handleUnmarkBillPaid('${bill.id}')" title="Desmarcar pagamento"><i class="fa-solid fa-rotate-left"></i></button>`
+                }
+                <button class="btn-icon edit" onclick="openBillModal('${bill.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                <button class="btn-icon delete" onclick="confirmDeleteBill('${bill.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : `
+    <div class="card">
+      <div class="empty-state" style="padding:48px 0">
+        <i class="fa-solid fa-file-invoice-dollar" style="font-size:3rem;color:var(--text-muted);margin-bottom:16px"></i>
+        <p>Nenhuma conta mensal cadastrada</p>
+        <p style="font-size:0.85rem;color:var(--text-muted);margin-top:8px">Clique em "Nova Conta" para adicionar suas contas fixas</p>
+      </div>
+    </div>`}
+  `;
+
+  document.getElementById('billsMonthPicker').addEventListener('input', (e) => {
+    billsMonth = e.target.value;
+    renderBills(container);
+  });
+}
+
+function openBillModal(editId) {
+  const isEdit = !!editId;
+  const bill = isEdit ? loadBills().find(b => b.id === editId) : null;
+
+  openModal(`
+    <div class="modal-header">
+      <h3 class="modal-title">${isEdit ? 'Editar' : 'Nova'} Conta Mensal</h3>
+      <button class="modal-close-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nome da conta *</label>
+        <input type="text" class="form-input" id="billName" placeholder="Ex: Aluguel, Internet..." value="${bill ? escapeHtml(bill.name) : ''}" required />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Valor mensal (R$) *</label>
+          <input type="number" class="form-input" id="billAmount" placeholder="0,00" step="0.01" min="0.01" value="${bill ? bill.amount : ''}" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Dia de vencimento *</label>
+          <input type="number" class="form-input" id="billDueDay" placeholder="1-31" min="1" max="31" value="${bill ? bill.dueDay : ''}" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Categoria</label>
+        <select class="form-select" id="billCategory">
+          ${BILL_CATEGORIES.map(c => `<option value="${c.id}" ${bill && bill.category === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notas</label>
+        <textarea class="form-textarea" id="billNotes" placeholder="Observações opcionais...">${bill && bill.notes ? escapeHtml(bill.notes) : ''}</textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveBillFromModal('${editId || ''}')"><i class="fa-solid fa-check"></i> Salvar</button>
+    </div>
+  `);
+}
+
+function saveBillFromModal(editId) {
+  const name = document.getElementById('billName')?.value.trim();
+  const amount = parseFloat(document.getElementById('billAmount')?.value);
+  const dueDay = parseInt(document.getElementById('billDueDay')?.value, 10);
+  const category = document.getElementById('billCategory')?.value;
+  const notes = document.getElementById('billNotes')?.value.trim();
+
+  if (!name || isNaN(amount) || amount <= 0 || isNaN(dueDay) || dueDay < 1 || dueDay > 31) {
+    showToast('Preencha todos os campos obrigatórios', 'error');
+    return;
+  }
+
+  const data = { name, amount, dueDay, category, notes };
+
+  if (editId) {
+    updateBill(editId, data);
+    showToast('Conta atualizada!', 'success');
+  } else {
+    addBill(data);
+    showToast('Conta adicionada!', 'success');
+  }
+
+  closeModal();
+  navigate('bills');
+}
+
+function handleMarkBillPaid(billId) {
+  markBillPaid(billId, billsMonth);
+  showToast('Conta marcada como paga!', 'success');
+  navigate('bills');
+}
+
+function handleUnmarkBillPaid(billId) {
+  unmarkBillPaid(billId, billsMonth);
+  showToast('Pagamento desmarcado', 'info');
+  navigate('bills');
+}
+
+function confirmDeleteBill(id) {
+  openConfirmModal('Deseja excluir esta conta mensal?', () => {
+    deleteBill(id);
+    showToast('Conta excluída', 'success');
+    navigate('bills');
+  });
+}
+
+// ─── Mobile Push Notifications ─────────────────────────────
+
+function requestNotificationPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function sendPushNotification(title, body, icon) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  try {
+    new Notification(title, {
+      body: body,
+      icon: icon || '../img/logo.png',
+      badge: '../img/logo.png',
+      tag: 'bills-' + Date.now(),
+      vibrate: [200, 100, 200]
+    });
+  } catch (e) {
+    // Fallback for environments that don't support Notification constructor options
+  }
+}
+
+function checkBillNotifications() {
+  const bills = loadBills();
+  if (bills.length === 0) return;
+
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  let dueSoonCount = 0;
+  let overdueCount = 0;
+  const overdueNames = [];
+  const dueSoonNames = [];
+
+  bills.forEach(bill => {
+    const status = getBillStatus(bill, currentMonth);
+    if (status === 'overdue') {
+      overdueCount++;
+      overdueNames.push(bill.name);
+    } else if (status === 'due-soon') {
+      dueSoonCount++;
+      dueSoonNames.push(bill.name);
+    }
+  });
+
+  if (overdueCount > 0) {
+    const msg = `Você tem ${overdueCount} conta(s) atrasada(s): ${overdueNames.join(', ')}`;
+    addNotification(msg, 'danger');
+    sendPushNotification('⚠️ Contas Atrasadas', msg);
+  }
+
+  if (dueSoonCount > 0) {
+    const msg = `${dueSoonCount} conta(s) vencem em breve: ${dueSoonNames.join(', ')}`;
+    addNotification(msg, 'warning');
+    sendPushNotification('📅 Contas a Vencer', msg);
+  }
+
+  const paidCount = bills.filter(b => isBillPaid(b.id, currentMonth)).length;
+  if (paidCount > 0 && paidCount < bills.length) {
+    addNotification(`${paidCount} de ${bills.length} contas pagas este mês`, 'info');
+  } else if (paidCount === bills.length && bills.length > 0) {
+    addNotification('Todas as contas do mês estão pagas! 🎉', 'success');
+    sendPushNotification('✅ Contas em dia', 'Todas as contas do mês estão pagas!');
+  }
+}
+
+function seedSampleBills() {
+  if (loadBills().length > 0) return;
+  const sampleBills = [
+    { name: 'Aluguel', amount: 1800, dueDay: 1, category: 'aluguel', notes: '' },
+    { name: 'Conta de Luz', amount: 185, dueDay: 10, category: 'energia', notes: '' },
+    { name: 'Internet', amount: 120, dueDay: 15, category: 'internet', notes: '' },
+    { name: 'Netflix + Spotify', amount: 55.80, dueDay: 5, category: 'streaming', notes: '' },
+    { name: 'Conta de Água', amount: 85, dueDay: 8, category: 'agua', notes: '' }
+  ];
+  const bills = sampleBills.map(b => ({ ...b, id: uid(), createdAt: new Date().toISOString() }));
+  saveBills(bills);
 }
 
 // ─── 10. Cash Flow Section ─────────────────────────────────
@@ -1579,6 +1978,10 @@ function updateUserAvatar() {
 document.addEventListener('DOMContentLoaded', () => {
   // Seed data on first run
   seedSampleData();
+  seedSampleBills();
+
+  // Request notification permission for mobile push
+  requestNotificationPermission();
 
   // Navigation links
   document.querySelectorAll('.nav-link[data-section]').forEach(link => {
@@ -1655,6 +2058,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Generate notifications based on financial data
   generateMonthlyNotifications();
+
+  // Check bill due dates and send notifications
+  checkBillNotifications();
 
   // Load user avatar from Firebase auth
   updateUserAvatar();
