@@ -1045,9 +1045,36 @@ function requestNotificationPermission() {
   }
 }
 
+// ─── Mobile Push Notification Rate Limiting ────────────────
+// Only allow push notifications twice per day: once in the morning and once in the afternoon.
+const PUSH_LIMIT_KEY = 'pessoal_push_limit';
+
+function canSendPushNotification() {
+  const ls = window.__nativeLS || window.localStorage;
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  const period = now.getHours() < 12 ? 'morning' : 'afternoon';
+
+  let state;
+  try {
+    state = JSON.parse(ls.getItem(PUSH_LIMIT_KEY) || '{}');
+  } catch { state = {}; }
+
+  if (state.date !== today) {
+    state = { date: today };
+  }
+
+  if (state[period]) return false;
+
+  state[period] = true;
+  ls.setItem(PUSH_LIMIT_KEY, JSON.stringify(state));
+  return true;
+}
+
 function sendPushNotification(title, body, icon) {
   if (!('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
+  if (!canSendPushNotification()) return;
   try {
     new Notification(title, {
       body: body,
@@ -2066,6 +2093,11 @@ document.addEventListener('DOMContentLoaded', () => {
   updateUserAvatar();
   setTimeout(updateUserAvatar, 1500);
   setTimeout(updateUserAvatar, 4000);
+
+  // Real-time Firebase sync: re-render current section when cloud data changes
+  window.addEventListener('cloud-data-refresh-requested', () => {
+    renderSection(currentSection);
+  });
 
   // Render initial view
   navigate('overview');
