@@ -68,6 +68,113 @@ const init = () => {
 
     applyPersonalModeLayout();
 
+    // =========================================================================
+    // FILTRO DE MÊS/ANO DO DASHBOARD
+    // =========================================================================
+    const urlParams = new URLSearchParams(window.location.search);
+    const realNow = new Date();
+    let selectedMonth = parseInt(urlParams.get('mes'), 10) || (realNow.getMonth() + 1); // 1-12
+    let selectedYear = parseInt(urlParams.get('ano'), 10) || realNow.getFullYear();
+    // Clamp month to valid range
+    if (selectedMonth < 1) selectedMonth = 1;
+    if (selectedMonth > 12) selectedMonth = 12;
+
+    const MONTH_NAMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+    const isCurrentMonth = () => selectedMonth === (realNow.getMonth() + 1) && selectedYear === realNow.getFullYear();
+
+    const navigateToMonth = (month, year) => {
+        const params = new URLSearchParams(window.location.search);
+        const nowM = realNow.getMonth() + 1;
+        const nowY = realNow.getFullYear();
+        if (month === nowM && year === nowY) {
+            params.delete('mes');
+            params.delete('ano');
+        } else {
+            params.set('mes', month);
+            params.set('ano', year);
+        }
+        const qs = params.toString();
+        window.location.search = qs;
+    };
+
+    const setupMonthFilter = () => {
+        const monthSelect = document.getElementById('month-select');
+        const yearSelect = document.getElementById('year-select');
+        const prevBtn = document.getElementById('month-prev');
+        const nextBtn = document.getElementById('month-next');
+        const todayBtn = document.getElementById('month-today');
+        const metricsPill = document.getElementById('metrics-pill');
+        const metricsTitle = document.getElementById('metrics-title');
+
+        if (!monthSelect || !yearSelect) return;
+
+        // Populate month select
+        MONTH_NAMES.forEach((name, i) => {
+            const opt = document.createElement('option');
+            opt.value = i + 1;
+            opt.textContent = name;
+            if (i + 1 === selectedMonth) opt.selected = true;
+            monthSelect.appendChild(opt);
+        });
+
+        // Populate year select (5 years back, 1 year forward)
+        const minYear = realNow.getFullYear() - 5;
+        const maxYear = realNow.getFullYear() + 1;
+        for (let y = maxYear; y >= minYear; y--) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = y;
+            if (y === selectedYear) opt.selected = true;
+            yearSelect.appendChild(opt);
+        }
+
+        // Update pill label
+        if (metricsPill) {
+            metricsPill.textContent = `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`;
+        }
+        if (metricsTitle && !isCurrentMonth()) {
+            metricsTitle.textContent = 'Métricas do Período';
+        }
+
+        // Toggle "Mês Atual" button visibility
+        if (todayBtn) {
+            todayBtn.classList.toggle('hidden', isCurrentMonth());
+        }
+
+        // Listeners
+        monthSelect.addEventListener('change', () => {
+            navigateToMonth(parseInt(monthSelect.value, 10), parseInt(yearSelect.value, 10));
+        });
+        yearSelect.addEventListener('change', () => {
+            navigateToMonth(parseInt(monthSelect.value, 10), parseInt(yearSelect.value, 10));
+        });
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                let m = selectedMonth - 1;
+                let y = selectedYear;
+                if (m < 1) { m = 12; y--; }
+                navigateToMonth(m, y);
+            });
+        }
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                let m = selectedMonth + 1;
+                let y = selectedYear;
+                if (m > 12) { m = 1; y++; }
+                navigateToMonth(m, y);
+            });
+        }
+        if (todayBtn) {
+            todayBtn.addEventListener('click', () => {
+                navigateToMonth(realNow.getMonth() + 1, realNow.getFullYear());
+            });
+        }
+    };
+
+    setupMonthFilter();
+
     // Variáveis para guardar os Gráficos do Dashboard, 
     // definidas aqui fora para não sumirem quando a tela atualiza
     let incomeExpenseChart, categoryChart, incomeSourceChart, fabricChart;
@@ -1110,9 +1217,8 @@ const init = () => {
         }
 
         const billsDb = JSON.parse(billsDataRaw);
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth() + 1;
+        const year = selectedYear;
+        const month = selectedMonth;
         const monthKey = `${year}-${String(month).padStart(2, '0')}`;
 
         const monthlyRecords = billsDb.monthly_records?.[monthKey] || {};
@@ -1176,6 +1282,10 @@ const init = () => {
         let endDate = new Date(now);
         endDate.setHours(23, 59, 59, 999);
 
+        // Use selected month/year for "this_month" context
+        const filterMonth = selectedMonth - 1; // 0-indexed
+        const filterYear = selectedYear;
+
         switch (transactionFilters.period) {
             case 'yesterday':
                 startDate.setDate(now.getDate() - 1);
@@ -1188,12 +1298,12 @@ const init = () => {
                 startDate.setDate(now.getDate() - 29);
                 break;
             case 'this_month':
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+                startDate = new Date(filterYear, filterMonth, 1);
+                endDate = new Date(filterYear, filterMonth + 1, 0, 23, 59, 59, 999);
                 break;
             case 'last_month':
-                startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+                startDate = new Date(filterYear, filterMonth - 1, 1);
+                endDate = new Date(filterYear, filterMonth, 0, 23, 59, 59, 999);
                 break;
         }
 
@@ -1235,8 +1345,8 @@ const init = () => {
 
     const updateUI = () => {
         const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
+        const currentMonth = selectedMonth - 1; // 0-indexed for Date API compatibility
+        const currentYear = selectedYear;
         const totalBalance = transactions.reduce((acc, t) => acc + t.amount, 0);
         const monthlyTransactions = transactions.filter(t => {
             const date = new Date(t.date + 'T03:00:00');
@@ -1352,7 +1462,7 @@ const init = () => {
         breakEvenCostsBar.style.width = `${costsShare}%`;
         breakEvenCostsBar.textContent = `${costsShare.toFixed(0)}%`;
         if (costPerPieceDashboardEl) {
-            const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const currentMonthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
 
             // CUSTOS: Todas despesas empresariais do mês (exclui gastos pessoais)
             const businessExpenses = monthlyTransactions
@@ -1531,11 +1641,12 @@ const init = () => {
 
     // Desenha as linhas e fatias coloridas da parte de Análises
     const updateCharts = (monthlyTransactions) => {
-        const now = new Date();
         const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
         const monthlyData = Array(12).fill(null).map(() => ({ income: 0, expense: 0 }));
         transactions.forEach(t => {
-            const month = new Date(t.date + 'T03:00:00').getMonth();
+            const d = new Date(t.date + 'T03:00:00');
+            if (d.getFullYear() !== selectedYear) return;
+            const month = d.getMonth();
             if (t.type === 'income') monthlyData[month].income += t.amount;
             else if (t.scope !== 'personal') monthlyData[month].expense += Math.abs(t.amount);
         });
@@ -1584,7 +1695,7 @@ const init = () => {
             fabricChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['Mês Atual'],
+                    labels: [MONTH_NAMES[selectedMonth - 1]],
                     datasets: [
                         { label: 'Gasto (R$)', data: [totalSpent], backgroundColor: 'rgba(239, 68, 68, 0.7)', yAxisID: 'y' },
                         { label: 'Peso (Kg)', data: [totalKg], backgroundColor: 'rgba(59, 130, 246, 0.7)', yAxisID: 'y1' }

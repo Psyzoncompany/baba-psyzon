@@ -7365,3 +7365,65 @@ body {
   background: rgba(6, 182, 212, 0.18);
   color: #22d3ee;
 }
+
+/* --- Month/Year Filter --- */
+#month-filter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.month-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.month-nav-btn:hover {
+  background: rgba(6,182,212,0.18);
+  border-color: rgba(6,182,212,0.4);
+  color: #22d3ee;
+}
+
+.month-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  color: #e2e8f0;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.875rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.month-select:focus {
+  border-color: rgba(6,182,212,0.5);
+  box-shadow: 0 0 0 2px rgba(6,182,212,0.15);
+}
+
+.month-today-btn {
+  background: rgba(6,182,212,0.14);
+  border: 1px solid rgba(6,182,212,0.3);
+  border-radius: 8px;
+  color: #22d3ee;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.month-today-btn:hover {
+  background: rgba(6,182,212,0.28);
+  border-color: rgba(6,182,212,0.5);
+}
+.month-today-btn.hidden { display: none; }

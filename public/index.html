@@ -132,10 +132,27 @@
       <!-- ========================================================================= -->
       <!-- 4. BLOCOS DE ATALHO PRINCIPAIS (Receitas, Despesas, Saldo Atual) -->
       <!-- ========================================================================= -->
+      <!-- ========================================================================= -->
+      <!-- FILTRO DE MÊS/ANO DO DASHBOARD -->
+      <!-- ========================================================================= -->
+      <div id="month-filter" class="glass-card dash-panel mb-4 p-3 md:p-4 flex flex-wrap items-center justify-between gap-2">
+        <button id="month-prev" class="month-nav-btn" title="Mês anterior">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="flex items-center gap-2">
+          <select id="month-select" class="month-select"></select>
+          <select id="year-select" class="month-select"></select>
+        </div>
+        <button id="month-next" class="month-nav-btn" title="Próximo mês">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+        <button id="month-today" class="month-today-btn text-xs font-semibold" title="Ir para o mês atual">Mês Atual</button>
+      </div>
+
       <section class="glass-card dashboard-section dash-panel dashboard-metrics-panel mb-6">
         <div class="section-head dash-panel__header">
-          <h2>Métricas Atuais</h2>
-          <span class="section-pill">Mês</span>
+          <h2 id="metrics-title">Métricas Atuais</h2>
+          <span id="metrics-pill" class="section-pill">Mês</span>
         </div>
         <div class="section-body metrics-grid metrics-grid--all">
           <article class="glass-card metric-tile metric-card p-4 md:p-6">
