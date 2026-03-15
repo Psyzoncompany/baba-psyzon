@@ -310,6 +310,7 @@ const collectPendingChecklistTasks = () => {
 const createGlobalCalculator = () => {
     if (document.body.dataset.globalCalculatorReady === 'true') return;
     if (window.location.pathname.endsWith('login.html')) return;
+    if (window.location.pathname.includes('/pessoal/')) return;
     if (document.getElementById('calculator-fab')) return;
     document.body.dataset.globalCalculatorReady = 'true';
 
@@ -581,6 +582,7 @@ const createGlobalCalculator = () => {
 const createFloatingNotes = () => {
     if (document.body.dataset.floatingNotesReady === 'true') return;
     if (window.location.pathname.endsWith('login.html')) return;
+    if (window.location.pathname.includes('/pessoal/')) return;
     document.body.dataset.floatingNotesReady = 'true';
 
     const fab = document.createElement('button');
@@ -939,6 +941,7 @@ const createFloatingNotes = () => {
 const createDueSoonTasksFab = () => {
     if (document.body.dataset.dueSoonFabReady === 'true') return;
     if (window.location.pathname.endsWith('login.html')) return;
+    if (window.location.pathname.includes('/pessoal/')) return;
     document.body.dataset.dueSoonFabReady = 'true';
 
     const dueFab = document.createElement('button');
