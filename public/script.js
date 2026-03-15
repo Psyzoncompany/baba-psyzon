@@ -78,6 +78,11 @@ const init = () => {
     // Clamp month to valid range
     if (selectedMonth < 1) selectedMonth = 1;
     if (selectedMonth > 12) selectedMonth = 12;
+    // Clamp year to reasonable range
+    const minAllowedYear = realNow.getFullYear() - 10;
+    const maxAllowedYear = realNow.getFullYear() + 1;
+    if (selectedYear < minAllowedYear) selectedYear = minAllowedYear;
+    if (selectedYear > maxAllowedYear) selectedYear = maxAllowedYear;
 
     const MONTH_NAMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
         'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
