@@ -2004,13 +2004,6 @@ function updateUserAvatar() {
 // ─── 22. Initialization ────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Seed data on first run
-  seedSampleData();
-  seedSampleBills();
-
-  // Request notification permission for mobile push
-  requestNotificationPermission();
-
   // Navigation links
   document.querySelectorAll('.nav-link[data-section]').forEach(link => {
     link.addEventListener('click', (e) => {
@@ -2084,22 +2077,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 250);
   });
 
-  // Generate notifications based on financial data
-  generateMonthlyNotifications();
-
-  // Check bill due dates and send notifications
-  checkBillNotifications();
-
   // Load user avatar from Firebase auth
   updateUserAvatar();
   setTimeout(updateUserAvatar, 1500);
   setTimeout(updateUserAvatar, 4000);
 
-  // Real-time Firebase sync: re-render current section when cloud data changes
+  // Real-time Firebase sync: re-render current section when remote data changes
   window.addEventListener('cloud-data-refresh-requested', () => {
     renderSection(currentSection);
   });
 
-  // Render initial view
-  navigate('overview');
+  // Initialise the app after Firebase/cloud data is ready.
+  // seedSampleData and seedSampleBills MUST run after the backend is ready so they
+  // don't write to localStorage before real Firestore data is loaded — doing so would
+  // set hasUnsavedChanges=true and block applyCloudState from loading the user's data,
+  // which caused auto-save to stop working and data to be lost on page refresh.
+  function initApp() {
+    seedSampleData();
+    seedSampleBills();
+    requestNotificationPermission();
+    generateMonthlyNotifications();
+    checkBillNotifications();
+    navigate('overview');
+  }
+
+  if (window.BackendInitialized) {
+    initApp();
+  } else {
+    // Fallback: if Firebase is slow or offline, start with empty state after 2.5 s
+    const fallbackTimer = setTimeout(initApp, 2500);
+    window.addEventListener('backend-ready', () => {
+      clearTimeout(fallbackTimer);
+      initApp();
+    }, { once: true });
+  }
 });
