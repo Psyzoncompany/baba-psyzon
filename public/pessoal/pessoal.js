@@ -1045,15 +1045,15 @@ function requestNotificationPermission() {
   }
 }
 
-function sendPushNotification(title, body, icon) {
+function sendPushNotification(title, body, tag) {
   if (!('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
   try {
     new Notification(title, {
       body: body,
-      icon: icon || '../img/logo.png',
+      icon: '../img/logo.png',
       badge: '../img/logo.png',
-      tag: 'bills-' + Date.now(),
+      tag: tag || 'bills-general',
       vibrate: [200, 100, 200]
     });
   } catch (e) {
@@ -1085,15 +1085,15 @@ function checkBillNotifications() {
   });
 
   if (overdueCount > 0) {
-    const msg = `Você tem ${overdueCount} conta(s) atrasada(s): ${overdueNames.join(', ')}`;
-    addNotification(msg, 'danger');
-    sendPushNotification('⚠️ Contas Atrasadas', msg);
+    const overdueMsg = `Você tem ${overdueCount} conta(s) atrasada(s): ${overdueNames.join(', ')}`;
+    addNotification(overdueMsg, 'danger');
+    sendPushNotification('⚠️ Contas Atrasadas', overdueMsg, 'bills-overdue');
   }
 
   if (dueSoonCount > 0) {
-    const msg = `${dueSoonCount} conta(s) vencem em breve: ${dueSoonNames.join(', ')}`;
-    addNotification(msg, 'warning');
-    sendPushNotification('📅 Contas a Vencer', msg);
+    const dueSoonMsg = `${dueSoonCount} conta(s) vencem em breve: ${dueSoonNames.join(', ')}`;
+    addNotification(dueSoonMsg, 'warning');
+    sendPushNotification('📅 Contas a Vencer', dueSoonMsg, 'bills-due-soon');
   }
 
   const paidCount = bills.filter(b => isBillPaid(b.id, currentMonth)).length;
@@ -1101,7 +1101,7 @@ function checkBillNotifications() {
     addNotification(`${paidCount} de ${bills.length} contas pagas este mês`, 'info');
   } else if (paidCount === bills.length && bills.length > 0) {
     addNotification('Todas as contas do mês estão pagas! 🎉', 'success');
-    sendPushNotification('✅ Contas em dia', 'Todas as contas do mês estão pagas!');
+    sendPushNotification('✅ Contas em dia', 'Todas as contas do mês estão pagas!', 'bills-all-paid');
   }
 }
 
