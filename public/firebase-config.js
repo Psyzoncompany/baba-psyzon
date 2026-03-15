@@ -307,9 +307,12 @@ const collectPendingChecklistTasks = () => {
     return tasks;
 };
 
+const isPessoalPage = () => (window.location.pathname || '').includes('/pessoal/');
+
 const createGlobalCalculator = () => {
     if (document.body.dataset.globalCalculatorReady === 'true') return;
     if (window.location.pathname.endsWith('login.html')) return;
+    if (isPessoalPage()) return;
     if (document.getElementById('calculator-fab')) return;
     document.body.dataset.globalCalculatorReady = 'true';
 
@@ -581,6 +584,7 @@ const createGlobalCalculator = () => {
 const createFloatingNotes = () => {
     if (document.body.dataset.floatingNotesReady === 'true') return;
     if (window.location.pathname.endsWith('login.html')) return;
+    if (isPessoalPage()) return;
     document.body.dataset.floatingNotesReady = 'true';
 
     const fab = document.createElement('button');
@@ -939,6 +943,7 @@ const createFloatingNotes = () => {
 const createDueSoonTasksFab = () => {
     if (document.body.dataset.dueSoonFabReady === 'true') return;
     if (window.location.pathname.endsWith('login.html')) return;
+    if (isPessoalPage()) return;
     document.body.dataset.dueSoonFabReady = 'true';
 
     const dueFab = document.createElement('button');
@@ -1113,6 +1118,7 @@ const createDueSoonTasksFab = () => {
 
 const setupAutomaticTaskReminders = () => {
     if (window.__taskReminderInitialized) return;
+    if (isPessoalPage()) return;
     window.__taskReminderInitialized = true;
 
     const ONE_DAY_KEY = 'taskDueOneDayReminderSeen';

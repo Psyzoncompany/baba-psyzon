@@ -1045,9 +1045,37 @@ function requestNotificationPermission() {
   }
 }
 
+// ─── Mobile Push Notification Rate Limiting ────────────────
+// Only allow push notifications twice per day: once in the morning and once in the afternoon.
+const PUSH_LIMIT_KEY = 'pessoal_push_limit';
+const MORNING_END_HOUR = 12;
+
+function canSendPushNotification() {
+  const ls = window.__nativeLS || window.localStorage;
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  const period = now.getHours() < MORNING_END_HOUR ? 'morning' : 'afternoon';
+
+  let state;
+  try {
+    state = JSON.parse(ls.getItem(PUSH_LIMIT_KEY) || '{}');
+  } catch { state = {}; }
+
+  if (state.date !== today) {
+    state = { date: today };
+  }
+
+  if (state[period]) return false;
+
+  state[period] = true;
+  ls.setItem(PUSH_LIMIT_KEY, JSON.stringify(state));
+  return true;
+}
+
 function sendPushNotification(title, body, icon) {
   if (!('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
+  if (!canSendPushNotification()) return;
   try {
     new Notification(title, {
       body: body,
@@ -1976,13 +2004,6 @@ function updateUserAvatar() {
 // ─── 22. Initialization ────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Seed data on first run
-  seedSampleData();
-  seedSampleBills();
-
-  // Request notification permission for mobile push
-  requestNotificationPermission();
-
   // Navigation links
   document.querySelectorAll('.nav-link[data-section]').forEach(link => {
     link.addEventListener('click', (e) => {
@@ -2056,17 +2077,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 250);
   });
 
-  // Generate notifications based on financial data
-  generateMonthlyNotifications();
-
-  // Check bill due dates and send notifications
-  checkBillNotifications();
-
   // Load user avatar from Firebase auth
   updateUserAvatar();
   setTimeout(updateUserAvatar, 1500);
   setTimeout(updateUserAvatar, 4000);
 
-  // Render initial view
-  navigate('overview');
+  // Real-time Firebase sync: re-render current section when remote data changes
+  window.addEventListener('cloud-data-refresh-requested', () => {
+    renderSection(currentSection);
+  });
+
+  // Initialise the app after Firebase/cloud data is ready.
+  // seedSampleData and seedSampleBills MUST run after the backend is ready so they
+  // don't write to localStorage before real Firestore data is loaded — doing so would
+  // set hasUnsavedChanges=true and block applyCloudState from loading the user's data,
+  // which caused auto-save to stop working and data to be lost on page refresh.
+  function initApp() {
+    seedSampleData();
+    seedSampleBills();
+    requestNotificationPermission();
+    generateMonthlyNotifications();
+    checkBillNotifications();
+    navigate('overview');
+  }
+
+  if (window.BackendInitialized) {
+    initApp();
+  } else {
+    // Fallback: if Firebase is slow or offline, start with empty state after 2.5 s
+    const fallbackTimer = setTimeout(initApp, 2500);
+    window.addEventListener('backend-ready', () => {
+      clearTimeout(fallbackTimer);
+      initApp();
+    }, { once: true });
+  }
 });
