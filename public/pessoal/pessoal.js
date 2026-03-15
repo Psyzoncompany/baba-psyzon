@@ -1048,12 +1048,13 @@ function requestNotificationPermission() {
 // ─── Mobile Push Notification Rate Limiting ────────────────
 // Only allow push notifications twice per day: once in the morning and once in the afternoon.
 const PUSH_LIMIT_KEY = 'pessoal_push_limit';
+const MORNING_END_HOUR = 12;
 
 function canSendPushNotification() {
   const ls = window.__nativeLS || window.localStorage;
   const now = new Date();
   const today = now.toISOString().split('T')[0];
-  const period = now.getHours() < 12 ? 'morning' : 'afternoon';
+  const period = now.getHours() < MORNING_END_HOUR ? 'morning' : 'afternoon';
 
   let state;
   try {
