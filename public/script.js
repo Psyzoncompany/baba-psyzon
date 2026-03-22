@@ -776,27 +776,6 @@ const init = () => {
         }
     };
 
-    // Cria uma cópia de um lançamento existente para acelerar lançamentos repetidos
-    const duplicateTransaction = (id) => {
-        const sourceTransaction = transactions.find(t => t.id === id);
-        if (!sourceTransaction) return;
-
-        const duplicatedTransaction = {
-            ...sourceTransaction,
-            id: Date.now()
-        };
-
-        transactions.push(duplicatedTransaction);
-        saveTransactions();
-
-        if (duplicatedTransaction.type === 'income' && duplicatedTransaction.category === 'Venda de Produto' && duplicatedTransaction.quantity > 0) {
-            updateMonthlyProduction(duplicatedTransaction.date.substring(0, 7), duplicatedTransaction.quantity);
-        }
-
-        updateUI();
-        showNotification('Lançamento duplicado com sucesso.', 'info');
-    };
-
     // Corta os nomes caso passem de 26 caracteres para a tela não ficar esticada
     const compactLabel = (text = '', maxLength = 26) => {
         if (text.length <= maxLength) return text;
@@ -873,9 +852,6 @@ const init = () => {
 
             <div class="cell data-action actions">
                 <div class="flex items-center justify-end gap-2">
-                    <button class="action-toggle-btn duplicate" data-action="duplicate" data-id="${id}" title="Duplicar" aria-label="Duplicar">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9h10v10H9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5h10v10"></path></svg>
-                    </button>
                     <button class="action-toggle-btn edit" data-action="edit" data-id="${id}" title="Editar" aria-label="Editar">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z"></path></svg>
                     </button>
@@ -956,7 +932,6 @@ const init = () => {
             launchActionsMenuEl.setAttribute('role', 'dialog');
             launchActionsMenuEl.setAttribute('aria-modal', 'true');
             launchActionsMenuEl.innerHTML = `
-                <button type="button" class="actions-btn actions-duplicate" data-action="duplicate">Duplicar</button>
                 <button type="button" class="actions-btn actions-edit" data-action="edit">Editar</button>
                 <button type="button" class="actions-btn actions-delete" data-action="delete">Deletar</button>
             `;
@@ -970,12 +945,6 @@ const init = () => {
             if (!actionBtn || !currentLaunchId) return;
 
             const action = actionBtn.dataset.action;
-            if (action === 'duplicate') {
-                duplicateTransaction(currentLaunchId);
-                closeLaunchActionsMenu();
-                return;
-            }
-
             if (action === 'edit') {
                 openEditModal(currentLaunchId);
                 closeLaunchActionsMenu();
@@ -1016,8 +985,6 @@ const init = () => {
 
             if (action === 'edit') {
                 openEditModal(id);
-            } else if (action === 'duplicate') {
-                duplicateTransaction(id);
             } else if (action === 'delete') {
                 removeTransaction(id);
             }

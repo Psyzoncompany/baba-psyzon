@@ -6204,11 +6204,6 @@ body.neo-dashboard {
   color: #67e8f9;
 }
 
-#transaction-list .transaction-card .action-toggle-btn.duplicate {
-  border-color: rgba(192, 132, 252, 0.58);
-  color: #d8b4fe;
-}
-
 #transaction-list .transaction-card .action-toggle-btn.delete {
   border-color: rgba(248, 113, 113, 0.58);
   color: #fda4af;
@@ -6216,10 +6211,6 @@ body.neo-dashboard {
 
 #transaction-list .transaction-card .action-toggle-btn.edit:hover {
   background: rgba(8, 47, 73, 0.92);
-}
-
-#transaction-list .transaction-card .action-toggle-btn.duplicate:hover {
-  background: rgba(59, 7, 100, 0.92);
 }
 
 #transaction-list .transaction-card .action-toggle-btn.delete:hover {
@@ -6476,17 +6467,6 @@ body.has-manual-save-fab .due-soon-fab {
 .actions-btn.actions-delete {
   color: #fecaca;
   border-color: rgba(248, 113, 113, 0.35);
-}
-
-.actions-btn.actions-duplicate {
-  color: #e9d5ff;
-  border-color: rgba(192, 132, 252, 0.35);
-}
-
-.actions-btn.actions-duplicate:hover {
-  background: rgba(88, 28, 135, 0.32);
-  border-color: rgba(192, 132, 252, 0.65);
-  color: #d8b4fe;
 }
 
 .actions-btn.actions-delete:hover {
