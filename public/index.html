@@ -110,7 +110,7 @@
         <div>
           <div class="flex items-center gap-3">
             <div id="user-profile-photo" class="flex-shrink-0" style="width:44px;height:44px;border-radius:50%;overflow:hidden;border:2px solid rgba(6,182,212,0.5);display:flex;align-items:center;justify-content:center;background:rgba(6,182,212,0.1)">
-              <svg class="w-6 h-6 text-cyan-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+              <span class="syt-img-icon sm icon-profit" aria-hidden="true"></span>
             </div>
             <div>
               <h1 class="text-2xl md:text-3xl font-bold">DASHBOARD</h1>
@@ -118,15 +118,12 @@
             </div>
           </div>
           <div class="toggle-mode-switcher mt-3">
-            <a href="index.html" class="toggle-btn active">💼 Empresarial</a>
-            <a href="pessoal/pessoal.html" class="toggle-btn">👤 Pessoal</a>
+            <a href="index.html" class="toggle-btn active"><span class="syt-img-icon tiny icon-factory" aria-hidden="true"></span><span>Empresarial</span></a>
+            <a href="pessoal/pessoal.html" class="toggle-btn"><span class="syt-img-icon tiny icon-profit" aria-hidden="true"></span><span>Pessoal</span></a>
           </div>
         </div>
         <button id="add-transaction-btn"
-          class="btn-shine primary-pill py-2 px-4 md:py-3 md:px-6 text-sm md:text-base font-bold rounded-lg shadow-lg hover:shadow-cyan-500/40 hover:-translate-y-1 transition-all duration-200 glass-button inline-flex items-center gap-2"><svg
-            class="syt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m-7-7h14" />
-          </svg><span>Lançamento</span></button>
+          class="btn-shine primary-pill py-2 px-4 md:py-3 md:px-6 text-sm md:text-base font-bold rounded-lg shadow-lg hover:shadow-cyan-500/40 hover:-translate-y-1 transition-all duration-200 glass-button inline-flex items-center gap-2"><span class="syt-img-icon tiny icon-revenue" aria-hidden="true"></span><span>Lançamento</span></button>
       </div>
 
       <!-- ========================================================================= -->
@@ -134,80 +131,60 @@
       <!-- ========================================================================= -->
       <section class="glass-card dashboard-section dash-panel dashboard-metrics-panel mb-6">
         <div class="section-head dash-panel__header">
-          <h2>Métricas Atuais</h2>
-          <span class="section-pill">Mês</span>
+          <div>
+            <h2>Métricas do Período</h2>
+            <p id="dashboard-month-caption" class="section-caption">Resumo financeiro do mês selecionado</p>
+          </div>
+          <div class="dashboard-month-actions">
+            <label class="dashboard-month-control" for="dashboard-month-selector">
+              <span>Mês</span>
+              <input type="month" id="dashboard-month-selector" aria-label="Selecionar mês do dashboard">
+            </label>
+            <button id="dashboard-current-month-btn" class="dashboard-current-month-btn" type="button">
+              <span class="syt-img-icon tiny icon-target" aria-hidden="true"></span>
+              <span>Mês atual</span>
+            </button>
+          </div>
         </div>
         <div class="section-body metrics-grid metrics-grid--all">
-          <article class="glass-card metric-tile metric-card p-4 md:p-6">
-            <div class="icon-label-container metric-head"><span class="metric-ic"><svg class="syt-icon"
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                    d="M3 8.5h18m-2 0v8.5a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8.5m14-3.5v3.5M5 5v3.5m6.7 4.2h.1m3.2 0h.1" />
-                </svg></span><span class="text-xs md:text-sm font-semibold text-gray-300 metric-label">Saldo
-                Atual</span></div>
+          <article class="glass-card metric-tile metric-card metric-card--balance p-4 md:p-6">
+            <div class="icon-label-container metric-head"><span class="syt-img-icon sm icon-profit" aria-hidden="true"></span><span id="balance-label" class="text-xs md:text-sm font-semibold text-gray-300 metric-label">Saldo
+                do Mês</span></div>
             <p id="balance" class="text-2xl md:text-4xl font-bold mt-2 metric-value">R$ 0,00</p>
+            <p id="balance-detail" class="metric-sub">Saldo acumulado até o fim do mês</p>
           </article>
           <article class="glass-card metric-tile metric-card p-4 md:p-6">
-            <div class="icon-label-container metric-head"><span class="metric-ic"><svg class="syt-icon"
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9"
-                    d="M4 17l5.2-5.2 3.4 3.4L20 8m0 0h-4.2M20 8v4.2" />
-                </svg></span><span class="text-xs md:text-sm font-semibold text-gray-300 metric-label">Receitas
-                (Mês)</span></div>
+            <div class="icon-label-container metric-head"><span class="syt-img-icon sm icon-revenue" aria-hidden="true"></span><span class="text-xs md:text-sm font-semibold text-gray-300 metric-label">Receitas</span></div>
             <p id="total-income"
               class="text-2xl md:text-4xl font-bold mt-2 text-green-400 metric-value metric-value--ok">R$ 0,00</p>
           </article>
           <article class="glass-card metric-tile metric-card p-4 md:p-6">
-            <div class="icon-label-container metric-head"><span class="metric-ic"><svg class="syt-icon"
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9"
-                    d="M4 7.5l5.2 5.2 3.4-3.4L20 16.5m0 0h-4.2M20 16.5v-4.2" />
-                </svg></span><span class="text-xs md:text-sm font-semibold text-gray-300 metric-label">Despesas
-                (Mês)</span></div>
+            <div class="icon-label-container metric-head"><span class="syt-img-icon sm icon-expense" aria-hidden="true"></span><span class="text-xs md:text-sm font-semibold text-gray-300 metric-label">Despesas
+                Empresariais</span></div>
             <p id="total-expense"
               class="text-2xl md:text-4xl font-bold mt-2 text-red-400 metric-value metric-value--bad">R$ 0,00</p>
           </article>
           <article class="glass-card metric-tile metric-card p-4 md:p-6">
-            <div class="icon-label-container metric-head"><span class="metric-ic"><svg class="syt-icon"
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9"
-                    d="M5 17h14M7 14l2.4-3.1 3.4 2.6L17 8" />
-                  <circle cx="17" cy="8" r="1.4" stroke-width="1.8" />
-                </svg></span><span class="text-xs md:text-sm font-semibold text-gray-300 metric-label">Lucro
-                (Mês)</span></div>
+            <div class="icon-label-container metric-head"><span class="syt-img-icon sm icon-profit" aria-hidden="true"></span><span class="text-xs md:text-sm font-semibold text-gray-300 metric-label">Lucro
+                Empresarial</span></div>
             <p id="profit" class="text-2xl md:text-4xl font-bold mt-2 metric-value">R$ 0,00</p>
           </article>
           <article class="glass-card metric-tile metric-card metric-card--compact p-4 md:p-6">
-            <h3 class="text-gray-400 text-base md:text-lg inline-flex items-center gap-2 metric-head"><span
-                class="metric-ic"><svg class="syt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                    d="M7 9a5 5 0 1 1 10 0c0 3 1.2 4.4 2 5H5c.8-.6 2-2 2-5" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                    d="M10.8 18a1.7 1.7 0 0 0 2.4 0" />
-                </svg></span>A RECEBER</h3>
+            <h3 class="text-gray-400 text-base md:text-lg inline-flex items-center gap-2 metric-head"><span class="syt-img-icon sm icon-bell" aria-hidden="true"></span>A RECEBER</h3>
             <p id="total-receivables"
               class="text-2xl md:text-4xl font-bold mt-2 text-yellow-400 metric-value metric-value--warn metric-value--receivables">
               R$ 0,00</p>
-            <p class="metric-sub">Pedidos em aberto</p>
+            <p class="metric-sub">Pedidos do mês em aberto</p>
           </article>
           <article class="glass-card metric-tile metric-card metric-card--compact p-4 md:p-6">
-            <h3 class="text-gray-400 text-base md:text-lg inline-flex items-center gap-2 metric-head"><span
-                class="metric-ic"><svg class="syt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9"
-                    d="M3 6.5h18M6 3v3.5m12-3.5v3.5M5 10.5h14v9a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19.5z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M9 14h6m-6 3h4" />
-                </svg></span>A PAGAR</h3>
+            <h3 class="text-gray-400 text-base md:text-lg inline-flex items-center gap-2 metric-head"><span class="syt-img-icon sm icon-overdue" aria-hidden="true"></span>A PAGAR</h3>
             <p id="total-payables"
               class="text-2xl md:text-4xl font-bold mt-2 text-orange-300 metric-value metric-value--warn metric-value--payables">
               R$ 0,00</p>
             <p class="metric-sub">Contas pendentes no mês</p>
           </article>
           <article class="glass-card metric-tile metric-card metric-card--compact p-4 md:p-6">
-            <h3 class="text-gray-400 text-base md:text-lg inline-flex items-center gap-2 metric-head"><span
-                class="metric-ic"><svg class="syt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M4 4h16v16H4z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M8 12h8M8 8h8M8 16h5" />
-                </svg></span>Gastos Totais (Mês)</h3>
+            <h3 class="text-gray-400 text-base md:text-lg inline-flex items-center gap-2 metric-head"><span class="syt-img-icon sm icon-expense" aria-hidden="true"></span>Gastos Totais</h3>
             <p id="total-monthly-expenses"
               class="text-2xl md:text-4xl font-bold mt-2 text-rose-300 metric-value metric-value--bad">R$ 0,00</p>
             <p class="metric-sub">Empresarial + pessoal</p>
@@ -215,16 +192,12 @@
           <article id="cost-per-piece-card"
             class="glass-card metric-tile metric-card metric-card--compact p-4 md:p-6 cursor-pointer hover:ring-1 hover:ring-yellow-400/30 transition-all"
             title="Clique para ver detalhes do cálculo">
-            <h3 class="text-gray-400 text-base md:text-lg inline-flex items-center gap-2 metric-head"><span
-                class="metric-ic"><svg class="syt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M5 12a7 7 0 1 0 7-7" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M12 8.3V12l2.6 1.5" />
-                </svg></span>Custo por Peça (Mês Atual)</h3>
+            <h3 class="text-gray-400 text-base md:text-lg inline-flex items-center gap-2 metric-head"><span class="syt-img-icon sm icon-factory" aria-hidden="true"></span>Custo por Peça</h3>
             <p id="cost-per-piece-dashboard"
               class="text-2xl md:text-4xl font-bold mt-2 text-yellow-400 metric-value metric-value--warn">R$ 0,00</p>
             <p id="cost-per-piece-detail" class="metric-sub">0 peças no mês</p>
             <div class="mini-bar"><span style="width:0%"></span></div>
-            <p class="text-[10px] text-gray-500 mt-1 text-right">toque para detalhes ℹ️</p>
+            <p class="text-[10px] text-gray-500 mt-1 text-right">toque para detalhes</p>
           </article>
         </div>
       </section>
@@ -232,42 +205,43 @@
       <!-- ========================================================================= -->
       <!-- CARD DE INVESTIMENTOS -->
       <!-- ========================================================================= -->
-      <section class="glass-card dashboard-section dash-panel mb-10 p-6 md:p-10">
-        <div class="flex items-center justify-between mb-8">
-          <h3 class="text-xl font-bold inline-flex items-center gap-2">
-            <svg class="syt-icon text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            INVESTIMENTOS
+      <section class="glass-card dashboard-section dash-panel investment-panel mb-8">
+        <div class="investment-head">
+          <h3 class="investment-title">
+            <span class="syt-img-icon sm icon-profit" aria-hidden="true"></span>
+            <span>Investimentos</span>
           </h3>
-          <a href="investimentos.html"
-            class="btn-shine primary-pill py-2 px-4 transition-all duration-200 glass-button inline-flex items-center gap-2 text-xs md:text-sm font-bold rounded-lg shadow-lg hover:-translate-y-1 hover:shadow-cyan-500/40">Abrir</a>
+          <a href="investimentos.html" class="investment-open-btn">
+            <span>Abrir</span>
+          </a>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10 items-stretch">
-          <div class="p-6 rounded-xl bg-white/5 border border-white/10 flex flex-col justify-center min-h-[120px]">
-            <div class="text-xs font-semibold text-gray-400 mb-1">TOTAL GUARDADO</div>
-            <div id="inv-total-guardado" class="text-2xl font-bold text-cyan-400">R$ 0,00</div>
-          </div>
-          <div class="p-6 rounded-xl bg-white/5 border border-white/10 flex flex-col justify-center min-h-[120px]">
-            <div class="text-xs font-semibold text-gray-400 mb-2 flex justify-between">
-              <span>RESERVA DE CAIXA</span>
-              <span id="inv-reserva-pct">0%</span>
+        <div class="investment-grid">
+          <article class="investment-card is-primary">
+            <div class="investment-card-head">
+              <span class="syt-img-icon sm icon-revenue" aria-hidden="true"></span>
+              <span>Total guardado</span>
             </div>
-            <div id="inv-reserva-valor" class="text-xl font-bold">R$ 0,00 <span
-                class="text-sm font-normal text-gray-500">/ R$ 0,00</span></div>
-            <div class="w-full bg-white/10 rounded-full h-2 mt-2">
-              <div id="inv-reserva-bar" class="h-2 rounded-full transition-all duration-500 bg-cyan-500"
-                style="width: 0%"></div>
+            <div id="inv-total-guardado" class="investment-value">R$ 0,00</div>
+          </article>
+          <article class="investment-card">
+            <div class="investment-card-head">
+              <span class="syt-img-icon sm icon-goal" aria-hidden="true"></span>
+              <span>Reserva de caixa</span>
+              <strong id="inv-reserva-pct">0%</strong>
             </div>
-          </div>
-          <div class="p-6 rounded-xl bg-white/5 border border-white/10 flex flex-col justify-center min-h-[120px]">
-            <div class="text-xs font-semibold text-gray-400 mb-1">STATUS DO MÊS</div>
-            <div id="inv-status-mes" class="text-xl font-bold flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-gray-500"></span> OK
+            <div id="inv-reserva-valor" class="investment-value is-muted">R$ 0,00 <span>/ R$ 0,00</span></div>
+            <div class="investment-progress">
+              <div id="inv-reserva-bar" style="width: 0%"></div>
             </div>
-            <div id="inv-advisor-msg" class="text-xs text-gray-400 mt-2 line-clamp-2"></div>
-          </div>
+          </article>
+          <article class="investment-card is-status">
+            <div class="investment-card-head">
+              <span class="syt-img-icon sm icon-warning" aria-hidden="true"></span>
+              <span>Status</span>
+            </div>
+            <div id="inv-status-mes" class="investment-status">OK</div>
+            <div id="inv-advisor-msg" class="investment-note"></div>
+          </article>
         </div>
       </section>
 
@@ -375,27 +349,37 @@
 
       <section class="glass-card launch-panel">
         <div class="head">
-          <strong>LANÇAMENTOS</strong>
-          <button class="pill teal inline-flex items-center gap-1" type="button"><svg class="syt-icon"
-              viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h18l-7 8v6l-4-2v-4L3 5z" />
-            </svg>FILTRO</button>
+          <div class="launch-title">
+            <span class="syt-img-icon sm icon-order" aria-hidden="true"></span>
+            <div>
+              <strong>Lançamentos</strong>
+              <span>Movimentações do período</span>
+            </div>
+          </div>
+          <div class="launch-top-actions">
+            <a class="btn" href="historico.html">
+              <span class="syt-img-icon tiny icon-backup" aria-hidden="true"></span>
+              <span>Histórico</span>
+            </a>
+            <button id="add-transaction-btn-bottom" class="btn primary" type="button">
+              <span class="syt-img-icon tiny icon-revenue" aria-hidden="true"></span>
+              <span>Adicionar</span>
+            </button>
+          </div>
         </div>
         <div class="launch-body">
           <div id="syt-filters-container" class="space-y-2">
             <div class="filters-group">
-              <span class="filters-label">Período</span>
+              <span class="filters-label"><span class="syt-img-icon tiny icon-target" aria-hidden="true"></span> Período</span>
               <div class="pill-row">
                 <button data-filter-period="today" class="syt-filter-btn">HOJE</button>
-                <button data-filter-period="yesterday" class="syt-filter-btn">ONTEM</button>
                 <button data-filter-period="7days" class="syt-filter-btn">7D</button>
-                <button data-filter-period="30days" class="syt-filter-btn">30D</button>
-                <button data-filter-period="this_month" class="syt-filter-btn active">ESTE MÊS</button>
-                <button data-filter-period="last_month" class="syt-filter-btn">MÊS PASSADO</button>
+                <button data-filter-period="this_month" class="syt-filter-btn active">MÊS SELECIONADO</button>
+                <button data-filter-period="last_month" class="syt-filter-btn">MÊS ANTERIOR</button>
               </div>
             </div>
             <div class="filters-group">
-              <span class="filters-label">Tipo</span>
+              <span class="filters-label"><span class="syt-img-icon tiny icon-profit" aria-hidden="true"></span> Tipo</span>
               <div class="pill-row">
                 <button data-filter-type="all" class="syt-type-filter-btn active">TODOS</button>
                 <button data-filter-type="income" class="syt-type-filter-btn">ENTRADAS</button>
@@ -418,11 +402,6 @@
             <div id="transaction-list" class="launch-list space-y-3 lg:space-y-0">
               <!-- Transactions will be rendered here by JS -->
             </div>
-          </div>
-
-          <div class="launch-actions">
-            <a class="btn" href="historico.html">IMPORTAR</a>
-            <button id="add-transaction-btn-bottom" class="btn primary" type="button">ADICIONAR</button>
           </div>
         </div>
       </section>
@@ -1451,14 +1430,17 @@
       const statusEl = document.getElementById('inv-status-mes');
       const msgEl = document.getElementById('inv-advisor-msg');
       if (pct < 35) {
-        statusEl.innerHTML = '<span class="w-3 h-3 rounded-full bg-red-500"></span> <span class="text-red-400">CRÍTICO</span>';
-        msgEl.textContent = 'Priorize reforçar sua reserva este mês.';
+        statusEl.className = 'investment-status is-critical';
+        statusEl.textContent = 'Crítico';
+        msgEl.textContent = 'Reforce a reserva';
       } else if (pct < 70) {
-        statusEl.innerHTML = '<span class="w-3 h-3 rounded-full bg-yellow-500"></span> <span class="text-yellow-400">ATENÇÃO</span>';
-        msgEl.textContent = 'Você está avançando, mantenha aportes constantes.';
+        statusEl.className = 'investment-status is-warning';
+        statusEl.textContent = 'Atenção';
+        msgEl.textContent = 'Continue aportando';
       } else {
-        statusEl.innerHTML = '<span class="w-3 h-3 rounded-full bg-green-500"></span> <span class="text-green-400">OK</span>';
-        msgEl.textContent = 'Reserva em bom nível para o momento.';
+        statusEl.className = 'investment-status is-ok';
+        statusEl.textContent = 'OK';
+        msgEl.textContent = 'Reserva saudável';
       }
     });
   </script>

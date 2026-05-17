@@ -204,7 +204,7 @@ const init = () => {
       const tr = document.createElement('tr');
       const colorClass = tx.type === 'income' ? 'text-green-400' : 'text-red-400';
       let scopeText = '--';
-      if (tx.type === 'expense') scopeText = tx.scope === 'personal' ? '👤 Pessoal' : '🏢 Empresarial';
+      if (tx.type === 'expense') scopeText = tx.scope === 'personal' ? 'Pessoal' : 'Empresarial';
       tr.innerHTML = `
         <td class="p-3 align-top font-bold">${tx.name || '--'}</td>
         <td class="p-3 align-top text-gray-400">${tx.description || ''}</td>
@@ -214,8 +214,8 @@ const init = () => {
         <td class="p-3 align-top text-gray-400">${formatDate(tx.date)}</td>
         <td class="p-3 align-top">
           <div class="flex items-center gap-2">
-            <button class="text-gray-500 hover:text-cyan-400" title="Editar" data-edit="${tx.id}">✎</button>
-            <button class="text-gray-500 hover:text-red-400" title="Excluir" data-delete="${tx.id}">🗑</button>
+            <button class="text-gray-500 hover:text-cyan-400" title="Editar" data-edit="${tx.id}"><span class="syt-img-icon tiny icon-target" aria-hidden="true"></span><span class="sr-only">Editar</span></button>
+            <button class="text-gray-500 hover:text-red-400" title="Excluir" data-delete="${tx.id}"><span class="syt-img-icon tiny icon-warning" aria-hidden="true"></span><span class="sr-only">Excluir</span></button>
           </div>
         </td>
       `;
@@ -733,7 +733,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const colorClass = type === 'income' ? 'text-green-400' : 'text-red-400';
     let scopeText = '--';
     if (type === 'expense') {
-      scopeText = scope === 'personal' ? '👤 Pessoal' : '🏢 Empresarial';
+      scopeText = scope === 'personal' ? 'Pessoal' : 'Empresarial';
     }
     item.innerHTML = `
             <td class="p-3 align-top font-bold">${name || '--'}</td>
@@ -760,7 +760,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }).sort((a, b) => a.diffDays - b.diffDays).slice(0, 3);
     deadlinesListEl.innerHTML = '';
     if (upcomingOrders.length === 0) {
-      deadlinesListEl.innerHTML = '<p class="text-sm text-gray-500">Nenhum prazo pendente. 🎉</p>';
+      deadlinesListEl.innerHTML = '<p class="text-sm text-gray-500">Nenhum prazo pendente.</p>';
       return;
     }
     upcomingOrders.forEach(order => {

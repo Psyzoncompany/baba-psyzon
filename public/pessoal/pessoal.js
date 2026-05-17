@@ -11,6 +11,12 @@ const STORAGE_KEYS = {
   billPayments: 'pessoal_bill_payments'
 };
 
+const BUSINESS_TRANSACTIONS_KEY = 'transactions';
+const PERSONAL_MIRROR_SOURCE = 'pessoal';
+const personalRealtimeChannel = typeof BroadcastChannel !== 'undefined'
+  ? new BroadcastChannel('psyzon-pessoal-sync')
+  : null;
+
 const DEFAULT_EXPENSE_CATEGORIES = [
   { id: 'alimentacao', name: 'Alimentação', icon: 'fa-utensils', color: '#f97316' },
   { id: 'transporte', name: 'Transporte', icon: 'fa-car', color: '#3b82f6' },
@@ -56,15 +62,96 @@ const HIGH_SPENDING_THRESHOLD = 0.8;
 
 // ─── 2. Data Management ────────────────────────────────────
 
-function loadTransactions() {
+function readJsonStorage(key, fallback) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.transactions);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch { return fallback; }
+}
+
+function toPersonalTransactionFromBusiness(tx) {
+  return {
+    id: tx.personalSourceId || `business_${tx.id}`,
+    businessTransactionId: tx.id,
+    syncedFromBusiness: tx.source !== PERSONAL_MIRROR_SOURCE,
+    type: 'expense',
+    date: tx.date,
+    amount: Math.abs(Number(tx.amount || 0)),
+    description: tx.description || tx.name || 'Despesa pessoal',
+    category: tx.personalCategory || 'outros',
+    notes: tx.notes || '',
+    createdAt: tx.createdAt || new Date().toISOString()
+  };
+}
+
+function toBusinessTransactionFromPersonal(tx) {
+  return {
+    id: tx.businessTransactionId || `pessoal_${tx.id}`,
+    personalSourceId: tx.id,
+    personalCategory: tx.category || 'outros',
+    source: PERSONAL_MIRROR_SOURCE,
+    name: tx.description || 'Despesa pessoal',
+    description: tx.description || 'Despesa pessoal',
+    amount: -Math.abs(Number(tx.amount || 0)),
+    date: tx.date,
+    type: 'expense',
+    category: 'Pessoal',
+    scope: 'personal',
+    notes: tx.notes || '',
+    createdAt: tx.createdAt || new Date().toISOString()
+  };
+}
+
+function syncPersonalTransactionsToBusiness(data) {
+  const personalExpenses = (Array.isArray(data) ? data : []).filter(t => t.type === 'expense' && t.id);
+  const activePersonalIds = new Set(personalExpenses.map(t => String(t.id)));
+  let business = readJsonStorage(BUSINESS_TRANSACTIONS_KEY, []);
+  if (!Array.isArray(business)) business = [];
+
+  business = business.filter(t => !(t.source === PERSONAL_MIRROR_SOURCE && t.scope === 'personal' && !activePersonalIds.has(String(t.personalSourceId))));
+
+  personalExpenses.forEach(tx => {
+    const mirrored = toBusinessTransactionFromPersonal(tx);
+    const idx = business.findIndex(item =>
+      String(item.id) === String(mirrored.id) ||
+      (item.personalSourceId && String(item.personalSourceId) === String(tx.id))
+    );
+    if (idx >= 0) business[idx] = { ...business[idx], ...mirrored };
+    else business.push(mirrored);
+  });
+
+  localStorage.setItem(BUSINESS_TRANSACTIONS_KEY, JSON.stringify(business));
+}
+
+function notifyPersonalRealtimeSync(source = 'personal') {
+  const payload = { source, at: Date.now() };
+  personalRealtimeChannel?.postMessage(payload);
+  window.dispatchEvent(new CustomEvent('pessoal-data-synced', { detail: payload }));
+}
+
+function loadTransactions() {
+  const local = readJsonStorage(STORAGE_KEYS.transactions, []);
+  const business = readJsonStorage(BUSINESS_TRANSACTIONS_KEY, []);
+  const merged = new Map();
+
+  (Array.isArray(local) ? local : []).forEach(tx => {
+    if (tx && tx.id) merged.set(String(tx.id), tx);
+  });
+
+  (Array.isArray(business) ? business : [])
+    .filter(tx => tx && tx.type === 'expense' && tx.scope === 'personal')
+    .map(toPersonalTransactionFromBusiness)
+    .forEach(tx => {
+      if (!merged.has(String(tx.id))) merged.set(String(tx.id), tx);
+    });
+
+  return Array.from(merged.values());
 }
 
 function saveTransactions(data) {
   localStorage.setItem(STORAGE_KEYS.transactions, JSON.stringify(data));
+  syncPersonalTransactionsToBusiness(data);
+  notifyPersonalRealtimeSync('personal');
 }
 
 function loadSettings() {
@@ -1115,21 +1202,21 @@ function checkBillNotifications() {
   if (overdueCount > 0) {
     const msg = `Você tem ${overdueCount} conta(s) atrasada(s): ${overdueNames.join(', ')}`;
     addNotification(msg, 'danger');
-    sendPushNotification('⚠️ Contas Atrasadas', msg);
+    sendPushNotification('Contas Atrasadas', msg);
   }
 
   if (dueSoonCount > 0) {
     const msg = `${dueSoonCount} conta(s) vencem em breve: ${dueSoonNames.join(', ')}`;
     addNotification(msg, 'warning');
-    sendPushNotification('📅 Contas a Vencer', msg);
+    sendPushNotification('Contas a Vencer', msg);
   }
 
   const paidCount = bills.filter(b => isBillPaid(b.id, currentMonth)).length;
   if (paidCount > 0 && paidCount < bills.length) {
     addNotification(`${paidCount} de ${bills.length} contas pagas este mês`, 'info');
   } else if (paidCount === bills.length && bills.length > 0) {
-    addNotification('Todas as contas do mês estão pagas! 🎉', 'success');
-    sendPushNotification('✅ Contas em dia', 'Todas as contas do mês estão pagas!');
+    addNotification('Todas as contas do mês estão pagas!', 'success');
+    sendPushNotification('Contas em dia', 'Todas as contas do mês estão pagas!');
   }
 }
 
@@ -2085,6 +2172,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // Real-time Firebase sync: re-render current section when remote data changes
   window.addEventListener('cloud-data-refresh-requested', () => {
     renderSection(currentSection);
+  });
+  window.addEventListener('storage', (event) => {
+    if ([STORAGE_KEYS.transactions, BUSINESS_TRANSACTIONS_KEY].includes(event.key)) {
+      renderSection(currentSection);
+    }
+  });
+  personalRealtimeChannel?.addEventListener('message', (event) => {
+    if (event.data?.source === 'business') {
+      renderSection(currentSection);
+    }
   });
 
   // Initialise the app after Firebase/cloud data is ready.

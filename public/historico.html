@@ -127,27 +127,27 @@
       <!-- ========================================================================= -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <div class="glass-card p-4 md:p-6">
-          <div class="icon-label-container"><span class="text-2xl">💰</span><span class="info-tooltip"
+          <div class="icon-label-container"><span class="syt-img-icon sm icon-revenue" aria-hidden="true"></span><span class="info-tooltip"
               data-tooltip="Saldo (Final do Mês)">?</span></div>
           <p id="balance" class="text-2xl md:text-4xl font-bold mt-2">R$ 0,00</p>
         </div>
         <div class="glass-card p-4 md:p-6">
-          <div class="icon-label-container"><span class="text-2xl">📈</span><span class="info-tooltip"
+          <div class="icon-label-container"><span class="syt-img-icon sm icon-revenue" aria-hidden="true"></span><span class="info-tooltip"
               data-tooltip="Receitas (no Mês)">?</span></div>
           <p id="total-income" class="text-2xl md:text-4xl font-bold mt-2 text-green-400">R$ 0,00</p>
         </div>
         <div class="glass-card p-4 md:p-6">
-          <div class="icon-label-container"><span class="text-2xl">📉</span><span class="info-tooltip"
+          <div class="icon-label-container"><span class="syt-img-icon sm icon-expense" aria-hidden="true"></span><span class="info-tooltip"
               data-tooltip="Despesas Emp. (no Mês)">?</span></div>
           <p id="total-expense" class="text-2xl md:text-4xl font-bold mt-2 text-red-400">R$ 0,00</p>
         </div>
         <div class="glass-card p-4 md:p-6">
-          <div class="icon-label-container"><span class="text-2xl">💎</span><span class="info-tooltip"
+          <div class="icon-label-container"><span class="syt-img-icon sm icon-profit" aria-hidden="true"></span><span class="info-tooltip"
               data-tooltip="Lucro Empresarial (no Mês)">?</span></div>
           <p id="profit" class="text-2xl md:text-4xl font-bold mt-2">R$ 0,00</p>
         </div>
         <div class="glass-card p-4 md:p-6 lg:col-span-2">
-          <div class="icon-label-container"><span class="text-2xl">🏭</span><span class="info-tooltip"
+          <div class="icon-label-container"><span class="syt-img-icon sm icon-factory" aria-hidden="true"></span><span class="info-tooltip"
               data-tooltip="Custo por Peça (no Mês)">?</span></div>
           <p id="cost-per-piece-dashboard" class="text-2xl md:text-4xl font-bold mt-2 text-yellow-400">R$ 0,00</p>
         </div>
@@ -161,7 +161,7 @@
           </div>
         </div>
         <div class="glass-card p-6">
-          <h3 class="text-xl font-bold mb-4">Fontes de Receita (no Mês) 💰</h3>
+          <h3 class="syt-section-title mb-4"><span class="syt-img-icon sm icon-revenue" aria-hidden="true"></span><span>Fontes de Receita (no M&ecirc;s)</span></h3>
           <div class="relative h-80 md:h-96">
             <canvas id="incomeSourceChart"></canvas>
           </div>
@@ -227,8 +227,8 @@
           <div id="scope-container" class="hidden mb-4"><label class="block mb-2 text-sm font-medium">Escopo da
               Despesa</label>
             <div class="grid grid-cols-2 gap-2"><button type="button" data-scope="business"
-                class="scope-btn p-3 rounded-md border-2 bg-white/10">🏢 Empresarial</button><button type="button"
-                data-scope="personal" class="scope-btn p-3 rounded-md border-2 bg-white/10">👤 Pessoal</button></div>
+                class="scope-btn p-3 rounded-md border-2 bg-white/10"><span class="syt-img-icon tiny icon-factory" aria-hidden="true"></span> Empresarial</button><button type="button"
+                data-scope="personal" class="scope-btn p-3 rounded-md border-2 bg-white/10"><span class="syt-img-icon tiny icon-profit" aria-hidden="true"></span> Pessoal</button></div>
           </div>
           <div id="is-fabric-container" class="hidden mb-4"><label
               class="flex items-center gap-2 text-sm font-medium cursor-pointer"><input type="checkbox"

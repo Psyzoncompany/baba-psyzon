@@ -665,7 +665,7 @@ const init = () => {
             <div class="mt-2 flex items-center gap-2">
                 <input type="color" class="subtask-color-picker w-10 h-10 p-0 border-0" value="${isHex(subtask.color) ? subtask.color.toUpperCase() : '#000000'}" title="Selecionar cor do corte">
                 <input type="text" class="subtask-color-hex cut-inline-input !w-28" value="${isHex(subtask.color) ? subtask.color.toUpperCase() : ''}" placeholder="#RRGGBB">
-                <button type="button" class="subtask-eye-dropper-btn px-2 py-1 rounded bg-white/5 text-xs" title="Capturar cor da tela">${window.EyeDropper ? '🎯' : '🔍'}</button>
+                <button type="button" class="subtask-eye-dropper-btn px-2 py-1 rounded bg-white/5 text-xs" title="Capturar cor da tela"><span class="syt-img-icon tiny icon-target" aria-hidden="true"></span></button>
             </div>
             <div class="flex items-center justify-between mt-2">
                 <div class="qty-control">
@@ -1170,7 +1170,7 @@ const init = () => {
                 clearBtn = document.createElement('button');
                 clearBtn.id = 'clear-filter-btn';
                 clearBtn.className = 'ml-4 text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded hover:bg-red-500/30 transition-colors align-middle';
-                clearBtn.textContent = '✕ Limpar Filtro (A Receber)';
+                clearBtn.textContent = 'Limpar filtro (A Receber)';
                 clearBtn.onclick = () => { window.history.replaceState({}, document.title, window.location.pathname); renderKanban(); };
                 headerTitle.appendChild(clearBtn);
             }
@@ -1645,6 +1645,8 @@ const init = () => {
 
         const cutOrders = productionOrders.filter(order =>
             !order.isArtOnly &&
+            order.status !== 'done' &&
+            !order.inHistory &&
             order.checklist &&
             order.checklist.cutting
         );
@@ -1787,7 +1789,7 @@ const init = () => {
         finishingModalBody.innerHTML = `
             <section class="cutting-section-card">
                 <div class="cutting-section-head"><h3>Status</h3><span class="cutting-status-chip ${totalOk === verification.items.length && verification.items.length ? 'is-ok' : ''}">${totalOk}/${verification.items.length}</span></div>
-                <p class="text-sm ${totalOk === verification.items.length && verification.items.length ? 'text-green-300' : 'text-cyan-200'}">${totalOk === verification.items.length && verification.items.length ? 'Tudo certo! Todas as peças estão com Tudo OK. ✅' : 'Marque Tudo OK nas peças para concluir a finalização.'}</p>
+                <p class="text-sm ${totalOk === verification.items.length && verification.items.length ? 'text-green-300' : 'text-cyan-200'}">${totalOk === verification.items.length && verification.items.length ? 'Tudo certo! Todas as peças estão com Tudo OK.' : 'Marque Tudo OK nas peças para concluir a finalização.'}</p>
             </section>
             ${renderFinishingVerificationRows(order.id, verification)}
         `;
@@ -3129,7 +3131,7 @@ const init = () => {
                 <div class="color-swatch w-10 h-10 rounded border" style="background:${hex || 'transparent'};min-width:40px;min-height:40px"></div>
                 <input type="color" class="color-picker w-10 h-10 p-0 border-0" value="${hex || '#000000'}" title="Abrir seletor de cor">
                 <input type="text" class="color-hex p-1 rounded bg-white/10 border border-white/20 text-xs w-28" value="${hex || ''}" placeholder="#RRGGBB">
-                <button type="button" class="eye-dropper-btn px-2 py-1 rounded bg-white/5 text-xs" title="Eyedropper">${window.EyeDropper ? '🎯' : '🔍'}</button>
+                <button type="button" class="eye-dropper-btn px-2 py-1 rounded bg-white/5 text-xs" title="Eyedropper"><span class="syt-img-icon tiny icon-target" aria-hidden="true"></span></button>
                 <div class="cmyk text-xs text-gray-300 ml-2">${hex ? formatCMYK(cmyk) : 'CMYK N/A'}</div>
                 <button type="button" class="remove-color-btn text-red-500 hover:text-red-400 ml-4 px-2 py-1 rounded" data-idx="${idx}">×</button>
             </div>

@@ -104,7 +104,7 @@ const init = () => {
             
             let scopeText = '--';
             if (t.type === 'expense') {
-                 scopeText = t.scope === 'personal' ? '👤 Pessoal' : '🏢 Empresarial';
+                 scopeText = t.scope === 'personal' ? 'Pessoal' : 'Empresarial';
             }
 
             row.innerHTML = `

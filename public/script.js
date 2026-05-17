@@ -85,6 +85,11 @@ const init = () => {
     const totalReceivablesEl = document.getElementById('total-receivables'); // A receber
     const totalPayablesEl = document.getElementById('total-payables');       // A pagar
     const totalMonthlyExpensesEl = document.getElementById('total-monthly-expenses');
+    const dashboardMonthSelector = document.getElementById('dashboard-month-selector');
+    const dashboardCurrentMonthBtn = document.getElementById('dashboard-current-month-btn');
+    const dashboardMonthCaptionEl = document.getElementById('dashboard-month-caption');
+    const balanceLabelEl = document.getElementById('balance-label');
+    const balanceDetailEl = document.getElementById('balance-detail');
 
     const loggedAccountDisplayEl = document.getElementById('logged-account-display');
 
@@ -230,12 +235,108 @@ const init = () => {
     let transactions = JSON.parse(localStorage.getItem('transactions')) || []; // Fluxo de Caixa principal
     let clients = JSON.parse(localStorage.getItem('clients')) || [];
     let productionOrders = JSON.parse(localStorage.getItem('production_orders')) || []; // Pedidos em andamento
+    const PERSONAL_TRANSACTIONS_KEY = 'pessoal_transactions';
+    const PERSONAL_SYNC_SOURCE = 'pessoal';
+    const personalRealtimeChannel = typeof BroadcastChannel !== 'undefined'
+        ? new BroadcastChannel('psyzon-pessoal-sync')
+        : null;
+
+    const notifyPersonalRealtimeSync = (source = 'business') => {
+        const payload = { source, at: Date.now() };
+        personalRealtimeChannel?.postMessage(payload);
+        window.dispatchEvent(new CustomEvent('pessoal-realtime-sync', { detail: payload }));
+    };
+
+    const readStoredJson = (key, fallback = []) => {
+        try {
+            const raw = localStorage.getItem(key);
+            return raw ? JSON.parse(raw) : fallback;
+        } catch {
+            return fallback;
+        }
+    };
+
+    const toBusinessPersonalTransaction = (tx) => ({
+        id: tx.businessTransactionId || `pessoal_${tx.id}`,
+        personalSourceId: tx.id,
+        personalCategory: tx.category || 'outros',
+        source: PERSONAL_SYNC_SOURCE,
+        name: tx.description || 'Despesa pessoal',
+        description: tx.description || 'Despesa pessoal',
+        amount: -Math.abs(Number(tx.amount || 0)),
+        date: tx.date,
+        type: 'expense',
+        category: 'Pessoal',
+        scope: 'personal',
+        notes: tx.notes || '',
+        createdAt: tx.createdAt || new Date().toISOString()
+    });
+
+    const toPersonalTransaction = (tx) => ({
+        id: tx.personalSourceId || `business_${tx.id}`,
+        businessTransactionId: tx.id,
+        syncedFromBusiness: tx.source !== PERSONAL_SYNC_SOURCE,
+        type: 'expense',
+        date: tx.date,
+        amount: Math.abs(Number(tx.amount || 0)),
+        description: tx.description || tx.name || 'Despesa pessoal',
+        category: tx.personalCategory || 'outros',
+        notes: tx.notes || '',
+        createdAt: tx.createdAt || new Date().toISOString()
+    });
+
+    const syncPessoalExpensesIntoBusiness = () => {
+        const personalTransactions = readStoredJson(PERSONAL_TRANSACTIONS_KEY, []);
+        const personalExpenses = (Array.isArray(personalTransactions) ? personalTransactions : [])
+            .filter(tx => tx && tx.type === 'expense' && tx.id);
+        const activePersonalIds = new Set(personalExpenses.map(tx => String(tx.id)));
+
+        transactions = transactions.filter(tx =>
+            !(tx.source === PERSONAL_SYNC_SOURCE && tx.scope === 'personal' && !activePersonalIds.has(String(tx.personalSourceId)))
+        );
+
+        personalExpenses.forEach((tx) => {
+            const mirrored = toBusinessPersonalTransaction(tx);
+            const idx = transactions.findIndex(item =>
+                String(item.id) === String(mirrored.id) ||
+                (item.personalSourceId && String(item.personalSourceId) === String(tx.id))
+            );
+
+            if (idx >= 0) transactions[idx] = { ...transactions[idx], ...mirrored };
+            else transactions.push(mirrored);
+        });
+    };
+
+    const syncBusinessPersonalExpensesToPessoal = () => {
+        const currentPersonal = readStoredJson(PERSONAL_TRANSACTIONS_KEY, []);
+        const personalMap = new Map();
+        const businessPersonal = transactions.filter(tx => tx && tx.type === 'expense' && tx.scope === 'personal' && tx.id);
+        const activePersonalIds = new Set(businessPersonal.map(tx => String(tx.personalSourceId || `business_${tx.id}`)));
+
+        (Array.isArray(currentPersonal) ? currentPersonal : []).forEach((tx) => {
+            if (!tx || !tx.id) return;
+            if (tx.type === 'expense' && !activePersonalIds.has(String(tx.id))) return;
+            personalMap.set(String(tx.id), tx);
+        });
+
+        businessPersonal.forEach((tx) => {
+            const personal = toPersonalTransaction(tx);
+            const existing = personalMap.get(String(personal.id)) || {};
+            personalMap.set(String(personal.id), { ...existing, ...personal });
+        });
+
+        localStorage.setItem(PERSONAL_TRANSACTIONS_KEY, JSON.stringify(Array.from(personalMap.values())));
+    };
 
     const reloadRuntimeDataFromStorage = () => {
         transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+        syncPessoalExpensesIntoBusiness();
         clients = JSON.parse(localStorage.getItem('clients')) || [];
         productionOrders = JSON.parse(localStorage.getItem('production_orders')) || [];
     };
+
+    syncPessoalExpensesIntoBusiness();
+    localStorage.setItem('transactions', JSON.stringify(transactions));
 
     // Variáveis de controle de tela (Ajudam a saber o que usuário tá fazendo agora)
     let editingId = null; // Guarda o ID se a pessoa estiver editando um lançamento antigo
@@ -257,13 +358,35 @@ const init = () => {
     const TRANSACTIONS_BATCH_STEP = 80;
     let lastFilteredTransactions = [];
     let visibleTransactionsLimit = INITIAL_TRANSACTIONS_BATCH;
+    const monthLabelFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' });
+    const getMonthKeyFromDate = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    let selectedDashboardMonthKey = getMonthKeyFromDate();
+
+    const getDashboardMonthRange = () => {
+        const [year, month] = selectedDashboardMonthKey.split('-').map(Number);
+        const monthIndex = Math.max(0, (month || 1) - 1);
+        const start = new Date(year || new Date().getFullYear(), monthIndex, 1);
+        const end = new Date(year || new Date().getFullYear(), monthIndex + 1, 0, 23, 59, 59, 999);
+        return { year: start.getFullYear(), monthIndex, start, end, monthKey: getMonthKeyFromDate(start) };
+    };
+
+    const getDashboardMonthLabel = () => {
+        const { start } = getDashboardMonthRange();
+        const label = monthLabelFormatter.format(start);
+        return label.charAt(0).toUpperCase() + label.slice(1);
+    };
 
     // =========================================================================
     // 4. FUNÇÕES UTILITÁRIAS (Ajudantes para o restante do código)
     // =========================================================================
 
     // Salva o caixa atualizado no navegador
-    const saveTransactions = () => localStorage.setItem('transactions', JSON.stringify(transactions));
+    const saveTransactions = ({ notifyPersonal = false } = {}) => {
+        syncBusinessPersonalExpensesToPessoal();
+        syncPessoalExpensesIntoBusiness();
+        localStorage.setItem('transactions', JSON.stringify(transactions));
+        if (notifyPersonal) notifyPersonalRealtimeSync('business');
+    };
 
     // Formata um número para Moeda (ex: 15.5 vira R$ 15,50)
     const formatCurrency = (amount) => amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -568,7 +691,7 @@ const init = () => {
             }
         }
 
-        saveTransactions();
+        saveTransactions({ notifyPersonal: true });
         updateUI();
         closeModal();
 
@@ -771,6 +894,7 @@ const init = () => {
                 updateMonthlyProduction(transactionToDelete.date.substring(0, 7), -transactionToDelete.quantity);
             }
             transactions = transactions.filter(t => t.id !== id);
+            saveTransactions({ notifyPersonal: true });
             updateUI();
             showNotification('Transação excluída.', 'warning');
         }
@@ -787,7 +911,7 @@ const init = () => {
         };
 
         transactions.push(duplicatedTransaction);
-        saveTransactions();
+        saveTransactions({ notifyPersonal: true });
 
         if (duplicatedTransaction.type === 'income' && duplicatedTransaction.category === 'Venda de Produto' && duplicatedTransaction.quantity > 0) {
             updateMonthlyProduction(duplicatedTransaction.date.substring(0, 7), duplicatedTransaction.quantity);
@@ -874,13 +998,13 @@ const init = () => {
             <div class="cell data-action actions">
                 <div class="flex items-center justify-end gap-2">
                     <button class="action-toggle-btn duplicate" data-action="duplicate" data-id="${id}" title="Duplicar" aria-label="Duplicar">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9h10v10H9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5h10v10"></path></svg>
+                        <span class="syt-img-icon tiny icon-backup" aria-hidden="true"></span>
                     </button>
                     <button class="action-toggle-btn edit" data-action="edit" data-id="${id}" title="Editar" aria-label="Editar">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z"></path></svg>
+                        <span class="syt-img-icon tiny icon-target" aria-hidden="true"></span>
                     </button>
                     <button class="action-toggle-btn delete" data-action="delete" data-id="${id}" title="Excluir" aria-label="Excluir">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12M9 7V5h6v2m-7 4v6m4-6v6m4-10v12a1 1 0 01-1 1H8a1 1 0 01-1-1V7h10z"></path></svg>
+                        <span class="syt-img-icon tiny icon-warning" aria-hidden="true"></span>
                     </button>
                 </div>
             </div>
@@ -1097,7 +1221,7 @@ const init = () => {
     };
 
     // Lê da Aba de Contas e monta a listinha de "Contas a Pagar" deste mês
-    const updateDashboardBillsCard = () => {
+    const updateDashboardBillsCard = (monthKey = getDashboardMonthRange().monthKey) => {
         if (!dashboardBillsSummaryEl) return;
 
         const billsDataRaw = localStorage.getItem('psyzon_accounts_db_v1');
@@ -1110,10 +1234,6 @@ const init = () => {
         }
 
         const billsDb = JSON.parse(billsDataRaw);
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth() + 1;
-        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
 
         const monthlyRecords = billsDb.monthly_records?.[monthKey] || {};
 
@@ -1172,6 +1292,7 @@ const init = () => {
 
         const now = new Date();
         now.setHours(0, 0, 0, 0);
+        const dashboardMonth = getDashboardMonthRange();
         let startDate = new Date(now);
         let endDate = new Date(now);
         endDate.setHours(23, 59, 59, 999);
@@ -1188,12 +1309,12 @@ const init = () => {
                 startDate.setDate(now.getDate() - 29);
                 break;
             case 'this_month':
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+                startDate = dashboardMonth.start;
+                endDate = dashboardMonth.end;
                 break;
             case 'last_month':
-                startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+                startDate = new Date(dashboardMonth.year, dashboardMonth.monthIndex - 1, 1);
+                endDate = new Date(dashboardMonth.year, dashboardMonth.monthIndex, 0, 23, 59, 59, 999);
                 break;
         }
 
@@ -1232,15 +1353,51 @@ const init = () => {
 
     window.addEventListener('cloud-data-updated', handleCloudDataUpdated);
     window.addEventListener('cloud-data-refresh-requested', handleCloudDataUpdated);
+    window.addEventListener('storage', (event) => {
+        if ([
+            'transactions',
+            PERSONAL_TRANSACTIONS_KEY,
+            'production_orders',
+            'psyzon_accounts_db_v1',
+            'monthlyProduction'
+        ].includes(event.key)) {
+            handleCloudDataUpdated();
+        }
+    });
+    personalRealtimeChannel?.addEventListener('message', (event) => {
+        if (event.data?.source === 'personal') handleCloudDataUpdated();
+    });
 
     const updateUI = () => {
         const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-        const totalBalance = transactions.reduce((acc, t) => acc + t.amount, 0);
+        const selectedMonth = getDashboardMonthRange();
+        const currentMonth = selectedMonth.monthIndex;
+        const currentYear = selectedMonth.year;
+        const currentMonthStr = selectedMonth.monthKey;
+        const selectedMonthLabel = getDashboardMonthLabel();
+        const isCurrentDashboardMonth = currentMonthStr === getMonthKeyFromDate(now);
+
+        if (dashboardMonthSelector && dashboardMonthSelector.value !== currentMonthStr) {
+            dashboardMonthSelector.value = currentMonthStr;
+        }
+        if (dashboardMonthCaptionEl) {
+            dashboardMonthCaptionEl.textContent = `${selectedMonthLabel}: receitas, despesas, contas e produção do período`;
+        }
+        if (balanceLabelEl) {
+            balanceLabelEl.textContent = isCurrentDashboardMonth ? 'Saldo Atual' : 'Saldo Acumulado';
+        }
+        if (balanceDetailEl) {
+            balanceDetailEl.textContent = isCurrentDashboardMonth
+                ? 'Saldo considerando todos os lançamentos'
+                : `Saldo acumulado até ${selectedMonth.end.toLocaleDateString('pt-BR')}`;
+        }
+
+        const totalBalance = transactions
+            .filter(t => t.date && new Date(t.date + 'T03:00:00') <= selectedMonth.end)
+            .reduce((acc, t) => acc + t.amount, 0);
         const monthlyTransactions = transactions.filter(t => {
             const date = new Date(t.date + 'T03:00:00');
-            return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+            return date >= selectedMonth.start && date <= selectedMonth.end;
         });
         const incomeMonth = monthlyTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
         const businessExpenseMonth = monthlyTransactions.filter(t => t.type === 'expense' && t.scope !== 'personal').reduce((acc, t) => acc + t.amount, 0);
@@ -1269,34 +1426,39 @@ const init = () => {
         const todayDate = new Date();
         todayDate.setHours(0, 0, 0, 0);
 
-        productionOrdersList.forEach(order => {
-            if (order.isPaid) return; // Pedido quitado não entra
+        productionOrdersList
+            .filter(order => {
+                const ref = order.createdAt || order.deadline || order.date;
+                return ref && String(ref).substring(0, 7) === currentMonthStr;
+            })
+            .forEach(order => {
+                if (order.isPaid) return; // Pedido quitado não entra
 
-            const total = order.totalValue || 0;
-            const paid = order.amountPaid || 0;
-            const pending = total - paid;
+                const total = order.totalValue || 0;
+                const paid = order.amountPaid || 0;
+                const pending = total - paid;
 
-            if (pending > 0.01) {
-                receivablesTotal += pending;
-                receivablesCount++;
+                if (pending > 0.01) {
+                    receivablesTotal += pending;
+                    receivablesCount++;
 
-                if (order.deadline) {
-                    const d = new Date(order.deadline + 'T03:00:00');
-                    if (d < todayDate) hasOverdueReceivables = true;
+                    if (order.deadline) {
+                        const d = new Date(order.deadline + 'T03:00:00');
+                        if (d < todayDate) hasOverdueReceivables = true;
+                    }
                 }
-            }
-        });
+            });
 
         if (totalReceivablesEl) {
             const alertClass = hasOverdueReceivables ? 'text-red-400 font-bold' : 'text-gray-400';
             const icon = hasOverdueReceivables
-                ? '<svg class="syt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M4.9 19h14.2a1 1 0 00.87-1.49L12.87 4.5a1 1 0 00-1.74 0L4.03 17.5A1 1 0 004.9 19z"/></svg>'
-                : '<svg class="syt-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0v10l-8 4m8-14-8 4m0 10-8-4V7m8 4v10"/></svg>';
+                ? '<span class="syt-img-icon tiny icon-warning" aria-hidden="true"></span>'
+                : '<span class="syt-img-icon tiny icon-order" aria-hidden="true"></span>';
 
             totalReceivablesEl.innerHTML = `
                 <div>${formatCurrency(receivablesTotal)}</div>
                 <div class="text-xs ${alertClass} mt-1 flex items-center gap-1 font-normal">
-                    ${icon} ${receivablesCount} pedidos em aberto
+                    ${icon} ${receivablesCount} pedidos do mês em aberto
                 </div>
             `;
             totalReceivablesEl.classList.add('cursor-pointer', 'hover:opacity-80', 'transition-opacity');
@@ -1352,8 +1514,6 @@ const init = () => {
         breakEvenCostsBar.style.width = `${costsShare}%`;
         breakEvenCostsBar.textContent = `${costsShare.toFixed(0)}%`;
         if (costPerPieceDashboardEl) {
-            const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
             // CUSTOS: Todas despesas empresariais do mês (exclui gastos pessoais)
             const businessExpenses = monthlyTransactions
                 .filter(t => t.type === 'expense' && t.scope !== 'personal');
@@ -1445,25 +1605,25 @@ const init = () => {
                 // Dica inteligente
                 let tip = '';
                 if (d.totalPieces === 0) {
-                    tip = `<div class="breakdown-tip"><div class="tip-title">⚠️ Sem produção registrada</div>Cadastre pedidos de produção na aba <strong>Processos</strong> ou registre vendas de produto no Dashboard para calcular o custo por peça.</div>`;
+                    tip = `<div class="breakdown-tip"><div class="tip-title">Sem produ&ccedil;&atilde;o registrada</div>Cadastre pedidos de produ&ccedil;&atilde;o na aba <strong>Processos</strong> ou registre vendas de produto no Dashboard para calcular o custo por pe&ccedil;a.</div>`;
                 } else if (d.costPerPiece > avgPrice && avgPrice > 0) {
-                    tip = `<div class="breakdown-tip" style="border-color:rgba(239,68,68,.2);background:linear-gradient(135deg,rgba(239,68,68,.06),rgba(239,68,68,.02));color:#fca5a5"><div class="tip-title">🚨 Margem negativa!</div>Seu custo por peça (${fmt(d.costPerPiece)}) é maior que o preço médio de venda (${fmt(avgPrice)}). A maior despesa é <strong>${topCategory}</strong>. Revise seus custos ou ajuste o preço de venda.</div>`;
+                    tip = `<div class="breakdown-tip" style="border-color:rgba(239,68,68,.2);background:linear-gradient(135deg,rgba(239,68,68,.06),rgba(239,68,68,.02));color:#fca5a5"><div class="tip-title">Margem negativa</div>Seu custo por pe&ccedil;a (${fmt(d.costPerPiece)}) &eacute; maior que o pre&ccedil;o m&eacute;dio de venda (${fmt(avgPrice)}). A maior despesa &eacute; <strong>${topCategory}</strong>. Revise seus custos ou ajuste o pre&ccedil;o de venda.</div>`;
                 } else if (marginPct < 30 && avgPrice > 0) {
-                    tip = `<div class="breakdown-tip" style="border-color:rgba(234,179,8,.2);background:linear-gradient(135deg,rgba(234,179,8,.06),rgba(234,179,8,.02));color:#fde68a"><div class="tip-title">⚠️ Margem apertada (${marginPct}%)</div>A margem ideal para vestuário é acima de 40%. Considere renegociar custos de <strong>${topCategory}</strong> ou reajustar preços.</div>`;
+                    tip = `<div class="breakdown-tip" style="border-color:rgba(234,179,8,.2);background:linear-gradient(135deg,rgba(234,179,8,.06),rgba(234,179,8,.02));color:#fde68a"><div class="tip-title">Margem apertada (${marginPct}%)</div>A margem ideal para vestu&aacute;rio &eacute; acima de 40%. Considere renegociar custos de <strong>${topCategory}</strong> ou reajustar pre&ccedil;os.</div>`;
                 } else {
-                    tip = `<div class="breakdown-tip"><div class="tip-title">✅ Margem saudável (${marginPct}%)</div>Seu custo está controlado. A receita de ${fmt(d.incomeMonth)} contra ${fmt(d.totalBusinessCosts)} em custos indica boa eficiência operacional.</div>`;
+                    tip = `<div class="breakdown-tip"><div class="tip-title">Margem saud&aacute;vel (${marginPct}%)</div>Seu custo est&aacute; controlado. A receita de ${fmt(d.incomeMonth)} contra ${fmt(d.totalBusinessCosts)} em custos indica boa efici&ecirc;ncia operacional.</div>`;
                 }
 
                 costModalBody.innerHTML = `
                     <div class="breakdown-formula">
-                        <div class="formula-main">Custos Empresariais ÷ Peças Produzidas</div>
-                        <div class="formula-sub">${fmt(d.totalBusinessCosts)} ÷ ${d.totalPieces} peças (pedidos + vendas)</div>
+                        <div class="formula-main">Custos Empresariais &divide; Pe&ccedil;as Produzidas</div>
+                        <div class="formula-sub">${fmt(d.totalBusinessCosts)} &divide; ${d.totalPieces} pe&ccedil;as (pedidos + vendas)</div>
                     </div>
 
-                    <div class="result-big">${fmt(d.costPerPiece)} / peça</div>
+                    <div class="result-big">${fmt(d.costPerPiece)} / pe&ccedil;a</div>
 
                     <div class="breakdown-section">
-                        <h4>💰 Custos Empresariais do Mês</h4>
+                        <h4><span class="syt-img-icon tiny icon-expense" aria-hidden="true"></span> Custos Empresariais do M&ecirc;s</h4>
                         ${categoryRows}
                         <div class="breakdown-total">
                             <span>Total de Custos</span>
@@ -1472,34 +1632,34 @@ const init = () => {
                     </div>
 
                     <div class="breakdown-section">
-                        <h4>📦 Peças Produzidas no Mês</h4>
+                        <h4><span class="syt-img-icon tiny icon-order" aria-hidden="true"></span> Pe&ccedil;as Produzidas no M&ecirc;s</h4>
                         <div class="breakdown-row">
-                            <span class="label">Pedidos de produção (${d.monthOrders || 0} pedidos)</span>
-                            <span class="value">${d.piecesFromOrders} peças</span>
+                            <span class="label">Pedidos de produ&ccedil;&atilde;o (${d.monthOrders || 0} pedidos)</span>
+                            <span class="value">${d.piecesFromOrders} pe&ccedil;as</span>
                         </div>
                         <div class="breakdown-row">
                             <span class="label">Vendas avulsas (Dashboard)</span>
-                            <span class="value">${d.piecesFromSales} peças</span>
+                            <span class="value">${d.piecesFromSales} pe&ccedil;as</span>
                         </div>
                         <div class="breakdown-total">
-                            <span>Total de Peças</span>
-                            <span class="text-yellow-400">${d.totalPieces} peças</span>
+                            <span>Total de Pe&ccedil;as</span>
+                            <span class="text-yellow-400">${d.totalPieces} pe&ccedil;as</span>
                         </div>
                     </div>
 
                     ${avgPrice > 0 ? `
                     <div class="breakdown-section">
-                        <h4>📊 Análise de Margem</h4>
+                        <h4><span class="syt-img-icon tiny icon-profit" aria-hidden="true"></span> An&aacute;lise de Margem</h4>
                         <div class="breakdown-row">
-                            <span class="label">Preço médio de venda</span>
+                            <span class="label">Pre&ccedil;o m&eacute;dio de venda</span>
                             <span class="value text-green-400">${fmt(avgPrice)}</span>
                         </div>
                         <div class="breakdown-row">
-                            <span class="label">Custo por peça</span>
+                            <span class="label">Custo por pe&ccedil;a</span>
                             <span class="value text-red-400">- ${fmt(d.costPerPiece)}</span>
                         </div>
                         <div class="breakdown-total">
-                            <span>Margem por peça</span>
+                            <span>Margem por pe&ccedil;a</span>
                             <span class="${marginPerPiece >= 0 ? 'text-green-400' : 'text-red-400'}">${fmt(marginPerPiece)} (${marginPct}%)</span>
                         </div>
                     </div>` : ''}
@@ -1522,7 +1682,7 @@ const init = () => {
         updateCharts(monthlyTransactions);
         saveTransactions();
         updateDeadlinesCard();
-        updateDashboardBillsCard();
+        updateDashboardBillsCard(currentMonthStr);
     };
 
     // =========================================================================
@@ -1531,11 +1691,13 @@ const init = () => {
 
     // Desenha as linhas e fatias coloridas da parte de Análises
     const updateCharts = (monthlyTransactions) => {
-        const now = new Date();
+        const selectedYear = getDashboardMonthRange().year;
         const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
         const monthlyData = Array(12).fill(null).map(() => ({ income: 0, expense: 0 }));
         transactions.forEach(t => {
-            const month = new Date(t.date + 'T03:00:00').getMonth();
+            const date = new Date(t.date + 'T03:00:00');
+            if (date.getFullYear() !== selectedYear) return;
+            const month = date.getMonth();
             if (t.type === 'income') monthlyData[month].income += t.amount;
             else if (t.scope !== 'personal') monthlyData[month].expense += Math.abs(t.amount);
         });
@@ -1607,6 +1769,25 @@ const init = () => {
     if (isFabricCheckbox) isFabricCheckbox.addEventListener('change', () => {
         fabricDetailsContainer.classList.toggle('hidden', !isFabricCheckbox.checked);
     });
+    if (dashboardMonthSelector) {
+        dashboardMonthSelector.value = selectedDashboardMonthKey;
+        dashboardMonthSelector.addEventListener('change', () => {
+            if (!dashboardMonthSelector.value) return;
+            selectedDashboardMonthKey = dashboardMonthSelector.value;
+            transactionFilters.period = 'this_month';
+            visibleTransactionsLimit = INITIAL_TRANSACTIONS_BATCH;
+            updateUI();
+        });
+    }
+    if (dashboardCurrentMonthBtn) {
+        dashboardCurrentMonthBtn.addEventListener('click', () => {
+            selectedDashboardMonthKey = getMonthKeyFromDate();
+            if (dashboardMonthSelector) dashboardMonthSelector.value = selectedDashboardMonthKey;
+            transactionFilters.period = 'this_month';
+            visibleTransactionsLimit = INITIAL_TRANSACTIONS_BATCH;
+            updateUI();
+        });
+    }
     if (clientSelect) {
         clientSelect.removeEventListener('change', handleClientSelection);
         clientSelect.removeEventListener('dblclick', handleClientSelection);

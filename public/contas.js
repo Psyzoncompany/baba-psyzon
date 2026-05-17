@@ -250,8 +250,15 @@ const initContas = () => {
             return;
         }
 
+        const priorityConfig = {
+            1: { label: 'Alta', className: 'is-high' },
+            2: { label: 'Média', className: 'is-medium' },
+            3: { label: 'Baixa', className: 'is-low' },
+            4: { label: 'Opcional', className: 'is-optional' }
+        };
+
         bills.forEach(bill => {
-            const priorityColors = { 1: '🔴', 2: '🟠', 3: '🟡', 4: '🟢' };
+            const priority = priorityConfig[bill.priority] || priorityConfig[3];
             const statusConfig = getStatusConfig(bill.status);
             const installmentText = bill.type === 'installment' ? `(${bill.current_installment}/${bill.total_installments})` : '';
             const payButton = bill.status !== 'paid' ? createActionButton('pay', bill.id, 'Marcar como pago', 'action-btn-pay') : '';
@@ -265,7 +272,7 @@ const initContas = () => {
             const row = document.createElement('tr');
             row.className = 'bill-row';
             row.innerHTML = `
-                <td class="p-2 text-center">${priorityColors[bill.priority] || ''}</td>
+                <td class="p-2 text-center"><span class="priority-dot ${priority.className}" title="Prioridade ${priority.label}" aria-label="Prioridade ${priority.label}"></span></td>
                 <td class="p-2 font-bold">${escapeHtml(bill.name)} <span class="text-xs text-gray-400">${installmentText}</span></td>
                 <td class="p-2">${formatCurrency(bill.amount)}</td>
                 <td class="p-2 text-center">${String(bill.due_day).padStart(2, '0')}</td>
@@ -284,7 +291,10 @@ const initContas = () => {
             card.innerHTML = `
                 <div class="bill-card-head">
                     <h3 class="bill-card-name" title="${escapeHtml(bill.name)}">${escapeHtml(bill.name)}</h3>
-                    <span class="status-badge ${statusConfig.className}">${statusConfig.label}</span>
+                    <div class="flex items-center gap-2">
+                        <span class="priority-dot ${priority.className}" title="Prioridade ${priority.label}" aria-label="Prioridade ${priority.label}"></span>
+                        <span class="status-badge ${statusConfig.className}">${statusConfig.label}</span>
+                    </div>
                 </div>
                 <div class="bill-card-value-line">
                     <div class="bill-card-amount">${formatCurrency(bill.amount)}</div>
