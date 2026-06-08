@@ -8251,3 +8251,245 @@ textarea {
     transition-duration: .01ms !important;
   }
 }
+
+/* v6.0.23 - Apple-grade empresarial polish + image2 raster icons */
+:root {
+  --apple-ink: #f7fbff;
+  --apple-muted: rgba(226, 232, 240, .72);
+  --apple-card: rgba(15, 23, 42, .58);
+  --apple-card-strong: rgba(15, 23, 42, .76);
+  --apple-stroke: rgba(255, 255, 255, .16);
+  --apple-cyan: #67e8f9;
+  --apple-blue: #60a5fa;
+  --apple-violet: #a78bfa;
+}
+
+body.neo-dashboard,
+.neo-dashboard {
+  background:
+    radial-gradient(circle at 12% -10%, rgba(103, 232, 249, .20), transparent 34rem),
+    radial-gradient(circle at 88% 0%, rgba(167, 139, 250, .18), transparent 32rem),
+    radial-gradient(circle at 50% 110%, rgba(14, 165, 233, .13), transparent 38rem),
+    linear-gradient(180deg, #07111f 0%, #0b1220 48%, #070b13 100%) !important;
+  color: var(--apple-ink);
+}
+
+.neo-dashboard::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .022) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, .7), transparent 78%);
+}
+
+.neo-dashboard .desktop-topbar-inner {
+  min-height: 64px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, .72), rgba(30, 41, 59, .46));
+  border: 1px solid rgba(255, 255, 255, .18);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, .38),
+    inset 0 1px 0 rgba(255, 255, 255, .18);
+  backdrop-filter: blur(30px) saturate(185%);
+  -webkit-backdrop-filter: blur(30px) saturate(185%);
+}
+
+.neo-dashboard .desktop-topbar-logo {
+  background: rgba(255, 255, 255, .08);
+  border-color: rgba(255, 255, 255, .12);
+}
+
+.neo-dashboard .desktop-nav-link {
+  color: rgba(241, 245, 249, .68);
+  border-radius: 999px;
+  letter-spacing: .08em;
+}
+
+.neo-dashboard .desktop-nav-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, .10);
+  border-color: rgba(255, 255, 255, .16);
+}
+
+.neo-dashboard .desktop-nav-link.is-active {
+  background: linear-gradient(135deg, rgba(56, 189, 248, .92), rgba(99, 102, 241, .86));
+  border-color: rgba(255, 255, 255, .24);
+  box-shadow: 0 16px 40px rgba(56, 189, 248, .22), inset 0 1px 0 rgba(255, 255, 255, .28);
+}
+
+.neo-dashboard .dashboard-main {
+  max-width: 1540px;
+  margin: 0 auto;
+}
+
+.neo-dashboard .dashboard-hero {
+  border-radius: 32px;
+  border: 1px solid var(--apple-stroke);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .04)),
+    radial-gradient(circle at top right, rgba(103, 232, 249, .16), transparent 38%);
+  box-shadow: 0 26px 80px rgba(2, 6, 23, .34), inset 0 1px 0 rgba(255, 255, 255, .18);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+}
+
+.neo-dashboard .dashboard-hero h1 {
+  font-size: clamp(2rem, 4vw, 4.35rem);
+  line-height: .92;
+  letter-spacing: -.075em;
+  text-transform: none;
+  background: linear-gradient(92deg, #fff 0%, #dff9ff 42%, #b6c9ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.neo-dashboard #logged-account-display {
+  color: rgba(224, 242, 254, .82) !important;
+}
+
+.neo-dashboard .toggle-mode-switcher {
+  display: inline-flex;
+  padding: .28rem;
+  gap: .25rem;
+  border-radius: 999px;
+  background: rgba(2, 6, 23, .30);
+  border: 1px solid rgba(255, 255, 255, .10);
+}
+
+.neo-dashboard .toggle-mode-switcher .toggle-btn {
+  min-height: 2.15rem;
+  padding: .45rem .78rem;
+  border-radius: 999px;
+  color: rgba(226, 232, 240, .72);
+  text-decoration: none;
+}
+
+.neo-dashboard .toggle-mode-switcher .toggle-btn.active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, .12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18);
+}
+
+.neo-dashboard .primary-pill,
+.neo-dashboard #add-transaction-btn {
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #f8fafc 0%, #bae6fd 40%, #818cf8 100%) !important;
+  color: #06111f !important;
+  border: 0 !important;
+  box-shadow: 0 22px 60px rgba(56, 189, 248, .28), inset 0 1px 0 rgba(255, 255, 255, .75) !important;
+}
+
+.neo-dashboard .glass-card,
+.neo-dashboard .boss-card,
+.neo-dashboard .metric-card,
+.neo-dashboard .dashboard-section-card,
+.neo-dashboard .transaction-card,
+.neo-dashboard .bill-card {
+  border-radius: 28px !important;
+  border: 1px solid var(--apple-stroke) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .105), rgba(255, 255, 255, .035)),
+    var(--apple-card) !important;
+  box-shadow: 0 24px 70px rgba(2, 6, 23, .30), inset 0 1px 0 rgba(255, 255, 255, .14) !important;
+  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+}
+
+.neo-dashboard .glass-card:hover,
+.neo-dashboard .metric-card:hover,
+.neo-dashboard .dashboard-section-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(186, 230, 253, .34) !important;
+  box-shadow: 0 30px 84px rgba(2, 6, 23, .40), inset 0 1px 0 rgba(255, 255, 255, .22) !important;
+}
+
+.neo-dashboard .dashboard-metrics-panel {
+  padding: clamp(1rem, 2vw, 1.45rem);
+}
+
+.neo-dashboard .dash-panel__header,
+.neo-dashboard .section-head {
+  border: 0;
+  padding-bottom: 1rem;
+}
+
+.neo-dashboard .section-head h2,
+.neo-dashboard .boss-card-title,
+.neo-dashboard .syt-section-title,
+.neo-dashboard .dashboard-section-card h3 {
+  color: #ffffff;
+  letter-spacing: -.025em;
+  text-transform: none;
+}
+
+.neo-dashboard .section-caption,
+.neo-dashboard .metric-sub {
+  color: var(--apple-muted);
+}
+
+.neo-dashboard .metric-card {
+  position: relative;
+  min-height: 168px;
+  isolation: isolate;
+}
+
+.neo-dashboard .metric-card::after {
+  content: "";
+  position: absolute;
+  inset: auto 16px 14px 16px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--apple-cyan), var(--apple-blue), var(--apple-violet));
+  opacity: .68;
+}
+
+.neo-dashboard .metric-card--balance {
+  background:
+    radial-gradient(circle at 15% 0%, rgba(103, 232, 249, .22), transparent 42%),
+    linear-gradient(145deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, .04)),
+    var(--apple-card-strong) !important;
+}
+
+.neo-dashboard .metric-value,
+.neo-dashboard .summary-value {
+  font-weight: 850;
+  letter-spacing: -.055em;
+}
+
+.neo-dashboard .form-input,
+.neo-dashboard .form-select,
+.neo-dashboard input[type="month"] {
+  border-radius: 16px;
+  background: rgba(2, 6, 23, .34);
+  border: 1px solid rgba(255, 255, 255, .14);
+  color: #f8fafc;
+}
+
+.neo-dashboard .dashboard-current-month-btn,
+.neo-dashboard .btn,
+.neo-dashboard .btn-shine {
+  border-radius: 999px;
+}
+
+.neo-dashboard .image2-icon {
+  filter: drop-shadow(0 14px 24px rgba(56, 189, 248, .22)) saturate(1.12);
+}
+
+@media (max-width: 768px) {
+  .neo-dashboard .dashboard-hero,
+  .neo-dashboard .glass-card,
+  .neo-dashboard .metric-card,
+  .neo-dashboard .dashboard-section-card {
+    border-radius: 24px !important;
+  }
+
+  .neo-dashboard .dashboard-hero h1 {
+    font-size: clamp(2rem, 13vw, 3.2rem);
+  }
+}

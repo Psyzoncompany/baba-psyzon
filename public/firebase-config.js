@@ -1185,11 +1185,12 @@ window.BackendInitialized = false;
 const CLOUD_CACHE_PREFIX = 'sitey_cloud_cache_v1_';
 const getCloudCacheKey = (uid) => `${CLOUD_CACHE_PREFIX}${uid}`;
 
-const saveUserCache = (uid, data) => {
+const saveUserCache = (uid, data, { dirty = false } = {}) => {
     if (!uid) return;
     try {
         nativeLocalStorage.setItem(getCloudCacheKey(uid), JSON.stringify({
             updatedAt: Date.now(),
+            dirty: Boolean(dirty),
             data
         }));
     } catch (error) {
@@ -1203,7 +1204,14 @@ const loadUserCache = (uid) => {
         const raw = nativeLocalStorage.getItem(getCloudCacheKey(uid));
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        return parsed?.data && typeof parsed.data === 'object' ? parsed.data : null;
+        if (parsed?.data && typeof parsed.data === 'object') {
+            return {
+                data: parsed.data,
+                dirty: Boolean(parsed.dirty),
+                updatedAt: Number(parsed.updatedAt || 0)
+            };
+        }
+        return null;
     } catch (error) {
         console.warn('Falha ao ler cache local da nuvem:', error);
         return null;
@@ -1273,7 +1281,7 @@ const applyCloudState = (uid, data, { source = 'cloud' } = {}) => {
     }
 
     memoryStore = nextStore;
-    saveUserCache(uid, memoryStore);
+    saveUserCache(uid, memoryStore, { dirty: false });
     initialSnapshot = nextSnapshot;
     hasUnsavedChanges = false;
 
@@ -1313,7 +1321,7 @@ const saveToCloud = async ({ silent = false, force = false } = {}) => {
     autosaveInFlight = (async () => {
         try {
             await setDoc(doc(db, "users", uid), memoryStore, { merge: true });
-            saveUserCache(uid, memoryStore);
+            saveUserCache(uid, memoryStore, { dirty: false });
             initialSnapshot = getSnapshot(memoryStore);
             hasUnsavedChanges = false;
             updateFloatingSaveButtonState();
@@ -1340,16 +1348,16 @@ const scheduleAutoSave = () => {
     }, AUTOSAVE_DELAY_MS);
 };
 
-const syncDraftCache = () => {
+const syncDraftCache = (dirty = hasUnsavedChanges) => {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
-    saveUserCache(uid, memoryStore);
+    saveUserCache(uid, memoryStore, { dirty });
 };
 
 const checkDirtyState = () => {
-    syncDraftCache();
     const currentSnapshot = getSnapshot(memoryStore);
     hasUnsavedChanges = currentSnapshot !== initialSnapshot;
+    syncDraftCache(hasUnsavedChanges);
     updateFloatingSaveButtonState();
     if (hasUnsavedChanges && !isIndexPage()) scheduleAutoSave();
 };
@@ -1468,9 +1476,14 @@ if (window.isLocalMode) {
             // O loader agora já existe no HTML (id="initial-loader") para aparecer instantaneamente.
             // Não precisamos criá-lo aqui, apenas garantir que ele não seja removido antes da hora.
 
-            const cachedData = loadUserCache(user.uid);
-            if (cachedData) {
-                applyCloudState(user.uid, cachedData, { source: 'cache' });
+            const cachedEntry = loadUserCache(user.uid);
+            if (cachedEntry?.data) {
+                applyCloudState(user.uid, cachedEntry.data, { source: 'cache' });
+                if (cachedEntry.dirty) {
+                    hasUnsavedChanges = true;
+                    updateFloatingSaveButtonState();
+                    scheduleAutoSave();
+                }
             }
 
             try {
