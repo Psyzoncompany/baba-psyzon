@@ -1607,3 +1607,280 @@ img { max-width: 100%; display: block; }
 .card:has(.data-table) {
   overflow: hidden;
 }
+
+/* ---------- Apple-style bills polish + instant section motion ---------- */
+:root {
+  --apple-ease: cubic-bezier(.22, 1, .36, 1);
+  --apple-spring: cubic-bezier(.16, 1, .3, 1);
+}
+
+body {
+  background:
+    radial-gradient(900px 480px at 4% -10%, rgba(6, 182, 212, .18), transparent 58%),
+    radial-gradient(760px 420px at 102% 8%, rgba(139, 92, 246, .14), transparent 55%),
+    var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: .34s;
+  animation-timing-function: var(--apple-ease);
+}
+
+.main-content {
+  view-transition-name: personal-section;
+  transition: opacity .22s var(--apple-ease), transform .34s var(--apple-spring);
+}
+
+.main-content.section-is-switching {
+  opacity: .35;
+  transform: translateY(10px) scale(.995);
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .16em;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+
+.section-subtitle {
+  color: var(--text-secondary);
+  font-size: .9rem;
+  margin-top: 4px;
+}
+
+.personal-bills-hero {
+  overflow: hidden;
+  position: relative;
+}
+
+.personal-bills-hero::after {
+  background: radial-gradient(circle, rgba(255, 255, 255, .18), transparent 58%);
+  content: "";
+  height: 180px;
+  pointer-events: none;
+  position: absolute;
+  right: -54px;
+  top: -84px;
+  width: 180px;
+}
+
+.personal-bills-title-wrap,
+.personal-bills-actions,
+.bills-command-copy,
+.bills-command-meta,
+.bills-card-header {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+}
+
+.personal-bills-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.personal-bills-actions .form-input {
+  max-width: 180px;
+}
+
+.personal-bills-hero-icon {
+  height: 3.15rem;
+  width: 3.15rem;
+}
+
+.apple-card,
+.bills-command-card,
+.apple-list-item {
+  backdrop-filter: blur(22px) saturate(1.25);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25);
+  transition: transform .45s var(--apple-spring), box-shadow .45s var(--apple-spring), border-color .3s ease, background .45s var(--apple-ease), opacity .3s ease;
+}
+
+.apple-card:hover,
+.apple-list-item:hover,
+.bills-command-card:hover {
+  transform: translateY(-3px) scale(1.003);
+}
+
+.bills-command-card {
+  background: linear-gradient(135deg, rgba(6, 182, 212, .16), rgba(139, 92, 246, .11) 48%, rgba(15, 23, 42, .68));
+  border: 1px solid rgba(148, 163, 184, .25);
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgba(2, 6, 23, .34), inset 0 1px 0 rgba(255,255,255,.06);
+  margin-bottom: 20px;
+  padding: 18px;
+}
+
+.bills-command-copy {
+  justify-content: space-between;
+}
+
+.bills-command-copy > div {
+  flex: 1;
+}
+
+.bills-command-copy span:not(.syt-img-icon) {
+  color: var(--text-secondary);
+  display: block;
+  font-size: .8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.bills-command-copy strong {
+  display: block;
+  font-size: clamp(1.35rem, 3vw, 2.35rem);
+  line-height: 1.05;
+}
+
+.bills-command-progress,
+.installment-progress {
+  background: rgba(15, 23, 42, .74);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 8px rgba(2, 6, 23, .42);
+  height: 9px;
+  margin-top: 14px;
+  overflow: hidden;
+}
+
+.bills-command-progress span,
+.installment-progress span {
+  background: linear-gradient(90deg, var(--accent), var(--accent-green));
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  transition: width .7s var(--apple-spring);
+}
+
+.bills-command-meta {
+  color: var(--text-secondary);
+  font-size: .82rem;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.bills-summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.summary-hint {
+  color: var(--text-muted);
+  font-size: .75rem;
+  margin-top: 3px;
+}
+
+.image-summary-icon {
+  background: rgba(6, 182, 212, .1) !important;
+  color: inherit !important;
+}
+
+.image-summary-icon.success { background: rgba(16, 185, 129, .12) !important; }
+.image-summary-icon.danger { background: rgba(239, 68, 68, .12) !important; }
+.image-summary-icon.warning { background: rgba(234, 179, 8, .12) !important; }
+.summary-card.is-alert { border-color: rgba(239, 68, 68, .55); }
+
+.bills-panel {
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.bills-card-header {
+  justify-content: space-between;
+}
+
+.installment-chip,
+.bill-installment-label,
+.bill-due {
+  align-items: center;
+  color: var(--text-secondary);
+  display: inline-flex;
+  gap: 6px;
+  font-size: .75rem;
+}
+
+.installment-chip {
+  background: rgba(139, 92, 246, .13);
+  border: 1px solid rgba(139, 92, 246, .24);
+  border-radius: 999px;
+  color: #c4b5fd;
+  font-weight: 800;
+  padding: 7px 12px;
+}
+
+.apple-list-item {
+  background:
+    linear-gradient(135deg, rgba(30, 41, 59, .92), rgba(15, 23, 42, .82)),
+    radial-gradient(240px 120px at 0 0, color-mix(in srgb, var(--bill-color, #06b6d4) 18%, transparent), transparent 60%);
+  border-radius: 16px;
+}
+
+.bill-index {
+  align-items: center;
+  background: rgba(255, 255, 255, .055);
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 999px;
+  color: var(--text-muted);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: .72rem;
+  font-weight: 900;
+  height: 34px;
+  justify-content: center;
+  letter-spacing: .06em;
+  width: 34px;
+}
+
+.image-bill-icon {
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--bill-color, #06b6d4) 26%, transparent);
+}
+
+.bill-status-badge.status-scheduled {
+  background: rgba(100, 116, 139, .15);
+  color: var(--text-secondary);
+}
+
+.form-helper {
+  align-items: center;
+  color: var(--text-muted);
+  display: flex;
+  gap: 8px;
+  font-size: .78rem;
+  margin: -4px 0 16px;
+}
+
+@media (max-width: 768px) {
+  .personal-bills-title-wrap,
+  .personal-bills-actions,
+  .bills-card-header {
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .personal-bills-actions {
+    justify-content: stretch;
+  }
+
+  .personal-bills-actions .form-input,
+  .personal-bills-actions .btn {
+    max-width: none;
+    width: 100%;
+  }
+
+  .bill-index {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}

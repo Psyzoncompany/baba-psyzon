@@ -8193,3 +8193,61 @@ main.flex-1,
     flex: 1 1 auto;
   }
 }
+
+/* ---------- Instant navigation + Apple-like smoothness ---------- */
+:root {
+  --apple-ease: cubic-bezier(.22, 1, .36, 1);
+  --apple-spring: cubic-bezier(.16, 1, .3, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+.site-is-leaving body,
+body.site-is-leaving {
+  opacity: .985;
+}
+
+.neo-dashboard .glass-card,
+.neo-dashboard .dashboard-card,
+.neo-dashboard .summary-card,
+.neo-dashboard .metric-card,
+.neo-dashboard .desktop-topbar,
+.neo-dashboard .bottom-nav,
+.neo-dashboard .card {
+  transition: transform .46s var(--apple-spring), box-shadow .46s var(--apple-spring), border-color .32s ease, background .46s var(--apple-ease), opacity .32s ease;
+  will-change: transform;
+}
+
+.neo-dashboard .glass-card:hover,
+.neo-dashboard .dashboard-card:hover,
+.neo-dashboard .summary-card:hover,
+.neo-dashboard .metric-card:hover,
+.neo-dashboard .card:hover {
+  transform: translate3d(0, -3px, 0) scale(1.005);
+}
+
+.desktop-nav-link,
+.bottom-nav-item,
+button,
+a,
+input,
+select,
+textarea {
+  transition-timing-function: var(--apple-ease) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
