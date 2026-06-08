@@ -410,7 +410,18 @@ function navigate(section) {
   document.querySelectorAll('.nav-link[data-section]').forEach(link => {
     link.classList.toggle('active', link.dataset.section === section);
   });
-  renderSection(section);
+
+  const main = document.getElementById('mainContent');
+  const renderNext = () => renderSection(section);
+  if (document.startViewTransition && main && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.startViewTransition(renderNext);
+  } else {
+    main?.classList.add('section-is-switching');
+    setTimeout(() => {
+      renderNext();
+      main?.classList.remove('section-is-switching');
+    }, 90);
+  }
   closeSidebar();
 }
 
@@ -913,104 +924,164 @@ function getBillCategory(catId) {
   return BILL_CATEGORIES.find(c => c.id === catId) || { id: catId, name: catId, icon: 'fa-file-invoice', color: '#6b7280' };
 }
 
+function normalizeBillStartMonth(bill) {
+  if (bill && /^\d{4}-\d{2}$/.test(bill.startMonth || '')) return bill.startMonth;
+  const created = bill?.createdAt ? new Date(bill.createdAt) : new Date();
+  const safeDate = Number.isNaN(created.getTime()) ? new Date() : created;
+  return `${safeDate.getFullYear()}-${String(safeDate.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getBillInstallmentInfo(bill, month) {
+  const total = Math.max(parseInt(bill?.installmentTotal || 1, 10) || 1, 1);
+  const startMonth = normalizeBillStartMonth(bill);
+  const [sy, sm] = startMonth.split('-').map(Number);
+  const [my, mm] = month.split('-').map(Number);
+  const number = ((my - sy) * 12) + (mm - sm) + 1;
+  const current = Math.min(Math.max(number, 0), total);
+  return {
+    total,
+    current,
+    startMonth,
+    isInstallment: total > 1,
+    isFuture: number < 1,
+    isFinished: total > 1 && number > total,
+    applies: total <= 1 || (number >= 1 && number <= total),
+    progress: total > 1 ? Math.min(Math.max((current / total) * 100, 0), 100) : 100
+  };
+}
+
+function billAppliesToMonth(bill, month) {
+  return getBillInstallmentInfo(bill, month).applies;
+}
+
+function getBillAmountForMonth(bill, month) {
+  return billAppliesToMonth(bill, month) ? Number(bill.amount || 0) : 0;
+}
+
 let billsMonth = '';
 
 function renderBills(container) {
   const now = new Date();
   if (!billsMonth) billsMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const bills = loadBills();
-  const payments = loadBillPayments();
-  const [y, m] = billsMonth.split('-').map(Number);
-
-  const totalBills = bills.reduce((s, b) => s + b.amount, 0);
-  const paidBills = bills.filter(b => isBillPaid(b.id, billsMonth));
-  const totalPaid = paidBills.reduce((s, b) => s + b.amount, 0);
+  const activeBills = bills.filter(b => billAppliesToMonth(b, billsMonth));
+  const installmentBills = bills.filter(b => getBillInstallmentInfo(b, billsMonth).isInstallment);
+  const paidBills = activeBills.filter(b => isBillPaid(b.id, billsMonth));
+  const totalBills = activeBills.reduce((s, b) => s + getBillAmountForMonth(b, billsMonth), 0);
+  const totalPaid = paidBills.reduce((s, b) => s + getBillAmountForMonth(b, billsMonth), 0);
   const totalPending = totalBills - totalPaid;
-  const overdueBills = bills.filter(b => getBillStatus(b, billsMonth) === 'overdue');
+  const overdueBills = activeBills.filter(b => getBillStatus(b, billsMonth) === 'overdue');
+  const paidPercent = totalBills > 0 ? Math.min((totalPaid / totalBills) * 100, 100) : 0;
 
   container.innerHTML = `
-    <div class="section-header">
-      <h2 class="section-title"><i class="fa-solid fa-file-invoice-dollar" style="color:var(--accent-yellow)"></i> Contas Mensais</h2>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <input type="month" class="form-input" id="billsMonthPicker" value="${billsMonth}" style="max-width:200px" />
+    <div class="section-header personal-bills-hero">
+      <div class="personal-bills-title-wrap">
+        <span class="syt-img-icon icon-target personal-bills-hero-icon" aria-hidden="true"></span>
+        <div>
+          <p class="eyebrow">Controle pessoal</p>
+          <h2 class="section-title">Contas Mensais</h2>
+          <p class="section-subtitle">Tudo em um painel suave: fixas, parceladas, atrasadas e pagas do mês.</p>
+        </div>
+      </div>
+      <div class="personal-bills-actions">
+        <input type="month" class="form-input" id="billsMonthPicker" value="${billsMonth}" aria-label="Mês das contas" />
         <button class="btn btn-primary" onclick="openBillModal()"><i class="fa-solid fa-plus"></i> Nova Conta</button>
       </div>
     </div>
 
-    <div class="summary-grid">
-      <div class="summary-card">
-        <div class="summary-icon" style="background:rgba(234,179,8,0.12);color:#eab308">
-          <i class="fa-solid fa-file-invoice-dollar"></i>
-        </div>
-        <div class="summary-info">
-          <div class="summary-label">Total de Contas</div>
-          <div class="summary-value">${formatCurrency(totalBills)}</div>
-          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">${bills.length} conta(s)</div>
+    <div class="bills-command-card">
+      <div class="bills-command-copy">
+        <span class="syt-img-icon icon-goal" aria-hidden="true"></span>
+        <div>
+          <span>Progresso do mês</span>
+          <strong>${paidPercent.toFixed(0)}% quitado</strong>
         </div>
       </div>
-      <div class="summary-card">
-        <div class="summary-icon" style="background:rgba(16,185,129,0.12);color:#10b981">
-          <i class="fa-solid fa-circle-check"></i>
+      <div class="bills-command-progress" aria-hidden="true"><span style="width:${paidPercent}%"></span></div>
+      <div class="bills-command-meta">
+        <span>${paidBills.length}/${activeBills.length} contas pagas</span>
+        <span>${formatCurrency(totalPending)} pendente</span>
+      </div>
+    </div>
+
+    <div class="summary-grid bills-summary-grid">
+      <div class="summary-card apple-card">
+        <div class="summary-icon image-summary-icon"><span class="syt-img-icon icon-order" aria-hidden="true"></span></div>
+        <div class="summary-info">
+          <div class="summary-label">Total do mês</div>
+          <div class="summary-value">${formatCurrency(totalBills)}</div>
+          <div class="summary-hint">${activeBills.length} ativa(s) de ${bills.length} cadastrada(s)</div>
         </div>
+      </div>
+      <div class="summary-card apple-card">
+        <div class="summary-icon image-summary-icon success"><span class="syt-img-icon icon-profit" aria-hidden="true"></span></div>
         <div class="summary-info">
           <div class="summary-label">Pagas</div>
           <div class="summary-value amount-income">${formatCurrency(totalPaid)}</div>
-          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">${paidBills.length} de ${bills.length}</div>
+          <div class="summary-hint">${paidBills.length} de ${activeBills.length}</div>
         </div>
       </div>
-      <div class="summary-card">
-        <div class="summary-icon" style="background:rgba(239,68,68,0.12);color:#ef4444">
-          <i class="fa-solid fa-clock"></i>
-        </div>
+      <div class="summary-card apple-card">
+        <div class="summary-icon image-summary-icon danger"><span class="syt-img-icon icon-expense" aria-hidden="true"></span></div>
         <div class="summary-info">
           <div class="summary-label">Pendentes</div>
           <div class="summary-value amount-expense">${formatCurrency(totalPending)}</div>
-          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">${bills.length - paidBills.length} pendente(s)</div>
+          <div class="summary-hint">${activeBills.length - paidBills.length} pendente(s)</div>
         </div>
       </div>
-      ${overdueBills.length > 0 ? `
-      <div class="summary-card" style="border-color:var(--accent-red)">
-        <div class="summary-icon" style="background:rgba(239,68,68,0.12);color:#ef4444">
-          <i class="fa-solid fa-triangle-exclamation"></i>
-        </div>
+      <div class="summary-card apple-card ${overdueBills.length ? 'is-alert' : ''}">
+        <div class="summary-icon image-summary-icon warning"><span class="syt-img-icon ${overdueBills.length ? 'icon-warning' : 'icon-bell'}" aria-hidden="true"></span></div>
         <div class="summary-info">
           <div class="summary-label">Atrasadas</div>
           <div class="summary-value amount-expense">${overdueBills.length}</div>
-          <div style="font-size:0.75rem;color:var(--accent-red);margin-top:2px">${formatCurrency(overdueBills.reduce((s, b) => s + b.amount, 0))}</div>
+          <div class="summary-hint">${overdueBills.length ? formatCurrency(overdueBills.reduce((s, b) => s + getBillAmountForMonth(b, billsMonth), 0)) : 'Tudo em dia'}</div>
         </div>
-      </div>` : ''}
+      </div>
     </div>
 
     ${bills.length > 0 ? `
-    <div class="card">
-      <div class="card-header">
-        <h3 class="card-title">Suas Contas</h3>
+    <div class="card bills-panel apple-card">
+      <div class="card-header bills-card-header">
+        <div>
+          <p class="eyebrow">Lista inteligente</p>
+          <h3 class="card-title">Suas Contas</h3>
+        </div>
+        <span class="installment-chip"><i class="fa-solid fa-layer-group"></i> ${installmentBills.length} parcelada(s)</span>
       </div>
       <div class="bills-list">
         ${bills.map(bill => {
           const cat = getBillCategory(bill.category);
-          const status = getBillStatus(bill, billsMonth);
-          const statusLabels = { paid: 'Paga', overdue: 'Atrasada', 'due-soon': 'Vence em breve', pending: 'Pendente' };
-          return `<div class="bill-item bill-status-${status}">
+          const status = billAppliesToMonth(bill, billsMonth) ? getBillStatus(bill, billsMonth) : 'scheduled';
+          const inst = getBillInstallmentInfo(bill, billsMonth);
+          const statusLabels = { paid: 'Paga', overdue: 'Atrasada', 'due-soon': 'Vence em breve', pending: 'Pendente', scheduled: inst.isFinished ? 'Concluída' : 'Fora do mês' };
+          const installmentLabel = inst.isInstallment
+            ? (inst.isFuture ? `Inicia em ${inst.startMonth}` : inst.isFinished ? `${inst.total}/${inst.total} parcelas` : `Parcela ${inst.current}/${inst.total}`)
+            : 'Conta fixa mensal';
+          return `<div class="bill-item bill-status-${status} apple-list-item">
             <div class="bill-item-left">
-              <div class="bill-icon" style="background:${cat.color}22;color:${cat.color}">
+              <div class="bill-index" aria-label="posição da conta">${String(bills.indexOf(bill) + 1).padStart(2, '0')}</div>
+              <div class="bill-icon image-bill-icon" style="--bill-color:${cat.color};background:${cat.color}22;color:${cat.color}">
                 <i class="fa-solid ${cat.icon}"></i>
               </div>
               <div class="bill-info">
                 <div class="bill-name">${escapeHtml(bill.name)}</div>
                 <div class="bill-meta">
-                  <span class="category-tag" style="background:${cat.color}22;color:${cat.color};font-size:0.7rem;padding:2px 8px">${escapeHtml(cat.name)}</span>
-                  <span style="color:var(--text-muted);font-size:0.75rem">Vence dia ${bill.dueDay}</span>
+                  <span class="category-tag" style="background:${cat.color}22;color:${cat.color};font-size:0.7rem;padding:2px 8px"><i class="fa-solid ${cat.icon}"></i>${escapeHtml(cat.name)}</span>
+                  <span class="bill-due"><i class="fa-regular fa-calendar"></i> Vence dia ${bill.dueDay}</span>
+                  <span class="bill-installment-label"><i class="fa-solid ${inst.isInstallment ? 'fa-hashtag' : 'fa-repeat'}"></i> ${installmentLabel}</span>
                 </div>
+                ${inst.isInstallment ? `<div class="installment-progress" title="${installmentLabel}"><span style="width:${inst.progress}%"></span></div>` : ''}
               </div>
             </div>
             <div class="bill-item-right">
-              <div class="bill-amount">${formatCurrency(bill.amount)}</div>
+              <div class="bill-amount">${billAppliesToMonth(bill, billsMonth) ? formatCurrency(bill.amount) : '—'}</div>
               <span class="bill-status-badge status-${status}">${statusLabels[status]}</span>
               <div class="bill-actions">
-                ${status !== 'paid'
+                ${status !== 'paid' && billAppliesToMonth(bill, billsMonth)
                   ? `<button class="btn btn-success btn-sm" onclick="handleMarkBillPaid('${bill.id}')" title="Marcar como paga"><i class="fa-solid fa-check"></i></button>`
-                  : `<button class="btn btn-outline btn-sm" onclick="handleUnmarkBillPaid('${bill.id}')" title="Desmarcar pagamento"><i class="fa-solid fa-rotate-left"></i></button>`
+                  : status === 'paid'
+                    ? `<button class="btn btn-outline btn-sm" onclick="handleUnmarkBillPaid('${bill.id}')" title="Desmarcar pagamento"><i class="fa-solid fa-rotate-left"></i></button>`
+                    : ''
                 }
                 <button class="btn-icon edit" onclick="openBillModal('${bill.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
                 <button class="btn-icon delete" onclick="confirmDeleteBill('${bill.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
@@ -1020,11 +1091,11 @@ function renderBills(container) {
         }).join('')}
       </div>
     </div>` : `
-    <div class="card">
+    <div class="card apple-card">
       <div class="empty-state" style="padding:48px 0">
-        <i class="fa-solid fa-file-invoice-dollar" style="font-size:3rem;color:var(--text-muted);margin-bottom:16px"></i>
+        <span class="syt-img-icon icon-order" style="width:4rem;height:4rem;margin:0 auto 16px"></span>
         <p>Nenhuma conta mensal cadastrada</p>
-        <p style="font-size:0.85rem;color:var(--text-muted);margin-top:8px">Clique em "Nova Conta" para adicionar suas contas fixas</p>
+        <p style="font-size:0.85rem;color:var(--text-muted);margin-top:8px">Clique em "Nova Conta" para adicionar contas fixas ou parceladas.</p>
       </div>
     </div>`}
   `;
@@ -1065,6 +1136,17 @@ function openBillModal(editId) {
           ${BILL_CATEGORIES.map(c => `<option value="${c.id}" ${bill && bill.category === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
         </select>
       </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Quantidade de parcelas</label>
+          <input type="number" class="form-input" id="billInstallmentTotal" placeholder="1 = fixa mensal" min="1" max="120" value="${bill ? (bill.installmentTotal || 1) : 1}" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Início das parcelas</label>
+          <input type="month" class="form-input" id="billStartMonth" value="${bill ? normalizeBillStartMonth(bill) : (billsMonth || new Date().toISOString().slice(0, 7))}" />
+        </div>
+      </div>
+      <p class="form-helper"><i class="fa-solid fa-circle-info"></i> Use 1 para conta fixa. Use 2 ou mais para exibir o número da parcela e o progresso mensal.</p>
       <div class="form-group">
         <label class="form-label">Notas</label>
         <textarea class="form-textarea" id="billNotes" placeholder="Observações opcionais...">${bill && bill.notes ? escapeHtml(bill.notes) : ''}</textarea>
@@ -1082,14 +1164,16 @@ function saveBillFromModal(editId) {
   const amount = parseFloat(document.getElementById('billAmount')?.value);
   const dueDay = parseInt(document.getElementById('billDueDay')?.value, 10);
   const category = document.getElementById('billCategory')?.value;
+  const installmentTotal = Math.max(parseInt(document.getElementById('billInstallmentTotal')?.value || '1', 10) || 1, 1);
+  const startMonth = document.getElementById('billStartMonth')?.value || billsMonth || new Date().toISOString().slice(0, 7);
   const notes = document.getElementById('billNotes')?.value.trim();
 
-  if (!name || isNaN(amount) || amount <= 0 || isNaN(dueDay) || dueDay < 1 || dueDay > 31) {
+  if (!name || isNaN(amount) || amount <= 0 || isNaN(dueDay) || dueDay < 1 || dueDay > 31 || !/^\d{4}-\d{2}$/.test(startMonth)) {
     showToast('Preencha todos os campos obrigatórios', 'error');
     return;
   }
 
-  const data = { name, amount, dueDay, category, notes };
+  const data = { name, amount, dueDay, category, installmentTotal, startMonth, notes };
 
   if (editId) {
     updateBill(editId, data);
