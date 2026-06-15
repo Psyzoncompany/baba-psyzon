@@ -225,6 +225,7 @@ const ensureFloatingSaveButton = () => {
 
 </svg>
     `;
+    btn.innerHTML = '<span class="syt-img-icon icon-backup" aria-hidden="true"></span><span class="sr-only">Salvar na nuvem</span>';
     btn.addEventListener('click', () => saveToCloud({ force: true }));
     document.body.appendChild(btn);
 

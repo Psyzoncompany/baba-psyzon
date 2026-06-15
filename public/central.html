@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>PSYZON - Central do Patrão</title>
+    <title>PSYZON - Central de Caixa</title>
     <!-- Reusing existing styles and fonts -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -118,8 +118,8 @@
                 class="text-gray-300 hover:bg-white/10 block px-3 py-2 rounded-md text-base font-medium">Clientes</a>
             <a href="processos.html"
                 class="text-gray-300 hover:bg-white/10 block px-3 py-2 rounded-md text-base font-medium">Processos</a>
-            <a href="historico.html"
-                class="bg-cyan-500/20 text-cyan-300 block px-3 py-2 rounded-md text-base font-medium">Histórico</a>
+            <a href="central.html"
+                class="bg-cyan-500/20 text-cyan-300 block px-3 py-2 rounded-md text-base font-medium">Central de Caixa</a>
             <a href="relatorios.html"
                 class="text-gray-300 hover:bg-white/10 block px-3 py-2 rounded-md text-base font-medium">Relatórios</a>
             <a href="configuracoes.html"
@@ -133,22 +133,186 @@
         <!-- Header -->
         <div class="flex justify-between items-center mb-6">
             <div>
-                <h1 class="text-2xl md:text-3xl font-bold text-white">Central do Patrão</h1>
+                <h1 class="text-2xl md:text-3xl font-bold text-white">Central de Caixa</h1>
                 <p id="current-date" class="text-gray-400 text-sm"></p>
             </div>
-            <button id="open-settings-btn" class="p-2 rounded-full hover:bg-white/10" title="Configurar Central">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
-                    </path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                </svg>
+            <button id="open-settings-btn" class="cash-icon-btn" title="Configurar Central" type="button">
+                <span class="syt-img-icon tiny icon-settings" aria-hidden="true"></span>
+                <span class="sr-only">Configurar Central</span>
             </button>
         </div>
 
+        <section class="cash-hero">
+            <div class="cash-hero-copy">
+                <div class="cash-kicker">
+                    <span id="cash-status-dot" class="cash-status-dot"></span>
+                    <span id="cash-status-label">Caixa fechado</span>
+                </div>
+                <h2>Operacao de caixa</h2>
+                <p>Venda, abertura, sangria e produtos no mesmo painel.</p>
+
+                <div class="cash-open-panel">
+                    <label>
+                        <span>Operador</span>
+                        <input type="text" id="cash-operator" class="glass-input" placeholder="Nome do operador">
+                    </label>
+                    <label>
+                        <span>Troco inicial</span>
+                        <input type="number" id="cash-initial-amount" class="glass-input" min="0" step="0.01"
+                            placeholder="0,00">
+                    </label>
+                    <div class="cash-open-actions">
+                        <button type="button" id="open-cash-btn" class="cash-primary-btn">
+                            <span class="syt-img-icon tiny icon-cash" aria-hidden="true"></span>
+                            Abrir caixa
+                        </button>
+                        <button type="button" id="close-cash-btn" class="cash-secondary-btn">
+                            Fechar caixa
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cash-hero-media" aria-label="Imagem de caixa e gestao">
+                <img src="img/caixa-pdv-hero.png" alt="Estacao de caixa com tela de gestao, leitor e terminal">
+            </div>
+        </section>
+
+        <section class="cash-action-dock" aria-label="Acoes rapidas do caixa">
+            <a href="#sale-card" class="cash-dock-btn">
+                <span class="syt-img-icon tiny icon-sale" aria-hidden="true"></span>
+                Nova venda
+            </a>
+            <a href="#product-card" class="cash-dock-btn">
+                <span class="syt-img-icon tiny icon-product" aria-hidden="true"></span>
+                Produto
+            </a>
+            <a href="#movement-card" class="cash-dock-btn">
+                <span class="syt-img-icon tiny icon-register" aria-hidden="true"></span>
+                Sangria
+            </a>
+            <a href="clientes.html" class="cash-dock-btn">
+                <span class="syt-img-icon tiny icon-clients" aria-hidden="true"></span>
+                Clientes
+            </a>
+            <a href="processos.html" class="cash-dock-btn">
+                <span class="syt-img-icon tiny icon-orders" aria-hidden="true"></span>
+                Pedidos
+            </a>
+        </section>
+
+        <section class="cash-metrics-grid" aria-label="Resumo do caixa">
+            <div class="cash-metric">
+                <span>Saldo do caixa</span>
+                <strong id="cash-balance-value">R$ 0,00</strong>
+                <small id="cash-opened-at">Abra o caixa para vender</small>
+            </div>
+            <div class="cash-metric">
+                <span>Vendas hoje</span>
+                <strong id="cash-sales-value">R$ 0,00</strong>
+                <small id="cash-sales-count">0 vendas registradas</small>
+            </div>
+            <div class="cash-metric">
+                <span>Produtos ativos</span>
+                <strong id="cash-products-count">0</strong>
+                <small id="cash-stock-alert">Cadastre o primeiro produto</small>
+            </div>
+            <div class="cash-metric">
+                <span>Pedidos em producao</span>
+                <strong id="cash-orders-count">0</strong>
+                <small id="cash-orders-alert">Sem pedidos pendentes</small>
+            </div>
+        </section>
+
+        <section class="cash-workspace">
+            <article id="sale-card" class="boss-card cash-panel cash-panel--sale">
+                <h3 class="boss-card-title"><span class="syt-img-icon sm icon-sale" aria-hidden="true"></span><span>Venda rapida</span></h3>
+                <form id="sale-form" class="cash-form-grid">
+                    <label>
+                        <span>Produto</span>
+                        <select id="sale-product" class="glass-input"></select>
+                    </label>
+                    <label>
+                        <span>Qtd.</span>
+                        <input type="number" id="sale-quantity" class="glass-input" min="1" step="1" value="1">
+                    </label>
+                    <label>
+                        <span>Pagamento</span>
+                        <select id="sale-payment" class="glass-input">
+                            <option value="dinheiro">Dinheiro</option>
+                            <option value="pix">Pix</option>
+                            <option value="debito">Debito</option>
+                            <option value="credito">Credito</option>
+                            <option value="mercado_pago">Mercado Pago</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Desconto</span>
+                        <input type="number" id="sale-discount" class="glass-input" min="0" step="0.01" value="0">
+                    </label>
+                    <button type="submit" class="cash-primary-btn cash-form-submit">
+                        <span class="syt-img-icon tiny icon-register" aria-hidden="true"></span>
+                        Registrar venda
+                    </button>
+                </form>
+                <div id="sale-preview" class="cash-sale-preview"></div>
+                <div id="recent-sales-list" class="cash-list"></div>
+            </article>
+
+            <article id="product-card" class="boss-card cash-panel">
+                <h3 class="boss-card-title"><span class="syt-img-icon sm icon-product" aria-hidden="true"></span><span>Cadastro de produtos</span></h3>
+                <form id="product-form" class="cash-product-form">
+                    <label>
+                        <span>Nome</span>
+                        <input type="text" id="product-name" class="glass-input" placeholder="Camiseta premium" required>
+                    </label>
+                    <label>
+                        <span>SKU / Codigo</span>
+                        <input type="text" id="product-sku" class="glass-input" placeholder="SKU-001">
+                    </label>
+                    <label>
+                        <span>Preco</span>
+                        <input type="number" id="product-price" class="glass-input" min="0" step="0.01" required>
+                    </label>
+                    <label>
+                        <span>Estoque</span>
+                        <input type="number" id="product-stock" class="glass-input" min="0" step="1" value="1">
+                    </label>
+                    <label>
+                        <span>Categoria</span>
+                        <input type="text" id="product-category" class="glass-input" placeholder="Vestuario">
+                    </label>
+                    <button type="submit" class="cash-secondary-btn">Cadastrar produto</button>
+                </form>
+                <div id="products-list" class="cash-list"></div>
+            </article>
+
+            <article id="movement-card" class="boss-card cash-panel">
+                <h3 class="boss-card-title"><span class="syt-img-icon sm icon-register" aria-hidden="true"></span><span>Entradas e sangrias</span></h3>
+                <form id="movement-form" class="cash-form-grid cash-form-grid--movement">
+                    <label>
+                        <span>Tipo</span>
+                        <select id="movement-type" class="glass-input">
+                            <option value="in">Entrada</option>
+                            <option value="out">Sangria</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Valor</span>
+                        <input type="number" id="movement-amount" class="glass-input" min="0" step="0.01">
+                    </label>
+                    <label class="cash-field-wide">
+                        <span>Motivo</span>
+                        <input type="text" id="movement-note" class="glass-input" placeholder="Troco, retirada, ajuste">
+                    </label>
+                    <button type="submit" class="cash-secondary-btn">Registrar movimento</button>
+                </form>
+                <div id="cash-movements-list" class="cash-list"></div>
+            </article>
+        </section>
+
         <!-- Dashboard Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 cash-executive-grid">
             <!-- Meta do Dia -->
             <div id="meta-dia-card" class="boss-card md:col-span-2 xl:col-span-1">
                 <h3 class="boss-card-title"><span class="syt-img-icon sm icon-target" aria-hidden="true"></span><span>Meta do Dia</span></h3>
@@ -240,50 +404,27 @@
 
     <nav class="bottom-nav">
         <a href="index.html" class="bottom-nav-item">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
+            <span class="syt-img-icon tiny icon-home" aria-hidden="true"></span>
             <span>Início</span>
         </a>
         <a href="central.html" class="bottom-nav-item active">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+            <span class="syt-img-icon tiny icon-cash" aria-hidden="true"></span>
             <span>Central</span>
         </a>
         <a href="processos.html" class="bottom-nav-item">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
+            <span class="syt-img-icon tiny icon-orders" aria-hidden="true"></span>
             <span>Processos</span>
         </a>
         <a href="contas.html" class="bottom-nav-item">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H4a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
+            <span class="syt-img-icon tiny icon-bills" aria-hidden="true"></span>
             <span>Contas</span>
         </a>
         <a href="clientes.html" class="bottom-nav-item">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
+            <span class="syt-img-icon tiny icon-clients" aria-hidden="true"></span>
             <span>Clientes</span>
         </a>
         <button id="mobile-menu-button" class="bottom-nav-item" type="button">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <span class="syt-img-icon tiny icon-menu" aria-hidden="true"></span>
             <span>Menu</span>
         </button>
     </nav>

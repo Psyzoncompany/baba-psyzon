@@ -769,6 +769,12 @@ select:focus {
   height: 100%;
 }
 
+#floating-save-btn .syt-img-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  filter: drop-shadow(0 10px 18px rgba(34, 211, 238, .28)) saturate(1.2);
+}
+
 #floating-save-btn:hover {
   background: rgba(15, 23, 42, 0.32);
   color: #f8fafc;
@@ -8491,5 +8497,477 @@ body.neo-dashboard,
 
   .neo-dashboard .dashboard-hero h1 {
     font-size: clamp(2rem, 13vw, 3.2rem);
+  }
+}
+
+/* v6.0.25 - Central de Caixa / PDV */
+.icon-home,
+.icon-cash,
+.icon-register,
+.icon-settings {
+  background-position: 100% 50%;
+}
+
+.icon-sale,
+.icon-product,
+.icon-orders {
+  background-position: 100% 0%;
+}
+
+.icon-bills {
+  background-position: 0% 100%;
+}
+
+.icon-clients {
+  background-position: 66.666% 50%;
+}
+
+.icon-menu {
+  background-position: 66.666% 100%;
+}
+
+.cash-hero,
+.cash-action-dock,
+.cash-metrics-grid,
+.cash-workspace,
+.cash-executive-grid {
+  max-width: 1540px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cash-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.02fr) minmax(320px, .98fr);
+  gap: clamp(1rem, 2vw, 1.45rem);
+  align-items: stretch;
+  margin-bottom: 1rem;
+}
+
+.cash-hero-copy,
+.cash-hero-media,
+.cash-metric,
+.cash-panel {
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 8px;
+  background:
+    linear-gradient(150deg, rgba(15, 23, 42, .86), rgba(9, 14, 27, .72)),
+    rgba(15, 23, 42, .72);
+  box-shadow: 0 20px 54px rgba(2, 6, 23, .32), inset 0 1px 0 rgba(255, 255, 255, .08);
+  backdrop-filter: blur(18px) saturate(155%);
+  -webkit-backdrop-filter: blur(18px) saturate(155%);
+}
+
+.cash-hero-copy {
+  padding: clamp(1.05rem, 2vw, 1.65rem);
+  display: grid;
+  align-content: space-between;
+  gap: 1rem;
+  min-height: 330px;
+}
+
+.cash-hero-copy h2 {
+  color: #f8fafc;
+  font-size: clamp(2rem, 4vw, 4.2rem);
+  line-height: .95;
+  font-weight: 950;
+  letter-spacing: 0;
+  margin: .15rem 0 .55rem;
+}
+
+.cash-hero-copy p {
+  max-width: 48rem;
+  color: rgba(203, 213, 225, .74);
+  font-size: clamp(.95rem, 1.2vw, 1.05rem);
+}
+
+.cash-kicker {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: .52rem;
+  min-height: 34px;
+  border: 1px solid rgba(148, 163, 184, .2);
+  border-radius: 999px;
+  padding: .35rem .7rem;
+  background: rgba(2, 6, 23, .28);
+  color: rgba(226, 232, 240, .82);
+  font-size: .76rem;
+  font-weight: 900;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+
+.cash-status-dot {
+  width: .7rem;
+  height: .7rem;
+  border-radius: 999px;
+  background: #f87171;
+  box-shadow: 0 0 0 5px rgba(248, 113, 113, .12);
+}
+
+.cash-status-dot.is-open {
+  background: #22c55e;
+  box-shadow: 0 0 0 5px rgba(34, 197, 94, .14);
+}
+
+.cash-open-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  gap: .75rem;
+  align-items: end;
+  padding: .8rem;
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, .26);
+}
+
+.cash-open-panel label,
+.cash-form-grid label,
+.cash-product-form label {
+  display: grid;
+  gap: .3rem;
+  min-width: 0;
+}
+
+.cash-open-panel label span,
+.cash-form-grid label span,
+.cash-product-form label span {
+  color: rgba(203, 213, 225, .72);
+  font-size: .74rem;
+  font-weight: 900;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+
+.cash-open-actions {
+  display: inline-flex;
+  gap: .5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.cash-primary-btn,
+.cash-secondary-btn,
+.cash-icon-btn,
+.cash-dock-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  min-height: 42px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, .18);
+  padding: .55rem .82rem;
+  color: #f8fafc;
+  font-size: .82rem;
+  font-weight: 900;
+  text-decoration: none;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.cash-primary-btn {
+  border-color: rgba(74, 222, 128, .34);
+  background: linear-gradient(135deg, rgba(34, 197, 94, .94), rgba(20, 184, 166, .86));
+  box-shadow: 0 14px 34px rgba(34, 197, 94, .22);
+}
+
+.cash-secondary-btn,
+.cash-dock-btn {
+  background: rgba(30, 41, 59, .66);
+}
+
+.cash-icon-btn {
+  width: 44px;
+  padding: 0;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, .72);
+}
+
+.cash-primary-btn:disabled,
+.cash-secondary-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  filter: saturate(.65);
+}
+
+.cash-hero-media {
+  min-height: 330px;
+  overflow: hidden;
+  padding: .45rem;
+}
+
+.cash-hero-media img {
+  width: 100%;
+  height: 100%;
+  min-height: 318px;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+}
+
+.cash-action-dock {
+  position: sticky;
+  top: 5.9rem;
+  z-index: 45;
+  display: flex;
+  gap: .55rem;
+  overflow-x: auto;
+  padding: .7rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 8px;
+  background: rgba(9, 14, 27, .82);
+  box-shadow: 0 14px 36px rgba(2, 6, 23, .3);
+  backdrop-filter: blur(18px) saturate(155%);
+  -webkit-backdrop-filter: blur(18px) saturate(155%);
+}
+
+.cash-dock-btn {
+  flex: 0 0 auto;
+  min-width: 8.2rem;
+}
+
+.cash-dock-btn:hover,
+.cash-secondary-btn:hover,
+.cash-icon-btn:hover {
+  border-color: rgba(125, 211, 252, .34);
+  background: rgba(51, 65, 85, .72);
+}
+
+.cash-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .85rem;
+  margin-bottom: 1rem;
+}
+
+.cash-metric {
+  min-height: 126px;
+  padding: 1rem;
+  display: grid;
+  align-content: space-between;
+  gap: .55rem;
+}
+
+.cash-metric span {
+  color: rgba(203, 213, 225, .72);
+  font-size: .76rem;
+  font-weight: 900;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+
+.cash-metric strong {
+  color: #f8fafc;
+  font-size: clamp(1.55rem, 2.3vw, 2.35rem);
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.cash-metric small {
+  color: rgba(203, 213, 225, .62);
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.cash-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, .95fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.cash-panel {
+  min-height: auto !important;
+  padding: 1rem;
+  gap: .9rem;
+}
+
+.cash-panel--sale {
+  grid-row: span 2;
+}
+
+.cash-form-grid,
+.cash-product-form {
+  display: grid;
+  gap: .75rem;
+}
+
+.cash-form-grid {
+  grid-template-columns: minmax(0, 1.5fr) .45fr .8fr .6fr;
+  align-items: end;
+}
+
+.cash-form-grid--movement {
+  grid-template-columns: .72fr .72fr minmax(0, 1fr);
+}
+
+.cash-form-submit,
+.cash-field-wide,
+.cash-product-form button {
+  grid-column: 1 / -1;
+}
+
+.cash-product-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cash-sale-preview {
+  display: grid;
+  gap: .2rem;
+  border: 1px solid rgba(74, 222, 128, .2);
+  border-radius: 8px;
+  padding: .85rem;
+  background: linear-gradient(135deg, rgba(22, 163, 74, .13), rgba(14, 165, 233, .08));
+}
+
+.cash-sale-preview span,
+.cash-sale-preview small {
+  color: rgba(203, 213, 225, .7);
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.cash-sale-preview strong {
+  color: #86efac;
+  font-size: clamp(1.8rem, 2.6vw, 2.6rem);
+  line-height: 1;
+  font-weight: 950;
+}
+
+.cash-list {
+  display: grid;
+  gap: .55rem;
+  max-height: 21rem;
+  overflow: auto;
+}
+
+.cash-list-item,
+.cash-empty {
+  border: 1px solid rgba(148, 163, 184, .14);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, .46);
+  padding: .72rem .78rem;
+}
+
+.cash-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+}
+
+.cash-list-item div:first-child {
+  display: grid;
+  gap: .15rem;
+  min-width: 0;
+}
+
+.cash-list-item strong,
+.cash-list-item b {
+  color: #f8fafc;
+  font-size: .9rem;
+  font-weight: 900;
+}
+
+.cash-list-item span,
+.cash-list-item small,
+.cash-empty {
+  color: rgba(203, 213, 225, .68);
+  font-size: .78rem;
+}
+
+.cash-list-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: .45rem;
+}
+
+.cash-positive {
+  color: #86efac !important;
+}
+
+.cash-negative {
+  color: #fca5a5 !important;
+}
+
+.neo-dashboard .bottom-nav .syt-img-icon {
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(0 7px 12px rgba(2, 6, 23, .35)) saturate(1.1);
+}
+
+.neo-dashboard .bottom-nav-item.active .syt-img-icon,
+.cash-dock-btn:hover .syt-img-icon,
+.cash-primary-btn .syt-img-icon {
+  filter: drop-shadow(0 8px 14px rgba(34, 211, 238, .26)) saturate(1.25);
+}
+
+body.has-manual-save-fab #floating-save-btn,
+#floating-save-btn {
+  right: max(1rem, env(safe-area-inset-right) + 1rem) !important;
+}
+
+@media (max-width: 1180px) {
+  .cash-hero,
+  .cash-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .cash-metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cash-panel--sale {
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .cash-hero-copy h2 {
+    font-size: clamp(2rem, 12vw, 3.15rem);
+  }
+
+  .cash-open-panel,
+  .cash-form-grid,
+  .cash-form-grid--movement,
+  .cash-product-form,
+  .cash-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cash-open-actions,
+  .cash-open-actions .cash-primary-btn,
+  .cash-open-actions .cash-secondary-btn,
+  .cash-form-submit,
+  .cash-product-form button,
+  .cash-form-grid--movement button {
+    width: 100%;
+  }
+
+  .cash-action-dock {
+    top: .5rem;
+    margin-left: -.15rem;
+    margin-right: -.15rem;
+  }
+
+  .cash-dock-btn {
+    min-width: 7.65rem;
+  }
+
+  .cash-hero-media,
+  .cash-hero-media img {
+    min-height: 238px;
+  }
+
+  .cash-list {
+    max-height: 18rem;
   }
 }
