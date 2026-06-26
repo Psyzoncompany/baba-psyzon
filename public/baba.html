@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#052e16">
+  <link rel="icon" type="image/png" href="img/logo.png">
+  <title>Baba - Futebol entre Amigos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="baba.css">
+</head>
+<body>
+  <div id="loading" class="loading"><div class="spinner"></div><span>Carregando dados do Firebase...</span></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <header class="hero">
+    <nav class="topbar">
+      <a class="back-link" href="login.html">← Voltar ao Caixa</a>
+      <div class="brand"><span class="ball">⚽</span><span>Baba</span></div>
+      <button id="logout-mode" class="ghost hidden">Trocar modo</button>
+    </nav>
+    <section class="hero-card">
+      <div>
+        <p class="eyebrow">Futebol entre amigos</p>
+        <h1>Gerencie sorteios, gols, vitórias e ranking geral em tempo real.</h1>
+        <p class="hero-text">Sistema integrado ao Firebase para organizar o baba semanal com times equilibrados e histórico completo.</p>
+      </div>
+      <div class="score-orb"><span>5x5</span><small>Times fixos</small></div>
+    </section>
+  </header>
+
+  <main class="app-shell">
+    <section id="mode-screen" class="mode-screen">
+      <article class="mode-card organizer">
+        <span class="mode-icon">🏆</span>
+        <h2>Organizador</h2>
+        <p>Cadastre jogadores, sorteie times, registre placares e finalize babas.</p>
+        <div class="password-row">
+          <input id="organizer-password" type="password" placeholder="Senha do organizador" inputmode="numeric">
+          <button id="enter-organizer" class="primary">Entrar</button>
+        </div>
+      </article>
+      <article class="mode-card player">
+        <span class="mode-icon">👟</span>
+        <h2>Jogador</h2>
+        <p>Visualize times, placares, rankings e histórico sem editar dados.</p>
+        <button id="enter-player" class="secondary">Entrar como Jogador</button>
+      </article>
+    </section>
+
+    <section id="system-screen" class="hidden">
+      <div class="dashboard-grid">
+        <article class="stat-card"><span>Baba atual</span><strong id="current-date">Sem data</strong><small id="current-status">Aguardando criação</small></article>
+        <article class="stat-card"><span>Jogadores ativos</span><strong id="active-count">0</strong><small>Disponíveis para sorteio</small></article>
+        <article class="stat-card"><span>Artilheiro geral</span><strong id="top-scorer">-</strong><small id="top-scorer-meta">0 gols</small></article>
+        <article class="stat-card"><span>Mais vitórias</span><strong id="top-winner">-</strong><small id="top-winner-meta">0 vitórias</small></article>
+      </div>
+
+      <div class="action-bar organizer-only">
+        <button id="new-baba" class="primary">Novo Baba</button>
+        <button id="draw-teams" class="secondary">Sortear Times</button>
+        <button id="save-baba" class="secondary">Salvar Baba</button>
+        <button id="finish-baba" class="danger">Finalizar Baba</button>
+        <button id="reset-current" class="ghost">Resetar Atual</button>
+      </div>
+
+      <nav class="tabs">
+        <button class="tab active" data-tab="atual">Baba atual</button>
+        <button class="tab" data-tab="jogadores">Jogadores</button>
+        <button class="tab" data-tab="partidas">Placar e Gols</button>
+        <button class="tab" data-tab="ranking">Ranking</button>
+        <button class="tab" data-tab="historico">Histórico</button>
+      </nav>
+
+      <section id="tab-atual" class="tab-panel active">
+        <div class="section-title"><h2>Times sorteados</h2><p>Barcelona, Arsenal, Real Madrid, PSG e Chelsea.</p></div>
+        <div id="teams-grid" class="teams-grid empty-state">Nenhum time sorteado ainda.</div>
+      </section>
+
+      <section id="tab-jogadores" class="tab-panel">
+        <div class="section-title"><h2>Cadastro de jogadores</h2><p>Marque goleiros para o sorteio priorizar 1 por time.</p></div>
+        <form id="player-form" class="player-form organizer-only">
+          <input id="player-name" placeholder="Nome do jogador" required>
+          <select id="player-type"><option value="jogador">Jogador de linha</option><option value="goleiro">Goleiro</option></select>
+          <button class="primary" type="submit">Salvar Jogador</button>
+        </form>
+        <div id="players-list" class="list-grid"></div>
+      </section>
+
+      <section id="tab-partidas" class="tab-panel">
+        <div class="section-title"><h2>Registrar placares e gols</h2><p>Vitória vale 3 pontos, empate 1 ponto e derrota 0.</p></div>
+        <div id="match-form" class="match-card organizer-only"></div>
+        <div id="matches-list" class="list-grid"></div>
+      </section>
+
+      <section id="tab-ranking" class="tab-panel">
+        <div class="section-title"><h2>Ranking geral</h2><p>Soma automática de todos os babas finalizados.</p></div>
+        <div id="ranking-list" class="ranking-table"></div>
+      </section>
+
+      <section id="tab-historico" class="tab-panel">
+        <div class="section-title"><h2>Histórico de babas</h2><p>Vencedores, pontuação final e detalhes salvos.</p></div>
+        <div id="history-list" class="history-grid"></div>
+        <div id="history-detail" class="detail-panel hidden"></div>
+      </section>
+    </section>
+  </main>
+  <script type="module" src="baba.js"></script>
+</body>
+</html>
