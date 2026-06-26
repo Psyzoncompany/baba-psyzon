@@ -47,6 +47,8 @@
     currentMatchPanel: $('#current-match-panel'),
     queueList: $('#queue-list'),
     standingsList: $('#standings-list'),
+    dailyTopScorers: $('#daily-top-scorers'),
+    currentGamesList: $('#current-games-list'),
     lastResultPill: $('#last-result-pill'),
     lastResultPanel: $('#last-result-panel'),
     teamsGrid: $('#teams-grid'),
@@ -64,6 +66,14 @@
     goalModalTitle: $('#goal-modal-title'),
     goalPlayerList: $('#goal-player-list'),
     closeGoalModal: $('#close-goal-modal'),
+    teamDetailModal: $('#team-detail-modal'),
+    teamDetailTitle: $('#team-detail-title'),
+    teamDetailList: $('#team-detail-list'),
+    closeTeamDetailModal: $('#close-team-detail-modal'),
+    gameDetailModal: $('#game-detail-modal'),
+    gameDetailTitle: $('#game-detail-title'),
+    gameDetailList: $('#game-detail-list'),
+    closeGameDetailModal: $('#close-game-detail-modal'),
   };
 
   let state = readState();
@@ -102,9 +112,11 @@
   }
 
   function getRemainingSeconds(match) {
-    if (!match?.timerStartedAt) return 8 * 60;
+    if (!match) return 8 * 60;
+    const base = Number(match.timerRemainingSeconds ?? match.durationSeconds ?? 8 * 60);
+    if (!match.timerRunning || !match.timerStartedAt) return Math.max(0, base);
     const elapsed = Math.floor((Date.now() - match.timerStartedAt) / 1000);
-    return Math.max(0, Number(match.durationSeconds || 8 * 60) - elapsed);
+    return Math.max(0, base - elapsed);
   }
 
   function formatCountdown(seconds) {
@@ -120,8 +132,16 @@
     const timerEl = $('#current-timer');
     if (!timerEl || !match) return;
     const remaining = getRemainingSeconds(match);
-    timerEl.textContent = remaining ? formatCountdown(remaining) : 'Tempo esgotado';
-    timerEl.classList.toggle('is-over', remaining === 0);
+    if (remaining === 0 && match.timerRunning) {
+      match.timerRunning = false;
+      match.timerRemainingSeconds = 0;
+      match.timerStartedAt = null;
+      render();
+      return;
+    }
+    const isPrepared = !match.timerRunning && !match.iniciadoEm;
+    timerEl.textContent = isPrepared ? 'Aguardando inicio' : (remaining ? formatCountdown(remaining) : 'Tempo esgotado');
+    timerEl.classList.toggle('is-over', remaining === 0 && !isPrepared);
   }
 
   function escapeHTML(value) {
@@ -432,6 +452,7 @@
     const teamBId = order.shift();
     baba.filaTimes = order;
     baba.jogoAtual = buildMatch(baba, teamAId, teamBId);
+    startMatchTimer(baba.jogoAtual);
     baba.status = 'jogando';
     saveState('Primeiro jogo iniciado.');
     setActiveTab('dashboard');
@@ -442,15 +463,67 @@
       numeroJogo: (baba.jogos?.length || 0) + 1,
       timeA: teamAId,
       timeB: teamBId,
-      status: 'em_andamento',
+      status: 'preparado',
       placarA: 0,
       placarB: 0,
       gols: [],
       goalEvents: [],
       durationSeconds: 8 * 60,
-      timerStartedAt: Date.now(),
-      iniciadoEm: Date.now(),
+      timerRemainingSeconds: 8 * 60,
+      timerStartedAt: null,
+      timerRunning: false,
+      iniciadoEm: null,
     };
+  }
+
+  function startMatchTimer(match) {
+    if (!match) return;
+    match.timerRemainingSeconds = Math.max(1, Number(match.timerRemainingSeconds ?? match.durationSeconds ?? 8 * 60));
+    match.timerStartedAt = Date.now();
+    match.timerRunning = true;
+    match.status = 'em_andamento';
+    match.iniciadoEm = match.iniciadoEm || Date.now();
+  }
+
+  function pauseMatchTimer() {
+    if (!requireOrganizer()) return;
+    const match = getActiveBaba()?.jogoAtual;
+    if (!match) return;
+    if (match.timerRunning) {
+      match.timerRemainingSeconds = getRemainingSeconds(match);
+      match.timerStartedAt = null;
+      match.timerRunning = false;
+      match.status = 'pausado';
+      saveState('Cronometro pausado.');
+      return;
+    }
+    startMatchTimer(match);
+    saveState('Cronometro retomado.');
+  }
+
+  function editMatchTime() {
+    if (!requireOrganizer()) return;
+    const match = getActiveBaba()?.jogoAtual;
+    if (!match) return;
+    const current = Math.ceil(getRemainingSeconds(match) / 60);
+    const answer = window.prompt('Novo tempo restante em minutos:', String(current || 8));
+    if (answer === null) return;
+    const minutes = Number(String(answer).replace(',', '.'));
+    if (!Number.isFinite(minutes) || minutes <= 0) return showToast('Tempo invalido.');
+    match.timerRemainingSeconds = Math.round(minutes * 60);
+    match.durationSeconds = Math.max(match.durationSeconds || 0, match.timerRemainingSeconds);
+    if (match.timerRunning) match.timerStartedAt = Date.now();
+    saveState('Tempo atualizado.');
+  }
+
+  function startPreparedMatch() {
+    if (!requireOrganizer()) return;
+    const baba = getActiveBaba();
+    const match = baba?.jogoAtual;
+    if (!match) return showToast('Nao existe partida preparada.');
+    startMatchTimer(match);
+    baba.status = 'jogando';
+    saveState('Partida iniciada.');
   }
 
   function startNextGame() {
@@ -529,12 +602,14 @@
     if (!match || !team || !player) return;
 
     match.goalEvents = match.goalEvents || [];
+    const elapsed = Math.max(0, Number(match.durationSeconds || 8 * 60) - getRemainingSeconds(match));
     match.goalEvents.push({
       id: newId('goal'),
       jogadorId: player.id,
       jogadorNome: player.nome,
       time: team.id,
       timeNome: team.name,
+      minuto: Math.max(1, Math.ceil(elapsed / 60)),
       registradoEm: Date.now(),
     });
     recomputeLiveScore(match);
@@ -652,13 +727,13 @@
 
     if (nextTeamId && timeQueContinuou) {
       baba.jogoAtual = buildMatch(baba, timeQueContinuou, nextTeamId);
-      baba.status = 'jogando';
+      baba.status = 'preparado';
     } else {
       baba.jogoAtual = null;
       baba.status = 'times';
     }
 
-    saveState(empate ? 'Jogo salvo. Empate decidido por sorteio para o rodizio.' : 'Jogo salvo. Vencedor permanece em campo.');
+    saveState(empate ? 'Jogo salvo. Proxima partida preparada.' : 'Jogo salvo. Proxima partida preparada.');
   }
 
   function undoLastGame() {
@@ -847,6 +922,8 @@
     renderTeams(baba);
     renderDashboard(baba);
     renderStandings(baba);
+    renderDailyTopScorers(baba);
+    renderCurrentGames(baba);
     renderRankings(baba);
     renderHistory();
     renderTimerOnly();
@@ -970,7 +1047,7 @@
         </div>
         ${teams.map((team) => `
           <div class="baba-table__row">
-            <strong>${escapeHTML(team.name)}</strong>
+            <button class="baba-team-link" type="button" data-team-detail-id="${team.id}">${escapeHTML(team.name)}</button>
             <b>${team.pontos}</b>
             <span>${team.golsPro}</span>
             <span>${team.golsPro - team.golsContra}</span>
@@ -983,6 +1060,115 @@
     `;
   }
 
+  function getSortedGeneralRanking() {
+    return sortRanking(calculateGeneralRanking());
+  }
+
+  function getDailyRankingList(baba) {
+    const ranking = calculateCurrentBabaRanking(baba);
+    return sortRanking(ranking);
+  }
+
+  function calculateCurrentBabaRanking(baba) {
+    const ranking = calculateDailyRanking(baba || { jogadoresPresentes: [], jogos: [], teams: [] });
+    const liveEvents = baba?.jogoAtual?.goalEvents || [];
+    liveEvents.forEach((goal) => {
+      ensureStats(ranking, goal.jogadorId).totalGols += 1;
+    });
+    Object.values(ranking).forEach(finalizeStats);
+    return ranking;
+  }
+
+  function renderDailyTopScorers(baba) {
+    const top = getDailyRankingList(baba)
+      .filter((stats) => stats.totalGols > 0)
+      .slice(0, 5);
+    if (!top.length) {
+      els.dailyTopScorers.innerHTML = '<div class="baba-empty">Sem gols no baba atual.</div>';
+      return;
+    }
+    els.dailyTopScorers.innerHTML = top.map((stats, index) => `
+      <div class="baba-row baba-row--compact">
+        <strong>${index + 1}. ${escapeHTML(stats.nome)}</strong>
+        <b>${stats.totalGols} gol${stats.totalGols === 1 ? '' : 's'}</b>
+      </div>
+    `).join('');
+  }
+
+  function renderCurrentGames(baba) {
+    const games = baba?.jogos || [];
+    if (!games.length) {
+      els.currentGamesList.innerHTML = '<div class="baba-empty">Nenhum jogo finalizado neste baba.</div>';
+      return;
+    }
+    els.currentGamesList.innerHTML = games.slice().reverse().map((game) => `
+      <button class="baba-history-item baba-history-item--compact" type="button" data-current-game="${game.numeroJogo}">
+        <span>
+          <strong>Jogo ${game.numeroJogo}: ${escapeHTML(game.timeANome)} ${game.placarA} x ${game.placarB} ${escapeHTML(game.timeBNome)}</strong>
+          <small>${formatTime(game.finalizadoEm)}</small>
+        </span>
+      </button>
+    `).join('');
+  }
+
+  function openTeamDetail(teamId) {
+    const baba = getActiveBaba();
+    const team = getTeam(baba, teamId);
+    if (!team) return;
+
+    const dailyRanking = calculateCurrentBabaRanking(baba);
+    const general = getSortedGeneralRanking();
+    const position = new Map(general.map((stats, index) => [stats.jogadorId, index + 1]));
+    const generalById = new Map(general.map((stats) => [stats.jogadorId, stats]));
+
+    els.teamDetailTitle.textContent = team.name;
+    els.teamDetailList.innerHTML = team.jogadores.map((playerId) => {
+      const player = getPlayer(playerId);
+      const dayGoals = dailyRanking[playerId]?.totalGols || 0;
+      const generalGoals = generalById.get(playerId)?.totalGols || 0;
+      const rank = position.get(playerId) || '-';
+      return `
+        <div class="baba-row">
+          <div>
+            <strong>${escapeHTML(player?.nome || playerName(playerId))}</strong>
+            <small>${player?.tipo === 'goleiro' ? 'Goleiro' : 'Linha'}</small>
+          </div>
+          <div class="baba-player-mini-stats">
+            <span>${dayGoals} hoje</span>
+            <span>${generalGoals} geral</span>
+            <span>#${rank}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+    els.teamDetailModal.classList.remove('hidden');
+  }
+
+  function openCurrentGameDetail(gameNumber) {
+    const baba = getActiveBaba();
+    const game = (baba?.jogos || []).find((item) => String(item.numeroJogo) === String(gameNumber));
+    if (!game) return;
+
+    const events = game.goalEvents || [];
+    els.gameDetailTitle.textContent = `Jogo ${game.numeroJogo}`;
+    els.gameDetailList.innerHTML = `
+      <div class="baba-row">
+        <strong>${escapeHTML(game.timeANome)} ${game.placarA} x ${game.placarB} ${escapeHTML(game.timeBNome)}</strong>
+        <b>${game.empate ? 'Empate' : 'Vitoria'}</b>
+      </div>
+      ${events.length ? events.map((goal) => `
+        <div class="baba-row">
+          <div>
+            <strong>${escapeHTML(goal.jogadorNome)}</strong>
+            <small>${escapeHTML(goal.timeNome)}</small>
+          </div>
+          <b>${goal.minuto ? `${goal.minuto}'` : '-'}</b>
+        </div>
+      `).join('') : '<div class="baba-empty">Sem gols registrados neste jogo.</div>'}
+    `;
+    els.gameDetailModal.classList.remove('hidden');
+  }
+
   function renderDashboard(baba) {
     const match = baba?.jogoAtual;
     const teamA = getTeam(baba, match?.timeA);
@@ -990,23 +1176,44 @@
     els.matchNumberPill.textContent = match ? `Jogo ${match.numeroJogo}` : 'Jogo 0';
 
     if (!match || !teamA || !teamB) {
-      els.currentMatchPanel.innerHTML = '<div class="baba-empty">Nenhum jogo iniciado.</div>';
+      const canStart = isOrganizer() && baba?.teams?.length >= 2;
+      els.currentMatchPanel.innerHTML = `
+        <div class="baba-empty">Nenhum jogo iniciado.</div>
+        ${canStart ? '<div class="baba-live-actions baba-live-actions--single"><button class="baba-primary" type="button" data-action="start-first-live">Iniciar primeiro jogo</button></div>' : ''}
+      `;
     } else {
       const remaining = getRemainingSeconds(match);
-      const organizerControls = isOrganizer() ? `
-        <div class="baba-live-actions">
-          <button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamA.id}">Gol ${escapeHTML(teamA.name)}</button>
-          <button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamB.id}">Gol ${escapeHTML(teamB.name)}</button>
-          <button class="baba-mini-btn" type="button" data-action="undo-goal">Desfazer gol</button>
-          <button class="baba-primary" type="button" data-action="finish-live-match">Finalizar jogo</button>
-        </div>
-      ` : '';
+      const isPrepared = !match.timerRunning && !match.iniciadoEm;
+      const isOver = remaining === 0 && match.iniciadoEm;
+      let organizerControls = '';
+      if (isOrganizer()) {
+        organizerControls = isPrepared ? `
+          <div class="baba-live-actions baba-live-actions--single">
+            <button class="baba-primary" type="button" data-action="start-prepared-match">Iniciar partida</button>
+            <button class="baba-mini-btn" type="button" data-action="edit-time">Editar tempo</button>
+          </div>
+        ` : isOver ? `
+          <div class="baba-live-actions baba-live-actions--single">
+            <button class="baba-mini-btn" type="button" data-action="edit-time">Editar tempo</button>
+            <button class="baba-primary" type="button" data-action="finish-live-match">Ir para proximo jogo</button>
+          </div>
+        ` : `
+          <div class="baba-live-actions">
+            <button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamA.id}">Gol ${escapeHTML(teamA.name)}</button>
+            <button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamB.id}">Gol ${escapeHTML(teamB.name)}</button>
+            <button class="baba-mini-btn" type="button" data-action="pause-time">${match.timerRunning ? 'Pausar' : 'Retomar'}</button>
+            <button class="baba-mini-btn" type="button" data-action="edit-time">Editar tempo</button>
+            <button class="baba-mini-btn" type="button" data-action="undo-goal">Desfazer gol</button>
+            <button class="baba-primary" type="button" data-action="finish-live-match">${isOver ? 'Ir para proximo jogo' : 'Finalizar jogo'}</button>
+          </div>
+        `;
+      }
       const goalLog = (match.goalEvents || []).slice(-5).reverse().map((goal) => `
-        <span class="baba-pill">${escapeHTML(goal.jogadorNome)} - ${escapeHTML(goal.timeNome)}</span>
+        <span class="baba-pill">${escapeHTML(goal.jogadorNome)} ${goal.minuto ? `${goal.minuto}'` : ''} - ${escapeHTML(goal.timeNome)}</span>
       `).join('');
       els.currentMatchPanel.innerHTML = `
         <div class="baba-match-live">
-          <div class="baba-timer ${remaining === 0 ? 'is-over' : ''}" id="current-timer">${remaining ? formatCountdown(remaining) : 'Tempo esgotado'}</div>
+          <div class="baba-timer ${isOver ? 'is-over' : ''}" id="current-timer">${isPrepared ? 'Aguardando inicio' : (remaining ? formatCountdown(remaining) : 'Tempo esgotado')}</div>
           <div class="baba-match-live__teams">
             <strong>${escapeHTML(teamA.name)}</strong>
             <span>${Number(match.placarA || 0)} x ${Number(match.placarB || 0)}</span>
@@ -1014,7 +1221,7 @@
           </div>
           ${organizerControls}
           <div class="baba-match-live__meta">
-            <span class="baba-pill">Inicio: ${formatTime(match.iniciadoEm)}</span>
+            <span class="baba-pill">Inicio: ${match.iniciadoEm ? formatTime(match.iniciadoEm) : 'pendente'}</span>
             <span class="baba-pill">${teamA.jogadores.length} x ${teamB.jogadores.length} jogadores</span>
             ${goalLog || '<span class="baba-pill">Sem gols registrados</span>'}
           </div>
@@ -1062,7 +1269,7 @@
 
   function renderRankings(baba) {
     const general = sortRanking(calculateGeneralRanking());
-    const daily = sortRanking(baba?.rankingDoBaba || calculateDailyRanking(baba || { jogadoresPresentes: [], jogos: [], teams: [] }));
+    const daily = getDailyRankingList(baba);
     els.rankingList.innerHTML = renderRankingList(general, 'Ainda nao ha ranking geral. Finalize um baba para iniciar.');
     els.dailyRankingList.innerHTML = renderRankingList(daily, 'Ainda nao ha ranking do baba atual.');
   }
@@ -1168,8 +1375,8 @@
   async function shareBabaLink() {
     const url = new URL('baba.html', window.location.href).href;
     const shareData = {
-      title: 'Copa Baba',
-      text: 'Acompanhe o Baba ao vivo: times, placar, ranking e historico.',
+      title: 'Baba Amigos de Henrique',
+      text: 'Acompanhe o Baba Amigos de Henrique ao vivo: times, placar, ranking e historico.',
       url,
     };
 
@@ -1227,11 +1434,19 @@
     els.shareFab.addEventListener('click', shareBabaLink);
     els.closePresentModal.addEventListener('click', () => els.presentModal.classList.add('hidden'));
     els.closeGoalModal.addEventListener('click', closeGoalPicker);
+    els.closeTeamDetailModal.addEventListener('click', () => els.teamDetailModal.classList.add('hidden'));
+    els.closeGameDetailModal.addEventListener('click', () => els.gameDetailModal.classList.add('hidden'));
     els.presentModal.addEventListener('click', (event) => {
       if (event.target === els.presentModal) els.presentModal.classList.add('hidden');
     });
     els.goalModal.addEventListener('click', (event) => {
       if (event.target === els.goalModal) closeGoalPicker();
+    });
+    els.teamDetailModal.addEventListener('click', (event) => {
+      if (event.target === els.teamDetailModal) els.teamDetailModal.classList.add('hidden');
+    });
+    els.gameDetailModal.addEventListener('click', (event) => {
+      if (event.target === els.gameDetailModal) els.gameDetailModal.classList.add('hidden');
     });
 
     $$('.baba-tabs button').forEach((button) => {
@@ -1251,9 +1466,19 @@
       if (actionButton?.dataset.action === 'open-goal-picker') return openGoalPicker(actionButton.dataset.teamId);
       if (actionButton?.dataset.action === 'undo-goal') return undoLastGoal();
       if (actionButton?.dataset.action === 'finish-live-match') return finishMatch(event);
+      if (actionButton?.dataset.action === 'start-first-live') return startFirstGame();
+      if (actionButton?.dataset.action === 'start-prepared-match') return startPreparedMatch();
+      if (actionButton?.dataset.action === 'pause-time') return pauseMatchTimer();
+      if (actionButton?.dataset.action === 'edit-time') return editMatchTime();
 
       const goalPlayerButton = event.target.closest('[data-goal-player-id]');
       if (goalPlayerButton) return registerGoal(goalPlayerButton.dataset.goalPlayerId);
+
+      const teamButton = event.target.closest('[data-team-detail-id]');
+      if (teamButton) return openTeamDetail(teamButton.dataset.teamDetailId);
+
+      const currentGameButton = event.target.closest('[data-current-game]');
+      if (currentGameButton) return openCurrentGameDetail(currentGameButton.dataset.currentGame);
 
       const historyButton = event.target.closest('[data-history-id]');
       if (historyButton) {

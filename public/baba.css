@@ -328,7 +328,7 @@
 }
 
 .baba-hero {
-  min-height: 28rem;
+  min-height: 19rem;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, .7fr);
   gap: 1rem;
@@ -339,6 +339,11 @@
     linear-gradient(90deg, rgba(3, 9, 7, .88), rgba(3, 9, 7, .35)),
     url("img/baba-worldcup-hero.png") center / cover;
   overflow: hidden;
+}
+
+.baba-hero h1 {
+  max-width: 16ch;
+  font-size: clamp(2.1rem, 5vw, 4.2rem);
 }
 
 .baba-hero__copy {
@@ -367,7 +372,7 @@
   gap: .65rem;
   border: 1px solid rgba(250, 204, 21, .28);
   border-radius: var(--baba-radius);
-  padding: .85rem;
+  padding: .7rem;
   background: rgba(3, 9, 7, .72);
 }
 
@@ -408,7 +413,7 @@
   justify-content: center;
   min-width: 6.8rem;
   color: var(--baba-gold);
-  font-size: clamp(1.8rem, 3vw, 3rem);
+  font-size: clamp(1.65rem, 2.7vw, 2.55rem);
   font-weight: 950;
   letter-spacing: 0;
 }
@@ -782,6 +787,10 @@
   gap: .55rem;
 }
 
+.baba-live-actions--single {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .baba-goal-btn,
 .baba-goal-player {
   min-height: 44px;
@@ -806,14 +815,14 @@
 
 .baba-table__row {
   display: grid;
-  grid-template-columns: minmax(7rem, 1fr) repeat(6, minmax(2rem, .32fr));
-  gap: .35rem;
+  grid-template-columns: minmax(5.8rem, 1fr) repeat(6, minmax(1.7rem, .28fr));
+  gap: .25rem;
   align-items: center;
   border: 1px solid rgba(220, 252, 231, .12);
   border-radius: var(--baba-radius);
-  padding: .55rem .6rem;
+  padding: .48rem .5rem;
   background: rgba(3, 9, 7, .36);
-  font-size: .76rem;
+  font-size: .72rem;
 }
 
 .baba-table__head {
@@ -829,6 +838,52 @@
 .baba-table__row b {
   color: #fff;
   font-weight: 950;
+}
+
+.baba-team-link {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  color: #fff;
+  background: transparent;
+  font: inherit;
+  font-weight: 950;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.baba-team-link:hover {
+  color: var(--baba-gold);
+}
+
+.baba-row--compact,
+.baba-history-item--compact {
+  min-height: 40px;
+  padding: .52rem .6rem;
+}
+
+.baba-ranking--compact .baba-empty {
+  padding: .65rem;
+}
+
+.baba-player-mini-stats {
+  display: inline-grid;
+  grid-template-columns: repeat(3, auto);
+  gap: .35rem;
+  justify-content: end;
+}
+
+.baba-player-mini-stats span {
+  border-radius: 999px;
+  padding: .24rem .42rem;
+  color: rgba(247, 254, 231, .9);
+  background: rgba(255, 255, 255, .06);
+  font-size: .68rem;
+  font-weight: 850;
+  white-space: nowrap;
 }
 
 .baba-history-actions {
@@ -1034,11 +1089,32 @@ body.baba-player-mode .baba-organizer-layout {
   }
 
   .baba-table {
-    overflow-x: auto;
+    overflow-x: visible;
   }
 
   .baba-table__row {
-    min-width: 34rem;
+    min-width: 0;
+    grid-template-columns: minmax(4.6rem, 1fr) repeat(6, minmax(1.3rem, .24fr));
+    gap: .16rem;
+    padding: .42rem .38rem;
+    font-size: .62rem;
+  }
+
+  .baba-table__head {
+    font-size: .58rem;
+  }
+
+  .baba-hero {
+    min-height: 14rem;
+    padding: .85rem;
+  }
+
+  .baba-hero__copy {
+    gap: .55rem;
+  }
+
+  .baba-hero h1 {
+    font-size: clamp(1.85rem, 10vw, 3rem);
   }
 
   .baba-modal {

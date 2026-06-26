@@ -10,7 +10,7 @@
   <link rel="icon" type="image/png" href="img/logo.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
   <meta name="theme-color" content="#07140f">
-  <title>Baba - Copa PSYZON</title>
+  <title>Baba Amigos de Henrique</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -89,7 +89,7 @@
   <header class="baba-topbar">
     <a href="index.html" class="baba-brand" aria-label="Voltar ao Dashboard">
       <img src="img/logo.png" alt="PSYZON">
-      <span>Copa Baba</span>
+      <span>Baba Amigos</span>
     </a>
     <nav class="baba-nav" aria-label="Navegacao principal">
       <button id="mode-reset-btn" type="button">Trocar modo</button>
@@ -136,7 +136,7 @@
       <section class="baba-hero">
         <div class="baba-hero__copy">
           <span class="baba-kicker"><svg><use href="#baba-ball"></use></svg><span id="active-status-label">Nenhum baba aberto</span></span>
-          <h1>Baba da Copa</h1>
+          <h1>Baba Amigos de Henrique</h1>
           <p id="active-baba-subtitle">Crie o baba de hoje para iniciar a convocacao e o sorteio dos times.</p>
           <div class="baba-hero__actions organizer-only">
             <button id="create-today-btn" class="baba-primary" type="button">Criar Baba de Hoje</button>
@@ -211,6 +211,22 @@
               <span>Pontos e gols</span>
             </div>
             <div id="standings-list" class="baba-standings"></div>
+          </article>
+
+          <article class="baba-card">
+            <div class="baba-card__head">
+              <h2>Artilheiros do dia</h2>
+              <span>Top 5</span>
+            </div>
+            <div id="daily-top-scorers" class="baba-ranking baba-ranking--compact"></div>
+          </article>
+
+          <article class="baba-card">
+            <div class="baba-card__head">
+              <h2>Historico do baba atual</h2>
+              <span>Jogos</span>
+            </div>
+            <div id="current-games-list" class="baba-stack"></div>
           </article>
 
           <article class="baba-card baba-card--wide">
@@ -330,6 +346,26 @@
         <button id="close-goal-modal" class="baba-mini-btn" type="button">Fechar</button>
       </div>
       <div id="goal-player-list" class="baba-goal-player-list"></div>
+    </div>
+  </div>
+
+  <div id="team-detail-modal" class="baba-modal hidden" role="dialog" aria-modal="true" aria-labelledby="team-detail-title">
+    <div class="baba-modal__panel">
+      <div class="baba-card__head">
+        <h2 id="team-detail-title">Time</h2>
+        <button id="close-team-detail-modal" class="baba-mini-btn" type="button">Fechar</button>
+      </div>
+      <div id="team-detail-list" class="baba-stack"></div>
+    </div>
+  </div>
+
+  <div id="game-detail-modal" class="baba-modal hidden" role="dialog" aria-modal="true" aria-labelledby="game-detail-title">
+    <div class="baba-modal__panel">
+      <div class="baba-card__head">
+        <h2 id="game-detail-title">Jogo</h2>
+        <button id="close-game-detail-modal" class="baba-mini-btn" type="button">Fechar</button>
+      </div>
+      <div id="game-detail-list" class="baba-stack"></div>
     </div>
   </div>
 
