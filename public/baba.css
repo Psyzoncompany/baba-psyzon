@@ -1140,3 +1140,363 @@ body.baba-player-mode .baba-organizer-layout {
     transition-duration: .01ms !important;
   }
 }
+
+/* v6.1 - professional card organization and responsive polish */
+.baba-shell {
+  display: grid;
+  gap: .85rem;
+}
+
+.baba-app {
+  display: grid;
+  gap: .85rem;
+}
+
+.baba-card,
+.baba-metrics article,
+.baba-team,
+.baba-modal__panel {
+  border-color: rgba(220, 252, 231, .14);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .26), inset 0 1px 0 rgba(255, 255, 255, .10);
+}
+
+.baba-card {
+  padding: .85rem;
+}
+
+.baba-card__head {
+  min-height: 30px;
+  margin-bottom: .65rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid rgba(220, 252, 231, .09);
+}
+
+.baba-card__head h2 {
+  font-size: .94rem;
+  line-height: 1.1;
+}
+
+.baba-card__head span {
+  font-size: .64rem;
+  white-space: nowrap;
+}
+
+.baba-grid--live {
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr);
+  gap: .75rem;
+}
+
+.baba-grid--live .baba-card--wide {
+  grid-column: auto;
+}
+
+.baba-grid--live .baba-card:nth-child(3),
+.baba-grid--live .baba-card:nth-child(6) {
+  grid-column: 1 / -1;
+}
+
+.baba-metrics {
+  gap: .58rem;
+  margin-bottom: .75rem;
+}
+
+.baba-metrics article {
+  min-height: 4.85rem;
+  padding: .65rem;
+}
+
+.baba-metrics span {
+  font-size: .62rem;
+}
+
+.baba-metrics strong {
+  font-size: clamp(1.05rem, 1.7vw, 1.55rem);
+}
+
+.baba-metrics small {
+  font-size: .64rem;
+}
+
+.baba-hero {
+  min-height: 15.5rem;
+  margin-bottom: .1rem;
+  padding: clamp(.85rem, 2vw, 1.25rem);
+}
+
+.baba-hero__copy {
+  gap: .58rem;
+}
+
+.baba-hero p {
+  max-width: 34rem;
+  font-size: .9rem;
+}
+
+.baba-hero__actions {
+  gap: .45rem;
+}
+
+.baba-hero__actions .baba-primary,
+.baba-hero__actions .baba-secondary {
+  min-height: 38px;
+  padding: .5rem .7rem;
+}
+
+.baba-scoreboard {
+  align-self: end;
+  padding: .58rem;
+}
+
+.baba-scoreboard strong {
+  font-size: clamp(.98rem, 1.8vw, 1.35rem);
+}
+
+.baba-scoreboard__score {
+  min-width: 5.4rem;
+}
+
+.baba-tabs {
+  top: .75rem;
+  margin-bottom: .75rem;
+  padding: .4rem;
+  gap: .36rem;
+}
+
+.baba-tabs button {
+  min-width: 6.7rem;
+  min-height: 36px;
+  padding: .48rem .62rem;
+  font-size: .72rem;
+}
+
+.baba-row,
+.baba-history-item,
+.baba-player-admin,
+.baba-present-item,
+.baba-empty {
+  padding: .58rem .64rem;
+}
+
+.baba-stack,
+.baba-ranking,
+.baba-history,
+.baba-present-grid,
+.baba-player-list,
+.baba-goal-player-list {
+  gap: .42rem;
+}
+
+.baba-match-live {
+  gap: .58rem;
+  padding: .75rem;
+}
+
+.baba-match-live__teams {
+  gap: .48rem;
+}
+
+.baba-match-live__teams strong {
+  font-size: clamp(1.05rem, 2vw, 1.65rem);
+}
+
+.baba-match-live__teams span {
+  font-size: clamp(1.55rem, 3.6vw, 2.25rem);
+}
+
+.baba-live-actions {
+  gap: .42rem;
+}
+
+.baba-goal-btn,
+.baba-goal-player,
+.baba-primary,
+.baba-secondary,
+.baba-mini-btn {
+  border-radius: 8px;
+}
+
+.baba-table__row {
+  min-height: 34px;
+}
+
+.baba-table__head {
+  min-height: 30px;
+}
+
+.baba-team {
+  min-height: 9.5rem;
+  padding: .82rem;
+}
+
+.baba-team h3 {
+  font-size: 1.08rem;
+}
+
+.baba-team__stats {
+  gap: .32rem;
+}
+
+.baba-team__stats span {
+  padding: .38rem;
+}
+
+.baba-modal__panel {
+  padding: .85rem;
+}
+
+@media (min-width: 1180px) {
+  .baba-teams-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .baba-organizer-layout {
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .baba-grid,
+  .baba-grid--live,
+  .baba-organizer-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .baba-grid--live .baba-card--wide,
+  .baba-grid--live .baba-card:nth-child(3),
+  .baba-grid--live .baba-card:nth-child(6) {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .baba-page {
+    padding: .5rem;
+  }
+
+  .baba-shell {
+    width: 100%;
+    margin-top: .5rem;
+  }
+
+  .baba-app {
+    gap: .58rem;
+  }
+
+  .baba-topbar {
+    width: 100%;
+    margin-top: 0;
+    padding: .45rem;
+  }
+
+  .baba-hero {
+    min-height: auto;
+    gap: .6rem;
+    padding: .72rem;
+  }
+
+  .baba-hero h1 {
+    font-size: clamp(1.62rem, 9vw, 2.35rem);
+  }
+
+  .baba-hero p {
+    font-size: .78rem;
+  }
+
+  .baba-scoreboard {
+    gap: .42rem;
+  }
+
+  .baba-scoreboard__score {
+    font-size: 1.5rem;
+  }
+
+  .baba-tabs {
+    top: .35rem;
+    padding: .34rem;
+    margin-bottom: .58rem;
+  }
+
+  .baba-tabs button {
+    min-width: 5.7rem;
+    min-height: 34px;
+    padding: .42rem .5rem;
+    font-size: .66rem;
+  }
+
+  .baba-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .38rem;
+  }
+
+  .baba-metrics article {
+    min-height: 4.1rem;
+    padding: .48rem .34rem;
+  }
+
+  .baba-metrics span {
+    font-size: .52rem;
+  }
+
+  .baba-metrics strong {
+    font-size: .95rem;
+  }
+
+  .baba-metrics small {
+    display: none;
+  }
+
+  .baba-card {
+    padding: .68rem;
+  }
+
+  .baba-card__head {
+    margin-bottom: .48rem;
+    padding-bottom: .38rem;
+  }
+
+  .baba-card__head h2 {
+    font-size: .86rem;
+  }
+
+  .baba-match-live {
+    padding: .62rem;
+  }
+
+  .baba-live-actions,
+  .baba-live-actions--single {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .baba-goal-btn,
+  .baba-mini-btn,
+  .baba-primary,
+  .baba-secondary {
+    min-height: 38px;
+    padding: .45rem .5rem;
+    font-size: .7rem;
+  }
+
+  .baba-table__row {
+    grid-template-columns: minmax(4.2rem, 1fr) repeat(6, minmax(1.15rem, .22fr));
+    font-size: .58rem;
+  }
+
+  .baba-row,
+  .baba-history-item,
+  .baba-player-admin,
+  .baba-present-item,
+  .baba-empty {
+    padding: .5rem .54rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .baba-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .baba-live-actions,
+  .baba-live-actions--single {
+    grid-template-columns: 1fr;
+  }
+}
