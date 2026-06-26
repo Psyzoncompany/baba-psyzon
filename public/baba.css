@@ -580,6 +580,11 @@
   padding: 1rem;
 }
 
+.baba-team--reveal {
+  width: min(100%, 46rem);
+  margin: 0 auto;
+}
+
 .baba-team h3 {
   margin: 0;
   color: #fff;
@@ -615,6 +620,29 @@
   display: flex;
   flex-wrap: wrap;
   gap: .42rem;
+}
+
+.baba-team-reveal-actions {
+  display: grid;
+  gap: .4rem;
+  padding-top: .65rem;
+  border-top: 1px solid rgba(220, 252, 231, .1);
+}
+
+.baba-team-reveal-actions span {
+  color: var(--baba-muted);
+  font-size: .72rem;
+  font-weight: 800;
+}
+
+.baba-team-reveal-actions--all,
+.baba-team-reveal-actions--single {
+  width: min(100%, 46rem);
+  margin: 0 auto;
+}
+
+.baba-team-reveal-actions--all {
+  grid-column: 1 / -1;
 }
 
 .baba-pill {
@@ -853,6 +881,24 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
+}
+
+.baba-scoreboard .baba-team-link,
+.baba-match-live__teams .baba-team-link,
+.baba-team h3 .baba-team-link,
+.baba-row strong .baba-team-link,
+.baba-row b .baba-team-link {
+  max-width: 100%;
+  color: inherit;
+}
+
+.baba-match-live__teams .baba-team-link {
+  text-align: center;
+}
+
+.baba-team h3 .baba-team-link {
+  font-size: inherit;
+  line-height: inherit;
 }
 
 .baba-team-link:hover {

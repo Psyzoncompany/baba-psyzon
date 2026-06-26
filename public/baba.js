@@ -212,12 +212,38 @@
     return state.babas.find((baba) => baba.id === state.activeBabaId) || null;
   }
 
+  function getBabaById(id) {
+    return state.babas.find((baba) => baba.id === id) || null;
+  }
+
   function getPlayer(id) {
     return state.players.find((player) => player.id === id) || null;
   }
 
   function getTeam(baba, id) {
     return baba?.teams?.find((team) => team.id === id) || null;
+  }
+
+  function teamNamesFromValue(baba, value) {
+    return String(value || '')
+      .split(',')
+      .map((id) => getTeam(baba, id)?.name)
+      .filter(Boolean)
+      .join(', ') || '-';
+  }
+
+  function teamDetailButton(baba, team, fallback = 'Time') {
+    if (!team) return escapeHTML(fallback);
+    return `<button class="baba-team-link" type="button" data-team-detail-id="${team.id}" data-team-detail-baba-id="${baba?.id || ''}">${escapeHTML(team.name)}</button>`;
+  }
+
+  function teamButtonsFromValue(baba, value) {
+    const buttons = String(value || '')
+      .split(',')
+      .map((id) => getTeam(baba, id))
+      .filter(Boolean)
+      .map((team) => teamDetailButton(baba, team));
+    return buttons.length ? buttons.join(', ') : '-';
   }
 
   function teamLabel(team) {
@@ -294,6 +320,8 @@
       rankingDoBaba: {},
       campeaoDoBaba: null,
       lastResult: null,
+      pendingTieBreak: null,
+      teamRevealIndex: 0,
       undoStack: [],
       criadoEm: Date.now(),
       finalizadoEm: null,
@@ -381,11 +409,18 @@
     if (checked) presentSet.add(playerId);
     else presentSet.delete(playerId);
     baba.jogadoresPresentes = Array.from(presentSet);
+    if (baba.teams?.length) {
+      saveState('Presenca atualizada. Os times sorteados foram mantidos.');
+      return;
+    }
+
     baba.teams = [];
     baba.filaTimes = [];
     baba.jogoAtual = null;
     baba.jogos = [];
     baba.lastResult = null;
+    baba.pendingTieBreak = null;
+    baba.teamRevealIndex = 0;
     baba.status = 'aberto';
     saveState('Lista de presentes atualizada.');
   }
@@ -395,6 +430,11 @@
     const baba = getActiveBaba();
     if (!baba) return showToast('Crie um baba primeiro.');
     if (baba.status === 'finalizado') return showToast('Este baba ja foi finalizado.');
+    if (baba.teams?.length) {
+      setActiveTab('teams');
+      showToast('Times ja sorteados. Os jogadores novos nao alteram os times prontos.');
+      return;
+    }
 
     const presentPlayers = (baba.jogadoresPresentes || [])
       .map(getPlayer)
@@ -435,10 +475,26 @@
     baba.jogoAtual = null;
     baba.jogos = [];
     baba.lastResult = null;
+    baba.pendingTieBreak = null;
+    baba.teamRevealIndex = 0;
     baba.status = 'times';
     baba.undoStack = [];
     saveState('Times sorteados com equilibrio e goleiros distribuidos.');
     setActiveTab('teams');
+  }
+
+  function advanceTeamReveal() {
+    const baba = getActiveBaba();
+    if (!baba?.teams?.length) return;
+    baba.teamRevealIndex = Math.min((baba.teamRevealIndex || 0) + 1, baba.teams.length - 1);
+    saveState();
+  }
+
+  function restartTeamReveal() {
+    const baba = getActiveBaba();
+    if (!baba?.teams?.length) return;
+    baba.teamRevealIndex = 0;
+    saveState();
   }
 
   function startFirstGame() {
@@ -654,6 +710,8 @@
     let timeQueSaiu = null;
     let decididoPorSorteio = false;
     let motivoSaida = 'derrota';
+    let pendingTieBreak = null;
+    let nextMatchPair = null;
 
     teamA.golsPro += scoreA;
     teamA.golsContra += scoreB;
@@ -665,11 +723,31 @@
       teamB.pontos += 1;
       teamA.empates += 1;
       teamB.empates += 1;
-      decididoPorSorteio = true;
-      motivoSaida = 'sorteio por empate';
-      const sorted = shuffle([teamA.id, teamB.id]);
-      timeQueContinuou = sorted[0];
-      timeQueSaiu = sorted[1];
+      motivoSaida = baba.teams.length >= 4 ? 'empate: dois times sairam' : 'empate aguardando sorteio';
+
+      if (baba.teams.length >= 4) {
+        timeQueContinuou = null;
+        timeQueSaiu = `${teamA.id},${teamB.id}`;
+        const nextQueue = [...(baba.filaTimes || []), teamA.id, teamB.id];
+        const nextA = nextQueue.shift();
+        const nextB = nextQueue.shift();
+        baba.filaTimes = nextQueue;
+        nextMatchPair = nextA && nextB ? [nextA, nextB] : null;
+      } else if (baba.teams.length === 3) {
+        decididoPorSorteio = true;
+        pendingTieBreak = {
+          gameNumber: match.numeroJogo,
+          tiedTeams: [teamA.id, teamB.id],
+          queue: [...(baba.filaTimes || [])],
+          createdAt: Date.now(),
+        };
+      } else {
+        decididoPorSorteio = true;
+        const sorted = shuffle([teamA.id, teamB.id]);
+        timeQueContinuou = sorted[0];
+        timeQueSaiu = sorted[1];
+        motivoSaida = 'sorteio por empate';
+      }
     } else if (scoreA > scoreB) {
       vencedor = teamA.id;
       perdedor = teamB.id;
@@ -707,15 +785,13 @@
       timeQueSaiu,
       motivoSaida,
       decididoPorSorteio,
+      pendingTieBreak: Boolean(pendingTieBreak),
       finalizadoEm: Date.now(),
     };
 
     baba.jogos.push(savedGame);
     baba.rankingDoBaba = calculateDailyRanking(baba);
 
-    const nextQueue = [...(baba.filaTimes || []), timeQueSaiu];
-    const nextTeamId = nextQueue.shift();
-    baba.filaTimes = nextQueue;
     baba.lastResult = {
       jogo: savedGame.numeroJogo,
       resumo: `${teamA.name} ${scoreA} x ${scoreB} ${teamB.name}`,
@@ -725,15 +801,60 @@
       decididoPorSorteio,
     };
 
-    if (nextTeamId && timeQueContinuou) {
-      baba.jogoAtual = buildMatch(baba, timeQueContinuou, nextTeamId);
+    if (pendingTieBreak) {
+      baba.pendingTieBreak = pendingTieBreak;
+      baba.jogoAtual = null;
+      baba.status = 'empate_pendente';
+    } else if (nextMatchPair) {
+      baba.pendingTieBreak = null;
+      baba.jogoAtual = buildMatch(baba, nextMatchPair[0], nextMatchPair[1]);
       baba.status = 'preparado';
     } else {
-      baba.jogoAtual = null;
-      baba.status = 'times';
+      const nextQueue = [...(baba.filaTimes || []), timeQueSaiu].filter(Boolean);
+      const nextTeamId = nextQueue.shift();
+      baba.filaTimes = nextQueue;
+      baba.pendingTieBreak = null;
+      if (nextTeamId && timeQueContinuou) {
+        baba.jogoAtual = buildMatch(baba, timeQueContinuou, nextTeamId);
+        baba.status = 'preparado';
+      } else {
+        baba.jogoAtual = null;
+        baba.status = 'times';
+      }
     }
 
-    saveState(empate ? 'Jogo salvo. Proxima partida preparada.' : 'Jogo salvo. Proxima partida preparada.');
+    if (pendingTieBreak) {
+      saveState('Empate salvo. Sorteie o proximo confronto.');
+    } else {
+      saveState(empate && baba.teams.length >= 4 ? 'Empate salvo. Os dois times sairam e os proximos entraram.' : 'Jogo salvo. Proxima partida preparada.');
+    }
+  }
+
+  function resolveThreeTeamTie() {
+    if (!requireOrganizer()) return;
+    const baba = getActiveBaba();
+    const pending = baba?.pendingTieBreak;
+    if (!baba || !pending) return showToast('Nao ha empate pendente para sortear.');
+
+    const tiedTeams = pending.tiedTeams || [];
+    const queue = [...(pending.queue || baba.filaTimes || [])];
+    const nextTeamId = queue.shift();
+    if (!nextTeamId || tiedTeams.length < 2) return showToast('Nao foi possivel montar o proximo jogo.');
+
+    const chosen = shuffle(tiedTeams)[0];
+    const out = tiedTeams.find((id) => id !== chosen);
+    baba.filaTimes = [...queue, out].filter(Boolean);
+    baba.jogoAtual = buildMatch(baba, chosen, nextTeamId);
+    baba.pendingTieBreak = null;
+    baba.status = 'preparado';
+    baba.lastResult = {
+      ...(baba.lastResult || {}),
+      timeQueContinuou: chosen,
+      timeQueSaiu: out,
+      motivoSaida: 'sorteio por empate',
+      decididoPorSorteio: true,
+    };
+    saveState(`${getTeam(baba, chosen)?.name || 'Time'} continua apos sorteio.`);
   }
 
   function undoLastGame() {
@@ -941,6 +1062,11 @@
       els.activeSubtitle.textContent = 'Crie o baba de hoje para iniciar a convocacao e o sorteio dos times.';
       els.dateInput.value = todayISO();
     }
+
+    const hasOpenBaba = Boolean(baba && baba.status !== 'finalizado');
+    els.createToday.classList.toggle('hidden', hasOpenBaba);
+    els.saveHistory.classList.toggle('hidden', !hasOpenBaba);
+    els.saveHistory.textContent = 'Finalizar e Salvar Baba de Hoje';
   }
 
   function renderMetrics(baba) {
@@ -949,8 +1075,8 @@
     const teamB = getTeam(baba, current?.timeB);
     const nextTeam = getTeam(baba, baba?.filaTimes?.[0]);
 
-    els.fieldTeamA.textContent = teamLabel(teamA);
-    els.fieldTeamB.textContent = teamLabel(teamB);
+    els.fieldTeamA.innerHTML = teamA ? teamDetailButton(baba, teamA) : teamLabel(teamA);
+    els.fieldTeamB.innerHTML = teamB ? teamDetailButton(baba, teamB) : teamLabel(teamB);
     els.liveScore.textContent = current ? `${current.placarA || 0} x ${current.placarB || 0}` : '0 x 0';
     els.metricPresent.textContent = String(baba?.jogadoresPresentes?.length || 0);
     els.metricTeams.textContent = String(baba?.teams?.length || 0);
@@ -1008,11 +1134,14 @@
       return;
     }
 
-    els.teamsGrid.innerHTML = baba.teams.map((team) => `
-      <article class="baba-team">
+    const index = Math.min(Math.max(Number(baba.teamRevealIndex || 0), 0), baba.teams.length - 1);
+    const fullyRevealed = index >= baba.teams.length - 1;
+
+    const renderTeamCard = (team, position, { reveal = false } = {}) => `
+      <article class="baba-team ${reveal ? 'baba-team--reveal' : ''}">
         <div>
-          <small>Time</small>
-          <h3>${escapeHTML(team.name)}</h3>
+          <small>${fullyRevealed ? 'Time sorteado' : `Time ${position + 1} de ${baba.teams.length}`}</small>
+          <h3>${teamDetailButton(baba, team)}</h3>
         </div>
         <div class="baba-team__stats">
           <span><b>${team.pontos}</b>Pts</span>
@@ -1024,7 +1153,27 @@
           ${team.jogadores.map((id) => `<span class="baba-pill">${escapeHTML(playerName(id))}</span>`).join('')}
         </div>
       </article>
-    `).join('');
+    `;
+
+    if (fullyRevealed) {
+      els.teamsGrid.innerHTML = `
+        ${baba.teams.map((team, position) => renderTeamCard(team, position)).join('')}
+        <div class="baba-team-reveal-actions baba-team-reveal-actions--all">
+          <button class="baba-secondary" type="button" data-action="restart-team-reveal">Rever sorteio</button>
+          <span>Todos os times foram revelados. Clique no nome de qualquer time para ver os jogadores.</span>
+        </div>
+      `;
+      return;
+    }
+
+    const team = baba.teams[index];
+    els.teamsGrid.innerHTML = `
+      ${renderTeamCard(team, index, { reveal: true })}
+      <div class="baba-team-reveal-actions baba-team-reveal-actions--single">
+        <button class="baba-primary" type="button" data-action="advance-team-reveal">Ver proximo time</button>
+        <span>Avance para revelar o proximo time sorteado.</span>
+      </div>
+    `;
   }
 
   function renderStandings(baba) {
@@ -1047,7 +1196,7 @@
         </div>
         ${teams.map((team) => `
           <div class="baba-table__row">
-            <button class="baba-team-link" type="button" data-team-detail-id="${team.id}">${escapeHTML(team.name)}</button>
+            ${teamDetailButton(baba, team)}
             <b>${team.pontos}</b>
             <span>${team.golsPro}</span>
             <span>${team.golsPro - team.golsContra}</span>
@@ -1102,17 +1251,18 @@
       return;
     }
     els.currentGamesList.innerHTML = games.slice().reverse().map((game) => `
-      <button class="baba-history-item baba-history-item--compact" type="button" data-current-game="${game.numeroJogo}">
+      <div class="baba-history-item baba-history-item--compact">
         <span>
-          <strong>Jogo ${game.numeroJogo}: ${escapeHTML(game.timeANome)} ${game.placarA} x ${game.placarB} ${escapeHTML(game.timeBNome)}</strong>
+          <strong>Jogo ${game.numeroJogo}: ${teamDetailButton(baba, getTeam(baba, game.timeA), game.timeANome)} ${game.placarA} x ${game.placarB} ${teamDetailButton(baba, getTeam(baba, game.timeB), game.timeBNome)}</strong>
           <small>${formatTime(game.finalizadoEm)}</small>
         </span>
-      </button>
+        <button class="baba-mini-btn" type="button" data-current-game="${game.numeroJogo}">Gols</button>
+      </div>
     `).join('');
   }
 
-  function openTeamDetail(teamId) {
-    const baba = getActiveBaba();
+  function openTeamDetail(teamId, babaId = null) {
+    const baba = getBabaById(babaId) || getActiveBaba();
     const team = getTeam(baba, teamId);
     if (!team) return;
 
@@ -1153,7 +1303,7 @@
     els.gameDetailTitle.textContent = `Jogo ${game.numeroJogo}`;
     els.gameDetailList.innerHTML = `
       <div class="baba-row">
-        <strong>${escapeHTML(game.timeANome)} ${game.placarA} x ${game.placarB} ${escapeHTML(game.timeBNome)}</strong>
+        <strong>${teamDetailButton(baba, getTeam(baba, game.timeA), game.timeANome)} ${game.placarA} x ${game.placarB} ${teamDetailButton(baba, getTeam(baba, game.timeB), game.timeBNome)}</strong>
         <b>${game.empate ? 'Empate' : 'Vitoria'}</b>
       </div>
       ${events.length ? events.map((goal) => `
@@ -1175,7 +1325,13 @@
     const teamB = getTeam(baba, match?.timeB);
     els.matchNumberPill.textContent = match ? `Jogo ${match.numeroJogo}` : 'Jogo 0';
 
-    if (!match || !teamA || !teamB) {
+    if (baba?.pendingTieBreak) {
+      const tied = (baba.pendingTieBreak.tiedTeams || []).map((id) => getTeam(baba, id)?.name).filter(Boolean).join(' x ');
+      els.currentMatchPanel.innerHTML = `
+        <div class="baba-empty">Empate em ${escapeHTML(tied)}. Sorteie qual time continua e qual sera o proximo confronto.</div>
+        ${isOrganizer() ? '<div class="baba-live-actions baba-live-actions--single"><button class="baba-primary" type="button" data-action="resolve-three-team-tie">Sortear proximo time</button></div>' : ''}
+      `;
+    } else if (!match || !teamA || !teamB) {
       const canStart = isOrganizer() && baba?.teams?.length >= 2;
       els.currentMatchPanel.innerHTML = `
         <div class="baba-empty">Nenhum jogo iniciado.</div>
@@ -1215,9 +1371,9 @@
         <div class="baba-match-live">
           <div class="baba-timer ${isOver ? 'is-over' : ''}" id="current-timer">${isPrepared ? 'Aguardando inicio' : (remaining ? formatCountdown(remaining) : 'Tempo esgotado')}</div>
           <div class="baba-match-live__teams">
-            <strong>${escapeHTML(teamA.name)}</strong>
+            <strong>${teamDetailButton(baba, teamA)}</strong>
             <span>${Number(match.placarA || 0)} x ${Number(match.placarB || 0)}</span>
-            <strong>${escapeHTML(teamB.name)}</strong>
+            <strong>${teamDetailButton(baba, teamB)}</strong>
           </div>
           ${organizerControls}
           <div class="baba-match-live__meta">
@@ -1237,7 +1393,7 @@
         return `
           <div class="baba-row">
             <div>
-              <strong>${escapeHTML(team?.name || 'Time')}</strong>
+              <strong>${teamDetailButton(baba, team)}</strong>
               <small>${index === 0 ? 'Proximo a entrar' : 'Aguardando'}</small>
             </div>
             <b>#${index + 1}</b>
@@ -1251,7 +1407,7 @@
       els.lastResultPanel.innerHTML = '<div class="baba-empty">Finalize um jogo para ver quem fica em campo e quem sai.</div>';
     } else {
       const keep = getTeam(baba, baba.lastResult.timeQueContinuou);
-      const out = getTeam(baba, baba.lastResult.timeQueSaiu);
+      const outNames = teamNamesFromValue(baba, baba.lastResult.timeQueSaiu);
       els.lastResultPill.textContent = `Jogo ${baba.lastResult.jogo}`;
       els.lastResultPanel.innerHTML = `
         <div class="baba-row">
@@ -1260,8 +1416,8 @@
             <small>${baba.lastResult.decididoPorSorteio ? 'Empate: rodizio definido por sorteio' : 'Resultado normal'}</small>
           </div>
         </div>
-        <div class="baba-row"><span>Continua em campo</span><b>${escapeHTML(keep?.name || '-')}</b></div>
-        <div class="baba-row"><span>Saiu para a fila</span><b>${escapeHTML(out?.name || '-')}</b></div>
+        <div class="baba-row"><span>Continua em campo</span><b>${teamDetailButton(baba, keep, '-')}</b></div>
+        <div class="baba-row"><span>Saiu para a fila</span><b>${teamButtonsFromValue(baba, baba.lastResult.timeQueSaiu) || escapeHTML(outNames)}</b></div>
         <div class="baba-row"><span>Motivo</span><b>${escapeHTML(baba.lastResult.motivoSaida)}</b></div>
       `;
     }
@@ -1276,7 +1432,7 @@
 
   function sortRanking(ranking) {
     return Object.values(ranking || {})
-      .filter((stats) => stats.totalBabas || stats.totalGols || stats.totalVitorias || stats.totalEmpates || stats.totalDerrotas || state.players.some((p) => p.id === stats.jogadorId))
+      .filter((stats) => Number(stats.totalGols || 0) > 0)
       .sort((a, b) => (
         b.totalGols - a.totalGols ||
         b.totalVitorias - a.totalVitorias ||
@@ -1350,7 +1506,7 @@
         ${(baba.teams || []).map((team) => `
           <div class="baba-row">
             <div>
-              <strong>${escapeHTML(team.name)} - ${team.pontos} pts</strong>
+              <strong>${teamDetailButton(baba, team)} - ${team.pontos} pts</strong>
               <small>V:${team.vitorias} E:${team.empates} D:${team.derrotas} GP:${team.golsPro} GC:${team.golsContra}</small>
             </div>
           </div>
@@ -1358,8 +1514,8 @@
         ${(baba.jogos || []).map((game) => `
           <div class="baba-row">
             <div>
-              <strong>Jogo ${game.numeroJogo}: ${escapeHTML(game.timeANome)} ${game.placarA} x ${game.placarB} ${escapeHTML(game.timeBNome)}</strong>
-              <small>Continua: ${escapeHTML(getTeam(baba, game.timeQueContinuou)?.name || '-')} | Saiu: ${escapeHTML(getTeam(baba, game.timeQueSaiu)?.name || '-')} | ${escapeHTML(game.motivoSaida || '-')}</small>
+              <strong>Jogo ${game.numeroJogo}: ${teamDetailButton(baba, getTeam(baba, game.timeA), game.timeANome)} ${game.placarA} x ${game.placarB} ${teamDetailButton(baba, getTeam(baba, game.timeB), game.timeBNome)}</strong>
+              <small>Continua: ${teamDetailButton(baba, getTeam(baba, game.timeQueContinuou), '-')} | Saiu: ${teamButtonsFromValue(baba, game.timeQueSaiu)} | ${escapeHTML(game.motivoSaida || '-')}</small>
             </div>
           </div>
         `).join('')}
@@ -1470,12 +1626,15 @@
       if (actionButton?.dataset.action === 'start-prepared-match') return startPreparedMatch();
       if (actionButton?.dataset.action === 'pause-time') return pauseMatchTimer();
       if (actionButton?.dataset.action === 'edit-time') return editMatchTime();
+      if (actionButton?.dataset.action === 'resolve-three-team-tie') return resolveThreeTeamTie();
+      if (actionButton?.dataset.action === 'advance-team-reveal') return advanceTeamReveal();
+      if (actionButton?.dataset.action === 'restart-team-reveal') return restartTeamReveal();
 
       const goalPlayerButton = event.target.closest('[data-goal-player-id]');
       if (goalPlayerButton) return registerGoal(goalPlayerButton.dataset.goalPlayerId);
 
       const teamButton = event.target.closest('[data-team-detail-id]');
-      if (teamButton) return openTeamDetail(teamButton.dataset.teamDetailId);
+      if (teamButton) return openTeamDetail(teamButton.dataset.teamDetailId, teamButton.dataset.teamDetailBabaId);
 
       const currentGameButton = event.target.closest('[data-current-game]');
       if (currentGameButton) return openCurrentGameDetail(currentGameButton.dataset.currentGame);

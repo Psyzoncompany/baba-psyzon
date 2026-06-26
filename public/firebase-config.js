@@ -61,7 +61,7 @@ let autosaveTimer = null;
 let autosaveInFlight = null;
 let unsubscribeCloudSync = null;
 const activeListeners = [];
-const AUTOSAVE_DELAY_MS = 900;
+const AUTOSAVE_DELAY_MS = 350;
 let floatingSaveButton = null;
 let realtimeRefreshTimer = null;
 
