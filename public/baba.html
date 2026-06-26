@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="scroll-smooth">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/png" href="img/logo.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
+  <meta name="theme-color" content="#07140f">
+  <title>Baba - Copa PSYZON</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link href="style.css" rel="stylesheet">
+  <link href="baba.css" rel="stylesheet">
+  <script>
+    if (window.location.protocol !== 'file:') {
+      const manifest = document.createElement('link');
+      manifest.rel = 'manifest';
+      manifest.href = 'manifest.webmanifest';
+      document.head.appendChild(manifest);
+
+      const firebaseScript = document.createElement('script');
+      firebaseScript.type = 'module';
+      firebaseScript.src = 'firebase-config.js';
+      document.head.appendChild(firebaseScript);
+    } else {
+      window.BackendInitialized = true;
+      window.firebaseAuth = {
+        logout: () => { window.location.href = 'login.html'; },
+        currentUser: () => null,
+      };
+    }
+  </script>
+</head>
+
+<body class="baba-page">
+  <div id="initial-loader" class="initial-skeleton" role="status" aria-live="polite" aria-label="Carregando Baba">
+    <div class="initial-skeleton-shell" aria-hidden="true">
+      <div class="initial-skeleton-topbar">
+        <div class="initial-skeleton-block initial-skeleton-logo"></div>
+        <div class="initial-skeleton-nav">
+          <div class="initial-skeleton-block initial-skeleton-chip"></div>
+          <div class="initial-skeleton-block initial-skeleton-chip"></div>
+          <div class="initial-skeleton-block initial-skeleton-chip"></div>
+        </div>
+      </div>
+      <div class="initial-skeleton-main">
+        <div class="initial-skeleton-block initial-skeleton-title"></div>
+        <div class="initial-skeleton-block initial-skeleton-subtitle"></div>
+        <div class="initial-skeleton-kpi-grid">
+          <div class="initial-skeleton-block initial-skeleton-kpi"></div>
+          <div class="initial-skeleton-block initial-skeleton-kpi"></div>
+          <div class="initial-skeleton-block initial-skeleton-kpi"></div>
+        </div>
+      </div>
+    </div>
+    <span class="initial-skeleton-text">Carregando sistema do Baba...</span>
+  </div>
+
+  <svg class="baba-symbols" aria-hidden="true" focusable="false">
+    <symbol id="baba-ball" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="29" fill="currentColor" opacity=".16" />
+      <circle cx="32" cy="32" r="27" fill="none" stroke="currentColor" stroke-width="3" />
+      <path d="M32 16 44 25 39 40H25L20 25Z" fill="currentColor" opacity=".88" />
+      <path d="M32 16V7M44 25l11-4M39 40l7 10M25 40l-7 10M20 25 9 21" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+    </symbol>
+    <symbol id="baba-trophy" viewBox="0 0 64 64">
+      <path d="M22 12h20v10c0 11-4 18-10 18s-10-7-10-18V12Z" fill="currentColor" opacity=".9" />
+      <path d="M22 17H11v6c0 8 5 14 13 15M42 17h11v6c0 8-5 14-13 15" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+      <path d="M32 40v10M22 56h20M27 50h10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+    </symbol>
+    <symbol id="baba-whistle" viewBox="0 0 64 64">
+      <path d="M14 38c0-9 7-16 16-16h18v11h-7c-2 9-9 15-18 15-5 0-9-4-9-10Z" fill="currentColor" opacity=".86" />
+      <circle cx="24" cy="38" r="6" fill="#06120d" />
+      <path d="M48 22l7-8M50 33h8" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+    </symbol>
+    <symbol id="baba-users" viewBox="0 0 64 64">
+      <circle cx="24" cy="22" r="9" fill="currentColor" opacity=".9" />
+      <circle cx="43" cy="25" r="7" fill="currentColor" opacity=".55" />
+      <path d="M9 52c2-11 8-17 15-17s13 6 15 17" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+      <path d="M36 50c2-8 7-12 12-12 4 0 8 3 10 10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity=".6" />
+    </symbol>
+  </svg>
+
+  <header class="baba-topbar">
+    <a href="index.html" class="baba-brand" aria-label="Voltar ao Dashboard">
+      <img src="img/logo.png" alt="PSYZON">
+      <span>Copa Baba</span>
+    </a>
+    <nav class="baba-nav" aria-label="Navegacao principal">
+      <button id="mode-reset-btn" type="button">Trocar modo</button>
+      <button id="baba-logout-btn" type="button">Sair</button>
+    </nav>
+  </header>
+
+  <main class="baba-shell">
+    <section id="mode-gateway" class="baba-gateway">
+      <div class="baba-gateway__media">
+        <div class="baba-gateway__badge">
+          <svg><use href="#baba-trophy"></use></svg>
+          Tema Copa do Mundo
+        </div>
+      </div>
+      <div class="baba-gateway__panel">
+        <span class="baba-kicker">Baba em tempo real</span>
+        <h1>Gerencie o baba como uma final.</h1>
+        <p>Crie o baba de hoje, marque presentes, sorteie times, registre placares, controle o rodizio e salve ranking e historico.</p>
+        <div class="baba-mode-grid">
+          <button id="enter-organizer-btn" class="baba-choice" type="button">
+            <svg><use href="#baba-whistle"></use></svg>
+            <span>Entrar como Organizador</span>
+            <small>Libera cadastro, sorteio e placar</small>
+          </button>
+          <button id="enter-player-btn" class="baba-choice" type="button">
+            <svg><use href="#baba-users"></use></svg>
+            <span>Entrar como Jogador</span>
+            <small>Visualizacao do baba e ranking</small>
+          </button>
+        </div>
+        <form id="organizer-password-form" class="baba-password hidden">
+          <label for="organizer-password">Senha do organizador</label>
+          <div>
+            <input id="organizer-password" type="password" inputmode="numeric" autocomplete="off" placeholder="Digite a senha">
+            <button type="submit">Liberar</button>
+          </div>
+          <small id="password-feedback"></small>
+        </form>
+      </div>
+    </section>
+
+    <section id="baba-app" class="baba-app hidden">
+      <section class="baba-hero">
+        <div class="baba-hero__copy">
+          <span class="baba-kicker"><svg><use href="#baba-ball"></use></svg><span id="active-status-label">Nenhum baba aberto</span></span>
+          <h1>Baba da Copa</h1>
+          <p id="active-baba-subtitle">Crie o baba de hoje para iniciar a convocacao e o sorteio dos times.</p>
+          <div class="baba-hero__actions organizer-only">
+            <button id="create-today-btn" class="baba-primary" type="button">Criar Baba de Hoje</button>
+            <button id="save-history-btn" class="baba-secondary" type="button">Salvar no Historico</button>
+          </div>
+        </div>
+        <div class="baba-scoreboard">
+          <div>
+            <span>Campo 1</span>
+            <strong id="field-team-a">Aguardando</strong>
+          </div>
+          <div class="baba-scoreboard__score" id="live-score">0 x 0</div>
+          <div>
+            <span>Campo 2</span>
+            <strong id="field-team-b">Aguardando</strong>
+          </div>
+        </div>
+      </section>
+
+      <nav class="baba-tabs" aria-label="Areas do Baba">
+        <button class="active" type="button" data-tab="dashboard">Ao vivo</button>
+        <button type="button" data-tab="teams">Times</button>
+        <button type="button" data-tab="organizer">Organizador</button>
+        <button type="button" data-tab="ranking">Ranking</button>
+        <button type="button" data-tab="history">Historico</button>
+      </nav>
+
+      <section class="baba-view active" data-view="dashboard">
+        <div class="baba-metrics">
+          <article>
+            <span>Presentes</span>
+            <strong id="metric-present">0</strong>
+            <small>Marcados</small>
+          </article>
+          <article>
+            <span>Times</span>
+            <strong id="metric-teams">0</strong>
+            <small>Sorteados</small>
+          </article>
+          <article>
+            <span>Jogos</span>
+            <strong id="metric-games">0</strong>
+            <small>Salvos</small>
+          </article>
+          <article>
+            <span>Proximo</span>
+            <strong id="metric-next-team">-</strong>
+            <small>Fila</small>
+          </article>
+        </div>
+
+        <div class="baba-grid baba-grid--live">
+          <article class="baba-card">
+            <div class="baba-card__head">
+              <h2>Jogo atual</h2>
+              <span id="match-number-pill">Jogo 0</span>
+            </div>
+            <div id="current-match-panel" class="baba-empty">Nenhum jogo iniciado.</div>
+          </article>
+
+          <article class="baba-card">
+            <div class="baba-card__head">
+              <h2>Fila de espera</h2>
+              <span>Rodizio</span>
+            </div>
+            <div id="queue-list" class="baba-stack"></div>
+          </article>
+
+          <article class="baba-card baba-card--wide">
+            <div class="baba-card__head">
+              <h2>Tabela de times</h2>
+              <span>Pontos e gols</span>
+            </div>
+            <div id="standings-list" class="baba-standings"></div>
+          </article>
+
+          <article class="baba-card baba-card--wide">
+            <div class="baba-card__head">
+              <h2>Ultimo resultado</h2>
+              <span id="last-result-pill">Sem resultado</span>
+            </div>
+            <div id="last-result-panel" class="baba-empty">Finalize um jogo para ver quem fica em campo e quem sai.</div>
+          </article>
+        </div>
+      </section>
+
+      <section class="baba-view" data-view="teams">
+        <div id="teams-grid" class="baba-teams-grid"></div>
+      </section>
+
+      <section class="baba-view" data-view="organizer">
+        <div class="baba-organizer-layout">
+          <article class="baba-card organizer-only">
+            <div class="baba-card__head">
+              <h2>Controle do Baba</h2>
+              <span>Automacao</span>
+            </div>
+            <div class="baba-date-row">
+              <label>
+                Data do baba
+                <input id="baba-date-input" type="date">
+              </label>
+              <button id="update-date-btn" class="baba-secondary" type="button">Atualizar data</button>
+            </div>
+            <div class="baba-action-grid">
+              <button id="mark-present-btn" type="button">Marcar Jogadores Presentes</button>
+              <button id="draw-teams-btn" type="button">Sortear Times</button>
+              <button id="start-first-game-btn" type="button">Iniciar Primeiro Jogo</button>
+              <button id="next-game-btn" type="button">Proximo Jogo Automatico</button>
+              <button id="undo-game-btn" type="button">Desfazer Ultimo Jogo</button>
+              <button id="finish-baba-btn" type="button">Finalizar Baba</button>
+              <button id="reset-current-btn" class="danger" type="button">Resetar Baba Atual</button>
+            </div>
+          </article>
+
+          <article class="baba-card organizer-only">
+            <div class="baba-card__head">
+              <h2>Cadastrar jogador</h2>
+              <span>Lista fixa</span>
+            </div>
+            <form id="player-form" class="baba-player-form">
+              <input id="player-name" type="text" placeholder="Nome do jogador" required>
+              <select id="player-type">
+                <option value="jogador">Jogador de linha</option>
+                <option value="goleiro">Goleiro</option>
+              </select>
+              <button type="submit">Cadastrar</button>
+            </form>
+            <div id="players-admin-list" class="baba-player-list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="baba-view" data-view="ranking">
+        <div class="baba-grid">
+          <article class="baba-card">
+            <div class="baba-card__head">
+              <h2>Ranking geral</h2>
+              <span>Todos os babas</span>
+            </div>
+            <div id="ranking-list" class="baba-ranking"></div>
+          </article>
+          <article class="baba-card">
+            <div class="baba-card__head">
+              <h2>Ranking do dia</h2>
+              <span>Baba atual</span>
+            </div>
+            <div id="daily-ranking-list" class="baba-ranking"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="baba-view" data-view="history">
+        <div class="baba-grid">
+          <article class="baba-card">
+            <div class="baba-card__head">
+              <h2>Historico dos babas</h2>
+              <span id="history-count-label">0 salvos</span>
+            </div>
+            <div id="history-list" class="baba-history"></div>
+          </article>
+          <article class="baba-card">
+            <div class="baba-card__head">
+              <h2>Detalhes</h2>
+              <span id="history-detail-label">Selecione um baba</span>
+            </div>
+            <div id="history-detail" class="baba-empty">Abra um item do historico para ver placares, times, gols e campeoes.</div>
+          </article>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div id="baba-toast" class="baba-toast" role="status" aria-live="polite"></div>
+
+  <div id="present-modal" class="baba-modal hidden" role="dialog" aria-modal="true" aria-labelledby="present-modal-title">
+    <div class="baba-modal__panel">
+      <div class="baba-card__head">
+        <h2 id="present-modal-title">Jogadores presentes</h2>
+        <span id="present-count-label">0 marcados</span>
+      </div>
+      <div id="present-list" class="baba-present-grid"></div>
+      <button id="close-present-modal" class="baba-secondary" type="button">Concluir</button>
+    </div>
+  </div>
+
+  <div id="goal-modal" class="baba-modal hidden" role="dialog" aria-modal="true" aria-labelledby="goal-modal-title">
+    <div class="baba-modal__panel">
+      <div class="baba-card__head">
+        <h2 id="goal-modal-title">Quem fez o gol?</h2>
+        <button id="close-goal-modal" class="baba-mini-btn" type="button">Fechar</button>
+      </div>
+      <div id="goal-player-list" class="baba-goal-player-list"></div>
+    </div>
+  </div>
+
+  <button id="baba-share-fab" class="baba-share-fab" type="button" aria-label="Compartilhar link do Baba"
+    title="Compartilhar Baba">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" aria-hidden="true" focusable="false">
+      <circle cx="48" cy="48" r="40" fill="currentColor" opacity=".12" />
+      <path d="M61 28 36 43M36 53l25 15" fill="none" stroke="currentColor" stroke-width="7"
+        stroke-linecap="round" />
+      <circle cx="66" cy="25" r="10" fill="currentColor" />
+      <circle cx="30" cy="48" r="10" fill="currentColor" />
+      <circle cx="66" cy="71" r="10" fill="currentColor" />
+    </svg>
+  </button>
+
+  <script src="baba.js" defer></script>
+</body>
+
+</html>

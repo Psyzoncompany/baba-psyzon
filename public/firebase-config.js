@@ -86,6 +86,8 @@ const isIndexPage = () => {
     return path === '/' || path.endsWith('/index.html') || path.endsWith('index.html');
 };
 
+const isBabaPage = () => (window.location.pathname || '').endsWith('baba.html');
+
 const updateFloatingSaveButtonState = () => {
     if (!floatingSaveButton) return;
     const isDirty = hasUnsavedChanges;
@@ -1241,12 +1243,41 @@ const scheduleRealtimePageRefresh = ({ source = 'cloud', hasRemoteChange = false
     }, 120);
 };
 
+const createGlobalBabaFab = () => {
+    if (document.body.dataset.babaFabReady === 'true') return;
+    if (window.location.pathname.endsWith('login.html')) return;
+    if (isBabaPage()) return;
+    if (isPessoalPage()) return;
+    if (document.getElementById('baba-fab-global')) return;
+    document.body.dataset.babaFabReady = 'true';
+
+    const fab = document.createElement('a');
+    fab.id = 'baba-fab-global';
+    fab.className = 'baba-fab-global';
+    fab.href = 'baba.html';
+    fab.setAttribute('aria-label', 'Abrir sistema do Baba');
+    fab.title = 'Baba';
+    fab.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" aria-hidden="true" focusable="false">
+            <circle class="baba-fab-ring" cx="48" cy="48" r="40" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-dasharray="74 180" />
+            <circle cx="48" cy="48" r="30" fill="currentColor" opacity=".14" />
+            <circle cx="48" cy="48" r="28" fill="none" stroke="currentColor" stroke-width="4" />
+            <path d="M48 30 61 40 56 57H40L35 40Z" fill="currentColor" />
+            <path d="M48 30V20M61 40l12-5M56 57l8 11M40 57l-8 11M35 40l-12-5" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+        </svg>
+    `;
+    document.body.appendChild(fab);
+};
+
 const bootstrapBackendUI = () => {
     window.BackendInitialized = true;
-    createGlobalCalculator();
-    createFloatingNotes();
-    createDueSoonTasksFab();
-    setupAutomaticTaskReminders();
+    if (!isBabaPage()) {
+        createGlobalCalculator();
+        createFloatingNotes();
+        createDueSoonTasksFab();
+        createGlobalBabaFab();
+        setupAutomaticTaskReminders();
+    }
     hideInitialLoader();
     window.dispatchEvent(new CustomEvent('backend-ready'));
 };
@@ -1373,6 +1404,7 @@ const isFirebaseStorageKey = (key) => typeof key === 'string' && (
     key.startsWith('firebaseLocalStorageDb') ||
     key.includes('firebase')
 );
+const isGuestNativeStorageKey = (key) => isBabaPage() && !auth.currentUser && key === 'psyzon_baba_state_v1';
 
 window.isLocalMode = nativeLocalStorage.getItem('forceLocalMode') === 'true';
 window.__nativeLS = nativeLocalStorage;
@@ -1382,6 +1414,7 @@ if (!window.isLocalMode) {
         value: {
             getItem: (key) => {
                 if (isFirebaseStorageKey(key)) return nativeLocalStorage.getItem(key);
+                if (isGuestNativeStorageKey(key)) return nativeLocalStorage.getItem(key);
                 const val = memoryStore[key];
                 if (val === undefined) return null;
                 // Se for objeto, retorna string JSON (comportamento padrão do localStorage)
@@ -1389,6 +1422,10 @@ if (!window.isLocalMode) {
             },
             setItem: (key, value) => {
                 if (isFirebaseStorageKey(key)) {
+                    nativeLocalStorage.setItem(key, value);
+                    return;
+                }
+                if (isGuestNativeStorageKey(key)) {
                     nativeLocalStorage.setItem(key, value);
                     return;
                 }
@@ -1413,6 +1450,10 @@ if (!window.isLocalMode) {
             },
             removeItem: (key) => {
                 if (isFirebaseStorageKey(key)) {
+                    nativeLocalStorage.removeItem(key);
+                    return;
+                }
+                if (isGuestNativeStorageKey(key)) {
                     nativeLocalStorage.removeItem(key);
                     return;
                 }
@@ -1519,6 +1560,10 @@ if (window.isLocalMode) {
             window.BackendInitialized = false;
             memoryStore = {};
             clearTimeout(autosaveTimer);
+            if (isBabaPage()) {
+                bootstrapBackendUI();
+                return;
+            }
             if (!window.location.pathname.endsWith('login.html')) {
                 window.location.href = '/login.html';
             }
