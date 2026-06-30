@@ -16,6 +16,439 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
   <link href="style.css" rel="stylesheet">
   <link href="baba.css" rel="stylesheet">
+  <style id="baba-light-worldcup-polish">
+    :root {
+      --baba-bg: #f7fbff;
+      --baba-panel: rgba(255, 255, 255, .93);
+      --baba-panel-strong: rgba(255, 255, 255, .98);
+      --baba-line: rgba(15, 23, 42, .13);
+      --baba-line-strong: rgba(16, 185, 129, .44);
+      --baba-text: #172033;
+      --baba-muted: #5a6b83;
+      --baba-gold: #e6a700;
+      --baba-green: #14a46a;
+      --baba-blue: #1987d8;
+      --baba-red: #df3e52;
+      --baba-orange: #f47b20;
+      --baba-radius: 8px;
+    }
+
+    html body.baba-page {
+      color: var(--baba-text);
+      background:
+        linear-gradient(180deg, rgba(247, 251, 255, .92), rgba(255, 255, 255, .97)),
+        url("img/baba-worldcup-hero.png") center top / cover fixed,
+        #f7fbff !important;
+    }
+
+    html body.baba-page::before {
+      background-image:
+        linear-gradient(115deg, rgba(20, 164, 106, .10) 0 12%, transparent 12% 100%),
+        linear-gradient(65deg, rgba(230, 167, 0, .12) 0 10%, transparent 10% 100%),
+        linear-gradient(90deg, rgba(25, 135, 216, .09) 1px, transparent 1px),
+        linear-gradient(rgba(244, 123, 32, .08) 1px, transparent 1px);
+      background-size: 280px 280px, 230px 230px, 64px 64px, 64px 64px;
+      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, .82), transparent 88%);
+    }
+
+    .baba-topbar,
+    .baba-gateway,
+    .baba-hero,
+    .baba-card,
+    .baba-metrics article,
+    .baba-modal__panel {
+      border-color: rgba(15, 23, 42, .12);
+      background:
+        linear-gradient(145deg, rgba(255, 255, 255, .96), rgba(247, 251, 255, .88)),
+        var(--baba-panel);
+      box-shadow: 0 18px 46px rgba(15, 23, 42, .12), inset 0 1px 0 rgba(255, 255, 255, .95);
+    }
+
+    .baba-topbar {
+      background: rgba(255, 255, 255, .9);
+      backdrop-filter: blur(20px) saturate(140%);
+      -webkit-backdrop-filter: blur(20px) saturate(140%);
+    }
+
+    .baba-brand,
+    .baba-card__head h2,
+    .baba-gateway h1,
+    .baba-hero h1,
+    .baba-row strong,
+    .baba-history strong,
+    .baba-player-admin strong,
+    .baba-present-item strong,
+    .baba-team h3,
+    .baba-metrics strong,
+    .baba-table__row strong,
+    .baba-table__row b,
+    .baba-scoreboard strong,
+    .baba-match-live__teams strong {
+      color: #172033;
+    }
+
+    .baba-gateway p,
+    .baba-hero p,
+    .baba-choice small,
+    .baba-password small,
+    .baba-empty,
+    .baba-row small,
+    .baba-history small,
+    .baba-metrics small,
+    .baba-card__head span,
+    .baba-scoreboard span,
+    .baba-metrics span,
+    .baba-team small,
+    .baba-team-reveal-actions span {
+      color: var(--baba-muted);
+    }
+
+    .baba-gateway__media {
+      background:
+        linear-gradient(120deg, rgba(255, 255, 255, .08), rgba(247, 251, 255, .72)),
+        url("img/baba-worldcup-hero.png") center / cover;
+    }
+
+    .baba-gateway__media::after {
+      background:
+        linear-gradient(45deg, rgba(20, 164, 106, .18), transparent 30%),
+        linear-gradient(to right, transparent, rgba(247, 251, 255, .88));
+    }
+
+    .baba-gateway__badge,
+    .baba-kicker {
+      border-color: rgba(230, 167, 0, .32);
+      color: #7a5200;
+      background: rgba(255, 246, 196, .78);
+    }
+
+    .baba-choice,
+    .baba-empty,
+    .baba-row,
+    .baba-team,
+    .baba-history-item,
+    .baba-player-admin,
+    .baba-present-item,
+    .baba-match-live,
+    .baba-table__row,
+    .baba-scoreboard,
+    .baba-tabs,
+    .baba-team__stats span,
+    .baba-pill {
+      border-color: rgba(15, 23, 42, .10);
+      background: rgba(255, 255, 255, .72);
+    }
+
+    .baba-choice {
+      color: #172033;
+    }
+
+    .baba-choice:hover,
+    .baba-row:hover,
+    .baba-history-item:hover,
+    .baba-team:hover {
+      border-color: rgba(20, 164, 106, .36);
+      box-shadow: 0 14px 30px rgba(20, 164, 106, .13);
+    }
+
+    .baba-nav a,
+    .baba-nav button,
+    .baba-tabs button,
+    .baba-action-grid button,
+    .baba-secondary,
+    .baba-player-form button,
+    .baba-password button,
+    .baba-mini-btn {
+      border-color: rgba(15, 23, 42, .13);
+      color: #172033;
+      background: #ffffff;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, .08);
+    }
+
+    .baba-primary,
+    .baba-tabs button.active,
+    .baba-goal-btn,
+    .baba-goal-player,
+    .baba-timer {
+      border-color: rgba(13, 148, 136, .32);
+      color: #082f2a;
+      background: linear-gradient(135deg, #ffe45e, #48d597 52%, #40b9ff);
+      box-shadow: 0 10px 22px rgba(20, 164, 106, .18);
+    }
+
+    .baba-nav a:hover,
+    .baba-nav button:hover,
+    .baba-tabs button:hover,
+    .baba-action-grid button:hover,
+    .baba-secondary:hover,
+    .baba-mini-btn:hover {
+      border-color: rgba(25, 135, 216, .28);
+      background: #eef8ff;
+    }
+
+    .baba-action-grid .danger,
+    .baba-mini-btn.danger {
+      border-color: rgba(223, 62, 82, .36);
+      color: #9f1239;
+      background: #fff1f2;
+    }
+
+    .baba-password input,
+    .baba-date-row input,
+    .baba-player-form input,
+    .baba-player-form select,
+    .baba-match-form input {
+      border-color: rgba(15, 23, 42, .14);
+      color: #172033;
+      background: #ffffff;
+    }
+
+    .baba-scoreboard__score,
+    .baba-row b,
+    .baba-match-live__teams span {
+      color: #c88a00;
+    }
+
+    .baba-pill,
+    .baba-player-mini-stats span {
+      color: #2f4058;
+      background: #f4f8ff;
+    }
+
+    .baba-team__stats span {
+      color: #52647c;
+    }
+
+    .baba-team__stats b {
+      color: #172033;
+    }
+
+    .baba-present-item.is-checked {
+      border-color: rgba(20, 164, 106, .46);
+      background: #eafaf2;
+    }
+
+    .baba-modal {
+      background: rgba(248, 251, 255, .78);
+    }
+
+    .baba-sync-strip {
+      width: min(1540px, calc(100% - 2rem));
+      min-height: 42px;
+      margin: .75rem auto 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .75rem;
+      border: 1px solid rgba(15, 23, 42, .11);
+      border-radius: var(--baba-radius);
+      padding: .55rem .75rem;
+      color: #24405f;
+      background: rgba(255, 255, 255, .88);
+      box-shadow: 0 12px 32px rgba(15, 23, 42, .10);
+      backdrop-filter: blur(16px) saturate(140%);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
+    }
+
+    .baba-sync-strip__main,
+    .baba-sync-strip__state {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      min-width: 0;
+    }
+
+    .baba-sync-strip svg {
+      width: 1.1rem;
+      height: 1.1rem;
+      flex: 0 0 auto;
+    }
+
+    .baba-sync-strip strong {
+      color: #172033;
+      font-size: .82rem;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .baba-sync-strip span {
+      overflow: hidden;
+      color: #5a6b83;
+      font-size: .76rem;
+      font-weight: 800;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .baba-sync-strip__dot {
+      width: .62rem;
+      height: .62rem;
+      border-radius: 999px;
+      background: #f59e0b;
+      box-shadow: 0 0 0 4px rgba(245, 158, 11, .13);
+    }
+
+    .baba-sync-strip.is-online .baba-sync-strip__dot {
+      background: #14a46a;
+      box-shadow: 0 0 0 4px rgba(20, 164, 106, .14);
+    }
+
+    .baba-sync-strip.is-offline .baba-sync-strip__dot {
+      background: #df3e52;
+      box-shadow: 0 0 0 4px rgba(223, 62, 82, .12);
+    }
+
+    .baba-btn-icon {
+      width: 1rem;
+      height: 1rem;
+      flex: 0 0 auto;
+      margin-right: .38rem;
+      vertical-align: -.18rem;
+    }
+
+    .baba-action-grid button,
+    .baba-primary,
+    .baba-secondary,
+    .baba-mini-btn,
+    .baba-goal-btn,
+    .baba-goal-player,
+    .baba-password button,
+    .baba-player-form button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .25rem;
+      min-width: 0;
+      white-space: normal;
+    }
+
+    .baba-team-link {
+      display: inline-flex;
+      align-items: center;
+      gap: .38rem;
+      color: #172033;
+      white-space: nowrap;
+    }
+
+    .baba-team-link-logo {
+      width: 1.35rem;
+      height: 1.35rem;
+      flex: 0 0 auto;
+      display: inline-grid;
+      place-items: center;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #ffffff;
+      box-shadow: 0 4px 10px rgba(15, 23, 42, .13);
+    }
+
+    .baba-team-link-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .baba-team-link-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .baba-team h3 .baba-team-link-logo,
+    .baba-match-live__teams .baba-team-link-logo,
+    .baba-scoreboard .baba-team-link-logo {
+      width: 2rem;
+      height: 2rem;
+    }
+
+    .baba-table .baba-team-link-logo {
+      width: 1.05rem;
+      height: 1.05rem;
+    }
+
+    .baba-team {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .baba-team::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 5px;
+      background: linear-gradient(90deg, #14a46a, #ffe45e, #1987d8, #f47b20);
+    }
+
+    .baba-team[data-team-number="2"]::before {
+      background: linear-gradient(90deg, #1987d8, #ff6f61, #ffe45e);
+    }
+
+    .baba-team[data-team-number="3"]::before {
+      background: linear-gradient(90deg, #ffe45e, #2457c5, #14a46a);
+    }
+
+    .baba-team[data-team-number="4"]::before {
+      background: linear-gradient(90deg, #6d4bd3, #a3e635, #f47b20);
+    }
+
+    .baba-team[data-team-number="5"]::before {
+      background: linear-gradient(90deg, #f47b20, #13b8a6, #d946ef);
+    }
+
+    .baba-table__head {
+      color: #52647c;
+      background: #eef6ff;
+    }
+
+    .initial-skeleton {
+      color: #172033;
+      background: #f7fbff;
+    }
+
+    @media (max-width: 760px) {
+      .baba-sync-strip {
+        width: 100%;
+        margin-top: .5rem;
+        align-items: flex-start;
+        flex-direction: column;
+        gap: .35rem;
+      }
+
+      .baba-sync-strip span {
+        white-space: normal;
+      }
+
+      .baba-team h3 .baba-team-link-logo,
+      .baba-match-live__teams .baba-team-link-logo,
+      .baba-scoreboard .baba-team-link-logo {
+        width: 1.55rem;
+        height: 1.55rem;
+      }
+
+      .baba-share-fab {
+        position: static !important;
+        width: min(100%, 22rem) !important;
+        height: 46px !important;
+        margin: 1rem auto calc(1rem + env(safe-area-inset-bottom));
+        gap: .45rem;
+        border-radius: var(--baba-radius) !important;
+        color: #082f2a;
+        background: linear-gradient(135deg, #ffe45e, #48d597 52%, #40b9ff);
+        box-shadow: 0 12px 24px rgba(15, 23, 42, .16);
+      }
+
+      .baba-share-fab svg {
+        width: 1.35rem !important;
+        height: 1.35rem !important;
+        filter: none !important;
+      }
+
+      .baba-share-fab::after {
+        content: "Compartilhar Baba";
+        font-size: .82rem;
+        font-weight: 950;
+      }
+    }
+  </style>
   <script>
     if (window.location.protocol !== 'file:') {
       const manifest = document.createElement('link');
@@ -84,6 +517,55 @@
       <path d="M9 52c2-11 8-17 15-17s13 6 15 17" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
       <path d="M36 50c2-8 7-12 12-12 4 0 8 3 10 10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity=".6" />
     </symbol>
+    <symbol id="baba-cloud" viewBox="0 0 64 64">
+      <path d="M22 48h25c7 0 12-5 12-11s-5-11-12-11h-1C44 17 37 11 28 11c-10 0-18 8-18 18v1C5 32 2 36 2 41c0 4 4 7 9 7h11Z" fill="currentColor" opacity=".2" />
+      <path d="M22 48h25c7 0 12-5 12-11s-5-11-12-11h-1C44 17 37 11 28 11c-10 0-18 8-18 18v1C5 32 2 36 2 41c0 4 4 7 9 7h11Z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round" />
+      <path d="M32 42V25m0 0-7 7m7-7 7 7" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="baba-plus" viewBox="0 0 24 24">
+      <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+    </symbol>
+    <symbol id="baba-save" viewBox="0 0 24 24">
+      <path d="M5 4h12l2 2v14H5V4Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
+      <path d="M8 4v6h8V4M8 20v-6h8v6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="baba-calendar" viewBox="0 0 24 24">
+      <path d="M6 3v4M18 3v4M4 9h16M5 5h14v15H5V5Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="baba-shuffle" viewBox="0 0 24 24">
+      <path d="M4 7h3c5 0 5 10 10 10h3M17 14l3 3-3 3M4 17h3c2 0 3-1 4-3M15 7h5m-3-3 3 3-3 3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="baba-play" viewBox="0 0 24 24">
+      <path d="M8 5v14l11-7L8 5Z" fill="currentColor" />
+    </symbol>
+    <symbol id="baba-next" viewBox="0 0 24 24">
+      <path d="M5 5v14l9-7-9-7Zm12 1v12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="baba-undo" viewBox="0 0 24 24">
+      <path d="M9 7 4 12l5 5M5 12h9a6 6 0 1 1 0 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="baba-trash" viewBox="0 0 24 24">
+      <path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="baba-user-plus" viewBox="0 0 24 24">
+      <path d="M15 19c-.8-3-3-5-6-5s-5.2 2-6 5M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm10-4v6m-3-3h6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="baba-check" viewBox="0 0 24 24">
+      <path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="baba-clock" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.2" />
+      <path d="M12 7v5l4 2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="baba-refresh" viewBox="0 0 24 24">
+      <path d="M20 12a8 8 0 0 1-14 5m-2-5a8 8 0 0 1 14-5M18 3v4h-4M6 21v-4h4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="baba-exit" viewBox="0 0 24 24">
+      <path d="M10 5H5v14h5M13 8l4 4-4 4M17 12H9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="baba-x" viewBox="0 0 24 24">
+      <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+    </symbol>
   </svg>
 
   <header class="baba-topbar">
@@ -96,6 +578,18 @@
       <button id="baba-logout-btn" type="button">Sair</button>
     </nav>
   </header>
+
+  <div id="baba-sync-strip" class="baba-sync-strip" role="status" aria-live="polite">
+    <div class="baba-sync-strip__main">
+      <svg aria-hidden="true" focusable="false"><use href="#baba-cloud"></use></svg>
+      <strong>Baba online</strong>
+      <span id="baba-sync-message">Conectando placar, times e ranking entre os dispositivos...</span>
+    </div>
+    <div class="baba-sync-strip__state">
+      <i class="baba-sync-strip__dot" aria-hidden="true"></i>
+      <span id="baba-sync-state">Sincronizando</span>
+    </div>
+  </div>
 
   <main class="baba-shell">
     <section id="mode-gateway" class="baba-gateway">
@@ -380,6 +874,470 @@
       <circle cx="66" cy="71" r="10" fill="currentColor" />
     </svg>
   </button>
+
+  <script id="baba-html-helpers">
+    (() => {
+      const STORAGE_KEY = 'psyzon_baba_state_v1';
+      const TEAM_ASSETS = [
+        { name: 'Time 1', logo: 'img/baba-time-1.png', legacy: 'Barcelona' },
+        { name: 'Time 2', logo: 'img/baba-time-2.png', legacy: 'Arsenal' },
+        { name: 'Time 3', logo: 'img/baba-time-3.png', legacy: 'Real Madrid' },
+        { name: 'Time 4', logo: 'img/baba-time-4.png', legacy: 'PSG' },
+        { name: 'Time 5', logo: 'img/baba-time-5.png', legacy: 'Chelsea' },
+      ];
+      const LEGACY_TO_LABEL = new Map(TEAM_ASSETS.map((team) => [team.legacy, team.name]));
+      const wrappedStores = new WeakSet();
+      let applyingRemote = false;
+
+      function normalizeTeamNumber(team, index = 0) {
+        const idMatch = String(team?.id || '').match(/team_(\d+)/i);
+        if (idMatch) return Math.max(1, Number(idMatch[1]) || 1);
+        const legacyIndex = TEAM_ASSETS.findIndex((asset) => asset.legacy === team?.name || asset.name === team?.name);
+        return legacyIndex >= 0 ? legacyIndex + 1 : index + 1;
+      }
+
+      function assetForTeamNumber(number) {
+        return TEAM_ASSETS[(Math.max(1, Number(number) || 1) - 1) % TEAM_ASSETS.length];
+      }
+
+      function replaceLegacyText(value) {
+        let next = String(value ?? '');
+        LEGACY_TO_LABEL.forEach((label, legacy) => {
+          next = next.replaceAll(legacy, label);
+        });
+        return next;
+      }
+
+      function replaceLegacyDeep(value) {
+        if (Array.isArray(value)) return value.map(replaceLegacyDeep);
+        if (!value || typeof value !== 'object') return typeof value === 'string' ? replaceLegacyText(value) : value;
+        Object.keys(value).forEach((key) => {
+          value[key] = replaceLegacyDeep(value[key]);
+        });
+        return value;
+      }
+
+      function normalizeBabaState(value) {
+        const next = value && typeof value === 'object' ? value : {};
+        if (Array.isArray(next.babas)) {
+          next.babas.forEach((baba) => {
+            if (Array.isArray(baba.teams)) {
+              baba.teams.forEach((team, index) => {
+                const number = normalizeTeamNumber(team, index);
+                const asset = assetForTeamNumber(number);
+                team.name = `Time ${number}`;
+                team.logo = asset.logo;
+              });
+            }
+            replaceLegacyDeep(baba);
+          });
+        }
+        return next;
+      }
+
+      function normalizeStorageString(value) {
+        try {
+          return JSON.stringify(normalizeBabaState(JSON.parse(String(value))));
+        } catch (error) {
+          return value;
+        }
+      }
+
+      function readCurrentBabaRaw() {
+        try {
+          return window.localStorage?.getItem?.(STORAGE_KEY) || null;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function writeCurrentBabaRaw(value, { remote = false } = {}) {
+        applyingRemote = Boolean(remote);
+        try {
+          window.localStorage?.setItem?.(STORAGE_KEY, normalizeStorageString(value));
+        } finally {
+          applyingRemote = false;
+        }
+      }
+
+      function scheduleAppRefresh(source = 'html-helper') {
+        window.setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('cloud-data-updated', { detail: { source } }));
+          window.dispatchEvent(new CustomEvent('cloud-data-refresh-requested', { detail: { source, hasRemoteChange: true } }));
+        }, 0);
+      }
+
+      function attachStorageBridge() {
+        const store = window.localStorage;
+        if (!store || wrappedStores.has(store) || typeof store.setItem !== 'function') return;
+
+        if (window.Storage && store instanceof window.Storage) {
+          patchNativeStoragePrototype();
+          wrappedStores.add(store);
+          return;
+        }
+
+        const originalGetItem = store.getItem.bind(store);
+        const originalSetItem = store.setItem.bind(store);
+        const originalRemoveItem = store.removeItem?.bind(store);
+
+        try {
+          store.getItem = (key) => {
+            const value = originalGetItem(key);
+            if (key !== STORAGE_KEY || value == null) return value;
+            const normalized = normalizeStorageString(value);
+            if (normalized !== value) originalSetItem(key, normalized);
+            return normalized;
+          };
+
+          store.setItem = (key, value) => {
+            if (key !== STORAGE_KEY) return originalSetItem(key, value);
+            const normalized = normalizeStorageString(value);
+            originalSetItem(key, normalized);
+            if (!applyingRemote) {
+              window.BabaPublicSync?.scheduleSave?.(normalized, 'local-change');
+              scheduleAppRefresh('team-normalizer');
+            }
+          };
+
+          if (originalRemoveItem) {
+            store.removeItem = (key) => {
+              originalRemoveItem(key);
+              if (key === STORAGE_KEY && !applyingRemote) {
+                window.BabaPublicSync?.scheduleSave?.(JSON.stringify({ version: 1, activeBabaId: null, players: [], babas: [], updatedAt: Date.now() }), 'local-remove');
+              }
+            };
+          }
+
+          wrappedStores.add(store);
+        } catch (error) {
+          console.warn('Nao foi possivel ativar a ponte local do Baba:', error);
+        }
+      }
+
+      function patchNativeStoragePrototype() {
+        if (window.__babaNativeStorageBridgeReady || !window.Storage?.prototype) return;
+        const proto = window.Storage.prototype;
+        const nativeGetItem = proto.getItem;
+        const nativeSetItem = proto.setItem;
+        const nativeRemoveItem = proto.removeItem;
+        if (typeof nativeGetItem !== 'function' || typeof nativeSetItem !== 'function') return;
+
+        try {
+          Object.defineProperty(proto, 'getItem', {
+            value(key) {
+              const value = nativeGetItem.call(this, key);
+              if (this !== window.localStorage || key !== STORAGE_KEY || value == null) return value;
+              const normalized = normalizeStorageString(value);
+              if (normalized !== value) nativeSetItem.call(this, key, normalized);
+              return normalized;
+            },
+            configurable: true,
+            writable: true,
+          });
+
+          Object.defineProperty(proto, 'setItem', {
+            value(key, value) {
+              if (this !== window.localStorage || key !== STORAGE_KEY) {
+                return nativeSetItem.call(this, key, value);
+              }
+              const normalized = normalizeStorageString(value);
+              nativeSetItem.call(this, key, normalized);
+              if (!applyingRemote) {
+                window.BabaPublicSync?.scheduleSave?.(normalized, 'native-local-change');
+                scheduleAppRefresh('team-normalizer');
+              }
+            },
+            configurable: true,
+            writable: true,
+          });
+
+          if (typeof nativeRemoveItem === 'function') {
+            Object.defineProperty(proto, 'removeItem', {
+              value(key) {
+                nativeRemoveItem.call(this, key);
+                if (this === window.localStorage && key === STORAGE_KEY && !applyingRemote) {
+                  window.BabaPublicSync?.scheduleSave?.(JSON.stringify({ version: 1, activeBabaId: null, players: [], babas: [], updatedAt: Date.now() }), 'native-local-remove');
+                }
+              },
+              configurable: true,
+              writable: true,
+            });
+          }
+
+          window.__babaNativeStorageBridgeReady = true;
+        } catch (error) {
+          console.warn('Nao foi possivel ativar a ponte nativa do Baba:', error);
+        }
+      }
+
+      function iconUse(id) {
+        return `<svg class="baba-btn-icon" aria-hidden="true" focusable="false"><use href="#${id}"></use></svg>`;
+      }
+
+      function addButtonIcon(button, iconId) {
+        if (!button || button.dataset.babaIconReady === iconId) return;
+        if (button.querySelector(':scope > .baba-btn-icon')) {
+          button.dataset.babaIconReady = iconId;
+          return;
+        }
+        button.insertAdjacentHTML('afterbegin', iconUse(iconId));
+        button.dataset.babaIconReady = iconId;
+      }
+
+      function decorateButtons(root = document) {
+        const staticIcons = {
+          'mode-reset-btn': 'baba-refresh',
+          'baba-logout-btn': 'baba-exit',
+          'create-today-btn': 'baba-plus',
+          'save-history-btn': 'baba-save',
+          'update-date-btn': 'baba-calendar',
+          'mark-present-btn': 'baba-check',
+          'draw-teams-btn': 'baba-shuffle',
+          'start-first-game-btn': 'baba-play',
+          'next-game-btn': 'baba-next',
+          'undo-game-btn': 'baba-undo',
+          'finish-baba-btn': 'baba-save',
+          'reset-current-btn': 'baba-trash',
+          'close-present-modal': 'baba-check',
+          'close-goal-modal': 'baba-x',
+          'close-team-detail-modal': 'baba-x',
+          'close-game-detail-modal': 'baba-x',
+        };
+        Object.entries(staticIcons).forEach(([id, icon]) => addButtonIcon(root.getElementById?.(id) || document.getElementById(id), icon));
+        addButtonIcon(document.querySelector('#player-form button[type="submit"]'), 'baba-user-plus');
+
+        root.querySelectorAll?.('[data-action]').forEach((button) => {
+          const icons = {
+            'toggle-player': 'baba-refresh',
+            'delete-player': 'baba-trash',
+            'delete-history': 'baba-trash',
+            'open-goal-picker': 'baba-ball',
+            'undo-goal': 'baba-undo',
+            'finish-live-match': 'baba-next',
+            'start-first-live': 'baba-play',
+            'start-prepared-match': 'baba-play',
+            'pause-time': 'baba-clock',
+            'edit-time': 'baba-clock',
+            'resolve-three-team-tie': 'baba-shuffle',
+            'advance-team-reveal': 'baba-next',
+            'restart-team-reveal': 'baba-refresh',
+          };
+          const icon = icons[button.dataset.action];
+          if (icon) addButtonIcon(button, icon);
+        });
+      }
+
+      function enhanceTeamButton(button) {
+        const match = String(button.dataset.teamDetailId || '').match(/team_(\d+)/i);
+        const number = match ? Number(match[1]) : 1;
+        const asset = assetForTeamNumber(number);
+        button.innerHTML = `
+          <span class="baba-team-link-logo"><img src="${asset.logo}" alt="" loading="lazy"></span>
+          <span class="baba-team-link-text">Time ${number}</span>
+        `;
+        button.title = `Ver jogadores do Time ${number}`;
+        button.closest('.baba-team')?.setAttribute('data-team-number', String(number));
+      }
+
+      function enhanceTeams(root = document) {
+        root.querySelectorAll?.('[data-team-detail-id]').forEach(enhanceTeamButton);
+        root.querySelectorAll?.('.baba-goal-btn').forEach((button) => {
+          button.childNodes.forEach((node) => {
+            if (node.nodeType === Node.TEXT_NODE) node.nodeValue = replaceLegacyText(node.nodeValue);
+          });
+        });
+      }
+
+      function polishDom(root = document) {
+        decorateButtons(root);
+        enhanceTeams(root);
+      }
+
+      function setSyncStatus(status, stateText, message) {
+        const strip = document.getElementById('baba-sync-strip');
+        const state = document.getElementById('baba-sync-state');
+        const label = document.getElementById('baba-sync-message');
+        if (!strip || !state || !label) return;
+        strip.classList.toggle('is-online', status === 'online');
+        strip.classList.toggle('is-offline', status === 'offline');
+        state.textContent = stateText;
+        label.textContent = message;
+      }
+
+      window.BabaHtmlTools = {
+        STORAGE_KEY,
+        normalizeBabaState,
+        normalizeStorageString,
+        readCurrentBabaRaw,
+        writeCurrentBabaRaw,
+        scheduleAppRefresh,
+        attachStorageBridge,
+        polishDom,
+        setSyncStatus,
+        isApplyingRemote: () => applyingRemote,
+      };
+
+      attachStorageBridge();
+      window.addEventListener('backend-ready', attachStorageBridge);
+      window.addEventListener('cloud-data-updated', () => window.setTimeout(polishDom, 30));
+      window.addEventListener('cloud-data-refresh-requested', () => window.setTimeout(polishDom, 30));
+      document.addEventListener('DOMContentLoaded', () => {
+        attachStorageBridge();
+        polishDom();
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+              if (node.nodeType === Node.ELEMENT_NODE) polishDom(node);
+            });
+          });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+      });
+      window.setInterval(attachStorageBridge, 700);
+    })();
+  </script>
+
+  <script id="baba-public-sync" type="module">
+    (async () => {
+      const tools = window.BabaHtmlTools;
+      const STORAGE_KEY = tools?.STORAGE_KEY || 'psyzon_baba_state_v1';
+      const DEVICE_ID_KEY = 'psyzon_baba_public_device_id';
+      const SYNC_COLLECTION = 'orders_public';
+      const SYNC_DOCUMENT = 'baba_live_state';
+      let saveTimer = null;
+      let unsubscribe = null;
+      let lastSavedRaw = '';
+      let lastRemoteRaw = '';
+
+      function getDeviceId() {
+        try {
+          const nativeStore = window.__nativeLS || window.localStorage;
+          let id = nativeStore.getItem(DEVICE_ID_KEY);
+          if (!id) {
+            id = window.crypto?.randomUUID?.() || `device_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+            nativeStore.setItem(DEVICE_ID_KEY, id);
+          }
+          return id;
+        } catch (error) {
+          return `device_${Date.now()}`;
+        }
+      }
+
+      const deviceId = getDeviceId();
+
+      function parseState(raw) {
+        try {
+          return tools?.normalizeBabaState?.(JSON.parse(raw)) || JSON.parse(raw);
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function hasUsefulState(state) {
+        return Boolean(state && ((Array.isArray(state.players) && state.players.length) || (Array.isArray(state.babas) && state.babas.length)));
+      }
+
+      function safeRawFromState(state) {
+        try {
+          return JSON.stringify(tools?.normalizeBabaState?.(state) || state);
+        } catch (error) {
+          return '';
+        }
+      }
+
+      function updateStatus(status, stateText, message) {
+        tools?.setSyncStatus?.(status, stateText, message);
+      }
+
+      async function startFirestoreSync() {
+        if (window.location.protocol === 'file:') {
+          updateStatus('offline', 'Local', 'Abra pelo endereco online do site para sincronizar entre celulares.');
+          return;
+        }
+
+        try {
+          const [{ db }, firestore] = await Promise.all([
+            import('./js/firebase-init.js'),
+            import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js'),
+          ]);
+          const { doc, onSnapshot, setDoc } = firestore;
+          const docRef = doc(db, SYNC_COLLECTION, SYNC_DOCUMENT);
+
+          window.BabaPublicSync = {
+            scheduleSave(raw, reason = 'local-change') {
+              const normalized = tools?.normalizeStorageString?.(raw) || raw;
+              const state = parseState(normalized);
+              if (!hasUsefulState(state)) return;
+              clearTimeout(saveTimer);
+              saveTimer = window.setTimeout(async () => {
+                try {
+                  const payload = {
+                    state,
+                    updatedAt: Date.now(),
+                    sourceId: deviceId,
+                    reason,
+                  };
+                  lastSavedRaw = safeRawFromState(state);
+                  await setDoc(docRef, payload, { merge: true });
+                  updateStatus('online', 'Online', 'Alteracoes salvas na nuvem e prontas para os outros dispositivos.');
+                } catch (error) {
+                  console.warn('Falha ao salvar Baba online:', error);
+                  updateStatus('offline', 'Sem permissao', 'Firestore recusou o salvamento; o Baba continua salvo neste aparelho.');
+                }
+              }, 380);
+            },
+          };
+
+          tools?.attachStorageBridge?.();
+          updateStatus('online', 'Online', 'Escutando alteracoes do Baba em tempo real.');
+
+          unsubscribe = onSnapshot(docRef, (snapshot) => {
+            if (!snapshot.exists()) {
+              const localRaw = tools?.readCurrentBabaRaw?.();
+              const localState = localRaw ? parseState(localRaw) : null;
+              if (hasUsefulState(localState)) window.BabaPublicSync.scheduleSave(localRaw, 'first-device-seed');
+              return;
+            }
+
+            const data = snapshot.data() || {};
+            const remoteRaw = safeRawFromState(data.state);
+            if (!remoteRaw || remoteRaw === lastRemoteRaw || remoteRaw === lastSavedRaw) {
+              updateStatus('online', 'Online', 'Baba sincronizado.');
+              return;
+            }
+
+            const remoteState = parseState(remoteRaw);
+            const localState = parseState(tools?.readCurrentBabaRaw?.() || '{}');
+            const remoteUpdated = Number(remoteState?.updatedAt || data.updatedAt || 0);
+            const localUpdated = Number(localState?.updatedAt || 0);
+
+            if (hasUsefulState(localState) && localUpdated > remoteUpdated + 1500 && data.sourceId !== deviceId) {
+              window.BabaPublicSync.scheduleSave(safeRawFromState(localState), 'newer-local-copy');
+              return;
+            }
+
+            lastRemoteRaw = remoteRaw;
+            tools?.writeCurrentBabaRaw?.(remoteRaw, { remote: true });
+            tools?.scheduleAppRefresh?.('baba-public-firestore');
+            updateStatus('online', 'Atualizado', 'Mudanca recebida da nuvem neste dispositivo.');
+          }, (error) => {
+            console.warn('Falha no listener publico do Baba:', error);
+            updateStatus('offline', 'Sem permissao', 'Nao consegui abrir o canal online; usando copia local por enquanto.');
+          });
+
+          window.addEventListener('beforeunload', () => {
+            if (typeof unsubscribe === 'function') unsubscribe();
+          }, { once: true });
+        } catch (error) {
+          console.warn('Falha ao iniciar sincronizacao publica do Baba:', error);
+          updateStatus('offline', 'Offline', 'Nao consegui carregar a conexao online; usando copia local por enquanto.');
+        }
+      }
+
+      startFirestoreSync();
+    })();
+  </script>
 
   <script src="baba.js" defer></script>
 </body>
