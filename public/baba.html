@@ -1203,12 +1203,18 @@
       const tools = window.BabaHtmlTools;
       const STORAGE_KEY = tools?.STORAGE_KEY || 'psyzon_baba_state_v1';
       const DEVICE_ID_KEY = 'psyzon_baba_public_device_id';
-      const SYNC_COLLECTION = 'orders_public';
-      const SYNC_DOCUMENT = 'baba_live_state';
+      const SYNC_TARGETS = [
+        { collection: 'orders_public', document: 'baba_live_state', label: 'publico' },
+        { collection: 'orders', document: 'baba_live_state', label: 'pedidos' },
+        { collection: 'order_clients', document: 'baba_live_state', label: 'clientes' },
+      ];
       let saveTimer = null;
       let unsubscribe = null;
       let lastSavedRaw = '';
       let lastRemoteRaw = '';
+      let activeTargetIndex = 0;
+      let activeDocRef = null;
+      let syncDisabledByRules = false;
 
       function getDeviceId() {
         try {
@@ -1250,6 +1256,10 @@
         tools?.setSyncStatus?.(status, stateText, message);
       }
 
+      function isPermissionError(error) {
+        return String(error?.code || error?.message || '').toLowerCase().includes('permission');
+      }
+
       async function startFirestoreSync() {
         if (window.location.protocol === 'file:') {
           updateStatus('offline', 'Local', 'Abra pelo endereco online do site para sincronizar entre celulares.');
@@ -1262,10 +1272,42 @@
             import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js'),
           ]);
           const { doc, onSnapshot, setDoc } = firestore;
-          const docRef = doc(db, SYNC_COLLECTION, SYNC_DOCUMENT);
+
+          function getTarget(index = activeTargetIndex) {
+            return SYNC_TARGETS[Math.max(0, Math.min(index, SYNC_TARGETS.length - 1))];
+          }
+
+          function setActiveTarget(index) {
+            activeTargetIndex = index;
+            const target = getTarget(index);
+            activeDocRef = doc(db, target.collection, target.document);
+            return target;
+          }
+
+          function stopCurrentListener() {
+            if (typeof unsubscribe === 'function') {
+              unsubscribe();
+              unsubscribe = null;
+            }
+          }
+
+          function tryNextTarget(reason = 'permission') {
+            stopCurrentListener();
+            const nextIndex = activeTargetIndex + 1;
+            if (nextIndex >= SYNC_TARGETS.length) {
+              syncDisabledByRules = true;
+              updateStatus('offline', 'Sem permissao', 'As regras do Firebase ainda bloqueiam o Baba online. Atualize as regras e recarregue.');
+              console.warn('Baba online bloqueado pelas regras do Firestore. Libere leitura/escrita para orders_public/baba_live_state ou um dos caminhos fallback.', { reason });
+              return;
+            }
+            const nextTarget = setActiveTarget(nextIndex);
+            updateStatus('online', 'Tentando rota', `Permissao negada na rota anterior. Tentando ${nextTarget.collection}/${nextTarget.document}.`);
+            openRealtimeListener();
+          }
 
           window.BabaPublicSync = {
             scheduleSave(raw, reason = 'local-change') {
+              if (syncDisabledByRules || !activeDocRef) return;
               const normalized = tools?.normalizeStorageString?.(raw) || raw;
               const state = parseState(normalized);
               if (!hasUsefulState(state)) return;
@@ -1279,52 +1321,70 @@
                     reason,
                   };
                   lastSavedRaw = safeRawFromState(state);
-                  await setDoc(docRef, payload, { merge: true });
+                  await setDoc(activeDocRef, payload, { merge: true });
                   updateStatus('online', 'Online', 'Alteracoes salvas na nuvem e prontas para os outros dispositivos.');
                 } catch (error) {
+                  if (isPermissionError(error)) {
+                    console.warn('Permissao negada ao salvar Baba online. Tentando rota fallback:', error);
+                    tryNextTarget('write-permission-denied');
+                    return;
+                  }
                   console.warn('Falha ao salvar Baba online:', error);
-                  updateStatus('offline', 'Sem permissao', 'Firestore recusou o salvamento; o Baba continua salvo neste aparelho.');
+                  updateStatus('offline', 'Offline', 'Nao foi possivel salvar agora; o Baba continua salvo neste aparelho.');
                 }
               }, 380);
             },
           };
 
           tools?.attachStorageBridge?.();
-          updateStatus('online', 'Online', 'Escutando alteracoes do Baba em tempo real.');
+          setActiveTarget(0);
 
-          unsubscribe = onSnapshot(docRef, (snapshot) => {
-            if (!snapshot.exists()) {
-              const localRaw = tools?.readCurrentBabaRaw?.();
-              const localState = localRaw ? parseState(localRaw) : null;
-              if (hasUsefulState(localState)) window.BabaPublicSync.scheduleSave(localRaw, 'first-device-seed');
-              return;
-            }
+          function openRealtimeListener() {
+            if (syncDisabledByRules || !activeDocRef) return;
+            const target = getTarget();
+            updateStatus('online', 'Online', `Escutando ${target.collection}/${target.document} em tempo real.`);
 
-            const data = snapshot.data() || {};
-            const remoteRaw = safeRawFromState(data.state);
-            if (!remoteRaw || remoteRaw === lastRemoteRaw || remoteRaw === lastSavedRaw) {
-              updateStatus('online', 'Online', 'Baba sincronizado.');
-              return;
-            }
+            unsubscribe = onSnapshot(activeDocRef, (snapshot) => {
+              if (!snapshot.exists()) {
+                const localRaw = tools?.readCurrentBabaRaw?.();
+                const localState = localRaw ? parseState(localRaw) : null;
+                if (hasUsefulState(localState)) window.BabaPublicSync.scheduleSave(localRaw, 'first-device-seed');
+                return;
+              }
 
-            const remoteState = parseState(remoteRaw);
-            const localState = parseState(tools?.readCurrentBabaRaw?.() || '{}');
-            const remoteUpdated = Number(remoteState?.updatedAt || data.updatedAt || 0);
-            const localUpdated = Number(localState?.updatedAt || 0);
+              const data = snapshot.data() || {};
+              const remoteRaw = safeRawFromState(data.state);
+              if (!remoteRaw || remoteRaw === lastRemoteRaw || remoteRaw === lastSavedRaw) {
+                updateStatus('online', 'Online', 'Baba sincronizado.');
+                return;
+              }
 
-            if (hasUsefulState(localState) && localUpdated > remoteUpdated + 1500 && data.sourceId !== deviceId) {
-              window.BabaPublicSync.scheduleSave(safeRawFromState(localState), 'newer-local-copy');
-              return;
-            }
+              const remoteState = parseState(remoteRaw);
+              const localState = parseState(tools?.readCurrentBabaRaw?.() || '{}');
+              const remoteUpdated = Number(remoteState?.updatedAt || data.updatedAt || 0);
+              const localUpdated = Number(localState?.updatedAt || 0);
 
-            lastRemoteRaw = remoteRaw;
-            tools?.writeCurrentBabaRaw?.(remoteRaw, { remote: true });
-            tools?.scheduleAppRefresh?.('baba-public-firestore');
-            updateStatus('online', 'Atualizado', 'Mudanca recebida da nuvem neste dispositivo.');
-          }, (error) => {
-            console.warn('Falha no listener publico do Baba:', error);
-            updateStatus('offline', 'Sem permissao', 'Nao consegui abrir o canal online; usando copia local por enquanto.');
-          });
+              if (hasUsefulState(localState) && localUpdated > remoteUpdated + 1500 && data.sourceId !== deviceId) {
+                window.BabaPublicSync.scheduleSave(safeRawFromState(localState), 'newer-local-copy');
+                return;
+              }
+
+              lastRemoteRaw = remoteRaw;
+              tools?.writeCurrentBabaRaw?.(remoteRaw, { remote: true });
+              tools?.scheduleAppRefresh?.('baba-public-firestore');
+              updateStatus('online', 'Atualizado', 'Mudanca recebida da nuvem neste dispositivo.');
+            }, (error) => {
+              if (isPermissionError(error)) {
+                console.warn('Permissao negada ao escutar Baba online. Tentando rota fallback:', error);
+                tryNextTarget('listen-permission-denied');
+                return;
+              }
+              console.warn('Falha no listener publico do Baba:', error);
+              updateStatus('offline', 'Offline', 'Nao consegui abrir o canal online; usando copia local por enquanto.');
+            });
+          }
+
+          openRealtimeListener();
 
           window.addEventListener('beforeunload', () => {
             if (typeof unsubscribe === 'function') unsubscribe();
