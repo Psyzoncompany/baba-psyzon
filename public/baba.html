@@ -209,6 +209,106 @@
       color: #c88a00;
     }
 
+    .baba-scoreboard__score {
+      min-width: 0;
+      color: inherit;
+    }
+
+    .baba-match-line {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: .5rem;
+      max-width: 100%;
+      vertical-align: middle;
+    }
+
+    .baba-match-line--compact {
+      gap: .34rem;
+    }
+
+    .baba-score-boxes {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .28rem;
+      flex: 0 0 auto;
+      color: #52647c;
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .baba-score-boxes>span {
+      color: #7b8da6;
+      font-size: .86em;
+      font-weight: 950;
+    }
+
+    .baba-score-box {
+      min-width: 2.45rem;
+      min-height: 2.25rem;
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: 8px;
+      padding: .28rem .46rem;
+      color: #172033;
+      background: #ffffff;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, .10);
+      font-size: 1.15rem;
+    }
+
+    .baba-score-box--win {
+      border-color: rgba(20, 164, 106, .36);
+      color: #065f46;
+      background: linear-gradient(180deg, #dcfce7, #ffffff);
+    }
+
+    .baba-score-box--loss {
+      border-color: rgba(223, 62, 82, .34);
+      color: #9f1239;
+      background: linear-gradient(180deg, #ffe4e6, #ffffff);
+    }
+
+    .baba-score-box--draw {
+      border-color: rgba(230, 167, 0, .38);
+      color: #854d0e;
+      background: linear-gradient(180deg, #fef3c7, #ffffff);
+    }
+
+    .baba-score-boxes--compact .baba-score-box {
+      min-width: 1.8rem;
+      min-height: 1.65rem;
+      padding: .18rem .34rem;
+      font-size: .9rem;
+    }
+
+    .baba-result-tag {
+      width: fit-content;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid rgba(20, 164, 106, .32);
+      border-radius: 999px;
+      padding: .24rem .52rem;
+      color: #065f46;
+      background: #dcfce7;
+      font-size: .72rem;
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .baba-result-tag.is-draw {
+      border-color: rgba(230, 167, 0, .36);
+      color: #854d0e;
+      background: #fef3c7;
+    }
+
+    .baba-result-tag.is-loss {
+      border-color: rgba(223, 62, 82, .34);
+      color: #9f1239;
+      background: #ffe4e6;
+    }
+
     .baba-pill,
     .baba-player-mini-stats span {
       color: #2f4058;
@@ -399,6 +499,12 @@
       background: #eef6ff;
     }
 
+    .baba-table__row.is-live {
+      border-color: rgba(20, 164, 106, .34);
+      background: linear-gradient(90deg, rgba(220, 252, 231, .82), rgba(255, 255, 255, .78));
+      box-shadow: inset 4px 0 0 #14a46a;
+    }
+
     .initial-skeleton {
       color: #172033;
       background: #f7fbff;
@@ -446,6 +552,21 @@
         content: "Compartilhar Baba";
         font-size: .82rem;
         font-weight: 950;
+      }
+
+      .baba-match-line {
+        gap: .34rem;
+      }
+
+      .baba-score-box {
+        min-width: 2rem;
+        min-height: 1.9rem;
+        font-size: 1rem;
+      }
+
+      .baba-match-live__teams {
+        grid-template-columns: 1fr;
+        justify-items: center;
       }
     }
   </style>

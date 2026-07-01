@@ -250,6 +250,34 @@
     return team?.name || 'Aguardando';
   }
 
+  function scoreState(scoreA, scoreB) {
+    const a = Number(scoreA || 0);
+    const b = Number(scoreB || 0);
+    if (a === b) return ['draw', 'draw'];
+    return a > b ? ['win', 'loss'] : ['loss', 'win'];
+  }
+
+  function scoreBadgeHTML(scoreA, scoreB, compact = false) {
+    const [stateA, stateB] = scoreState(scoreA, scoreB);
+    return `
+      <span class="baba-score-boxes ${compact ? 'baba-score-boxes--compact' : ''}" aria-label="Placar ${Number(scoreA || 0)} a ${Number(scoreB || 0)}">
+        <b class="baba-score-box baba-score-box--${stateA}">${Number(scoreA || 0)}</b>
+        <span>x</span>
+        <b class="baba-score-box baba-score-box--${stateB}">${Number(scoreB || 0)}</b>
+      </span>
+    `;
+  }
+
+  function matchLineHTML(baba, teamA, scoreA, scoreB, teamB, compact = false) {
+    return `
+      <span class="baba-match-line ${compact ? 'baba-match-line--compact' : ''}">
+        ${teamDetailButton(baba, teamA, teamA?.name || 'Time')}
+        ${scoreBadgeHTML(scoreA, scoreB, compact)}
+        ${teamDetailButton(baba, teamB, teamB?.name || 'Time')}
+      </span>
+    `;
+  }
+
   function playerName(id) {
     return getPlayer(id)?.nome || 'Jogador removido';
   }
@@ -503,9 +531,22 @@
     if (!baba || baba.teams.length < 2) return showToast('Sorteie os times antes de iniciar.');
     if (baba.jogoAtual) return showToast('Ja existe um jogo em andamento.');
 
-    const order = baba.filaTimes.length >= 2 ? [...baba.filaTimes] : shuffle(baba.teams.map((team) => team.id));
-    const teamAId = order.shift();
-    const teamBId = order.shift();
+    const firstGame = !(baba.jogos?.length);
+    const teamIds = baba.teams.map((team) => team.id);
+    let teamAId = null;
+    let teamBId = null;
+    let order = [];
+
+    if (firstGame && teamIds.includes('team_1') && teamIds.includes('team_2')) {
+      teamAId = 'team_1';
+      teamBId = 'team_2';
+      order = shuffle(teamIds.filter((id) => id !== teamAId && id !== teamBId));
+    } else {
+      order = baba.filaTimes.length >= 2 ? [...baba.filaTimes] : shuffle(teamIds);
+      teamAId = order.shift();
+      teamBId = order.shift();
+    }
+
     baba.filaTimes = order;
     baba.jogoAtual = buildMatch(baba, teamAId, teamBId);
     startMatchTimer(baba.jogoAtual);
@@ -794,6 +835,10 @@
 
     baba.lastResult = {
       jogo: savedGame.numeroJogo,
+      timeA: teamA.id,
+      timeB: teamB.id,
+      placarA: scoreA,
+      placarB: scoreB,
       resumo: `${teamA.name} ${scoreA} x ${scoreB} ${teamB.name}`,
       timeQueContinuou,
       timeQueSaiu,
@@ -1077,7 +1122,7 @@
 
     els.fieldTeamA.innerHTML = teamA ? teamDetailButton(baba, teamA) : teamLabel(teamA);
     els.fieldTeamB.innerHTML = teamB ? teamDetailButton(baba, teamB) : teamLabel(teamB);
-    els.liveScore.textContent = current ? `${current.placarA || 0} x ${current.placarB || 0}` : '0 x 0';
+    els.liveScore.innerHTML = current ? scoreBadgeHTML(current.placarA, current.placarB) : scoreBadgeHTML(0, 0);
     els.metricPresent.textContent = String(baba?.jogadoresPresentes?.length || 0);
     els.metricTeams.textContent = String(baba?.teams?.length || 0);
     els.metricGames.textContent = String(baba?.jogos?.length || 0);
@@ -1182,9 +1227,53 @@
       return;
     }
 
-    const teams = [...baba.teams].sort((a, b) => (
+    const match = baba.jogoAtual;
+    const liveStats = new Map();
+    (baba.teams || []).forEach((team) => {
+      liveStats.set(team.id, {
+        ...team,
+        saldo: Number(team.golsPro || 0) - Number(team.golsContra || 0),
+        isLive: false,
+      });
+    });
+
+    if (match) {
+      recomputeLiveScore(match);
+      const liveA = liveStats.get(match.timeA);
+      const liveB = liveStats.get(match.timeB);
+      const scoreA = Number(match.placarA || 0);
+      const scoreB = Number(match.placarB || 0);
+      if (liveA && liveB) {
+        liveA.golsPro += scoreA;
+        liveA.golsContra += scoreB;
+        liveB.golsPro += scoreB;
+        liveB.golsContra += scoreA;
+        liveA.isLive = true;
+        liveB.isLive = true;
+
+        if (scoreA > scoreB) {
+          liveA.pontos += 3;
+          liveA.vitorias += 1;
+          liveB.derrotas += 1;
+        } else if (scoreB > scoreA) {
+          liveB.pontos += 3;
+          liveB.vitorias += 1;
+          liveA.derrotas += 1;
+        } else if (match.iniciadoEm || match.goalEvents?.length) {
+          liveA.pontos += 1;
+          liveB.pontos += 1;
+          liveA.empates += 1;
+          liveB.empates += 1;
+        }
+
+        liveA.saldo = liveA.golsPro - liveA.golsContra;
+        liveB.saldo = liveB.golsPro - liveB.golsContra;
+      }
+    }
+
+    const teams = Array.from(liveStats.values()).sort((a, b) => (
       b.pontos - a.pontos ||
-      (b.golsPro - b.golsContra) - (a.golsPro - a.golsContra) ||
+      b.saldo - a.saldo ||
       b.golsPro - a.golsPro ||
       a.name.localeCompare(b.name)
     ));
@@ -1195,11 +1284,11 @@
           <span>Time</span><span>Pts</span><span>GP</span><span>SG</span><span>V</span><span>E</span><span>D</span>
         </div>
         ${teams.map((team) => `
-          <div class="baba-table__row">
+          <div class="baba-table__row ${team.isLive ? 'is-live' : ''}">
             ${teamDetailButton(baba, team)}
             <b>${team.pontos}</b>
             <span>${team.golsPro}</span>
-            <span>${team.golsPro - team.golsContra}</span>
+            <span>${team.saldo}</span>
             <span>${team.vitorias}</span>
             <span>${team.empates}</span>
             <span>${team.derrotas}</span>
@@ -1253,7 +1342,7 @@
     els.currentGamesList.innerHTML = games.slice().reverse().map((game) => `
       <div class="baba-history-item baba-history-item--compact">
         <span>
-          <strong>Jogo ${game.numeroJogo}: ${teamDetailButton(baba, getTeam(baba, game.timeA), game.timeANome)} ${game.placarA} x ${game.placarB} ${teamDetailButton(baba, getTeam(baba, game.timeB), game.timeBNome)}</strong>
+          <strong>Jogo ${game.numeroJogo}: ${matchLineHTML(baba, getTeam(baba, game.timeA), game.placarA, game.placarB, getTeam(baba, game.timeB), true)}</strong>
           <small>${formatTime(game.finalizadoEm)}</small>
         </span>
         <button class="baba-mini-btn" type="button" data-current-game="${game.numeroJogo}">Gols</button>
@@ -1303,8 +1392,8 @@
     els.gameDetailTitle.textContent = `Jogo ${game.numeroJogo}`;
     els.gameDetailList.innerHTML = `
       <div class="baba-row">
-        <strong>${teamDetailButton(baba, getTeam(baba, game.timeA), game.timeANome)} ${game.placarA} x ${game.placarB} ${teamDetailButton(baba, getTeam(baba, game.timeB), game.timeBNome)}</strong>
-        <b>${game.empate ? 'Empate' : 'Vitoria'}</b>
+        <strong>${matchLineHTML(baba, getTeam(baba, game.timeA), game.placarA, game.placarB, getTeam(baba, game.timeB))}</strong>
+        <b class="baba-result-tag ${game.empate ? 'is-draw' : 'is-win'}">${game.empate ? 'Empate' : 'Vitoria'}</b>
       </div>
       ${events.length ? events.map((goal) => `
         <div class="baba-row">
@@ -1372,7 +1461,7 @@
           <div class="baba-timer ${isOver ? 'is-over' : ''}" id="current-timer">${isPrepared ? 'Aguardando inicio' : (remaining ? formatCountdown(remaining) : 'Tempo esgotado')}</div>
           <div class="baba-match-live__teams">
             <strong>${teamDetailButton(baba, teamA)}</strong>
-            <span>${Number(match.placarA || 0)} x ${Number(match.placarB || 0)}</span>
+            ${scoreBadgeHTML(match.placarA, match.placarB)}
             <strong>${teamDetailButton(baba, teamB)}</strong>
           </div>
           ${organizerControls}
@@ -1408,12 +1497,17 @@
     } else {
       const keep = getTeam(baba, baba.lastResult.timeQueContinuou);
       const outNames = teamNamesFromValue(baba, baba.lastResult.timeQueSaiu);
+      const resultTeamA = getTeam(baba, baba.lastResult.timeA);
+      const resultTeamB = getTeam(baba, baba.lastResult.timeB);
+      const resultLine = resultTeamA && resultTeamB
+        ? matchLineHTML(baba, resultTeamA, baba.lastResult.placarA, baba.lastResult.placarB, resultTeamB)
+        : escapeHTML(baba.lastResult.resumo);
       els.lastResultPill.textContent = `Jogo ${baba.lastResult.jogo}`;
       els.lastResultPanel.innerHTML = `
         <div class="baba-row">
           <div>
-            <strong>${escapeHTML(baba.lastResult.resumo)}</strong>
-            <small>${baba.lastResult.decididoPorSorteio ? 'Empate: rodizio definido por sorteio' : 'Resultado normal'}</small>
+            <strong>${resultLine}</strong>
+            <small><span class="baba-result-tag ${baba.lastResult.decididoPorSorteio ? 'is-draw' : 'is-win'}">${baba.lastResult.decididoPorSorteio ? 'Empate: rodizio definido por sorteio' : 'Resultado normal'}</span></small>
           </div>
         </div>
         <div class="baba-row"><span>Continua em campo</span><b>${teamDetailButton(baba, keep, '-')}</b></div>
@@ -1514,7 +1608,7 @@
         ${(baba.jogos || []).map((game) => `
           <div class="baba-row">
             <div>
-              <strong>Jogo ${game.numeroJogo}: ${teamDetailButton(baba, getTeam(baba, game.timeA), game.timeANome)} ${game.placarA} x ${game.placarB} ${teamDetailButton(baba, getTeam(baba, game.timeB), game.timeBNome)}</strong>
+              <strong>Jogo ${game.numeroJogo}: ${matchLineHTML(baba, getTeam(baba, game.timeA), game.placarA, game.placarB, getTeam(baba, game.timeB), true)}</strong>
               <small>Continua: ${teamDetailButton(baba, getTeam(baba, game.timeQueContinuou), '-')} | Saiu: ${teamButtonsFromValue(baba, game.timeQueSaiu)} | ${escapeHTML(game.motivoSaida || '-')}</small>
             </div>
           </div>
