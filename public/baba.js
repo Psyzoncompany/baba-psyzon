@@ -29,11 +29,10 @@
     createToday: $('#create-today-btn'),
     saveHistory: $('#save-history-btn'),
     dateInput: $('#baba-date-input'),
-    updateDate: $('#update-date-btn'),
+    dateDisplay: $('#baba-date-display'),
     markPresent: $('#mark-present-btn'),
     drawTeams: $('#draw-teams-btn'),
     startFirstGame: $('#start-first-game-btn'),
-    nextGame: $('#next-game-btn'),
     undoGame: $('#undo-game-btn'),
     finishBaba: $('#finish-baba-btn'),
     resetCurrent: $('#reset-current-btn'),
@@ -127,6 +126,17 @@
       month: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
+    });
+  }
+
+  function formatBabaDateLong(iso) {
+    const value = iso || todayISO();
+    const [year, month, day] = String(value).split('-').map(Number);
+    if (!year || !month || !day) return value;
+    return new Date(year, month - 1, day).toLocaleDateString('pt-BR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
     });
   }
 
@@ -675,6 +685,14 @@
     if (!baba?.teams?.length) return;
     baba.teamRevealIndex = 0;
     saveState();
+  }
+
+  function openDrawnTeams() {
+    if (!requireOrganizer()) return;
+    const baba = getActiveBaba();
+    if (!baba?.teams?.length) return showToast('Sorteie os times antes de iniciar.');
+    setActiveTab('teams');
+    showToast('Confira os times sorteados e inicie o primeiro jogo por la.');
   }
 
   function startFirstGame() {
@@ -1372,23 +1390,77 @@
     renderTimerOnly();
   }
 
+  function setFlowButton(button, state) {
+    if (!button) return;
+    const classes = ['is-flow-primary', 'is-flow-complete', 'is-flow-next', 'is-flow-disabled', 'is-flow-neutral', 'is-flow-danger'];
+    button.classList.remove(...classes);
+    button.classList.add(`is-flow-${state.variant || 'neutral'}`);
+    button.disabled = Boolean(state.disabled);
+    button.classList.toggle('hidden', Boolean(state.hidden));
+    if (state.label) {
+      button.childNodes.forEach((node) => {
+        if (node.nodeType === Node.TEXT_NODE) node.nodeValue = state.label;
+      });
+      if (!button.querySelector(':scope > .baba-btn-icon') && !button.textContent.trim()) button.textContent = state.label;
+    }
+    button.setAttribute('aria-disabled', state.disabled ? 'true' : 'false');
+  }
+
+  function renderOrganizerControl(baba) {
+    const hasOpenBaba = Boolean(baba && baba.status !== 'finalizado');
+    const hasPresentPlayers = Boolean((baba?.jogadoresPresentes || []).length);
+    const hasDrawnTeams = Boolean((baba?.teams || []).length);
+    const hasFinishedGame = Boolean((baba?.jogos || []).length);
+    const canDrawTeams = hasOpenBaba && hasPresentPlayers;
+    const canOpenTeams = hasOpenBaba && hasDrawnTeams;
+
+    if (els.dateDisplay) els.dateDisplay.textContent = formatBabaDateLong(baba?.dataISO || todayISO());
+
+    setFlowButton(els.markPresent, {
+      variant: hasPresentPlayers ? 'complete' : 'primary',
+      disabled: !hasOpenBaba,
+    });
+    setFlowButton(els.drawTeams, {
+      variant: !canDrawTeams ? 'disabled' : (hasDrawnTeams ? 'complete' : 'next'),
+      disabled: !canDrawTeams,
+    });
+    setFlowButton(els.startFirstGame, {
+      variant: !canOpenTeams ? 'disabled' : 'next',
+      disabled: !canOpenTeams,
+    });
+    setFlowButton(els.undoGame, {
+      variant: 'neutral',
+      hidden: !hasFinishedGame,
+      disabled: !hasFinishedGame,
+    });
+    setFlowButton(els.finishBaba, {
+      variant: 'neutral',
+      disabled: !hasOpenBaba,
+    });
+    setFlowButton(els.resetCurrent, {
+      variant: 'danger',
+      disabled: !hasOpenBaba,
+    });
+  }
+
   function renderHeader(baba) {
     if (baba) {
       els.activeStatus.textContent = baba.status === 'finalizado' ? `Finalizado em ${baba.dataCompleta}` : `Baba aberto - ${baba.dataCompleta}`;
       els.activeSubtitle.textContent = baba.status === 'finalizado'
         ? 'Baba salvo no historico. Crie um novo baba para a proxima rodada.'
         : 'Marque os presentes, sorteie os times e deixe o rodizio trabalhar.';
-      els.dateInput.value = baba.dataISO || todayISO();
+      if (els.dateInput) els.dateInput.value = baba.dataISO || todayISO();
     } else {
       els.activeStatus.textContent = 'Nenhum baba aberto';
       els.activeSubtitle.textContent = 'Crie o baba de hoje para iniciar a convocacao e o sorteio dos times.';
-      els.dateInput.value = todayISO();
+      if (els.dateInput) els.dateInput.value = todayISO();
     }
 
     const hasOpenBaba = Boolean(baba && baba.status !== 'finalizado');
     els.createToday.classList.toggle('hidden', hasOpenBaba);
     els.saveHistory.classList.toggle('hidden', !hasOpenBaba);
     els.saveHistory.textContent = 'Finalizar e Salvar';
+    renderOrganizerControl(baba);
   }
 
   function renderMetrics(baba) {
@@ -1504,9 +1576,11 @@
     `;
 
     if (fullyRevealed) {
+      const startHTML = isOrganizer() && !baba.jogoAtual ? '<button class="baba-primary" type="button" data-action="start-first-live">Iniciar primeiro jogo</button>' : '';
       els.teamsGrid.innerHTML = `
         ${baba.teams.map((team, position) => renderTeamCard(team, position)).join('')}
         <div class="baba-team-reveal-actions baba-team-reveal-actions--all">
+          ${startHTML}
           <button class="baba-secondary" type="button" data-action="restart-team-reveal">Rever sorteio</button>
           <span>Todos os times foram revelados. Clique no nome de qualquer time para ver os jogadores.</span>
         </div>
@@ -1754,18 +1828,21 @@
     if (els.matchNumberPill) els.matchNumberPill.textContent = match ? `Jogo ${match.numeroJogo}` : 'Jogo 0';
 
     if (baba?.pendingTieBreak) {
+      els.currentMatchPanel.className = 'baba-current-match-panel';
       const tied = (baba.pendingTieBreak.tiedTeams || []).map((id) => getTeam(baba, id)?.name).filter(Boolean).join(' x ');
       els.currentMatchPanel.innerHTML = `
         <div class="baba-empty">Empate em ${escapeHTML(tied)}. Sorteie qual time continua e qual sera o proximo confronto.</div>
         ${isOrganizer() ? '<div class="baba-live-actions baba-live-actions--single"><button class="baba-primary" type="button" data-action="resolve-three-team-tie">Sortear proximo time</button></div>' : ''}
       `;
     } else if (!match || !teamA || !teamB) {
+      els.currentMatchPanel.className = 'baba-current-match-panel';
       const canStart = isOrganizer() && baba?.teams?.length >= 2;
       els.currentMatchPanel.innerHTML = `
         <div class="baba-empty">Nenhum jogo iniciado.</div>
         ${canStart ? '<div class="baba-live-actions baba-live-actions--single"><button class="baba-primary" type="button" data-action="start-first-live">Iniciar primeiro jogo</button></div>' : ''}
       `;
     } else {
+      els.currentMatchPanel.className = 'baba-current-match-panel';
       const remaining = getRemainingSeconds(match);
       const isPrepared = !match.timerRunning && !match.iniciadoEm;
       const isOver = remaining === 0 && match.iniciadoEm;
@@ -2193,11 +2270,9 @@
       if (baba.status === 'finalizado') return showToast('Este baba ja esta salvo no historico.');
       finishBaba();
     });
-    els.updateDate.addEventListener('click', updateBabaDate);
     els.markPresent.addEventListener('click', () => els.presentModal.classList.remove('hidden'));
     els.drawTeams.addEventListener('click', drawTeams);
-    els.startFirstGame.addEventListener('click', startFirstGame);
-    els.nextGame.addEventListener('click', startNextGame);
+    els.startFirstGame.addEventListener('click', openDrawnTeams);
     els.undoGame.addEventListener('click', undoLastGame);
     els.finishBaba.addEventListener('click', finishBaba);
     els.resetCurrent.addEventListener('click', resetCurrentBaba);

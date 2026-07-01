@@ -1962,7 +1962,7 @@
       gap: clamp(1.25rem, 4vw, 2rem);
       border: 0;
       border-radius: 0;
-      padding: clamp(1rem, 4vw, 2.5rem) 0 4rem;
+      padding: clamp(.55rem, 2vw, 1.5rem) 0 2rem;
       background: transparent;
       box-shadow: none;
       backdrop-filter: none;
@@ -1986,8 +1986,8 @@
     }
 
     .baba-home-logo {
-      width: min(78vw, 560px);
-      max-height: 47vh;
+      width: min(66vw, 430px);
+      max-height: 32vh;
       object-fit: contain;
       mix-blend-mode: multiply;
       filter: drop-shadow(0 20px 34px rgba(7, 23, 53, .12));
@@ -1998,27 +1998,27 @@
       margin: 0 auto;
       padding: 0;
       display: grid;
-      gap: 1.25rem;
+      gap: .9rem;
       background: transparent;
     }
 
     .baba-mode-grid {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 1.25rem;
+      gap: .85rem;
       width: 100%;
     }
 
     .baba-choice {
       position: relative;
-      min-height: 150px;
+      min-height: 118px;
       display: grid;
-      grid-template-columns: minmax(5.7rem, 9.25rem) 1px minmax(0, 1fr) auto;
+      grid-template-columns: minmax(4.75rem, 7.2rem) 1px minmax(0, 1fr) auto;
       align-items: center;
-      gap: clamp(1rem, 4vw, 2rem);
+      gap: clamp(.8rem, 3vw, 1.35rem);
       border: 1px solid rgba(220, 227, 237, .9);
       border-radius: 28px;
-      padding: clamp(1rem, 4vw, 1.65rem);
+      padding: clamp(.8rem, 2.8vw, 1.15rem);
       color: #071735;
       background: rgba(255, 255, 255, .94);
       box-shadow: 0 20px 54px rgba(15, 23, 42, .13);
@@ -2026,14 +2026,7 @@
     }
 
     .baba-choice::before {
-      content: "";
-      width: clamp(5.65rem, 17vw, 8.6rem);
-      aspect-ratio: 1;
-      grid-column: 1;
-      grid-row: 1 / span 2;
-      border-radius: 30px;
-      background: linear-gradient(145deg, #071735, #12376f);
-      box-shadow: 0 14px 28px rgba(7, 23, 53, .22);
+      display: none;
     }
 
     .baba-choice:nth-child(2)::before {
@@ -2050,22 +2043,22 @@
       background: #dce3ed;
     }
 
-    .baba-choice svg {
-      position: relative;
-      z-index: 1;
+    .baba-choice-icon {
       grid-column: 1;
       grid-row: 1 / span 2;
       justify-self: center;
-      width: clamp(3.25rem, 10vw, 5rem);
-      height: clamp(3.25rem, 10vw, 5rem);
-      color: #ffffff;
+      width: clamp(4.65rem, 15vw, 6.7rem);
+      aspect-ratio: 1;
+      border-radius: 26px;
+      object-fit: cover;
+      box-shadow: 0 12px 24px rgba(7, 23, 53, .16);
     }
 
     .baba-choice span {
       grid-column: 3;
       align-self: end;
       color: #071735;
-      font-size: clamp(1.7rem, 5vw, 2.35rem);
+      font-size: clamp(1.35rem, 4vw, 1.95rem);
       line-height: 1.08;
       font-weight: 950;
       letter-spacing: 0;
@@ -2075,7 +2068,7 @@
       grid-column: 3;
       align-self: start;
       color: #647086;
-      font-size: clamp(1rem, 3vw, 1.25rem);
+      font-size: clamp(.9rem, 2.4vw, 1.06rem);
       line-height: 1.35;
       font-weight: 650;
     }
@@ -2085,25 +2078,21 @@
       grid-row: 1 / span 2;
       display: inline-grid;
       place-items: center;
-      width: clamp(3.35rem, 9vw, 4.25rem);
+      width: clamp(2.75rem, 7vw, 3.4rem);
       aspect-ratio: 1;
       border-radius: 999px;
       color: #ffffff;
       background: #071735;
       box-shadow: 0 12px 22px rgba(7, 23, 53, .20);
+      font-size: clamp(2.4rem, 6vw, 3rem);
+      font-style: normal;
+      font-weight: 700;
+      line-height: 1;
     }
 
     .baba-choice:nth-child(2) .baba-choice-arrow {
       background: #2f8d45;
       box-shadow: 0 12px 22px rgba(47, 141, 69, .18);
-    }
-
-    .baba-choice .baba-choice-arrow svg {
-      position: static;
-      width: 1.65rem;
-      height: 1.65rem;
-      grid-column: auto;
-      grid-row: auto;
     }
 
     .baba-password {
@@ -2164,42 +2153,290 @@
       }
 
       .baba-gateway {
-        gap: 1rem;
-        padding-top: .5rem;
+        gap: .62rem;
+        padding-top: .15rem;
+        padding-bottom: 1rem;
       }
 
       .baba-home-logo {
-        width: min(88vw, 410px);
-        max-height: 39vh;
+        width: min(72vw, 330px);
+        max-height: 28vh;
       }
 
       .baba-mode-grid {
-        gap: .95rem;
+        gap: .7rem;
       }
 
       .baba-choice {
-        min-height: 126px;
-        grid-template-columns: 5.25rem 1px minmax(0, 1fr) 2.9rem;
-        gap: .85rem;
-        border-radius: 22px;
-        padding: .9rem;
+        min-height: 96px;
+        grid-template-columns: 4.25rem 1px minmax(0, 1fr) 2.35rem;
+        gap: .58rem;
+        border-radius: 20px;
+        padding: .68rem;
       }
 
-      .baba-choice::before {
-        width: 5rem;
-        border-radius: 22px;
+      .baba-choice-icon {
+        width: 4.1rem;
+        border-radius: 18px;
       }
 
       .baba-choice span {
-        font-size: clamp(1.25rem, 7vw, 1.7rem);
+        font-size: clamp(1.05rem, 5.8vw, 1.38rem);
       }
 
       .baba-choice small {
-        font-size: clamp(.88rem, 4vw, 1.05rem);
+        font-size: clamp(.76rem, 3.7vw, .9rem);
       }
 
       .baba-choice .baba-choice-arrow {
-        width: 2.8rem;
+        width: 2.35rem;
+        font-size: 2.15rem;
+      }
+    }
+  </style>
+  <style id="baba-control-and-live-polish">
+    .baba-control-card {
+      display: grid;
+      gap: 1rem;
+      border-color: #e1e7f0;
+      border-radius: 28px;
+      padding: 1.15rem;
+      background: #ffffff;
+      box-shadow: 0 18px 44px rgba(15, 23, 42, .10);
+    }
+
+    .baba-control-card .baba-card__head {
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+
+    .baba-control-card .baba-card__head h2 {
+      color: #071735;
+      font-size: 1.12rem;
+      letter-spacing: 0;
+    }
+
+    .baba-control-card .baba-card__head span {
+      border: 1px solid #dbeafe;
+      border-radius: 999px;
+      padding: .36rem .62rem;
+      color: #1d4ed8;
+      background: #eff6ff;
+      font-size: .68rem;
+      font-weight: 950;
+    }
+
+    .baba-control-date {
+      display: grid;
+      gap: .45rem;
+    }
+
+    .baba-control-date>span {
+      color: #647086;
+      font-size: .72rem;
+      font-weight: 950;
+      letter-spacing: .06em;
+    }
+
+    .baba-control-date__field {
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      gap: .72rem;
+      border: 1px solid #e1e7f0;
+      border-radius: 18px;
+      padding: .8rem .95rem;
+      color: #071735;
+      background: #f8fafc;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .92);
+    }
+
+    .baba-control-date__field svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      flex: 0 0 auto;
+      color: #2f8d45;
+    }
+
+    .baba-control-date__field strong {
+      color: #071735;
+      font-size: 1rem;
+      font-weight: 900;
+    }
+
+    .baba-control-flow {
+      display: grid;
+      gap: .62rem;
+    }
+
+    .baba-control-flow button {
+      width: 100%;
+      min-height: 56px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: .55rem;
+      border: 1px solid #e1e7f0;
+      border-radius: 17px;
+      padding: .78rem .95rem;
+      color: #071735;
+      background: #ffffff;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, .055);
+      font-size: .92rem;
+      font-weight: 900;
+      text-align: left;
+    }
+
+    .baba-control-flow button .baba-btn-icon {
+      width: 1.15rem;
+      height: 1.15rem;
+      margin-right: 0;
+    }
+
+    .baba-control-flow button.is-flow-primary,
+    .baba-control-flow button.is-flow-complete {
+      border-color: rgba(47, 141, 69, .44);
+      color: #ffffff;
+      background: linear-gradient(135deg, #31a24d, #1f7d3a);
+      box-shadow: 0 12px 24px rgba(47, 141, 69, .20);
+    }
+
+    .baba-control-flow button.is-flow-next {
+      border-color: rgba(47, 141, 69, .48);
+      color: #ffffff;
+      background: linear-gradient(135deg, #39b65b, #23813e);
+      box-shadow: 0 0 0 0 rgba(47, 141, 69, .26), 0 14px 26px rgba(47, 141, 69, .22);
+      animation: baba-flow-pulse 1.9s ease-in-out infinite;
+    }
+
+    .baba-control-flow button.is-flow-disabled {
+      border-color: #e5eaf1;
+      color: #9aa6b8;
+      background: #f3f6fa;
+      box-shadow: none;
+      cursor: not-allowed;
+      opacity: 1;
+    }
+
+    .baba-control-flow button.is-flow-neutral {
+      border-color: #e1e7f0;
+      color: #172033;
+      background: #ffffff;
+    }
+
+    .baba-control-flow button.is-flow-danger {
+      border-color: #fecdd3;
+      color: #be123c;
+      background: #fff5f6;
+      box-shadow: 0 8px 18px rgba(190, 18, 60, .06);
+    }
+
+    @keyframes baba-flow-pulse {
+      0%, 100% {
+        transform: translateY(0);
+        box-shadow: 0 0 0 0 rgba(47, 141, 69, .24), 0 14px 26px rgba(47, 141, 69, .22);
+      }
+      50% {
+        transform: translateY(-1px);
+        box-shadow: 0 0 0 7px rgba(47, 141, 69, .08), 0 18px 30px rgba(47, 141, 69, .26);
+      }
+    }
+
+    .baba-current-match-panel {
+      display: block;
+      min-width: 0;
+    }
+
+    .baba-grid--live>.baba-card:first-child {
+      overflow: hidden;
+    }
+
+    .baba-current-match-panel .baba-match-live {
+      gap: .95rem;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .baba-current-match-panel .baba-timer {
+      min-height: 48px;
+      padding: .62rem 1.35rem;
+      font-size: clamp(1.32rem, 4.5vw, 1.72rem);
+    }
+
+    .baba-current-match-panel .baba-live-scoreboard {
+      gap: .45rem;
+      padding: .25rem 0 .85rem;
+    }
+
+    .baba-current-match-panel .baba-live-score {
+      min-width: 5.7rem;
+      font-size: clamp(2.55rem, 9vw, 3.55rem);
+    }
+
+    .baba-current-match-panel .baba-live-actions {
+      gap: .58rem;
+      padding: .75rem 0 .85rem;
+      border-bottom: 1px solid #e1e7f0;
+    }
+
+    .baba-current-match-panel .baba-live-goal-actions,
+    .baba-current-match-panel .baba-live-secondary-actions {
+      gap: .52rem;
+    }
+
+    .baba-current-match-panel .baba-goal-btn,
+    .baba-current-match-panel .baba-live-main-btn {
+      min-height: 56px;
+      border-radius: 16px;
+      font-size: .98rem;
+    }
+
+    .baba-current-match-panel .baba-live-control-btn {
+      min-height: 48px;
+      border-radius: 14px;
+      padding: .56rem .5rem;
+      font-size: .78rem;
+      line-height: 1.1;
+    }
+
+    .baba-current-match-panel .baba-match-live__meta .baba-pill {
+      padding: .48rem .62rem;
+      font-size: .76rem;
+    }
+
+    @media (max-width: 760px) {
+      .baba-control-card {
+        gap: .82rem;
+        border-radius: 24px;
+        padding: .95rem;
+      }
+
+      .baba-control-flow {
+        gap: .5rem;
+      }
+
+      .baba-control-flow button {
+        min-height: 52px;
+        border-radius: 15px;
+        padding: .68rem .78rem;
+        font-size: .84rem;
+      }
+
+      .baba-current-match-panel .baba-live-scoreboard {
+        grid-template-columns: minmax(0, .92fr) auto minmax(0, .92fr);
+      }
+
+      .baba-current-match-panel .baba-live-secondary-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .baba-current-match-panel .baba-live-control-btn {
+        min-height: 46px;
+        font-size: .74rem;
       }
     }
   </style>
@@ -2269,20 +2506,17 @@
       <path d="M4 20h5L20 9l-5-5L4 15v5Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
       <path d="m13.5 5.5 5 5M4 20l5-1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
     </symbol>
-    <symbol id="baba-strategy" viewBox="0 0 24 24">
-      <path d="M8 4h8l1 3h2v14H5V7h2l1-3Z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" />
-      <path d="M9 7h6M8 17c4-5 5-5 8-2m0 0v-4m0 4h-4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
-      <circle cx="8" cy="17" r="1.2" fill="currentColor" />
-      <circle cx="12" cy="12" r="1.2" fill="currentColor" />
-    </symbol>
-    <symbol id="baba-chevron" viewBox="0 0 24 24">
-      <path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" />
-    </symbol>
     <symbol id="baba-users" viewBox="0 0 64 64">
       <circle cx="24" cy="22" r="9" fill="currentColor" opacity=".9" />
       <circle cx="43" cy="25" r="7" fill="currentColor" opacity=".55" />
       <path d="M9 52c2-11 8-17 15-17s13 6 15 17" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
       <path d="M36 50c2-8 7-12 12-12 4 0 8 3 10 10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity=".6" />
+    </symbol>
+    <symbol id="baba-users-check" viewBox="0 0 64 64">
+      <circle cx="22" cy="22" r="9" fill="currentColor" opacity=".9" />
+      <circle cx="40" cy="24" r="7" fill="currentColor" opacity=".55" />
+      <path d="M8 52c2-11 8-17 15-17 6 0 11 4 14 12" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+      <path d="M39 48l6 6 12-15" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
     </symbol>
     <symbol id="baba-cloud" viewBox="0 0 64 64">
       <path d="M22 48h25c7 0 12-5 12-11s-5-11-12-11h-1C44 17 37 11 28 11c-10 0-18 8-18 18v1C5 32 2 36 2 41c0 4 4 7 9 7h11Z" fill="currentColor" opacity=".2" />
@@ -2326,6 +2560,9 @@
     <symbol id="baba-clock" viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.2" />
       <path d="M12 7v5l4 2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="baba-pause" viewBox="0 0 24 24">
+      <path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
     </symbol>
     <symbol id="baba-refresh" viewBox="0 0 24 24">
       <path d="M20 12a8 8 0 0 1-14 5m-2-5a8 8 0 0 1 14-5M18 3v4h-4M6 21v-4h4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
@@ -2386,16 +2623,16 @@
         <p>Crie o baba de hoje, marque presentes, sorteie times, registre placares, controle o rodizio e salve ranking e historico.</p>
         <div class="baba-mode-grid">
           <button id="enter-organizer-btn" class="baba-choice" type="button">
-            <svg><use href="#baba-strategy"></use></svg>
+            <img class="baba-choice-icon" src="img/baba-home-organizer-icon.png" alt="">
             <span>Entrar como Organizador</span>
             <small>Gerencie, organize e controle seu baba.</small>
-            <i class="baba-choice-arrow" aria-hidden="true"><svg><use href="#baba-chevron"></use></svg></i>
+            <i class="baba-choice-arrow" aria-hidden="true">›</i>
           </button>
           <button id="enter-player-btn" class="baba-choice" type="button">
-            <svg><use href="#baba-users"></use></svg>
+            <img class="baba-choice-icon" src="img/baba-home-player-icon.png" alt="">
             <span>Entrar como Jogador</span>
             <small>Participe, jogue e faca parte do time.</small>
-            <i class="baba-choice-arrow" aria-hidden="true"><svg><use href="#baba-chevron"></use></svg></i>
+            <i class="baba-choice-arrow" aria-hidden="true">›</i>
           </button>
         </div>
         <form id="organizer-password-form" class="baba-password hidden">
@@ -2522,23 +2759,23 @@
 
       <section class="baba-view" data-view="organizer">
         <div class="baba-organizer-layout">
-          <article class="baba-card organizer-only">
+          <article class="baba-card baba-control-card organizer-only">
             <div class="baba-card__head">
               <h2>Controle do Baba</h2>
-              <span>Automacao</span>
+              <span>AUTOMACAO</span>
             </div>
-            <div class="baba-date-row">
-              <label>
-                Data do baba
-                <input id="baba-date-input" type="date">
-              </label>
-              <button id="update-date-btn" class="baba-secondary" type="button">Atualizar data</button>
+            <div class="baba-control-date">
+              <span>DATA DO BABA</span>
+              <div class="baba-control-date__field">
+                <svg aria-hidden="true" focusable="false"><use href="#baba-calendar"></use></svg>
+                <strong id="baba-date-display">1 de jul. de 2026</strong>
+              </div>
+              <input id="baba-date-input" type="date" hidden aria-hidden="true" tabindex="-1">
             </div>
-            <div class="baba-action-grid">
+            <div class="baba-control-flow">
               <button id="mark-present-btn" type="button">Marcar Jogadores Presentes</button>
               <button id="draw-teams-btn" type="button">Sortear Times</button>
               <button id="start-first-game-btn" type="button">Iniciar Primeiro Jogo</button>
-              <button id="next-game-btn" type="button">Proximo Jogo Automatico</button>
               <button id="undo-game-btn" type="button">Desfazer Ultimo Jogo</button>
               <button id="finish-baba-btn" type="button">Finalizar Baba</button>
               <button id="reset-current-btn" class="danger" type="button">Resetar Baba Atual</button>
@@ -2911,11 +3148,9 @@
           'baba-logout-btn': 'baba-exit',
           'create-today-btn': 'baba-plus',
           'save-history-btn': 'baba-save',
-          'update-date-btn': 'baba-calendar',
-          'mark-present-btn': 'baba-check',
+          'mark-present-btn': 'baba-users-check',
           'draw-teams-btn': 'baba-shuffle',
           'start-first-game-btn': 'baba-play',
-          'next-game-btn': 'baba-next',
           'undo-game-btn': 'baba-undo',
           'finish-baba-btn': 'baba-save',
           'reset-current-btn': 'baba-trash',
@@ -2938,7 +3173,7 @@
             'finish-live-match': 'baba-flag',
             'start-first-live': 'baba-play',
             'start-prepared-match': 'baba-play',
-            'pause-time': 'baba-clock',
+            'pause-time': 'baba-pause',
             'edit-time': 'baba-pencil',
             'resolve-three-team-tie': 'baba-shuffle',
             'advance-team-reveal': 'baba-next',
