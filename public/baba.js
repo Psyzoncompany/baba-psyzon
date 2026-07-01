@@ -5,6 +5,13 @@
   const MODE_KEY = 'psyzon_baba_mode';
   const VISITOR_TEAM_ID = 'team_visitante';
   const VISITOR_TEAM_NAME = 'Visitante';
+  const RANKING_MODES = [
+    { id: 'goals', label: 'Gols', icon: 'baba-ball' },
+    { id: 'wins', label: 'Vitorias', icon: 'baba-check' },
+    { id: 'losses', label: 'Derrotas', icon: 'baba-x' },
+    { id: 'titles', label: 'Titulos', icon: 'baba-trophy' },
+    { id: 'efficiency', label: 'Aproveitamento', icon: 'baba-chart' },
+  ];
 
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -57,6 +64,7 @@
     teamsGrid: $('#teams-grid'),
     rankingList: $('#ranking-list'),
     dailyRankingList: $('#daily-ranking-list'),
+    rankingFilterControls: $('#ranking-filter-controls'),
     monthlyRankingLabel: $('#monthly-ranking-label'),
     monthlyRankingList: $('#monthly-ranking-list'),
     goalkeeperRankingList: $('#goalkeeper-ranking-list'),
@@ -88,6 +96,7 @@
   let mode = null;
   let selectedHistoryId = null;
   let selectedMonthlyKey = null;
+  let rankingMode = 'goals';
   const expandedRankingKeys = new Set();
   let toastTimer = null;
   let goalTeamId = null;
@@ -243,6 +252,19 @@
 
   function getTeam(baba, id) {
     return baba?.teams?.find((team) => team.id === id) || null;
+  }
+
+  function teamOrderValue(team) {
+    if (!team) return 9999;
+    if (team.id === VISITOR_TEAM_ID || team.tipo === 'visitante') return 9998;
+    const match = String(team.id || '').match(/^team_(\d+)$/);
+    return match ? Number(match[1]) : 9997;
+  }
+
+  function getSequentialTeamIds(teams = []) {
+    return [...teams]
+      .sort((a, b) => teamOrderValue(a) - teamOrderValue(b) || String(a.name || '').localeCompare(String(b.name || '')))
+      .map((team) => team.id);
   }
 
   function makeEmptyTeam(id, name, extra = {}) {
@@ -626,7 +648,7 @@
     }
 
     baba.teams = teams;
-    baba.filaTimes = shuffle(teams.map((team) => team.id));
+    baba.filaTimes = getSequentialTeamIds(teams);
     baba.jogoAtual = null;
     baba.jogos = [];
     baba.lastResult = null;
@@ -659,7 +681,7 @@
     if (baba.jogoAtual) return showToast('Ja existe um jogo em andamento.');
 
     const firstGame = !(baba.jogos?.length);
-    const teamIds = baba.teams.map((team) => team.id);
+    const teamIds = getSequentialTeamIds(baba.teams);
     let teamAId = null;
     let teamBId = null;
     let order = [];
@@ -667,9 +689,9 @@
     if (firstGame && teamIds.includes('team_1') && teamIds.includes('team_2')) {
       teamAId = 'team_1';
       teamBId = 'team_2';
-      order = shuffle(teamIds.filter((id) => id !== teamAId && id !== teamBId));
+      order = teamIds.filter((id) => id !== teamAId && id !== teamBId);
     } else {
-      order = baba.filaTimes.length >= 2 ? [...baba.filaTimes] : shuffle(teamIds);
+      order = baba.filaTimes.length >= 2 ? [...baba.filaTimes] : teamIds;
       teamAId = order.shift();
       teamBId = order.shift();
     }
@@ -780,12 +802,12 @@
   function recomputeLiveScore(match) {
     if (!match) return;
     if (!Array.isArray(match.goalEvents)) match.goalEvents = [];
-    if (!match.goalEvents.length) {
-      match.gols = match.gols || [];
-      return;
-    }
     match.placarA = 0;
     match.placarB = 0;
+    if (!match.goalEvents.length) {
+      match.gols = [];
+      return;
+    }
     (match.goalEvents || []).forEach((event) => {
       if (event.time === match.timeA) match.placarA += 1;
       if (event.time === match.timeB) match.placarB += 1;
@@ -1193,6 +1215,7 @@
     target.totalVitorias += Number(stats.totalVitorias || 0);
     target.totalEmpates += Number(stats.totalEmpates || 0);
     target.totalDerrotas += Number(stats.totalDerrotas || 0);
+    target.totalJogos += Number(stats.totalJogos || 0);
     target.totalBabas += Number(stats.totalBabas || 0);
     target.totalTitulosBaba += Number(stats.totalTitulosBaba || 0);
     ranking[stats.jogadorId] = target;
@@ -1308,6 +1331,7 @@
       totalVitorias: 0,
       totalEmpates: 0,
       totalDerrotas: 0,
+      totalJogos: 0,
       totalBabas: 0,
       totalTitulosBaba: 0,
       mediaGols: 0,
@@ -1323,6 +1347,7 @@
   function finalizeStats(stats) {
     const games = stats.totalVitorias + stats.totalEmpates + stats.totalDerrotas;
     const points = stats.totalVitorias * 3 + stats.totalEmpates;
+    stats.totalJogos = games;
     stats.mediaGols = stats.totalBabas ? Number((stats.totalGols / stats.totalBabas).toFixed(2)) : 0;
     stats.aproveitamento = games ? Math.round((points / (games * 3)) * 100) : 0;
     return stats;
@@ -1612,12 +1637,12 @@
   }
 
   function getSortedGeneralRanking() {
-    return sortRanking(calculateGeneralRanking());
+    return sortRanking(calculateGeneralRanking(), 'goals');
   }
 
-  function getDailyRankingList(baba) {
+  function getDailyRankingList(baba, metric = 'goals') {
     const ranking = calculateCurrentBabaRanking(baba);
-    return sortRanking(ranking);
+    return sortRanking(ranking, metric);
   }
 
   function calculateCurrentBabaRanking(baba) {
@@ -1631,7 +1656,7 @@
   }
 
   function renderDailyTopScorers(baba) {
-    const top = getDailyRankingList(baba)
+    const top = getDailyRankingList(baba, 'goals')
       .filter((stats) => stats.totalGols > 0);
     if (!top.length) {
       els.dailyTopScorers.innerHTML = '<div class="baba-empty">Sem gols no baba atual.</div>';
@@ -1829,22 +1854,26 @@
   }
 
   function renderRankings(baba) {
-    const general = sortRanking(calculateGeneralRanking());
-    const daily = getDailyRankingList(baba);
+    renderRankingFilters();
+    const general = sortRanking(calculateGeneralRanking(), rankingMode);
+    const daily = getDailyRankingList(baba, rankingMode);
     const currentMonth = activeMonthKey(baba);
-    const monthly = sortRanking(calculateMonthlyRanking(currentMonth, { includeActive: true }));
+    const monthly = sortRanking(calculateMonthlyRanking(currentMonth, { includeActive: true }), rankingMode);
     const goalkeepers = calculateGoalkeeperRanking({ includeActive: true });
     if (els.monthlyRankingLabel) els.monthlyRankingLabel.textContent = monthLabel(currentMonth);
     if (els.monthlyRankingList) {
-      els.monthlyRankingList.innerHTML = renderRankingList(monthly, 'Ainda nao ha gols no ranking deste mes.', {
+      els.monthlyRankingList.innerHTML = renderRankingList(monthly, rankingEmptyMessage('neste mes'), {
         expandKey: 'monthly-current',
+        metric: rankingMode,
       });
     }
-    els.rankingList.innerHTML = renderRankingList(general, 'Ainda nao ha ranking geral. Finalize um baba para iniciar.', {
+    els.rankingList.innerHTML = renderRankingList(general, rankingEmptyMessage('no ranking geral'), {
       expandKey: 'general',
+      metric: rankingMode,
     });
-    els.dailyRankingList.innerHTML = renderRankingList(daily, 'Ainda nao ha ranking do baba atual.', {
+    els.dailyRankingList.innerHTML = renderRankingList(daily, rankingEmptyMessage('no baba atual'), {
       expandKey: 'daily',
+      metric: rankingMode,
     });
     if (els.goalkeeperRankingList) {
       els.goalkeeperRankingList.innerHTML = renderGoalkeeperRankingList(goalkeepers, 'Ainda nao ha jogos com goleiros para montar este ranking.', {
@@ -1866,21 +1895,70 @@
     els.monthlyHistoryTabs.innerHTML = keys.map((key) => `
       <button class="${key === selectedMonthlyKey ? 'active' : ''}" type="button" data-month-key="${key}">${escapeHTML(monthLabel(key))}</button>
     `).join('');
-    const ranking = sortRanking(calculateMonthlyRanking(selectedMonthlyKey, { includeActive: selectedMonthlyKey === activeMonthKey() }));
-    els.monthlyHistoryRanking.innerHTML = renderRankingList(ranking, 'Nenhum gol salvo neste mes.', {
+    const ranking = sortRanking(calculateMonthlyRanking(selectedMonthlyKey, { includeActive: selectedMonthlyKey === activeMonthKey() }), rankingMode);
+    els.monthlyHistoryRanking.innerHTML = renderRankingList(ranking, rankingEmptyMessage('neste mes'), {
       expandKey: `month-${selectedMonthlyKey}`,
+      metric: rankingMode,
     });
   }
 
-  function sortRanking(ranking) {
+  function rankingEmptyMessage(scope) {
+    if (rankingMode === 'goals') return `Ainda nao ha gols ${scope}.`;
+    const option = RANKING_MODES.find((item) => item.id === rankingMode);
+    const label = (option?.label || 'dados').toLowerCase();
+    return `Ainda nao ha dados de ${label} ${scope}.`;
+  }
+
+  function renderRankingFilters() {
+    if (!els.rankingFilterControls) return;
+    els.rankingFilterControls.innerHTML = RANKING_MODES.map((modeOption) => `
+      <button class="${rankingMode === modeOption.id ? 'active' : ''}" type="button" data-ranking-mode="${modeOption.id}" aria-pressed="${rankingMode === modeOption.id ? 'true' : 'false'}">
+        <svg aria-hidden="true" focusable="false"><use href="#${modeOption.icon}"></use></svg>
+        <span>${modeOption.label}</span>
+      </button>
+    `).join('');
+  }
+
+  function rankingMetricValue(stats, metric = 'goals') {
+    if (metric === 'wins') return Number(stats.totalVitorias || 0);
+    if (metric === 'losses') return Number(stats.totalDerrotas || 0);
+    if (metric === 'titles') return Number(stats.totalTitulosBaba || 0);
+    if (metric === 'efficiency') return Number(stats.aproveitamento || 0);
+    return Number(stats.totalGols || 0);
+  }
+
+  function hasRankingMetric(stats, metric = 'goals') {
+    if (metric === 'efficiency') return Number(stats.totalJogos || 0) > 0;
+    return rankingMetricValue(stats, metric) > 0;
+  }
+
+  function rankingMetricDisplay(stats, metric = 'goals') {
+    const value = rankingMetricValue(stats, metric);
+    if (metric === 'wins') return { value, label: value === 1 ? 'vitoria' : 'vitorias' };
+    if (metric === 'losses') return { value, label: value === 1 ? 'derrota' : 'derrotas' };
+    if (metric === 'titles') return { value, label: value === 1 ? 'titulo' : 'titulos' };
+    if (metric === 'efficiency') return { value: `${value}%`, label: 'aprov.' };
+    return { value, label: value === 1 ? 'gol' : 'gols' };
+  }
+
+  function sortRanking(ranking, metric = 'goals') {
     return Object.values(ranking || {})
-      .filter((stats) => Number(stats.totalGols || 0) > 0)
-      .sort((a, b) => (
-        b.totalGols - a.totalGols ||
-        b.totalVitorias - a.totalVitorias ||
-        b.aproveitamento - a.aproveitamento ||
-        a.nome.localeCompare(b.nome)
-      ));
+      .filter((stats) => hasRankingMetric(stats, metric))
+      .sort((a, b) => {
+        if (metric === 'wins') {
+          return b.totalVitorias - a.totalVitorias || b.totalGols - a.totalGols || b.aproveitamento - a.aproveitamento || a.nome.localeCompare(b.nome);
+        }
+        if (metric === 'losses') {
+          return b.totalDerrotas - a.totalDerrotas || b.totalGols - a.totalGols || a.nome.localeCompare(b.nome);
+        }
+        if (metric === 'titles') {
+          return b.totalTitulosBaba - a.totalTitulosBaba || b.totalVitorias - a.totalVitorias || b.totalGols - a.totalGols || a.nome.localeCompare(b.nome);
+        }
+        if (metric === 'efficiency') {
+          return b.aproveitamento - a.aproveitamento || b.totalVitorias - a.totalVitorias || b.totalGols - a.totalGols || a.totalDerrotas - b.totalDerrotas || a.nome.localeCompare(b.nome);
+        }
+        return b.totalGols - a.totalGols || b.totalVitorias - a.totalVitorias || b.aproveitamento - a.aproveitamento || a.nome.localeCompare(b.nome);
+      });
   }
 
   function getRankingVisibleItems(items, { expandKey = '', limit = 4 } = {}) {
@@ -1907,6 +1985,7 @@
   function renderRankingList(items, emptyMessage, options = {}) {
     if (!items.length) return `<div class="baba-empty">${escapeHTML(emptyMessage)}</div>`;
     const { visibleItems, limit, expanded } = getRankingVisibleItems(items, options);
+    const metric = options.metric || 'goals';
     const stat = (iconId, label) => `
       <span>
         <svg aria-hidden="true" focusable="false"><use href="#${iconId}"></use></svg>
@@ -1917,6 +1996,7 @@
       const position = index + 1;
       const topClass = position <= 3 ? ` baba-ranking-card--top${position}` : '';
       const icon = position === 1 ? 'baba-trophy' : 'baba-ball';
+      const score = rankingMetricDisplay(stats, metric);
       return `
         <div class="baba-ranking-card${topClass}">
           <div class="baba-ranking-card__main">
@@ -1929,7 +2009,7 @@
               <div class="stats">
                 ${stat('baba-ball', `${stats.totalGols} gols`)}
                 ${stat('baba-check', `${stats.totalVitorias} V`)}
-                ${stat('baba-next', `${stats.totalEmpates} E`)}
+                ${stat('baba-dash', `${stats.totalEmpates} E`)}
                 ${stat('baba-x', `${stats.totalDerrotas} D`)}
                 ${stat('baba-calendar', `${stats.totalBabas} babas`)}
                 ${stat('baba-chart', `${stats.mediaGols} media`)}
@@ -1939,8 +2019,8 @@
             </div>
           </div>
           <div class="baba-ranking-score">
-            <strong>${stats.totalGols}</strong>
-            <span>${stats.totalGols === 1 ? 'gol' : 'gols'}</span>
+            <strong>${score.value}</strong>
+            <span>${score.label}</span>
           </div>
         </div>
       `;
@@ -2142,6 +2222,14 @@
         const key = rankingToggle.dataset.rankToggle;
         if (expandedRankingKeys.has(key)) expandedRankingKeys.delete(key);
         else expandedRankingKeys.add(key);
+        render();
+        return;
+      }
+
+      const rankingModeButton = event.target.closest('[data-ranking-mode]');
+      if (rankingModeButton) {
+        rankingMode = rankingModeButton.dataset.rankingMode || 'goals';
+        expandedRankingKeys.clear();
         render();
         return;
       }

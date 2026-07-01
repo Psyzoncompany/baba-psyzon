@@ -1060,6 +1060,111 @@
       text-transform: uppercase;
     }
 
+    .baba-ranking-toolbar {
+      display: grid;
+      grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+      align-items: center;
+      gap: .75rem;
+      margin-bottom: .65rem;
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: var(--baba-radius);
+      padding: .58rem;
+      color: #172033;
+      background: rgba(255, 255, 255, .86);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+    }
+
+    .baba-ranking-toolbar>div:first-child {
+      display: grid;
+      gap: .12rem;
+      min-width: 0;
+    }
+
+    .baba-ranking-toolbar strong {
+      color: #172033;
+      font-size: .78rem;
+      font-weight: 950;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+
+    .baba-ranking-toolbar span {
+      color: #52647c;
+      font-size: .64rem;
+      font-weight: 850;
+    }
+
+    .baba-ranking-filters {
+      display: flex;
+      justify-content: flex-end;
+      gap: .38rem;
+      min-width: 0;
+      overflow-x: auto;
+      padding-bottom: .02rem;
+    }
+
+    .baba-ranking-filters button {
+      flex: 0 0 auto;
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .28rem;
+      border: 1px solid rgba(15, 23, 42, .13);
+      border-radius: 999px;
+      padding: .38rem .62rem;
+      color: #26364d;
+      background: #ffffff;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, .07);
+      font-size: .66rem;
+      font-weight: 950;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .baba-ranking-filters button svg {
+      width: .85rem;
+      height: .85rem;
+      flex: 0 0 auto;
+    }
+
+    .baba-ranking-filters button.active {
+      border-color: rgba(15, 23, 42, .20);
+      color: #ffffff;
+      background: linear-gradient(135deg, #172033, #0f766e);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, .16);
+    }
+
+    .baba-match-live__teams {
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+      justify-items: stretch !important;
+      width: 100%;
+    }
+
+    .baba-match-live__teams strong {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .baba-match-live__teams strong:first-child .baba-team-link {
+      justify-content: flex-end;
+      text-align: right;
+    }
+
+    .baba-match-live__teams strong:last-child .baba-team-link {
+      justify-content: flex-start;
+      text-align: left;
+    }
+
+    .baba-match-live__teams .baba-team-link {
+      max-width: 100%;
+    }
+
+    .baba-match-live__teams .baba-score-boxes {
+      flex: 0 0 auto;
+    }
+
     .baba-ranking-footer {
       display: flex;
       justify-content: center;
@@ -1365,6 +1470,51 @@
         font-size: .7rem;
       }
 
+      .baba-ranking-toolbar {
+        grid-template-columns: 1fr;
+        gap: .46rem;
+        padding: .52rem;
+      }
+
+      .baba-ranking-filters {
+        justify-content: flex-start;
+      }
+
+      .baba-ranking-filters button {
+        min-height: 32px;
+        padding: .34rem .5rem;
+        font-size: .62rem;
+      }
+
+      .baba-match-live__teams {
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+        gap: .24rem;
+      }
+
+      .baba-match-live__teams strong {
+        font-size: clamp(.72rem, 3.1vw, .9rem);
+      }
+
+      .baba-match-live__teams .baba-team-link {
+        gap: .18rem;
+      }
+
+      .baba-match-live__teams .baba-team-link-logo {
+        width: .95rem;
+        height: .95rem;
+      }
+
+      .baba-match-live__teams .baba-score-box {
+        min-width: 1.58rem;
+        min-height: 1.55rem;
+        padding: .16rem .24rem;
+        font-size: .82rem;
+      }
+
+      .baba-match-live__teams .baba-score-boxes>span {
+        font-size: .7rem;
+      }
+
       .baba-player-form {
         grid-template-columns: 1fr;
         gap: .42rem;
@@ -1521,6 +1671,10 @@
       <circle cx="24" cy="38" r="6" fill="#06120d" />
       <path d="M48 22l7-8M50 33h8" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
     </symbol>
+    <symbol id="baba-pencil" viewBox="0 0 24 24">
+      <path d="M4 20h5L20 9l-5-5L4 15v5Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
+      <path d="m13.5 5.5 5 5M4 20l5-1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </symbol>
     <symbol id="baba-users" viewBox="0 0 64 64">
       <circle cx="24" cy="22" r="9" fill="currentColor" opacity=".9" />
       <circle cx="43" cy="25" r="7" fill="currentColor" opacity=".55" />
@@ -1576,6 +1730,9 @@
     <symbol id="baba-x" viewBox="0 0 24 24">
       <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
     </symbol>
+    <symbol id="baba-dash" viewBox="0 0 24 24">
+      <path d="M6 12h12" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" />
+    </symbol>
     <symbol id="baba-table-icon" viewBox="0 0 24 24">
       <path d="M4 5h16v14H4V5Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
       <path d="M4 10h16M9 5v14M15 5v14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
@@ -1626,7 +1783,7 @@
         <p>Crie o baba de hoje, marque presentes, sorteie times, registre placares, controle o rodizio e salve ranking e historico.</p>
         <div class="baba-mode-grid">
           <button id="enter-organizer-btn" class="baba-choice" type="button">
-            <svg><use href="#baba-whistle"></use></svg>
+            <svg><use href="#baba-pencil"></use></svg>
             <span>Entrar como Organizador</span>
             <small>Libera cadastro, sorteio e placar</small>
           </button>
@@ -1675,7 +1832,7 @@
         <button class="active" type="button" data-tab="dashboard"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-play"></use></svg><span>Ao vivo</span></button>
         <button type="button" data-tab="table"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-table-icon"></use></svg><span>Tabela</span></button>
         <button type="button" data-tab="teams"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-users"></use></svg><span>Times</span></button>
-        <button class="organizer-only" type="button" data-tab="organizer"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-whistle"></use></svg><span>Organizador</span></button>
+        <button class="organizer-only" type="button" data-tab="organizer"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-pencil"></use></svg><span>Organizador</span></button>
         <button type="button" data-tab="ranking"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-chart"></use></svg><span>Ranking</span></button>
         <button type="button" data-tab="history"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg><span>Historico</span></button>
       </nav>
@@ -1807,6 +1964,13 @@
       </section>
 
       <section class="baba-view" data-view="ranking">
+        <div class="baba-ranking-toolbar">
+          <div>
+            <strong>Ordenar ranking</strong>
+            <span>Escolha o criterio</span>
+          </div>
+          <div id="ranking-filter-controls" class="baba-ranking-filters" role="group" aria-label="Filtros do ranking"></div>
+        </div>
         <div class="baba-grid">
           <article class="baba-card">
             <div class="baba-card__head">
@@ -2174,7 +2338,7 @@
             'start-first-live': 'baba-play',
             'start-prepared-match': 'baba-play',
             'pause-time': 'baba-clock',
-            'edit-time': 'baba-clock',
+            'edit-time': 'baba-pencil',
             'resolve-three-team-tie': 'baba-shuffle',
             'advance-team-reveal': 'baba-next',
             'restart-team-reveal': 'baba-refresh',
