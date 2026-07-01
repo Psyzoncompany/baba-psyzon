@@ -2332,6 +2332,57 @@
       box-shadow: 0 8px 18px rgba(190, 18, 60, .06);
     }
 
+    @media (min-width: 761px) {
+      .baba-organizer-layout {
+        align-items: start;
+      }
+
+      .baba-control-card {
+        grid-column: 1 / -1;
+        grid-template-columns: minmax(18rem, .34fr) minmax(0, .66fr);
+        align-items: start;
+        gap: 1rem 1.25rem;
+        padding: 1.25rem;
+      }
+
+      .baba-control-card .baba-card__head {
+        grid-column: 1 / -1;
+      }
+
+      .baba-control-date {
+        align-self: stretch;
+      }
+
+      .baba-control-date__field {
+        min-height: 74px;
+      }
+
+      .baba-control-flow {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        align-items: stretch;
+        gap: .7rem;
+      }
+
+      .baba-control-flow button {
+        min-height: 74px;
+        justify-content: center;
+        flex-direction: column;
+        gap: .36rem;
+        padding: .82rem .75rem;
+        text-align: center;
+        line-height: 1.14;
+      }
+
+      .baba-control-flow button .baba-btn-icon {
+        width: 1.22rem;
+        height: 1.22rem;
+      }
+
+      .baba-control-flow button.is-flow-danger:not(.hidden):last-child:nth-child(6) {
+        grid-column: auto;
+      }
+    }
+
     @keyframes baba-flow-pulse {
       0%, 100% {
         transform: translateY(0);
