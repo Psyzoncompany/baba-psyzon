@@ -584,9 +584,26 @@
       border-radius: var(--baba-radius);
     }
 
+    .baba-topbar,
+    .baba-brand,
+    .baba-nav,
+    .baba-shell,
+    .baba-app,
+    .baba-card,
+    .baba-tabs,
+    .baba-player-form,
+    .baba-player-list,
+    .baba-player-admin {
+      box-sizing: border-box;
+      max-width: 100%;
+      min-width: 0;
+    }
+
     .baba-brand {
       gap: .48rem;
       cursor: default;
+      flex: 1 1 auto;
+      min-width: 0;
     }
 
     .baba-brand img {
@@ -597,16 +614,37 @@
     .baba-brand span {
       font-size: .82rem;
       line-height: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .baba-nav {
+      flex: 0 0 auto;
+      min-width: 0;
+      max-width: 100%;
     }
 
     .baba-nav button {
       min-height: 32px;
       padding: .36rem .56rem;
       font-size: .68rem;
+      white-space: nowrap;
+    }
+
+    #mode-reset-btn {
+      max-width: 9rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     body.baba-player-mode .baba-nav {
-      display: none !important;
+      display: inline-flex !important;
+    }
+
+    body.baba-player-mode #mode-reset-btn {
+      display: inline-flex !important;
     }
 
     body.baba-player-mode .baba-tabs [data-tab="organizer"] {
@@ -715,6 +753,81 @@
       overflow-wrap: anywhere;
     }
 
+    .baba-player-form {
+      grid-template-columns: minmax(0, 1fr) minmax(8.5rem, .42fr) auto;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .baba-player-form input,
+    .baba-player-form select,
+    .baba-player-form button {
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    .baba-player-list {
+      overflow: hidden;
+    }
+
+    .baba-player-admin {
+      align-items: center;
+      gap: .58rem;
+      color: #172033;
+      background: rgba(255, 255, 255, .82);
+    }
+
+    .baba-player-admin__info {
+      min-width: 0;
+      display: grid;
+      gap: .24rem;
+    }
+
+    .baba-player-admin__info strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .baba-player-admin__meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .28rem;
+    }
+
+    .baba-player-admin__actions {
+      flex: 0 0 auto;
+      display: flex;
+      justify-content: flex-end;
+      gap: .34rem;
+      min-width: 0;
+    }
+
+    .baba-goalie-pill,
+    .baba-status-pill {
+      display: inline-flex;
+      width: fit-content;
+      border-radius: 999px;
+      padding: .18rem .42rem;
+      font-size: .64rem;
+      font-weight: 950;
+      letter-spacing: .025em;
+      text-transform: uppercase;
+    }
+
+    .baba-goalie-pill {
+      border: 1px solid rgba(25, 135, 216, .22);
+      color: #155e9f;
+      background: #eaf6ff;
+    }
+
+    .baba-status-pill {
+      border: 1px solid rgba(223, 62, 82, .22);
+      color: #9f1239;
+      background: #fff1f2;
+    }
+
     body.baba-player-mode .baba-hero {
       display: none !important;
     }
@@ -801,7 +914,7 @@
     }
 
     .baba-ranking-card--top1::before {
-      background: linear-gradient(180deg, #172033, #14a46a);
+      background: linear-gradient(180deg, #b7791f, #f7c948, #fff3a3);
     }
 
     .baba-ranking-card--top2::before {
@@ -810,6 +923,45 @@
 
     .baba-ranking-card--top3::before {
       background: linear-gradient(180deg, #3f2f6f, #7c3aed);
+    }
+
+    @keyframes babaGoldShine {
+      0% {
+        background-position: 160% 0;
+      }
+
+      100% {
+        background-position: -80% 0;
+      }
+    }
+
+    .baba-gold-leader,
+    .baba-ranking-card--top1,
+    .baba-table__row.is-first,
+    .baba-table-scorer.is-first {
+      position: relative;
+      overflow: hidden;
+      border-color: rgba(183, 121, 31, .46) !important;
+      background:
+        linear-gradient(115deg, rgba(255, 255, 255, 0) 34%, rgba(255, 255, 255, .72) 46%, rgba(255, 255, 255, 0) 58%) 160% 0 / 240% 100% no-repeat,
+        linear-gradient(135deg, #fff8dc, #f8df8f 46%, #fffaf0) !important;
+      box-shadow: 0 14px 32px rgba(183, 121, 31, .22), inset 0 1px 0 rgba(255, 255, 255, .85) !important;
+      animation: babaGoldShine 3.2s ease-in-out infinite;
+    }
+
+    .baba-ranking-card--top1 .baba-ranking-position,
+    .baba-position-badge.is-first {
+      border-color: rgba(133, 77, 14, .32);
+      color: #3a2506;
+      background: linear-gradient(135deg, #f8c846, #fff3a3);
+      box-shadow: 0 10px 24px rgba(183, 121, 31, .28);
+    }
+
+    .baba-ranking-card--top1 .baba-ranking-title svg,
+    .baba-ranking-card--top1 .stats svg,
+    .baba-table__row.is-first svg,
+    .baba-table-scorer.is-first svg {
+      color: #854d0e;
     }
 
     .baba-ranking-card__main {
@@ -908,6 +1060,177 @@
       text-transform: uppercase;
     }
 
+    .baba-ranking-footer {
+      display: flex;
+      justify-content: center;
+      padding-top: .1rem;
+    }
+
+    .baba-list-toggle {
+      min-height: 34px;
+      border: 1px solid rgba(15, 23, 42, .13);
+      border-radius: 999px;
+      padding: .42rem .8rem;
+      color: #172033;
+      background: #ffffff;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, .08);
+      font-size: .68rem;
+      font-weight: 950;
+      cursor: pointer;
+    }
+
+    .baba-list-toggle:hover {
+      border-color: rgba(25, 135, 216, .28);
+      background: #eef8ff;
+    }
+
+    .baba-position-badge {
+      display: inline-grid;
+      place-items: center;
+      width: 2.35rem;
+      min-width: 2.35rem;
+      height: 2rem;
+      border: 1px solid rgba(15, 23, 42, .12);
+      border-radius: 999px;
+      color: #24405f;
+      background: #eef4fb;
+      font-size: .72rem;
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .baba-position-label {
+      display: grid;
+      gap: .12rem;
+      min-width: 0;
+    }
+
+    .baba-position-label small {
+      color: #63728a;
+      font-size: .58rem;
+      font-weight: 950;
+      letter-spacing: .035em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .baba-standings .baba-table__row {
+      grid-template-columns: minmax(3.2rem, .44fr) minmax(6.4rem, 1.2fr) repeat(6, minmax(1.45rem, .26fr));
+    }
+
+    .baba-table-scorers {
+      display: grid;
+      gap: .42rem;
+      margin-top: .7rem;
+    }
+
+    .baba-table-scorers__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .5rem;
+      color: #172033;
+      font-size: .76rem;
+      font-weight: 950;
+      letter-spacing: .045em;
+      text-transform: uppercase;
+    }
+
+    .baba-table-scorer-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: .45rem;
+    }
+
+    .baba-table-scorer {
+      display: grid;
+      gap: .28rem;
+      min-width: 0;
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: var(--baba-radius);
+      padding: .56rem;
+      color: #172033;
+      background: #f7faff;
+    }
+
+    .baba-table-scorer strong {
+      overflow: hidden;
+      color: #172033;
+      font-size: .76rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .baba-table-scorer span {
+      color: #52647c;
+      font-size: .66rem;
+      font-weight: 950;
+    }
+
+    .baba-month-tabs {
+      display: flex;
+      gap: .4rem;
+      overflow-x: auto;
+      padding-bottom: .18rem;
+      margin-bottom: .58rem;
+    }
+
+    .baba-month-tabs button {
+      flex: 0 0 auto;
+      min-height: 32px;
+      border: 1px solid rgba(15, 23, 42, .13);
+      border-radius: 999px;
+      padding: .36rem .64rem;
+      color: #172033;
+      background: #ffffff;
+      font-size: .68rem;
+      font-weight: 950;
+      cursor: pointer;
+    }
+
+    .baba-month-tabs button.active {
+      color: #ffffff;
+      background: linear-gradient(135deg, #172033, #24405f);
+    }
+
+    .baba-visitor-pill {
+      display: inline-flex;
+      width: fit-content;
+      border: 1px solid rgba(13, 148, 136, .22);
+      border-radius: 999px;
+      padding: .18rem .42rem;
+      border-color: rgba(13, 148, 136, .22) !important;
+      color: #0f766e !important;
+      background: #ecfeff !important;
+    }
+
+    .baba-admin-section {
+      display: grid;
+      gap: .42rem;
+    }
+
+    .baba-admin-section>span {
+      color: #52647c;
+      font-size: .64rem;
+      font-weight: 950;
+      letter-spacing: .045em;
+      text-transform: uppercase;
+    }
+
+    .baba-team-link-logo--visitor {
+      color: #0f766e;
+      background: #ecfeff;
+    }
+
+    .baba-team-link-logo--visitor svg {
+      width: 68%;
+      height: 68%;
+    }
+
+    .baba-team[data-team-number="visitor"]::before {
+      background: linear-gradient(90deg, #0f766e, #22d3ee, #f8c846);
+    }
+
     .baba-ranking--compact .baba-ranking-card {
       grid-template-columns: minmax(0, 1fr) auto;
       padding: .58rem .62rem;
@@ -937,18 +1260,27 @@
       }
 
       .baba-topbar {
-        width: 100%;
+        width: min(100%, calc(100vw - .76rem));
         min-height: 42px;
         flex-direction: row !important;
         align-items: center !important;
-        gap: .45rem;
+        gap: .34rem;
         margin: 0;
+        padding: .34rem .42rem;
+        overflow: hidden;
       }
 
       .baba-nav {
         width: auto !important;
         margin-left: auto;
-        overflow: visible !important;
+        flex: 0 0 auto;
+        overflow: hidden !important;
+      }
+
+      .baba-nav button {
+        max-width: 7.8rem;
+        padding: .34rem .44rem;
+        font-size: .64rem;
       }
 
       .baba-brand img {
@@ -957,6 +1289,7 @@
       }
 
       .baba-brand span {
+        max-width: min(42vw, 9rem);
         font-size: .76rem;
       }
 
@@ -1032,6 +1365,38 @@
         font-size: .7rem;
       }
 
+      .baba-player-form {
+        grid-template-columns: 1fr;
+        gap: .42rem;
+        margin-bottom: .6rem;
+      }
+
+      .baba-player-form button {
+        width: 100%;
+      }
+
+      .baba-player-admin {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        align-items: start;
+        gap: .48rem;
+      }
+
+      .baba-player-admin__actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .baba-player-admin__actions--single {
+        grid-template-columns: 1fr;
+      }
+
+      .baba-player-admin__actions .baba-mini-btn {
+        width: 100%;
+        min-width: 0;
+      }
+
       .baba-ranking-card {
         grid-template-columns: 1fr;
         gap: .5rem;
@@ -1054,6 +1419,25 @@
         font-size: .62rem;
         padding: .22rem .38rem;
       }
+
+      .baba-standings .baba-table__row {
+        grid-template-columns: minmax(2.6rem, .36fr) minmax(4.5rem, 1fr) repeat(6, minmax(1rem, .2fr));
+      }
+
+      .baba-position-badge {
+        width: 1.9rem;
+        min-width: 1.9rem;
+        height: 1.72rem;
+        font-size: .6rem;
+      }
+
+      .baba-position-label small {
+        display: none;
+      }
+
+      .baba-table-scorer-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
 
     @media (max-width: 390px) {
@@ -1068,6 +1452,10 @@
 
       .baba-action-grid button {
         font-size: .66rem;
+      }
+
+      .baba-table-scorer-grid {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -1336,7 +1724,7 @@
           <article class="baba-card">
             <div class="baba-card__head">
               <h2>Artilheiros do dia</h2>
-              <span>Top 5</span>
+              <span>Top 4</span>
             </div>
             <div id="daily-top-scorers" class="baba-ranking baba-ranking--compact"></div>
           </article>
@@ -1366,6 +1754,7 @@
             <span>Pontos e gols</span>
           </div>
           <div id="standings-list" class="baba-standings"></div>
+          <div id="table-top-scorers" class="baba-table-scorers"></div>
         </article>
       </section>
 
@@ -1408,6 +1797,7 @@
               <select id="player-type">
                 <option value="jogador">Jogador de linha</option>
                 <option value="goleiro">Goleiro</option>
+                <option value="visitante">Visitante do baba</option>
               </select>
               <button type="submit">Cadastrar</button>
             </form>
@@ -1418,6 +1808,13 @@
 
       <section class="baba-view" data-view="ranking">
         <div class="baba-grid">
+          <article class="baba-card">
+            <div class="baba-card__head">
+              <h2>Ranking do mes</h2>
+              <span id="monthly-ranking-label">Mes atual</span>
+            </div>
+            <div id="monthly-ranking-list" class="baba-ranking"></div>
+          </article>
           <article class="baba-card">
             <div class="baba-card__head">
               <h2>Ranking geral</h2>
@@ -1431,6 +1828,21 @@
               <span>Baba atual</span>
             </div>
             <div id="daily-ranking-list" class="baba-ranking"></div>
+          </article>
+          <article class="baba-card">
+            <div class="baba-card__head">
+              <h2>Melhor goleiro</h2>
+              <span>Menos gols sofridos</span>
+            </div>
+            <div id="goalkeeper-ranking-list" class="baba-ranking"></div>
+          </article>
+          <article class="baba-card baba-card--wide">
+            <div class="baba-card__head">
+              <h2>Historico mensal</h2>
+              <span>Por mes</span>
+            </div>
+            <div id="monthly-history-tabs" class="baba-month-tabs"></div>
+            <div id="monthly-history-ranking" class="baba-ranking"></div>
           </article>
         </div>
       </section>
@@ -1521,6 +1933,7 @@
         { name: 'Time 4', logo: 'img/baba-time-4.png', legacy: 'PSG' },
         { name: 'Time 5', logo: 'img/baba-time-5.png', legacy: 'Chelsea' },
       ];
+      const VISITOR_TEAM_ID = 'team_visitante';
       const LEGACY_TO_LABEL = new Map(TEAM_ASSETS.map((team) => [team.legacy, team.name]));
       const wrappedStores = new WeakSet();
       let applyingRemote = false;
@@ -1557,8 +1970,14 @@
         const next = value && typeof value === 'object' ? value : {};
         if (Array.isArray(next.babas)) {
           next.babas.forEach((baba) => {
+            baba.visitantes = Array.isArray(baba.visitantes) ? baba.visitantes : [];
             if (Array.isArray(baba.teams)) {
               baba.teams.forEach((team, index) => {
+                if (team?.id === VISITOR_TEAM_ID || team?.tipo === 'visitante') {
+                  team.name = 'Visitante';
+                  team.tipo = 'visitante';
+                  return;
+                }
                 const number = normalizeTeamNumber(team, index);
                 const asset = assetForTeamNumber(number);
                 team.name = `Time ${number}`;
@@ -1747,6 +2166,7 @@
           const icons = {
             'toggle-player': 'baba-refresh',
             'delete-player': 'baba-trash',
+            'delete-visitor': 'baba-trash',
             'delete-history': 'baba-trash',
             'open-goal-picker': 'baba-ball',
             'undo-goal': 'baba-undo',
@@ -1765,6 +2185,15 @@
       }
 
       function enhanceTeamButton(button) {
+        if (button.dataset.teamDetailId === VISITOR_TEAM_ID) {
+          button.innerHTML = `
+            <span class="baba-team-link-logo baba-team-link-logo--visitor"><svg aria-hidden="true" focusable="false"><use href="#baba-users"></use></svg></span>
+            <span class="baba-team-link-text">Visitante</span>
+          `;
+          button.title = 'Ver jogadores visitantes';
+          button.closest('.baba-team')?.setAttribute('data-team-number', 'visitor');
+          return;
+        }
         const match = String(button.dataset.teamDetailId || '').match(/team_(\d+)/i);
         const number = match ? Number(match[1]) : 1;
         const asset = assetForTeamNumber(number);

@@ -3,6 +3,8 @@
   const ADMIN_PASSWORD = '153090';
   const TEAM_NAMES = ['Barcelona', 'Arsenal', 'Real Madrid', 'PSG', 'Chelsea'];
   const MODE_KEY = 'psyzon_baba_mode';
+  const VISITOR_TEAM_ID = 'team_visitante';
+  const VISITOR_TEAM_NAME = 'Visitante';
 
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -47,6 +49,7 @@
     currentMatchPanel: $('#current-match-panel'),
     queueList: $('#queue-list'),
     standingsList: $('#standings-list'),
+    tableTopScorers: $('#table-top-scorers'),
     dailyTopScorers: $('#daily-top-scorers'),
     currentGamesList: $('#current-games-list'),
     lastResultPill: $('#last-result-pill'),
@@ -54,6 +57,11 @@
     teamsGrid: $('#teams-grid'),
     rankingList: $('#ranking-list'),
     dailyRankingList: $('#daily-ranking-list'),
+    monthlyRankingLabel: $('#monthly-ranking-label'),
+    monthlyRankingList: $('#monthly-ranking-list'),
+    goalkeeperRankingList: $('#goalkeeper-ranking-list'),
+    monthlyHistoryTabs: $('#monthly-history-tabs'),
+    monthlyHistoryRanking: $('#monthly-history-ranking'),
     historyList: $('#history-list'),
     historyCountLabel: $('#history-count-label'),
     historyDetail: $('#history-detail'),
@@ -79,6 +87,8 @@
   let state = readState();
   let mode = null;
   let selectedHistoryId = null;
+  let selectedMonthlyKey = null;
+  const expandedRankingKeys = new Set();
   let toastTimer = null;
   let goalTeamId = null;
   let timerTick = null;
@@ -189,6 +199,9 @@
     next.version = 1;
     next.players = Array.isArray(next.players) ? next.players : [];
     next.babas = Array.isArray(next.babas) ? next.babas : [];
+    next.babas.forEach((baba) => {
+      baba.visitantes = Array.isArray(baba.visitantes) ? baba.visitantes : [];
+    });
     next.activeBabaId = next.activeBabaId || null;
     next.updatedAt = next.updatedAt || Date.now();
     return next;
@@ -220,8 +233,77 @@
     return state.players.find((player) => player.id === id) || null;
   }
 
+  function getVisitor(baba, id) {
+    return (baba?.visitantes || []).find((player) => player.id === id) || null;
+  }
+
+  function getBabaPlayer(baba, id) {
+    return getPlayer(id) || getVisitor(baba, id);
+  }
+
   function getTeam(baba, id) {
     return baba?.teams?.find((team) => team.id === id) || null;
+  }
+
+  function makeEmptyTeam(id, name, extra = {}) {
+    return {
+      id,
+      name,
+      jogadores: [],
+      pontos: 0,
+      golsPro: 0,
+      golsContra: 0,
+      vitorias: 0,
+      empates: 0,
+      derrotas: 0,
+      ...extra,
+    };
+  }
+
+  function ensureVisitorTeam(baba) {
+    if (!baba) return null;
+    baba.visitantes = Array.isArray(baba.visitantes) ? baba.visitantes : [];
+    if (!baba.visitantes.length) return null;
+    baba.teams = Array.isArray(baba.teams) ? baba.teams : [];
+    let team = getTeam(baba, VISITOR_TEAM_ID);
+    if (!team) {
+      team = makeEmptyTeam(VISITOR_TEAM_ID, VISITOR_TEAM_NAME, { tipo: 'visitante' });
+      baba.teams.push(team);
+    }
+    team.name = VISITOR_TEAM_NAME;
+    team.tipo = 'visitante';
+    team.jogadores = baba.visitantes.map((player) => player.id);
+    const inCurrentMatch = [baba.jogoAtual?.timeA, baba.jogoAtual?.timeB].includes(team.id);
+    if (!inCurrentMatch && baba.teams.length >= 2 && !(baba.filaTimes || []).includes(team.id)) {
+      baba.filaTimes = [...(baba.filaTimes || []), team.id];
+    }
+    return team;
+  }
+
+  function removeVisitorTeamIfEmpty(baba) {
+    if (!baba || (baba.visitantes || []).length) return;
+    baba.teams = (baba.teams || []).filter((team) => team.id !== VISITOR_TEAM_ID);
+    baba.filaTimes = (baba.filaTimes || []).filter((id) => id !== VISITOR_TEAM_ID);
+  }
+
+  function visitorTeamHasGames(baba) {
+    return (baba?.jogos || []).some((game) => game.timeA === VISITOR_TEAM_ID || game.timeB === VISITOR_TEAM_ID);
+  }
+
+  function monthKeyFromISO(iso) {
+    if (!iso || !String(iso).includes('-')) return '';
+    return String(iso).slice(0, 7);
+  }
+
+  function monthLabel(key) {
+    if (!key) return 'Mes atual';
+    const [year, month] = key.split('-').map(Number);
+    if (!year || !month) return key;
+    return new Date(year, month - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  }
+
+  function activeMonthKey(baba = getActiveBaba()) {
+    return monthKeyFromISO(baba?.dataISO || todayISO());
   }
 
   function teamNamesFromValue(baba, value) {
@@ -278,8 +360,8 @@
     `;
   }
 
-  function playerName(id) {
-    return getPlayer(id)?.nome || 'Jogador removido';
+  function playerName(id, baba = getActiveBaba()) {
+    return getBabaPlayer(baba, id)?.nome || 'Jogador removido';
   }
 
   function isOrganizer() {
@@ -312,11 +394,6 @@
   }
 
   function resetMode() {
-    if (isForcedViewerMode()) {
-      setMode('player');
-      showToast('Este link abre somente a visualizacao do Baba.');
-      return;
-    }
     mode = null;
     sessionStorage.removeItem(MODE_KEY);
     document.body.classList.remove('baba-player-mode');
@@ -350,6 +427,7 @@
       ano: year,
       status: 'aberto',
       jogadoresPresentes: [],
+      visitantes: [],
       teams: [],
       filaTimes: [],
       jogoAtual: null,
@@ -391,11 +469,33 @@
     if (!requireOrganizer()) return;
     const nome = els.playerName.value.trim();
     if (!nome) return;
+    const type = els.playerType.value;
+
+    if (type === 'visitante') {
+      const baba = getActiveBaba();
+      if (!baba) return showToast('Crie um baba antes de cadastrar visitantes.');
+      if (baba.status === 'finalizado') return showToast('Este baba ja foi finalizado.');
+      if (visitorTeamHasGames(baba)) return showToast('O time Visitante ja jogou. Cadastre novos visitantes no proximo baba.');
+      baba.visitantes = Array.isArray(baba.visitantes) ? baba.visitantes : [];
+      baba.visitantes.push({
+        id: newId('visitor'),
+        nome,
+        tipo: 'visitante',
+        ativo: true,
+        visitante: true,
+        criadoEm: Date.now(),
+      });
+      if (baba.teams?.length) ensureVisitorTeam(baba);
+      els.playerName.value = '';
+      els.playerType.value = 'jogador';
+      saveState('Visitante cadastrado apenas para o baba atual.');
+      return;
+    }
 
     state.players.push({
       id: newId('player'),
       nome,
-      tipo: els.playerType.value === 'goleiro' ? 'goleiro' : 'jogador',
+      tipo: type === 'goleiro' ? 'goleiro' : 'jogador',
       ativo: true,
       criadoEm: Date.now(),
     });
@@ -436,6 +536,25 @@
     saveState('Jogador removido.');
   }
 
+  function deleteVisitor(playerId) {
+    if (!requireOrganizer()) return;
+    const baba = getActiveBaba();
+    if (!baba) return;
+    if (baba.jogoAtual && [baba.jogoAtual.timeA, baba.jogoAtual.timeB].includes(VISITOR_TEAM_ID)) {
+      showToast('Finalize o jogo dos visitantes antes de remover.');
+      return;
+    }
+    if (visitorTeamHasGames(baba)) {
+      showToast('O time Visitante ja jogou. Nao remova visitantes deste baba.');
+      return;
+    }
+    baba.visitantes = (baba.visitantes || []).filter((player) => player.id !== playerId);
+    const visitorTeam = getTeam(baba, VISITOR_TEAM_ID);
+    if (visitorTeam) visitorTeam.jogadores = visitorTeam.jogadores.filter((id) => id !== playerId);
+    removeVisitorTeamIfEmpty(baba);
+    saveState('Visitante removido do baba atual.');
+  }
+
   function togglePresent(playerId, checked) {
     if (!requireOrganizer()) return;
     const baba = getActiveBaba();
@@ -473,9 +592,11 @@
       return;
     }
 
+    baba.visitantes = Array.isArray(baba.visitantes) ? baba.visitantes : [];
     const presentPlayers = (baba.jogadoresPresentes || [])
       .map(getPlayer)
       .filter((player) => player?.ativo);
+    const visitorPlayers = baba.visitantes.filter((player) => player?.ativo);
 
     if (presentPlayers.length < 2) {
       showToast('Marque pelo menos 2 jogadores presentes para sortear.');
@@ -483,17 +604,7 @@
     }
 
     const teamCount = Math.min(TEAM_NAMES.length, Math.max(2, Math.ceil(presentPlayers.length / 5)));
-    const teams = TEAM_NAMES.slice(0, teamCount).map((name, index) => ({
-      id: `team_${index + 1}`,
-      name,
-      jogadores: [],
-      pontos: 0,
-      golsPro: 0,
-      golsContra: 0,
-      vitorias: 0,
-      empates: 0,
-      derrotas: 0,
-    }));
+    const teams = TEAM_NAMES.slice(0, teamCount).map((name, index) => makeEmptyTeam(`team_${index + 1}`, name));
 
     const goalkeepers = shuffle(presentPlayers.filter((player) => player.tipo === 'goleiro'));
     const fieldPlayers = shuffle(presentPlayers.filter((player) => player.tipo !== 'goleiro'));
@@ -506,6 +617,13 @@
       const target = [...teams].sort((a, b) => a.jogadores.length - b.jogadores.length)[0];
       target.jogadores.push(player.id);
     });
+
+    if (visitorPlayers.length) {
+      teams.push(makeEmptyTeam(VISITOR_TEAM_ID, VISITOR_TEAM_NAME, {
+        jogadores: visitorPlayers.map((player) => player.id),
+        tipo: 'visitante',
+      }));
+    }
 
     baba.teams = teams;
     baba.filaTimes = shuffle(teams.map((team) => team.id));
@@ -687,7 +805,7 @@
     els.goalModalTitle.textContent = `Gol do ${team.name}`;
     els.goalPlayerList.innerHTML = team.jogadores.map((playerId) => `
       <button class="baba-goal-player" type="button" data-goal-player-id="${playerId}">
-        <strong>${escapeHTML(playerName(playerId))}</strong>
+        <strong>${escapeHTML(playerName(playerId, baba))}</strong>
         <small>${escapeHTML(team.name)}</small>
       </button>
     `).join('');
@@ -704,7 +822,7 @@
     const baba = getActiveBaba();
     const match = baba?.jogoAtual;
     const team = getTeam(baba, goalTeamId);
-    const player = getPlayer(playerId);
+    const player = getBabaPlayer(baba, playerId);
     if (!match || !team || !player) return;
 
     match.goalEvents = match.goalEvents || [];
@@ -994,8 +1112,12 @@
 
   function calculateDailyRanking(baba) {
     const ranking = {};
-    (baba.jogadoresPresentes || []).forEach((playerId) => {
-      ranking[playerId] = makeEmptyPlayerStats(playerId, playerName(playerId));
+    const playerIds = new Set([...(baba?.jogadoresPresentes || [])]);
+    (baba?.teams || []).forEach((team) => (team.jogadores || []).forEach((id) => playerIds.add(id)));
+    (baba?.visitantes || []).forEach((player) => playerIds.add(player.id));
+
+    playerIds.forEach((playerId) => {
+      ranking[playerId] = makeEmptyPlayerStats(playerId, playerName(playerId, baba));
       ranking[playerId].totalBabas = 1;
     });
 
@@ -1005,21 +1127,21 @@
       if (!teamA || !teamB) return;
 
       if (game.empate) {
-        [...teamA.jogadores, ...teamB.jogadores].forEach((id) => ensureStats(ranking, id).totalEmpates += 1);
+        [...teamA.jogadores, ...teamB.jogadores].forEach((id) => ensureStats(ranking, id, baba).totalEmpates += 1);
       } else {
         const winTeam = getTeam(baba, game.vencedor);
         const loseTeam = getTeam(baba, game.perdedor);
-        winTeam?.jogadores.forEach((id) => ensureStats(ranking, id).totalVitorias += 1);
-        loseTeam?.jogadores.forEach((id) => ensureStats(ranking, id).totalDerrotas += 1);
+        winTeam?.jogadores.forEach((id) => ensureStats(ranking, id, baba).totalVitorias += 1);
+        loseTeam?.jogadores.forEach((id) => ensureStats(ranking, id, baba).totalDerrotas += 1);
       }
 
       (game.gols || []).forEach((goal) => {
-        ensureStats(ranking, goal.jogadorId).totalGols += Number(goal.quantidade || 0);
+        ensureStats(ranking, goal.jogadorId, baba).totalGols += Number(goal.quantidade || 0);
       });
     });
 
     if (baba.campeaoDoBaba?.jogadores) {
-      baba.campeaoDoBaba.jogadores.forEach((id) => ensureStats(ranking, id).totalTitulosBaba += 1);
+      baba.campeaoDoBaba.jogadores.forEach((id) => ensureStats(ranking, id, baba).totalTitulosBaba += 1);
     }
 
     Object.values(ranking).forEach(finalizeStats);
@@ -1033,9 +1155,12 @@
     });
 
     state.babas.filter((baba) => baba.status === 'finalizado').forEach((baba) => {
-      (baba.jogadoresPresentes || []).forEach((id) => ensureStats(ranking, id).totalBabas += 1);
+      const playerIds = new Set([...(baba.jogadoresPresentes || [])]);
+      (baba.teams || []).forEach((team) => (team.jogadores || []).forEach((id) => playerIds.add(id)));
+      (baba.visitantes || []).forEach((player) => playerIds.add(player.id));
+      playerIds.forEach((id) => ensureStats(ranking, id, baba).totalBabas += 1);
       if (baba.campeaoDoBaba?.jogadores) {
-        baba.campeaoDoBaba.jogadores.forEach((id) => ensureStats(ranking, id).totalTitulosBaba += 1);
+        baba.campeaoDoBaba.jogadores.forEach((id) => ensureStats(ranking, id, baba).totalTitulosBaba += 1);
       }
 
       (baba.jogos || []).forEach((game) => {
@@ -1044,20 +1169,135 @@
         if (!teamA || !teamB) return;
 
         if (game.empate) {
-          [...teamA.jogadores, ...teamB.jogadores].forEach((id) => ensureStats(ranking, id).totalEmpates += 1);
+          [...teamA.jogadores, ...teamB.jogadores].forEach((id) => ensureStats(ranking, id, baba).totalEmpates += 1);
         } else {
-          getTeam(baba, game.vencedor)?.jogadores.forEach((id) => ensureStats(ranking, id).totalVitorias += 1);
-          getTeam(baba, game.perdedor)?.jogadores.forEach((id) => ensureStats(ranking, id).totalDerrotas += 1);
+          getTeam(baba, game.vencedor)?.jogadores.forEach((id) => ensureStats(ranking, id, baba).totalVitorias += 1);
+          getTeam(baba, game.perdedor)?.jogadores.forEach((id) => ensureStats(ranking, id, baba).totalDerrotas += 1);
         }
 
         (game.gols || []).forEach((goal) => {
-          ensureStats(ranking, goal.jogadorId).totalGols += Number(goal.quantidade || 0);
+          ensureStats(ranking, goal.jogadorId, baba).totalGols += Number(goal.quantidade || 0);
         });
       });
     });
 
     Object.values(ranking).forEach(finalizeStats);
     return ranking;
+  }
+
+  function mergeRankingStats(ranking, stats) {
+    if (!stats?.jogadorId) return;
+    const target = ranking[stats.jogadorId] || makeEmptyPlayerStats(stats.jogadorId, stats.nome);
+    target.nome = target.nome || stats.nome;
+    target.totalGols += Number(stats.totalGols || 0);
+    target.totalVitorias += Number(stats.totalVitorias || 0);
+    target.totalEmpates += Number(stats.totalEmpates || 0);
+    target.totalDerrotas += Number(stats.totalDerrotas || 0);
+    target.totalBabas += Number(stats.totalBabas || 0);
+    target.totalTitulosBaba += Number(stats.totalTitulosBaba || 0);
+    ranking[stats.jogadorId] = target;
+  }
+
+  function calculateMonthlyRanking(monthKey, { includeActive = false } = {}) {
+    const ranking = {};
+    state.babas
+      .filter((baba) => baba.status === 'finalizado' && monthKeyFromISO(baba.dataISO) === monthKey)
+      .forEach((baba) => {
+        Object.values(calculateDailyRanking(baba)).forEach((stats) => mergeRankingStats(ranking, stats));
+      });
+
+    const active = getActiveBaba();
+    if (includeActive && active && active.status !== 'finalizado' && monthKeyFromISO(active.dataISO) === monthKey) {
+      Object.values(calculateCurrentBabaRanking(active)).forEach((stats) => mergeRankingStats(ranking, stats));
+    }
+
+    Object.values(ranking).forEach(finalizeStats);
+    return ranking;
+  }
+
+  function ensureGoalkeeperStats(ranking, player, baba) {
+    if (!player?.id) return null;
+    if (!ranking[player.id]) {
+      ranking[player.id] = {
+        jogadorId: player.id,
+        nome: player.nome || playerName(player.id, baba),
+        jogos: 0,
+        golsSofridos: 0,
+        mediaSofridos: 0,
+        totalBabas: 0,
+        _babas: new Set(),
+      };
+    }
+    if (baba?.id) ranking[player.id]._babas.add(baba.id);
+    return ranking[player.id];
+  }
+
+  function addGoalkeeperGameStats(ranking, baba, team, goalsAgainst) {
+    (team?.jogadores || []).forEach((playerId) => {
+      const player = getBabaPlayer(baba, playerId);
+      if (player?.tipo !== 'goleiro') return;
+      const stats = ensureGoalkeeperStats(ranking, player, baba);
+      if (!stats) return;
+      stats.jogos += 1;
+      stats.golsSofridos += Number(goalsAgainst || 0);
+    });
+  }
+
+  function collectGoalkeeperRankingFromBaba(ranking, baba, { includeLive = false } = {}) {
+    (baba?.jogos || []).forEach((game) => {
+      const teamA = getTeam(baba, game.timeA);
+      const teamB = getTeam(baba, game.timeB);
+      if (!teamA || !teamB) return;
+      addGoalkeeperGameStats(ranking, baba, teamA, game.placarB);
+      addGoalkeeperGameStats(ranking, baba, teamB, game.placarA);
+    });
+
+    const match = includeLive ? baba?.jogoAtual : null;
+    const hasLiveData = Boolean(match && (match.iniciadoEm || (match.goalEvents || []).length));
+    if (!hasLiveData) return;
+    const teamA = getTeam(baba, match.timeA);
+    const teamB = getTeam(baba, match.timeB);
+    if (!teamA || !teamB) return;
+    addGoalkeeperGameStats(ranking, baba, teamA, match.placarB);
+    addGoalkeeperGameStats(ranking, baba, teamB, match.placarA);
+  }
+
+  function calculateGoalkeeperRanking({ includeActive = true } = {}) {
+    const ranking = {};
+    state.babas
+      .filter((baba) => baba.status === 'finalizado')
+      .forEach((baba) => collectGoalkeeperRankingFromBaba(ranking, baba));
+
+    const active = getActiveBaba();
+    if (includeActive && active && active.status !== 'finalizado') {
+      collectGoalkeeperRankingFromBaba(ranking, active, { includeLive: true });
+    }
+
+    return Object.values(ranking)
+      .map((stats) => {
+        stats.totalBabas = stats._babas?.size || 0;
+        delete stats._babas;
+        stats.mediaSofridos = stats.jogos ? Number((stats.golsSofridos / stats.jogos).toFixed(2)) : 0;
+        return stats;
+      })
+      .filter((stats) => stats.jogos > 0)
+      .sort((a, b) => (
+        a.golsSofridos - b.golsSofridos ||
+        a.mediaSofridos - b.mediaSofridos ||
+        b.jogos - a.jogos ||
+        a.nome.localeCompare(b.nome)
+      ));
+  }
+
+  function getAvailableMonthKeys() {
+    const keys = new Set();
+    state.babas.forEach((baba) => {
+      const key = monthKeyFromISO(baba.dataISO);
+      if (key) keys.add(key);
+    });
+    const activeKey = activeMonthKey();
+    if (activeKey) keys.add(activeKey);
+    return Array.from(keys).sort((a, b) => b.localeCompare(a));
   }
 
   function makeEmptyPlayerStats(playerId, name) {
@@ -1075,8 +1315,8 @@
     };
   }
 
-  function ensureStats(ranking, playerId) {
-    if (!ranking[playerId]) ranking[playerId] = makeEmptyPlayerStats(playerId, playerName(playerId));
+  function ensureStats(ranking, playerId, baba = getActiveBaba()) {
+    if (!ranking[playerId]) ranking[playerId] = makeEmptyPlayerStats(playerId, playerName(playerId, baba));
     return ranking[playerId];
   }
 
@@ -1139,23 +1379,49 @@
   }
 
   function renderPlayersAdmin() {
-    if (!state.players.length) {
-      els.playersAdminList.innerHTML = '<div class="baba-empty">Cadastre a lista fixa de jogadores do baba.</div>';
-      return;
-    }
-
-    els.playersAdminList.innerHTML = state.players.map((player) => `
+    const baba = getActiveBaba();
+    const visitors = baba?.visitantes || [];
+    const fixedHTML = state.players.length ? state.players.map((player) => {
+      const meta = [
+        player.tipo === 'goleiro' ? '<small class="baba-goalie-pill">Goleiro</small>' : '',
+        player.ativo ? '' : '<small class="baba-status-pill">Inativo</small>',
+      ].filter(Boolean).join('');
+      return `
       <div class="baba-player-admin">
-        <div>
+        <div class="baba-player-admin__info">
           <strong>${escapeHTML(player.nome)}</strong>
-          <small>${player.tipo === 'goleiro' ? 'Goleiro' : 'Jogador de linha'} ${player.ativo ? '' : '- inativo'}</small>
+          ${meta ? `<div class="baba-player-admin__meta">${meta}</div>` : ''}
         </div>
-        <div>
+        <div class="baba-player-admin__actions">
           <button class="baba-mini-btn" type="button" data-action="toggle-player" data-id="${player.id}">${player.ativo ? 'Desativar' : 'Ativar'}</button>
           <button class="baba-mini-btn danger" type="button" data-action="delete-player" data-id="${player.id}">Excluir</button>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('') : '<div class="baba-empty">Cadastre a lista fixa de jogadores do baba.</div>';
+
+    const visitorHTML = visitors.length ? visitors.map((player) => `
+      <div class="baba-player-admin">
+        <div class="baba-player-admin__info">
+          <strong>${escapeHTML(player.nome)}</strong>
+          <div class="baba-player-admin__meta"><small class="baba-visitor-pill">Visitante do baba atual</small></div>
+        </div>
+        <div class="baba-player-admin__actions baba-player-admin__actions--single">
+          <button class="baba-mini-btn danger" type="button" data-action="delete-visitor" data-id="${player.id}">Remover</button>
+        </div>
+      </div>
+    `).join('') : '<div class="baba-empty">Visitantes aparecem aqui e somem no proximo baba.</div>';
+
+    els.playersAdminList.innerHTML = `
+      <div class="baba-admin-section">
+        <span>Lista fixa</span>
+        ${fixedHTML}
+      </div>
+      <div class="baba-admin-section">
+        <span>Visitantes do baba</span>
+        ${visitorHTML}
+      </div>
+    `;
   }
 
   function renderPresentList(baba) {
@@ -1175,7 +1441,7 @@
           <input type="checkbox" data-present-id="${player.id}" ${checked ? 'checked' : ''} ${!isOrganizer() ? 'disabled' : ''}>
           <span>
             <strong>${escapeHTML(player.nome)}</strong>
-            <small>${player.tipo === 'goleiro' ? 'Goleiro' : 'Linha'}</small>
+            ${player.tipo === 'goleiro' ? '<small>Goleiro</small>' : ''}
           </span>
         </label>
       `;
@@ -1204,7 +1470,7 @@
           <span><b>${team.golsPro - team.golsContra}</b>Saldo</span>
         </div>
         <div class="baba-team__players">
-          ${team.jogadores.map((id) => `<span class="baba-pill">${escapeHTML(playerName(id))}</span>`).join('')}
+          ${team.jogadores.map((id) => `<span class="baba-pill">${escapeHTML(playerName(id, baba))}</span>`).join('')}
         </div>
       </article>
     `;
@@ -1233,6 +1499,7 @@
   function renderStandings(baba) {
     if (!baba?.teams?.length) {
       els.standingsList.innerHTML = '<div class="baba-empty">Sorteie os times para ver a tabela.</div>';
+      if (els.tableTopScorers) els.tableTopScorers.innerHTML = '';
       return;
     }
 
@@ -1290,10 +1557,14 @@
     els.standingsList.innerHTML = `
       <div class="baba-table">
         <div class="baba-table__row baba-table__head">
-          <span>Time</span><span>Pts</span><span>GP</span><span>SG</span><span>V</span><span>E</span><span>D</span>
+          <span>Pos</span><span>Time</span><span>Pts</span><span>GP</span><span>SG</span><span>V</span><span>E</span><span>D</span>
         </div>
-        ${teams.map((team) => `
-          <div class="baba-table__row ${team.isLive ? 'is-live' : ''}">
+        ${teams.map((team, index) => `
+          <div class="baba-table__row ${team.isLive ? 'is-live' : ''} ${index === 0 ? 'is-first baba-gold-leader' : ''}">
+            <span class="baba-position-label">
+              <b class="baba-position-badge ${index === 0 ? 'is-first' : ''}">${index + 1}º</b>
+              <small>${index + 1}º lugar</small>
+            </span>
             ${teamDetailButton(baba, team)}
             <b>${team.pontos}</b>
             <span>${team.golsPro}</span>
@@ -1301,6 +1572,39 @@
             <span>${team.vitorias}</span>
             <span>${team.empates}</span>
             <span>${team.derrotas}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    renderTableTopScorers(baba);
+  }
+
+  function renderTableTopScorers(baba) {
+    if (!els.tableTopScorers) return;
+    const top = getDailyRankingList(baba)
+      .filter((stats) => stats.totalGols > 0)
+      .slice(0, 4);
+    if (!top.length) {
+      els.tableTopScorers.innerHTML = `
+        <div class="baba-table-scorers__head">
+          <span>Top 4 artilheiros</span>
+          <small>Baba atual</small>
+        </div>
+        <div class="baba-empty">Sem gols registrados na tabela.</div>
+      `;
+      return;
+    }
+    els.tableTopScorers.innerHTML = `
+      <div class="baba-table-scorers__head">
+        <span>Top 4 artilheiros</span>
+        <small>Baba atual</small>
+      </div>
+      <div class="baba-table-scorer-grid">
+        ${top.map((stats, index) => `
+          <div class="baba-table-scorer ${index === 0 ? 'is-first baba-gold-leader' : ''}">
+            <span>${index + 1}º lugar</span>
+            <strong>${escapeHTML(stats.nome)}</strong>
+            <span>${stats.totalGols} gol${stats.totalGols === 1 ? '' : 's'}</span>
           </div>
         `).join('')}
       </div>
@@ -1320,7 +1624,7 @@
     const ranking = calculateDailyRanking(baba || { jogadoresPresentes: [], jogos: [], teams: [] });
     const liveEvents = baba?.jogoAtual?.goalEvents || [];
     liveEvents.forEach((goal) => {
-      ensureStats(ranking, goal.jogadorId).totalGols += 1;
+      ensureStats(ranking, goal.jogadorId, baba).totalGols += 1;
     });
     Object.values(ranking).forEach(finalizeStats);
     return ranking;
@@ -1328,13 +1632,16 @@
 
   function renderDailyTopScorers(baba) {
     const top = getDailyRankingList(baba)
-      .filter((stats) => stats.totalGols > 0)
-      .slice(0, 5);
+      .filter((stats) => stats.totalGols > 0);
     if (!top.length) {
       els.dailyTopScorers.innerHTML = '<div class="baba-empty">Sem gols no baba atual.</div>';
       return;
     }
-    els.dailyTopScorers.innerHTML = renderRankingList(top, 'Sem gols no baba atual.', { compact: true });
+    els.dailyTopScorers.innerHTML = renderRankingList(top, 'Sem gols no baba atual.', {
+      compact: true,
+      expandKey: 'daily-top-scorers',
+      limit: 4,
+    });
   }
 
   function renderCurrentGames(baba) {
@@ -1366,15 +1673,15 @@
 
     els.teamDetailTitle.textContent = team.name;
     els.teamDetailList.innerHTML = team.jogadores.map((playerId) => {
-      const player = getPlayer(playerId);
+      const player = getBabaPlayer(baba, playerId);
       const dayGoals = dailyRanking[playerId]?.totalGols || 0;
       const generalGoals = generalById.get(playerId)?.totalGols || 0;
       const rank = position.get(playerId) || '-';
       return `
         <div class="baba-row">
           <div>
-            <strong>${escapeHTML(player?.nome || playerName(playerId))}</strong>
-            <small>${player?.tipo === 'goleiro' ? 'Goleiro' : 'Linha'}</small>
+            <strong>${escapeHTML(player?.nome || playerName(playerId, baba))}</strong>
+            ${player?.tipo === 'goleiro' ? '<small>Goleiro</small>' : ''}
           </div>
           <div class="baba-player-mini-stats">
             <span>${dayGoals} hoje</span>
@@ -1524,8 +1831,45 @@
   function renderRankings(baba) {
     const general = sortRanking(calculateGeneralRanking());
     const daily = getDailyRankingList(baba);
-    els.rankingList.innerHTML = renderRankingList(general, 'Ainda nao ha ranking geral. Finalize um baba para iniciar.');
-    els.dailyRankingList.innerHTML = renderRankingList(daily, 'Ainda nao ha ranking do baba atual.');
+    const currentMonth = activeMonthKey(baba);
+    const monthly = sortRanking(calculateMonthlyRanking(currentMonth, { includeActive: true }));
+    const goalkeepers = calculateGoalkeeperRanking({ includeActive: true });
+    if (els.monthlyRankingLabel) els.monthlyRankingLabel.textContent = monthLabel(currentMonth);
+    if (els.monthlyRankingList) {
+      els.monthlyRankingList.innerHTML = renderRankingList(monthly, 'Ainda nao ha gols no ranking deste mes.', {
+        expandKey: 'monthly-current',
+      });
+    }
+    els.rankingList.innerHTML = renderRankingList(general, 'Ainda nao ha ranking geral. Finalize um baba para iniciar.', {
+      expandKey: 'general',
+    });
+    els.dailyRankingList.innerHTML = renderRankingList(daily, 'Ainda nao ha ranking do baba atual.', {
+      expandKey: 'daily',
+    });
+    if (els.goalkeeperRankingList) {
+      els.goalkeeperRankingList.innerHTML = renderGoalkeeperRankingList(goalkeepers, 'Ainda nao ha jogos com goleiros para montar este ranking.', {
+        expandKey: 'goalkeepers',
+      });
+    }
+    renderMonthlyHistory();
+  }
+
+  function renderMonthlyHistory() {
+    if (!els.monthlyHistoryTabs || !els.monthlyHistoryRanking) return;
+    const keys = getAvailableMonthKeys();
+    if (!keys.length) {
+      els.monthlyHistoryTabs.innerHTML = '';
+      els.monthlyHistoryRanking.innerHTML = '<div class="baba-empty">Sem historico mensal ainda.</div>';
+      return;
+    }
+    if (!selectedMonthlyKey || !keys.includes(selectedMonthlyKey)) selectedMonthlyKey = keys[0];
+    els.monthlyHistoryTabs.innerHTML = keys.map((key) => `
+      <button class="${key === selectedMonthlyKey ? 'active' : ''}" type="button" data-month-key="${key}">${escapeHTML(monthLabel(key))}</button>
+    `).join('');
+    const ranking = sortRanking(calculateMonthlyRanking(selectedMonthlyKey, { includeActive: selectedMonthlyKey === activeMonthKey() }));
+    els.monthlyHistoryRanking.innerHTML = renderRankingList(ranking, 'Nenhum gol salvo neste mes.', {
+      expandKey: `month-${selectedMonthlyKey}`,
+    });
   }
 
   function sortRanking(ranking) {
@@ -1539,15 +1883,37 @@
       ));
   }
 
-  function renderRankingList(items, emptyMessage) {
-    if (!items.length) return `<div class="baba-empty">${emptyMessage}</div>`;
+  function getRankingVisibleItems(items, { expandKey = '', limit = 4 } = {}) {
+    const safeLimit = Math.max(1, Number(limit || 4));
+    const expanded = Boolean(expandKey && expandedRankingKeys.has(expandKey));
+    return {
+      expanded,
+      visibleItems: expanded ? items : items.slice(0, safeLimit),
+      limit: safeLimit,
+    };
+  }
+
+  function rankingToggleHTML(expandKey, total, limit, expanded) {
+    if (!expandKey || total <= limit) return '';
+    return `
+      <div class="baba-ranking-footer">
+        <button class="baba-list-toggle" type="button" data-rank-toggle="${escapeHTML(expandKey)}">
+          ${expanded ? 'Mostrar menos' : 'Ver tabela completa'}
+        </button>
+      </div>
+    `;
+  }
+
+  function renderRankingList(items, emptyMessage, options = {}) {
+    if (!items.length) return `<div class="baba-empty">${escapeHTML(emptyMessage)}</div>`;
+    const { visibleItems, limit, expanded } = getRankingVisibleItems(items, options);
     const stat = (iconId, label) => `
       <span>
         <svg aria-hidden="true" focusable="false"><use href="#${iconId}"></use></svg>
         ${label}
       </span>
     `;
-    return items.map((stats, index) => {
+    const cards = visibleItems.map((stats, index) => {
       const position = index + 1;
       const topClass = position <= 3 ? ` baba-ranking-card--top${position}` : '';
       const icon = position === 1 ? 'baba-trophy' : 'baba-ball';
@@ -1579,6 +1945,40 @@
         </div>
       `;
     }).join('');
+    return `${cards}${rankingToggleHTML(options.expandKey, items.length, limit, expanded)}`;
+  }
+
+  function renderGoalkeeperRankingList(items, emptyMessage, options = {}) {
+    if (!items.length) return `<div class="baba-empty">${escapeHTML(emptyMessage)}</div>`;
+    const { visibleItems, limit, expanded } = getRankingVisibleItems(items, options);
+    const cards = visibleItems.map((stats, index) => {
+      const position = index + 1;
+      const topClass = position <= 3 ? ` baba-ranking-card--top${position}` : '';
+      return `
+        <div class="baba-ranking-card baba-goalkeeper-card${topClass}">
+          <div class="baba-ranking-card__main">
+            <span class="baba-ranking-position">${position}</span>
+            <div>
+              <div class="baba-ranking-title">
+                <svg aria-hidden="true" focusable="false"><use href="#${position === 1 ? 'baba-trophy' : 'baba-save'}"></use></svg>
+                <strong>${escapeHTML(stats.nome)}</strong>
+              </div>
+              <div class="stats">
+                <span><svg aria-hidden="true" focusable="false"><use href="#baba-x"></use></svg>${stats.golsSofridos} sofridos</span>
+                <span><svg aria-hidden="true" focusable="false"><use href="#baba-play"></use></svg>${stats.jogos} jogos</span>
+                <span><svg aria-hidden="true" focusable="false"><use href="#baba-chart"></use></svg>${stats.mediaSofridos} media</span>
+                <span><svg aria-hidden="true" focusable="false"><use href="#baba-calendar"></use></svg>${stats.totalBabas} babas</span>
+              </div>
+            </div>
+          </div>
+          <div class="baba-ranking-score">
+            <strong>${stats.golsSofridos}</strong>
+            <span>sofridos</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+    return `${cards}${rankingToggleHTML(options.expandKey, items.length, limit, expanded)}`;
   }
 
   function renderHistory() {
@@ -1614,7 +2014,7 @@
     if (!baba) return;
     els.historyDetailLabel.textContent = baba.dataCompleta;
     const championNames = baba.campeaoDoBaba?.nomes?.join(', ') || 'Sem campeao';
-    const championPlayers = (baba.campeaoDoBaba?.jogadores || []).map(playerName).join(', ') || '-';
+    const championPlayers = (baba.campeaoDoBaba?.jogadores || []).map((id) => playerName(id, baba)).join(', ') || '-';
 
     els.historyDetail.innerHTML = `
       <div class="baba-stack">
@@ -1737,9 +2137,19 @@
     });
 
     document.addEventListener('click', (event) => {
+      const rankingToggle = event.target.closest('[data-rank-toggle]');
+      if (rankingToggle) {
+        const key = rankingToggle.dataset.rankToggle;
+        if (expandedRankingKeys.has(key)) expandedRankingKeys.delete(key);
+        else expandedRankingKeys.add(key);
+        render();
+        return;
+      }
+
       const actionButton = event.target.closest('[data-action]');
       if (actionButton?.dataset.action === 'toggle-player') return togglePlayerActive(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-player') return deletePlayer(actionButton.dataset.id);
+      if (actionButton?.dataset.action === 'delete-visitor') return deleteVisitor(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-history') return deleteHistoryBaba(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'open-goal-picker') return openGoalPicker(actionButton.dataset.teamId);
       if (actionButton?.dataset.action === 'undo-goal') return undoLastGoal();
@@ -1765,6 +2175,12 @@
       if (historyButton) {
         selectedHistoryId = historyButton.dataset.historyId;
         renderHistory();
+      }
+
+      const monthButton = event.target.closest('[data-month-key]');
+      if (monthButton) {
+        selectedMonthlyKey = monthButton.dataset.monthKey;
+        renderMonthlyHistory();
       }
     });
 
