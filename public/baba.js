@@ -286,6 +286,12 @@
     return mode === 'organizer';
   }
 
+  function isForcedViewerMode() {
+    const params = new URLSearchParams(window.location.search);
+    const view = String(params.get('view') || params.get('modo') || '').toLowerCase();
+    return ['player', 'viewer', 'visualizador', 'jogador'].includes(view) || params.has('publico') || params.has('share');
+  }
+
   function requireOrganizer() {
     if (!isOrganizer()) {
       showToast('Apenas o organizador pode alterar o Baba.');
@@ -298,6 +304,7 @@
     mode = nextMode;
     sessionStorage.setItem(MODE_KEY, nextMode);
     document.body.classList.toggle('baba-player-mode', nextMode === 'player');
+    document.body.classList.toggle('baba-locked-viewer', isForcedViewerMode());
     els.gateway.classList.add('hidden');
     els.app.classList.remove('hidden');
     if (nextMode === 'player') setActiveTab('dashboard');
@@ -305,9 +312,15 @@
   }
 
   function resetMode() {
+    if (isForcedViewerMode()) {
+      setMode('player');
+      showToast('Este link abre somente a visualizacao do Baba.');
+      return;
+    }
     mode = null;
     sessionStorage.removeItem(MODE_KEY);
     document.body.classList.remove('baba-player-mode');
+    document.body.classList.remove('baba-locked-viewer');
     els.gateway.classList.remove('hidden');
     els.app.classList.add('hidden');
     els.passwordForm.classList.add('hidden');
@@ -316,11 +329,7 @@
   }
 
   function logout() {
-    if (window.firebaseAuth?.logout) {
-      window.firebaseAuth.logout();
-      return;
-    }
-    window.location.href = 'login.html';
+    showToast('O Baba permanece aberto neste link.');
   }
 
   function createBaba(dateISO = todayISO()) {
@@ -1111,7 +1120,7 @@
     const hasOpenBaba = Boolean(baba && baba.status !== 'finalizado');
     els.createToday.classList.toggle('hidden', hasOpenBaba);
     els.saveHistory.classList.toggle('hidden', !hasOpenBaba);
-    els.saveHistory.textContent = 'Finalizar e Salvar Baba de Hoje';
+    els.saveHistory.textContent = 'Finalizar e Salvar';
   }
 
   function renderMetrics(baba) {
@@ -1325,12 +1334,7 @@
       els.dailyTopScorers.innerHTML = '<div class="baba-empty">Sem gols no baba atual.</div>';
       return;
     }
-    els.dailyTopScorers.innerHTML = top.map((stats, index) => `
-      <div class="baba-row baba-row--compact">
-        <strong>${index + 1}. ${escapeHTML(stats.nome)}</strong>
-        <b>${stats.totalGols} gol${stats.totalGols === 1 ? '' : 's'}</b>
-      </div>
-    `).join('');
+    els.dailyTopScorers.innerHTML = renderRankingList(top, 'Sem gols no baba atual.', { compact: true });
   }
 
   function renderCurrentGames(baba) {
@@ -1537,23 +1541,44 @@
 
   function renderRankingList(items, emptyMessage) {
     if (!items.length) return `<div class="baba-empty">${emptyMessage}</div>`;
-    return items.map((stats, index) => `
-      <div class="baba-row">
-        <div>
-          <strong>${index + 1}. ${escapeHTML(stats.nome)}</strong>
-          <div class="stats">
-            <span>${stats.totalGols} gols</span>
-            <span>${stats.totalVitorias} V</span>
-            <span>${stats.totalEmpates} E</span>
-            <span>${stats.totalDerrotas} D</span>
-            <span>${stats.totalBabas} babas</span>
-            <span>${stats.mediaGols} media</span>
-            <span>${stats.totalTitulosBaba} titulos</span>
-            <span>${stats.aproveitamento}%</span>
+    const stat = (iconId, label) => `
+      <span>
+        <svg aria-hidden="true" focusable="false"><use href="#${iconId}"></use></svg>
+        ${label}
+      </span>
+    `;
+    return items.map((stats, index) => {
+      const position = index + 1;
+      const topClass = position <= 3 ? ` baba-ranking-card--top${position}` : '';
+      const icon = position === 1 ? 'baba-trophy' : 'baba-ball';
+      return `
+        <div class="baba-ranking-card${topClass}">
+          <div class="baba-ranking-card__main">
+            <span class="baba-ranking-position">${position}</span>
+            <div>
+              <div class="baba-ranking-title">
+                <svg aria-hidden="true" focusable="false"><use href="#${icon}"></use></svg>
+                <strong>${escapeHTML(stats.nome)}</strong>
+              </div>
+              <div class="stats">
+                ${stat('baba-ball', `${stats.totalGols} gols`)}
+                ${stat('baba-check', `${stats.totalVitorias} V`)}
+                ${stat('baba-next', `${stats.totalEmpates} E`)}
+                ${stat('baba-x', `${stats.totalDerrotas} D`)}
+                ${stat('baba-calendar', `${stats.totalBabas} babas`)}
+                ${stat('baba-chart', `${stats.mediaGols} media`)}
+                ${stat('baba-trophy', `${stats.totalTitulosBaba} titulos`)}
+                ${stat('baba-table-icon', `${stats.aproveitamento}%`)}
+              </div>
+            </div>
+          </div>
+          <div class="baba-ranking-score">
+            <strong>${stats.totalGols}</strong>
+            <span>${stats.totalGols === 1 ? 'gol' : 'gols'}</span>
           </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   function renderHistory() {
@@ -1618,12 +1643,15 @@
   }
 
   function setActiveTab(tab) {
-    $$('.baba-tabs button').forEach((button) => button.classList.toggle('active', button.dataset.tab === tab));
-    $$('.baba-view').forEach((view) => view.classList.toggle('active', view.dataset.view === tab));
+    const safeTab = !isOrganizer() && tab === 'organizer' ? 'dashboard' : tab;
+    $$('.baba-tabs button').forEach((button) => button.classList.toggle('active', button.dataset.tab === safeTab));
+    $$('.baba-view').forEach((view) => view.classList.toggle('active', view.dataset.view === safeTab));
   }
 
   async function shareBabaLink() {
-    const url = new URL('baba.html', window.location.href).href;
+    const shareUrl = new URL('baba.html', window.location.href);
+    shareUrl.searchParams.set('view', 'player');
+    const url = shareUrl.href;
     const shareData = {
       title: 'Baba Amigos de Henrique',
       text: 'Acompanhe o Baba Amigos de Henrique ao vivo: times, placar, ranking e historico.',
@@ -1756,9 +1784,12 @@
     wireEvents();
     if (!timerTick) timerTick = setInterval(renderTimerOnly, 1000);
     const savedMode = sessionStorage.getItem(MODE_KEY);
-    if (savedMode === 'organizer' || savedMode === 'player') setMode(savedMode);
+    document.body.classList.toggle('baba-locked-viewer', isForcedViewerMode());
+    if (isForcedViewerMode()) setMode('player');
+    else if (savedMode === 'organizer' || savedMode === 'player') setMode(savedMode);
     else resetMode();
     render();
+    document.getElementById('initial-loader')?.remove();
   }
 
   const backendTimer = setInterval(() => {
