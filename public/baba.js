@@ -159,7 +159,10 @@
       return;
     }
     const isPrepared = !match.timerRunning && !match.iniciadoEm;
-    timerEl.textContent = isPrepared ? 'Aguardando inicio' : (remaining ? formatCountdown(remaining) : 'Tempo esgotado');
+    const timerText = timerEl.querySelector('.baba-timer__text');
+    const nextText = isPrepared ? 'Aguardando inicio' : (remaining ? formatCountdown(remaining) : 'Tempo esgotado');
+    if (timerText) timerText.textContent = nextText;
+    else timerEl.textContent = nextText;
     timerEl.classList.toggle('is-over', remaining === 0 && !isPrepared);
   }
 
@@ -1748,7 +1751,7 @@
     const match = baba?.jogoAtual;
     const teamA = getTeam(baba, match?.timeA);
     const teamB = getTeam(baba, match?.timeB);
-    els.matchNumberPill.textContent = match ? `Jogo ${match.numeroJogo}` : 'Jogo 0';
+    if (els.matchNumberPill) els.matchNumberPill.textContent = match ? `Jogo ${match.numeroJogo}` : 'Jogo 0';
 
     if (baba?.pendingTieBreak) {
       const tied = (baba.pendingTieBreak.tiedTeams || []).map((id) => getTeam(baba, id)?.name).filter(Boolean).join(' x ');
@@ -1766,45 +1769,55 @@
       const remaining = getRemainingSeconds(match);
       const isPrepared = !match.timerRunning && !match.iniciadoEm;
       const isOver = remaining === 0 && match.iniciadoEm;
+      const timerLabel = isPrepared ? 'Aguardando inicio' : (remaining ? formatCountdown(remaining) : 'Tempo esgotado');
+      const scoreA = Number(match.placarA || 0);
+      const scoreB = Number(match.placarB || 0);
       let organizerControls = '';
       if (isOrganizer()) {
         organizerControls = isPrepared ? `
           <div class="baba-live-actions baba-live-actions--single">
-            <button class="baba-primary" type="button" data-action="start-prepared-match">Iniciar partida</button>
-            <button class="baba-mini-btn" type="button" data-action="edit-time">Editar tempo</button>
+            <button class="baba-live-main-btn" type="button" data-action="start-prepared-match">Iniciar partida</button>
+            <button class="baba-live-control-btn" type="button" data-action="edit-time">Editar tempo</button>
           </div>
         ` : isOver ? `
           <div class="baba-live-actions baba-live-actions--single">
-            <button class="baba-mini-btn" type="button" data-action="edit-time">Editar tempo</button>
-            <button class="baba-primary" type="button" data-action="finish-live-match">Ir para proximo jogo</button>
+            <button class="baba-live-control-btn" type="button" data-action="edit-time">Editar tempo</button>
+            <button class="baba-live-control-btn baba-live-control-btn--danger" type="button" data-action="finish-live-match">Finalizar jogo</button>
           </div>
         ` : `
           <div class="baba-live-actions">
-            <button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamA.id}">Gol ${escapeHTML(teamA.name)}</button>
-            <button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamB.id}">Gol ${escapeHTML(teamB.name)}</button>
-            <button class="baba-mini-btn" type="button" data-action="pause-time">${match.timerRunning ? 'Pausar' : 'Retomar'}</button>
-            <button class="baba-mini-btn" type="button" data-action="edit-time">Editar tempo</button>
-            <button class="baba-mini-btn" type="button" data-action="undo-goal">Desfazer gol</button>
-            <button class="baba-primary" type="button" data-action="finish-live-match">${isOver ? 'Ir para proximo jogo' : 'Finalizar jogo'}</button>
+            <div class="baba-live-goal-actions">
+              <button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamA.id}">Gol ${escapeHTML(teamA.name)}</button>
+              <button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamB.id}">Gol ${escapeHTML(teamB.name)}</button>
+            </div>
+            <div class="baba-live-secondary-actions">
+              <button class="baba-live-control-btn" type="button" data-action="pause-time">${match.timerRunning ? 'Pausar' : 'Retomar'}</button>
+              <button class="baba-live-control-btn" type="button" data-action="edit-time">Editar tempo</button>
+              <button class="baba-live-control-btn" type="button" data-action="undo-goal">Desfazer gol</button>
+              <button class="baba-live-control-btn baba-live-control-btn--danger" type="button" data-action="finish-live-match">Finalizar jogo</button>
+            </div>
           </div>
         `;
       }
-      const goalLog = (match.goalEvents || []).slice(-5).reverse().map((goal) => `
-        <span class="baba-pill">${escapeHTML(goal.jogadorNome)} ${goal.minuto ? `${goal.minuto}'` : ''} - ${escapeHTML(goal.timeNome)}</span>
-      `).join('');
       els.currentMatchPanel.innerHTML = `
         <div class="baba-match-live">
-          <div class="baba-timer ${isOver ? 'is-over' : ''}" id="current-timer">${isPrepared ? 'Aguardando inicio' : (remaining ? formatCountdown(remaining) : 'Tempo esgotado')}</div>
-          <div class="baba-match-live__teams">
-            <strong>${teamDetailButton(baba, teamA)}</strong>
-            ${scoreBadgeHTML(match.placarA, match.placarB)}
-            <strong>${teamDetailButton(baba, teamB)}</strong>
+          <div class="baba-timer ${isOver ? 'is-over' : ''}" id="current-timer">
+            <svg class="baba-live-icon" aria-hidden="true" focusable="false"><use href="#baba-clock"></use></svg>
+            <span class="baba-timer__text">${timerLabel}</span>
+          </div>
+          <div class="baba-live-scoreboard">
+            <strong class="baba-live-team baba-live-team--home">${teamDetailButton(baba, teamA)}</strong>
+            <div class="baba-live-score" aria-label="Placar ${scoreA} a ${scoreB}">
+              <span>${scoreA}</span>
+              <small>x</small>
+              <span>${scoreB}</span>
+            </div>
+            <strong class="baba-live-team baba-live-team--away">${teamDetailButton(baba, teamB)}</strong>
           </div>
           ${organizerControls}
           <div class="baba-match-live__meta">
             <span class="baba-pill">Inicio: ${match.iniciadoEm ? formatTime(match.iniciadoEm) : 'pendente'}</span>
             <span class="baba-pill">${teamA.jogadores.length} x ${teamB.jogadores.length} jogadores</span>
-            ${goalLog || '<span class="baba-pill">Sem gols registrados</span>'}
           </div>
         </div>
       `;
