@@ -101,6 +101,8 @@
   let goalTeamId = null;
   let timerTick = null;
   let hasBooted = false;
+  let tabsStickySentinel = null;
+  let tabsScrollFrame = null;
 
   function newId(prefix) {
     if (window.crypto?.randomUUID) return `${prefix}_${window.crypto.randomUUID()}`;
@@ -2228,6 +2230,46 @@
     $$('.baba-view').forEach((view) => view.classList.toggle('active', view.dataset.view === safeTab));
   }
 
+  function getTabsStickyTop(tabs) {
+    const top = Number.parseFloat(window.getComputedStyle(tabs).top);
+    return Number.isFinite(top) ? top : 0;
+  }
+
+  function ensureTabsStickySentinel() {
+    const tabs = $('.baba-tabs');
+    if (!tabs) return null;
+    if (!tabsStickySentinel || !tabsStickySentinel.isConnected) {
+      tabsStickySentinel = document.createElement('span');
+      tabsStickySentinel.className = 'baba-tabs-sticky-sentinel';
+      tabsStickySentinel.setAttribute('aria-hidden', 'true');
+      tabs.before(tabsStickySentinel);
+    }
+    return tabsStickySentinel;
+  }
+
+  function updateTabsStickyState() {
+    const tabs = $('.baba-tabs');
+    const sentinel = ensureTabsStickySentinel();
+    if (!tabs || !sentinel) return;
+    const stuck = window.scrollY > 0 && sentinel.getBoundingClientRect().top <= getTabsStickyTop(tabs) + 1;
+    document.body.classList.toggle('baba-tabs-stuck', stuck);
+  }
+
+  function scheduleTabsStickyState() {
+    if (tabsScrollFrame) return;
+    tabsScrollFrame = window.requestAnimationFrame(() => {
+      tabsScrollFrame = null;
+      updateTabsStickyState();
+    });
+  }
+
+  function wireTabsStickyState() {
+    ensureTabsStickySentinel();
+    updateTabsStickyState();
+    window.addEventListener('scroll', scheduleTabsStickyState, { passive: true });
+    window.addEventListener('resize', scheduleTabsStickyState);
+  }
+
   async function shareBabaLink() {
     const shareUrl = new URL('baba.html', window.location.href);
     shareUrl.searchParams.set('view', 'player');
@@ -2391,6 +2433,7 @@
     else if (savedMode === 'organizer' || savedMode === 'player') setMode(savedMode);
     else resetMode();
     render();
+    wireTabsStickyState();
     document.getElementById('initial-loader')?.remove();
   }
 
