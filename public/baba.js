@@ -5,6 +5,8 @@
   const MODE_KEY = 'psyzon_baba_mode';
   const VISITOR_TEAM_ID = 'team_visitante';
   const VISITOR_TEAM_NAME = 'Visitante';
+  const PLAYER_BABA_PRICE = 15;
+  const GOALKEEPER_BABA_PRICE = 7;
   const RANKING_MODES = [
     { id: 'goals', label: 'Gols', icon: 'baba-ball' },
     { id: 'wins', label: 'Vitorias', icon: 'baba-check' },
@@ -67,6 +69,18 @@
     monthlyRankingLabel: $('#monthly-ranking-label'),
     monthlyRankingList: $('#monthly-ranking-list'),
     goalkeeperRankingList: $('#goalkeeper-ranking-list'),
+    goalForm: $('#goal-form'),
+    goalImage: $('#goal-image'),
+    goalImagePreview: $('#goal-image-preview'),
+    goalName: $('#goal-name'),
+    goalDescription: $('#goal-description'),
+    goalTarget: $('#goal-target'),
+    goalCollected: $('#goal-collected'),
+    goalsSummary: $('#goals-summary'),
+    goalsCountLabel: $('#goals-count-label'),
+    goalsList: $('#goals-list'),
+    paymentSummary: $('#payment-summary'),
+    paymentList: $('#payment-list'),
     monthlyHistoryTabs: $('#monthly-history-tabs'),
     monthlyHistoryRanking: $('#monthly-history-ranking'),
     historyList: $('#history-list'),
@@ -129,6 +143,24 @@
       hour: '2-digit',
       minute: '2-digit',
     });
+  }
+
+  function formatCurrency(value) {
+    return Number(value || 0).toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    });
+  }
+
+  function parseMoneyValue(value) {
+    const normalized = String(value ?? '')
+      .trim()
+      .replace(/\s/g, '')
+      .replace(/[R$]/gi, '')
+      .replace(/\.(?=\d{3}(?:\D|$))/g, '')
+      .replace(',', '.');
+    const number = Number(normalized);
+    return Number.isFinite(number) && number > 0 ? Number(number.toFixed(2)) : 0;
   }
 
   function formatBabaDateLong(iso) {
@@ -214,7 +246,28 @@
       activeBabaId: null,
       players: [],
       babas: [],
+      purchaseGoals: [],
       updatedAt: Date.now(),
+    };
+  }
+
+  function normalizePurchaseGoal(goal) {
+    const safe = goal && typeof goal === 'object' ? goal : {};
+    const nome = String(safe.nome || safe.name || '').trim();
+    const descricao = String(safe.descricao || safe.description || '').trim();
+    const valor = parseMoneyValue(safe.valor ?? safe.target ?? safe.meta);
+    const arrecadado = parseMoneyValue(safe.arrecadado ?? safe.collected ?? safe.valorArrecadado);
+    const foto = String(safe.foto || safe.image || safe.imageData || '').trim();
+    if (!nome && !descricao && !valor && !arrecadado && !foto) return null;
+    return {
+      id: safe.id || newId('goal'),
+      nome: nome || 'Meta sem nome',
+      descricao,
+      valor,
+      arrecadado,
+      foto,
+      criadoEm: Number(safe.criadoEm || safe.createdAt || Date.now()),
+      atualizadoEm: Number(safe.atualizadoEm || safe.updatedAt || Date.now()),
     };
   }
 
@@ -223,8 +276,12 @@
     next.version = 1;
     next.players = Array.isArray(next.players) ? next.players : [];
     next.babas = Array.isArray(next.babas) ? next.babas : [];
+    next.purchaseGoals = Array.isArray(next.purchaseGoals)
+      ? next.purchaseGoals.map(normalizePurchaseGoal).filter(Boolean)
+      : [];
     next.babas.forEach((baba) => {
       baba.visitantes = Array.isArray(baba.visitantes) ? baba.visitantes : [];
+      baba.pagamentos = baba.pagamentos && typeof baba.pagamentos === 'object' && !Array.isArray(baba.pagamentos) ? baba.pagamentos : {};
     });
     next.activeBabaId = next.activeBabaId || null;
     next.updatedAt = next.updatedAt || Date.now();
@@ -465,6 +522,7 @@
       status: 'aberto',
       jogadoresPresentes: [],
       visitantes: [],
+      pagamentos: {},
       teams: [],
       filaTimes: [],
       jogoAtual: null,
@@ -514,14 +572,17 @@
       if (baba.status === 'finalizado') return showToast('Este baba ja foi finalizado.');
       if (visitorTeamHasGames(baba)) return showToast('O time Visitante ja jogou. Cadastre novos visitantes no proximo baba.');
       baba.visitantes = Array.isArray(baba.visitantes) ? baba.visitantes : [];
-      baba.visitantes.push({
+      const visitor = {
         id: newId('visitor'),
         nome,
         tipo: 'visitante',
         ativo: true,
         visitante: true,
         criadoEm: Date.now(),
-      });
+      };
+      baba.visitantes.push(visitor);
+      baba.pagamentos = baba.pagamentos && typeof baba.pagamentos === 'object' && !Array.isArray(baba.pagamentos) ? baba.pagamentos : {};
+      baba.pagamentos[visitor.id] = false;
       if (baba.teams?.length) ensureVisitorTeam(baba);
       els.playerName.value = '';
       els.playerType.value = 'jogador';
@@ -551,6 +612,7 @@
       state.babas.forEach((baba) => {
         if (baba.status !== 'finalizado') {
           baba.jogadoresPresentes = baba.jogadoresPresentes.filter((id) => id !== playerId);
+          if (baba.pagamentos) delete baba.pagamentos[playerId];
         }
       });
     }
@@ -565,6 +627,7 @@
     state.babas.forEach((baba) => {
       if (baba.status !== 'finalizado') {
         baba.jogadoresPresentes = baba.jogadoresPresentes.filter((id) => id !== playerId);
+        if (baba.pagamentos) delete baba.pagamentos[playerId];
         baba.teams = [];
         baba.filaTimes = [];
         baba.jogoAtual = null;
@@ -586,6 +649,7 @@
       return;
     }
     baba.visitantes = (baba.visitantes || []).filter((player) => player.id !== playerId);
+    if (baba.pagamentos) delete baba.pagamentos[playerId];
     const visitorTeam = getTeam(baba, VISITOR_TEAM_ID);
     if (visitorTeam) visitorTeam.jogadores = visitorTeam.jogadores.filter((id) => id !== playerId);
     removeVisitorTeamIfEmpty(baba);
@@ -599,8 +663,15 @@
     if (baba.status === 'finalizado') return showToast('Este baba ja foi finalizado.');
 
     const presentSet = new Set(baba.jogadoresPresentes || []);
-    if (checked) presentSet.add(playerId);
-    else presentSet.delete(playerId);
+    baba.pagamentos = baba.pagamentos && typeof baba.pagamentos === 'object' && !Array.isArray(baba.pagamentos) ? baba.pagamentos : {};
+    if (checked) {
+      presentSet.add(playerId);
+      if (!(playerId in baba.pagamentos)) baba.pagamentos[playerId] = false;
+    }
+    else {
+      presentSet.delete(playerId);
+      delete baba.pagamentos[playerId];
+    }
     baba.jogadoresPresentes = Array.from(presentSet);
     if (baba.teams?.length) {
       saveState('Presenca atualizada. Os times sorteados foram mantidos.');
@@ -616,6 +687,172 @@
     baba.teamRevealIndex = 0;
     baba.status = 'aberto';
     saveState('Lista de presentes atualizada.');
+  }
+
+  function resetGoalImagePreview() {
+    if (!els.goalImagePreview) return;
+    els.goalImagePreview.innerHTML = `
+      <svg aria-hidden="true" focusable="false"><use href="#baba-image"></use></svg>
+      <span>Adicionar foto</span>
+    `;
+    els.goalImagePreview.classList.remove('has-image');
+  }
+
+  function previewGoalImage() {
+    const file = els.goalImage?.files?.[0];
+    if (!file) {
+      resetGoalImagePreview();
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      els.goalImagePreview.innerHTML = `<img src="${reader.result}" alt="">`;
+      els.goalImagePreview.classList.add('has-image');
+    };
+    reader.onerror = resetGoalImagePreview;
+    reader.readAsDataURL(file);
+  }
+
+  function compressGoalImage(dataUrl) {
+    return new Promise((resolve) => {
+      const image = new Image();
+      image.onload = () => {
+        const maxSide = 720;
+        const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        const context = canvas.getContext('2d');
+        if (!context) {
+          resolve(dataUrl);
+          return;
+        }
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.78));
+      };
+      image.onerror = () => resolve(dataUrl);
+      image.src = dataUrl;
+    });
+  }
+
+  function readGoalImage(file) {
+    return new Promise((resolve, reject) => {
+      if (!file) {
+        resolve('');
+        return;
+      }
+      if (!String(file.type || '').startsWith('image/')) {
+        reject(new Error('Arquivo invalido.'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          resolve(await compressGoalImage(String(reader.result || '')));
+        } catch (error) {
+          resolve(String(reader.result || ''));
+        }
+      };
+      reader.onerror = () => reject(new Error('Nao foi possivel ler a foto.'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function addPurchaseGoal(event) {
+    event.preventDefault();
+    if (!requireOrganizer()) return;
+    const nome = els.goalName?.value.trim() || '';
+    const descricao = els.goalDescription?.value.trim() || '';
+    const valor = parseMoneyValue(els.goalTarget?.value);
+    const arrecadado = parseMoneyValue(els.goalCollected?.value);
+
+    if (!nome || !valor) {
+      showToast('Informe pelo menos o nome e o valor da meta.');
+      return;
+    }
+
+    let foto = '';
+    try {
+      foto = await readGoalImage(els.goalImage?.files?.[0]);
+    } catch (error) {
+      showToast(error.message || 'Nao foi possivel salvar a foto.');
+      return;
+    }
+
+    state.purchaseGoals.unshift({
+      id: newId('goal'),
+      nome,
+      descricao,
+      valor,
+      arrecadado,
+      foto,
+      criadoEm: Date.now(),
+      atualizadoEm: Date.now(),
+    });
+
+    els.goalForm.reset();
+    resetGoalImagePreview();
+    saveState('Meta cadastrada.');
+    setActiveTab('goals');
+  }
+
+  function deletePurchaseGoal(goalId) {
+    if (!requireOrganizer()) return;
+    const goal = state.purchaseGoals.find((item) => item.id === goalId);
+    if (!goal) return;
+    const ok = confirm(`Remover a meta "${goal.nome}"?`);
+    if (!ok) return;
+    state.purchaseGoals = state.purchaseGoals.filter((item) => item.id !== goalId);
+    saveState('Meta removida.');
+  }
+
+  function updatePurchaseGoalCollected(goalId, value) {
+    if (!requireOrganizer()) return;
+    const goal = state.purchaseGoals.find((item) => item.id === goalId);
+    if (!goal) return;
+    goal.arrecadado = parseMoneyValue(value);
+    goal.atualizadoEm = Date.now();
+    saveState('Valor arrecadado atualizado.');
+  }
+
+  function getPaymentPlayers(baba) {
+    if (!baba) return [];
+    const fixedPlayers = [...new Set(baba.jogadoresPresentes || [])]
+      .map((id) => getPlayer(id))
+      .filter(Boolean);
+    const visitors = (baba.visitantes || []).filter((player) => player?.ativo !== false);
+    return [...fixedPlayers, ...visitors];
+  }
+
+  function paymentPriceForPlayer(player) {
+    return player?.tipo === 'goleiro' ? GOALKEEPER_BABA_PRICE : PLAYER_BABA_PRICE;
+  }
+
+  function getPaymentStats(baba) {
+    const players = getPaymentPlayers(baba);
+    const pagamentos = baba?.pagamentos && typeof baba.pagamentos === 'object' ? baba.pagamentos : {};
+    return players.reduce((stats, player) => {
+      const price = paymentPriceForPlayer(player);
+      const paid = Boolean(pagamentos[player.id]);
+      stats.expected += price;
+      if (paid) {
+        stats.paid += price;
+        stats.paidCount += 1;
+      }
+      stats.players += 1;
+      return stats;
+    }, { players: 0, paidCount: 0, expected: 0, paid: 0 });
+  }
+
+  function toggleBabaPayment(playerId) {
+    if (!requireOrganizer()) return;
+    const baba = getActiveBaba();
+    if (!baba) return showToast('Crie um baba primeiro.');
+    const player = getPaymentPlayers(baba).find((item) => item.id === playerId);
+    if (!player) return showToast('Marque o jogador como presente antes de registrar o pagamento.');
+    baba.pagamentos = baba.pagamentos && typeof baba.pagamentos === 'object' && !Array.isArray(baba.pagamentos) ? baba.pagamentos : {};
+    baba.pagamentos[playerId] = !Boolean(baba.pagamentos[playerId]);
+    saveState(baba.pagamentos[playerId] ? `${player.nome} marcado como pago.` : `${player.nome} voltou para pendente.`);
   }
 
   function drawTeams() {
@@ -1392,6 +1629,7 @@
     renderMetrics(baba);
     renderPlayersAdmin();
     renderPresentList(baba);
+    renderGoalsAndPayments(baba);
     renderTeams(baba);
     renderDashboard(baba);
     renderStandings(baba);
@@ -1556,6 +1794,151 @@
             ${player.tipo === 'goleiro' ? '<small>Goleiro</small>' : ''}
           </span>
         </label>
+      `;
+    }).join('');
+  }
+
+  function renderGoalsAndPayments(baba) {
+    renderGoalsSummary();
+    renderPurchaseGoals();
+    renderPayments(baba);
+  }
+
+  function renderGoalsSummary() {
+    if (!els.goalsSummary) return;
+    const goals = state.purchaseGoals || [];
+    const target = goals.reduce((sum, goal) => sum + Number(goal.valor || 0), 0);
+    const collected = goals.reduce((sum, goal) => sum + Number(goal.arrecadado || 0), 0);
+    const remaining = Math.max(0, target - collected);
+    const progress = target ? Math.min(100, Math.round((collected / target) * 100)) : 0;
+
+    els.goalsSummary.innerHTML = `
+      <article>
+        <span>Metas ativas</span>
+        <strong>${goals.length}</strong>
+        <small>Produtos cadastrados</small>
+      </article>
+      <article>
+        <span>Arrecadado</span>
+        <strong>${formatCurrency(collected)}</strong>
+        <small>${progress}% do total</small>
+      </article>
+      <article>
+        <span>Falta</span>
+        <strong>${formatCurrency(remaining)}</strong>
+        <small>Para bater as metas</small>
+      </article>
+    `;
+  }
+
+  function goalImageHTML(goal) {
+    if (goal.foto) {
+      return `<img src="${escapeHTML(goal.foto)}" alt="${escapeHTML(goal.nome)}">`;
+    }
+    return `<svg aria-hidden="true" focusable="false"><use href="#baba-image"></use></svg>`;
+  }
+
+  function renderPurchaseGoals() {
+    if (!els.goalsList) return;
+    const goals = state.purchaseGoals || [];
+    if (els.goalsCountLabel) els.goalsCountLabel.textContent = `${goals.length} metas`;
+
+    if (!goals.length) {
+      els.goalsList.innerHTML = '<div class="baba-empty">Nenhuma meta cadastrada ainda. Use o painel do organizador para adicionar o primeiro produto.</div>';
+      return;
+    }
+
+    els.goalsList.innerHTML = goals.map((goal) => {
+      const target = Number(goal.valor || 0);
+      const collected = Number(goal.arrecadado || 0);
+      const remaining = Math.max(0, target - collected);
+      const progress = target ? Math.min(100, Math.round((collected / target) * 100)) : 0;
+      return `
+        <article class="baba-goal-card">
+          <div class="baba-goal-card__image">
+            ${goalImageHTML(goal)}
+          </div>
+          <div class="baba-goal-card__body">
+            <div class="baba-goal-card__title">
+              <strong>${escapeHTML(goal.nome)}</strong>
+              <span>${progress}%</span>
+            </div>
+            ${goal.descricao ? `<p>${escapeHTML(goal.descricao)}</p>` : ''}
+            <div class="baba-goal-progress" aria-label="Progresso da meta ${progress}%">
+              <span style="width: ${progress}%"></span>
+            </div>
+            <div class="baba-goal-money">
+              <span><small>Valor</small><b>${formatCurrency(target)}</b></span>
+              <span><small>Arrecadado</small><b>${formatCurrency(collected)}</b></span>
+              <span><small>Falta</small><b>${formatCurrency(remaining)}</b></span>
+            </div>
+            ${isOrganizer() ? `
+              <div class="baba-goal-inline-edit">
+                <label>
+                  <span>Atualizar arrecadado</span>
+                  <input type="number" min="0" step="0.01" value="${collected}" data-goal-collected-id="${goal.id}">
+                </label>
+                <button class="baba-mini-btn" type="button" data-action="save-goal-collected" data-id="${goal.id}">Salvar</button>
+                <button class="baba-mini-btn danger" type="button" data-action="delete-goal" data-id="${goal.id}">Excluir</button>
+              </div>
+            ` : ''}
+          </div>
+        </article>
+      `;
+    }).join('');
+  }
+
+  function renderPayments(baba) {
+    if (!els.paymentSummary || !els.paymentList) return;
+
+    if (!baba) {
+      els.paymentSummary.innerHTML = '';
+      els.paymentList.innerHTML = '<div class="baba-empty">Crie um baba para controlar pagamentos da rodada.</div>';
+      return;
+    }
+
+    baba.pagamentos = baba.pagamentos && typeof baba.pagamentos === 'object' && !Array.isArray(baba.pagamentos) ? baba.pagamentos : {};
+    const players = getPaymentPlayers(baba);
+    const stats = getPaymentStats(baba);
+    const pending = Math.max(0, stats.expected - stats.paid);
+    const pendingCount = Math.max(0, stats.players - stats.paidCount);
+
+    els.paymentSummary.innerHTML = `
+      <article>
+        <span>Esperado</span>
+        <strong>${formatCurrency(stats.expected)}</strong>
+        <small>${stats.players} jogadores</small>
+      </article>
+      <article>
+        <span>Pago</span>
+        <strong>${formatCurrency(stats.paid)}</strong>
+        <small>${stats.paidCount} confirmados</small>
+      </article>
+      <article>
+        <span>Pendente</span>
+        <strong>${formatCurrency(pending)}</strong>
+        <small>${pendingCount} faltando</small>
+      </article>
+    `;
+
+    if (!players.length) {
+      els.paymentList.innerHTML = '<div class="baba-empty">Marque jogadores presentes para montar a lista de pagamento.</div>';
+      return;
+    }
+
+    els.paymentList.innerHTML = players.map((player) => {
+      const paid = Boolean(baba.pagamentos[player.id]);
+      const price = paymentPriceForPlayer(player);
+      const label = player.tipo === 'goleiro' ? 'Goleiro' : (player.visitante ? 'Visitante' : 'Jogador');
+      return `
+        <div class="baba-payment-item ${paid ? 'is-paid' : 'is-unpaid'}">
+          <div class="baba-payment-main">
+            <strong class="baba-payment-name ${paid ? 'is-paid' : 'is-unpaid'}">${escapeHTML(player.nome)}</strong>
+            <small>${label} - ${formatCurrency(price)}</small>
+          </div>
+          <span class="baba-payment-status ${paid ? 'is-paid' : 'is-unpaid'}">${paid ? 'Pago' : 'Nao pagou'}</span>
+          ${isOrganizer() ? `<button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}">${paid ? 'Desfazer' : 'Marcar pago'}</button>` : ''}
+        </div>
       `;
     }).join('');
   }
@@ -2329,6 +2712,8 @@
     els.finishBaba.addEventListener('click', finishBaba);
     els.resetCurrent.addEventListener('click', resetCurrentBaba);
     els.playerForm.addEventListener('submit', addPlayer);
+    els.goalForm?.addEventListener('submit', addPurchaseGoal);
+    els.goalImage?.addEventListener('change', previewGoalImage);
     els.shareFab.addEventListener('click', shareBabaLink);
     els.closePresentModal.addEventListener('click', () => els.presentModal.classList.add('hidden'));
     els.closeGoalModal.addEventListener('click', closeGoalPicker);
@@ -2378,6 +2763,12 @@
       if (actionButton?.dataset.action === 'toggle-player') return togglePlayerActive(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-player') return deletePlayer(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-visitor') return deleteVisitor(actionButton.dataset.id);
+      if (actionButton?.dataset.action === 'delete-goal') return deletePurchaseGoal(actionButton.dataset.id);
+      if (actionButton?.dataset.action === 'save-goal-collected') {
+        const input = document.querySelector(`[data-goal-collected-id="${actionButton.dataset.id}"]`);
+        return updatePurchaseGoalCollected(actionButton.dataset.id, input?.value);
+      }
+      if (actionButton?.dataset.action === 'toggle-payment') return toggleBabaPayment(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-history') return deleteHistoryBaba(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'open-goal-picker') return openGoalPicker(actionButton.dataset.teamId);
       if (actionButton?.dataset.action === 'undo-goal') return undoLastGoal();

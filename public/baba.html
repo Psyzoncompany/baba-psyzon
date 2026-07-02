@@ -2617,6 +2617,428 @@
       }
     }
   </style>
+  <style id="baba-goals-payments-polish">
+    .baba-goals-page {
+      display: grid;
+      gap: .85rem;
+    }
+
+    .baba-goals-summary,
+    .baba-payment-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .65rem;
+    }
+
+    .baba-goals-summary article,
+    .baba-payment-summary article {
+      min-height: 5.15rem;
+      display: grid;
+      align-content: space-between;
+      gap: .28rem;
+      border: 1px solid rgba(15, 23, 42, .11);
+      border-radius: var(--baba-radius);
+      padding: .72rem;
+      background: rgba(255, 255, 255, .82);
+      box-shadow: 0 12px 28px rgba(15, 23, 42, .08);
+    }
+
+    .baba-goals-summary span,
+    .baba-payment-summary span {
+      color: #5a6b83;
+      font-size: .66rem;
+      font-weight: 950;
+      letter-spacing: .045em;
+      text-transform: uppercase;
+    }
+
+    .baba-goals-summary strong,
+    .baba-payment-summary strong {
+      min-width: 0;
+      overflow: hidden;
+      color: #172033;
+      font-size: clamp(1.05rem, 2vw, 1.55rem);
+      line-height: 1;
+      font-weight: 950;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .baba-goals-summary small,
+    .baba-payment-summary small {
+      color: #64748b;
+      font-size: .68rem;
+      font-weight: 800;
+    }
+
+    .baba-goals-layout {
+      display: grid;
+      grid-template-columns: minmax(300px, .82fr) minmax(0, 1.18fr);
+      gap: .85rem;
+      align-items: start;
+    }
+
+    .baba-goals-layout .baba-card--wide {
+      grid-column: auto;
+    }
+
+    .baba-payments-card {
+      grid-column: 1 / -1 !important;
+    }
+
+    body.baba-player-mode .baba-goals-layout {
+      grid-template-columns: 1fr;
+    }
+
+    body.baba-player-mode .baba-goals-layout .baba-card--wide {
+      grid-column: 1 / -1;
+    }
+
+    .baba-goal-form {
+      display: grid;
+      gap: .65rem;
+    }
+
+    .baba-goal-form label,
+    .baba-goal-inline-edit label {
+      display: grid;
+      gap: .35rem;
+      color: #5a6b83;
+      font-size: .7rem;
+      font-weight: 950;
+      letter-spacing: .045em;
+      text-transform: uppercase;
+    }
+
+    .baba-goal-form input,
+    .baba-goal-form textarea,
+    .baba-goal-inline-edit input {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid rgba(15, 23, 42, .14);
+      border-radius: var(--baba-radius);
+      padding: .58rem .72rem;
+      color: #172033;
+      background: #ffffff;
+      font: inherit;
+      outline: none;
+    }
+
+    .baba-goal-form textarea {
+      min-height: 88px;
+      resize: vertical;
+      line-height: 1.35;
+    }
+
+    .baba-goal-form input:focus,
+    .baba-goal-form textarea:focus,
+    .baba-goal-inline-edit input:focus {
+      border-color: rgba(25, 135, 216, .42);
+      box-shadow: 0 0 0 3px rgba(25, 135, 216, .12);
+    }
+
+    .baba-goal-photo-field {
+      position: relative;
+      cursor: pointer;
+    }
+
+    .baba-goal-photo-field input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .baba-goal-photo-preview {
+      min-height: 11rem;
+      display: grid;
+      place-items: center;
+      gap: .5rem;
+      overflow: hidden;
+      border: 1px dashed rgba(25, 135, 216, .38);
+      border-radius: var(--baba-radius);
+      color: #155e9f;
+      background: linear-gradient(180deg, #f1f8ff, #ffffff);
+      font-size: .82rem;
+      font-weight: 950;
+      text-transform: none;
+    }
+
+    .baba-goal-photo-preview svg {
+      width: 2.35rem;
+      height: 2.35rem;
+    }
+
+    .baba-goal-photo-preview img {
+      width: 100%;
+      height: 100%;
+      min-height: 11rem;
+      object-fit: cover;
+    }
+
+    .baba-goal-photo-preview.has-image {
+      border-style: solid;
+      background: #ffffff;
+    }
+
+    .baba-goal-money-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .55rem;
+    }
+
+    .baba-goals-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+      gap: .65rem;
+    }
+
+    .baba-goal-card {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: 7.25rem minmax(0, 1fr);
+      gap: .72rem;
+      border: 1px solid rgba(15, 23, 42, .11);
+      border-radius: var(--baba-radius);
+      padding: .68rem;
+      background: rgba(255, 255, 255, .78);
+      box-shadow: 0 12px 28px rgba(15, 23, 42, .08);
+    }
+
+    .baba-goal-card__image {
+      min-height: 7.25rem;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border: 1px solid rgba(15, 23, 42, .10);
+      border-radius: var(--baba-radius);
+      color: #64748b;
+      background: #f4f8ff;
+    }
+
+    .baba-goal-card__image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .baba-goal-card__image svg {
+      width: 2rem;
+      height: 2rem;
+    }
+
+    .baba-goal-card__body {
+      min-width: 0;
+      display: grid;
+      gap: .54rem;
+      align-content: start;
+    }
+
+    .baba-goal-card__title {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: .55rem;
+    }
+
+    .baba-goal-card__title strong {
+      min-width: 0;
+      overflow: hidden;
+      color: #172033;
+      font-size: .95rem;
+      font-weight: 950;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .baba-goal-card__title span {
+      flex: 0 0 auto;
+      border-radius: 999px;
+      padding: .24rem .48rem;
+      color: #065f46;
+      background: #dcfce7;
+      font-size: .68rem;
+      font-weight: 950;
+    }
+
+    .baba-goal-card p {
+      margin: 0;
+      color: #52647c;
+      font-size: .78rem;
+      line-height: 1.35;
+    }
+
+    .baba-goal-progress {
+      height: .58rem;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e2e8f0;
+    }
+
+    .baba-goal-progress span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #14a46a, #1987d8);
+    }
+
+    .baba-goal-money {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .38rem;
+    }
+
+    .baba-goal-money span {
+      min-width: 0;
+      display: grid;
+      gap: .12rem;
+      border-radius: var(--baba-radius);
+      padding: .42rem;
+      background: #f4f8ff;
+    }
+
+    .baba-goal-money small {
+      color: #64748b;
+      font-size: .58rem;
+      font-weight: 950;
+      letter-spacing: .035em;
+      text-transform: uppercase;
+    }
+
+    .baba-goal-money b {
+      overflow: hidden;
+      color: #172033;
+      font-size: .74rem;
+      font-weight: 950;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .baba-goal-inline-edit {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: .42rem;
+      align-items: end;
+      padding-top: .12rem;
+    }
+
+    .baba-goal-inline-edit button {
+      min-height: 42px;
+    }
+
+    .baba-payment-list {
+      display: grid;
+      gap: .46rem;
+      margin-top: .68rem;
+    }
+
+    .baba-payment-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: .6rem;
+      align-items: center;
+      border: 1px solid rgba(15, 23, 42, .11);
+      border-radius: var(--baba-radius);
+      padding: .66rem .7rem;
+      background: rgba(255, 255, 255, .78);
+    }
+
+    .baba-payment-item.is-paid {
+      border-color: rgba(20, 164, 106, .32);
+      background: #f0fdf4;
+    }
+
+    .baba-payment-item.is-unpaid {
+      border-color: rgba(223, 62, 82, .26);
+      background: #fff7f7;
+    }
+
+    .baba-payment-main {
+      min-width: 0;
+      display: grid;
+      gap: .16rem;
+    }
+
+    .baba-payment-name {
+      min-width: 0;
+      overflow: hidden;
+      font-size: .95rem;
+      font-weight: 950;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    html body.baba-page .baba-payment-name.is-paid {
+      color: #047857 !important;
+    }
+
+    html body.baba-page .baba-payment-name.is-unpaid {
+      color: #dc2626 !important;
+    }
+
+    .baba-payment-main small {
+      color: #64748b;
+      font-size: .72rem;
+      font-weight: 850;
+    }
+
+    .baba-payment-status {
+      border-radius: 999px;
+      padding: .28rem .55rem;
+      font-size: .68rem;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .baba-payment-status.is-paid {
+      color: #065f46;
+      background: #dcfce7;
+    }
+
+    .baba-payment-status.is-unpaid {
+      color: #9f1239;
+      background: #ffe4e6;
+    }
+
+    @media (max-width: 980px) {
+      .baba-goals-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .baba-goals-summary,
+      .baba-payment-summary {
+        grid-template-columns: 1fr;
+        gap: .46rem;
+      }
+
+      .baba-goals-summary article,
+      .baba-payment-summary article {
+        min-height: 4.2rem;
+      }
+
+      .baba-goal-money-grid,
+      .baba-goal-card,
+      .baba-goal-money,
+      .baba-goal-inline-edit,
+      .baba-payment-item {
+        grid-template-columns: 1fr;
+      }
+
+      .baba-goal-card__image {
+        min-height: 12rem;
+      }
+
+      .baba-payment-status,
+      .baba-payment-item .baba-mini-btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
   <script>
     if (window.location.protocol !== 'file:') {
       const manifest = document.createElement('link');
@@ -2764,6 +3186,20 @@
       <path d="M5 12a7 7 0 1 0 2-5M5 4v5h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
       <path d="M12 8v5l4 2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
     </symbol>
+    <symbol id="baba-target" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.2" />
+      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2.2" />
+      <path d="M12 2v3M12 19v3M2 12h3M19 12h3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    </symbol>
+    <symbol id="baba-wallet" viewBox="0 0 24 24">
+      <path d="M4 7h14a2 2 0 0 1 2 2v9H4V7Zm0 0 3-3h11v3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
+      <path d="M16 13h4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+      <circle cx="16" cy="13" r="1.2" fill="currentColor" />
+    </symbol>
+    <symbol id="baba-image" viewBox="0 0 24 24">
+      <path d="M4 5h16v14H4V5Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
+      <path d="m7 16 4-4 3 3 2-2 3 3M8 9h.01" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
   </svg>
 
   <header class="baba-topbar">
@@ -2852,6 +3288,7 @@
         <button type="button" data-tab="table"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-table-icon"></use></svg><span>Tabela</span></button>
         <button type="button" data-tab="teams"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-users"></use></svg><span>Times</span></button>
         <button class="organizer-only" type="button" data-tab="organizer"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-pencil"></use></svg><span>Organizador</span></button>
+        <button type="button" data-tab="goals"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-target"></use></svg><span>Metas</span></button>
         <button type="button" data-tab="ranking"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-chart"></use></svg><span>Ranking</span></button>
         <button type="button" data-tab="history"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg><span>Historico</span></button>
       </nav>
@@ -2975,6 +3412,66 @@
             </form>
             <div id="players-admin-list" class="baba-player-list"></div>
           </article>
+        </div>
+      </section>
+
+      <section class="baba-view" data-view="goals">
+        <div class="baba-goals-page">
+          <div id="goals-summary" class="baba-goals-summary"></div>
+
+          <div class="baba-goals-layout">
+            <article class="baba-card baba-goal-form-card organizer-only">
+              <div class="baba-card__head">
+                <h2>Nova meta de compra</h2>
+                <span>Produto do Baba</span>
+              </div>
+              <form id="goal-form" class="baba-goal-form">
+                <label class="baba-goal-photo-field">
+                  <input id="goal-image" type="file" accept="image/*">
+                  <span id="goal-image-preview" class="baba-goal-photo-preview">
+                    <svg aria-hidden="true" focusable="false"><use href="#baba-image"></use></svg>
+                    <span>Adicionar foto</span>
+                  </span>
+                </label>
+                <label>
+                  <span>Nome do produto</span>
+                  <input id="goal-name" type="text" placeholder="Ex: Bola oficial, rede, coletes" required>
+                </label>
+                <label>
+                  <span>Descricao</span>
+                  <textarea id="goal-description" placeholder="Detalhe marca, tamanho, prioridade ou observacoes"></textarea>
+                </label>
+                <div class="baba-goal-money-grid">
+                  <label>
+                    <span>Valor</span>
+                    <input id="goal-target" type="number" min="0" step="0.01" placeholder="0,00" required>
+                  </label>
+                  <label>
+                    <span>Valor arrecadado</span>
+                    <input id="goal-collected" type="number" min="0" step="0.01" placeholder="0,00">
+                  </label>
+                </div>
+                <button id="goal-submit-btn" class="baba-primary" type="submit">Cadastrar meta</button>
+              </form>
+            </article>
+
+            <article class="baba-card baba-card--wide">
+              <div class="baba-card__head">
+                <h2>Metas de compras</h2>
+                <span id="goals-count-label">0 metas</span>
+              </div>
+              <div id="goals-list" class="baba-goals-list"></div>
+            </article>
+
+            <article class="baba-card baba-card--wide baba-payments-card">
+              <div class="baba-card__head">
+                <h2>Pagamentos do baba</h2>
+                <span>Jogador R$ 15 / Goleiro R$ 7</span>
+              </div>
+              <div id="payment-summary" class="baba-payment-summary"></div>
+              <div id="payment-list" class="baba-payment-list"></div>
+            </article>
+          </div>
         </div>
       </section>
 
@@ -3145,11 +3642,46 @@
         return value;
       }
 
+      function normalizeGoalMoney(value) {
+        const normalized = String(value ?? '')
+          .trim()
+          .replace(/\s/g, '')
+          .replace(/[R$]/gi, '')
+          .replace(/\.(?=\d{3}(?:\D|$))/g, '')
+          .replace(',', '.');
+        const number = Number(normalized);
+        return Number.isFinite(number) && number > 0 ? Number(number.toFixed(2)) : 0;
+      }
+
+      function normalizePurchaseGoal(goal) {
+        const safe = goal && typeof goal === 'object' ? goal : {};
+        const nome = String(safe.nome || safe.name || '').trim();
+        const descricao = String(safe.descricao || safe.description || '').trim();
+        const valor = normalizeGoalMoney(safe.valor ?? safe.target ?? safe.meta);
+        const arrecadado = normalizeGoalMoney(safe.arrecadado ?? safe.collected ?? safe.valorArrecadado);
+        const foto = String(safe.foto || safe.image || safe.imageData || '').trim();
+        if (!nome && !descricao && !valor && !arrecadado && !foto) return null;
+        return {
+          id: safe.id || `goal_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+          nome: nome || 'Meta sem nome',
+          descricao,
+          valor,
+          arrecadado,
+          foto,
+          criadoEm: Number(safe.criadoEm || safe.createdAt || Date.now()),
+          atualizadoEm: Number(safe.atualizadoEm || safe.updatedAt || Date.now()),
+        };
+      }
+
       function normalizeBabaState(value) {
         const next = value && typeof value === 'object' ? value : {};
+        next.purchaseGoals = Array.isArray(next.purchaseGoals)
+          ? next.purchaseGoals.map(normalizePurchaseGoal).filter(Boolean)
+          : [];
         if (Array.isArray(next.babas)) {
           next.babas.forEach((baba) => {
             baba.visitantes = Array.isArray(baba.visitantes) ? baba.visitantes : [];
+            baba.pagamentos = baba.pagamentos && typeof baba.pagamentos === 'object' && !Array.isArray(baba.pagamentos) ? baba.pagamentos : {};
             if (Array.isArray(baba.teams)) {
               baba.teams.forEach((team, index) => {
                 if (team?.id === VISITOR_TEAM_ID || team?.tipo === 'visitante') {
@@ -3335,6 +3867,7 @@
           'close-goal-modal': 'baba-x',
           'close-team-detail-modal': 'baba-x',
           'close-game-detail-modal': 'baba-x',
+          'goal-submit-btn': 'baba-plus',
         };
         Object.entries(staticIcons).forEach(([id, icon]) => addButtonIcon(root.getElementById?.(id) || document.getElementById(id), icon));
         addButtonIcon(document.querySelector('#player-form button[type="submit"]'), 'baba-user-plus');
@@ -3344,6 +3877,9 @@
             'toggle-player': 'baba-refresh',
             'delete-player': 'baba-trash',
             'delete-visitor': 'baba-trash',
+            'delete-goal': 'baba-trash',
+            'save-goal-collected': 'baba-save',
+            'toggle-payment': 'baba-wallet',
             'delete-history': 'baba-trash',
             'open-goal-picker': 'baba-ball',
             'undo-goal': 'baba-undo',
@@ -3483,7 +4019,11 @@
       }
 
       function hasUsefulState(state) {
-        return Boolean(state && ((Array.isArray(state.players) && state.players.length) || (Array.isArray(state.babas) && state.babas.length)));
+        return Boolean(state && (
+          (Array.isArray(state.players) && state.players.length)
+          || (Array.isArray(state.babas) && state.babas.length)
+          || (Array.isArray(state.purchaseGoals) && state.purchaseGoals.length)
+        ));
       }
 
       function safeRawFromState(state) {
