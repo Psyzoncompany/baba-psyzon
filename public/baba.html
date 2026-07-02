@@ -2500,27 +2500,31 @@
     }
 
     .baba-tabs {
-      position: relative !important;
-      top: auto !important;
-      z-index: 10;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(6.4rem, 1fr));
+      position: sticky !important;
+      top: .45rem !important;
+      z-index: 45;
+      display: flex;
+      align-items: center;
+      flex-wrap: nowrap;
       gap: .3rem;
       width: 100%;
       margin: 0 0 .85rem;
       padding: .35rem;
-      overflow: visible;
+      overflow-x: auto;
+      overflow-y: hidden;
       border: 1px solid rgba(15, 23, 42, .11);
       border-radius: var(--baba-radius);
       background: rgba(255, 255, 255, .92);
       box-shadow: 0 14px 34px rgba(15, 23, 42, .10);
+      scrollbar-width: thin;
       backdrop-filter: blur(18px) saturate(145%);
       -webkit-backdrop-filter: blur(18px) saturate(145%);
     }
 
     .baba-tabs button {
-      width: 100%;
-      min-width: 0 !important;
+      flex: 1 0 6.4rem;
+      width: auto;
+      min-width: 6.4rem !important;
       min-height: 46px;
       gap: .38rem;
       border: 1px solid transparent;
@@ -2559,13 +2563,15 @@
 
     @media (max-width: 760px) {
       .baba-tabs {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        top: .35rem !important;
         gap: .28rem;
         margin-bottom: .62rem;
         padding: .3rem;
       }
 
       .baba-tabs button {
+        flex-basis: 5.65rem;
+        min-width: 5.65rem !important;
         min-height: 44px;
         padding: .48rem .28rem;
         font-size: .66rem;
@@ -2579,9 +2585,10 @@
 
     @media (max-width: 390px) {
       .baba-tabs button {
-        flex-direction: column;
-        gap: .18rem;
-        min-height: 52px;
+        flex-basis: 5.25rem;
+        min-width: 5.25rem !important;
+        gap: .22rem;
+        min-height: 44px;
         font-size: .6rem;
       }
     }
