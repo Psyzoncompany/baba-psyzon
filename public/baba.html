@@ -2295,28 +2295,30 @@
     }
 
     .baba-control-flow button.is-flow-primary,
-    .baba-control-flow button.is-flow-complete {
+    .baba-control-flow button.is-flow-next {
       border-color: rgba(47, 141, 69, .44);
       color: #ffffff;
       background: linear-gradient(135deg, #31a24d, #1f7d3a);
-      box-shadow: 0 12px 24px rgba(47, 141, 69, .20);
-    }
-
-    .baba-control-flow button.is-flow-next {
-      border-color: rgba(47, 141, 69, .48);
-      color: #ffffff;
-      background: linear-gradient(135deg, #39b65b, #23813e);
       box-shadow: 0 0 0 0 rgba(47, 141, 69, .26), 0 14px 26px rgba(47, 141, 69, .22);
       animation: baba-flow-pulse 1.9s ease-in-out infinite;
     }
 
+    .baba-control-flow button.is-flow-complete {
+      border-color: #e1e7f0;
+      color: #172033;
+      background: #ffffff;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, .055);
+      animation: none;
+    }
+
     .baba-control-flow button.is-flow-disabled {
-      border-color: #e5eaf1;
+      border-color: #e1e7f0;
       color: #9aa6b8;
-      background: #f3f6fa;
-      box-shadow: none;
+      background: #ffffff;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, .04);
       cursor: not-allowed;
       opacity: 1;
+      animation: none;
     }
 
     .baba-control-flow button.is-flow-neutral {
@@ -2488,6 +2490,99 @@
       .baba-current-match-panel .baba-live-control-btn {
         min-height: 46px;
         font-size: .74rem;
+      }
+    }
+  </style>
+  <style id="baba-requested-tabs-and-header-polish">
+    .baba-topbar {
+      position: static !important;
+      top: auto !important;
+    }
+
+    .baba-tabs {
+      position: relative !important;
+      top: auto !important;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(6.4rem, 1fr));
+      gap: .3rem;
+      width: 100%;
+      margin: 0 0 .85rem;
+      padding: .35rem;
+      overflow: visible;
+      border: 1px solid rgba(15, 23, 42, .11);
+      border-radius: var(--baba-radius);
+      background: rgba(255, 255, 255, .92);
+      box-shadow: 0 14px 34px rgba(15, 23, 42, .10);
+      backdrop-filter: blur(18px) saturate(145%);
+      -webkit-backdrop-filter: blur(18px) saturate(145%);
+    }
+
+    .baba-tabs button {
+      width: 100%;
+      min-width: 0 !important;
+      min-height: 46px;
+      gap: .38rem;
+      border: 1px solid transparent;
+      border-radius: var(--baba-radius);
+      padding: .52rem .48rem;
+      color: #42526a;
+      background: transparent;
+      box-shadow: none;
+      font-size: .76rem;
+      line-height: 1.05;
+      transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+    }
+
+    .baba-tabs button:hover {
+      border-color: rgba(25, 135, 216, .18);
+      color: #172033;
+      background: #f0f7ff;
+      transform: translateY(-1px);
+    }
+
+    .baba-tabs button.active {
+      border-color: rgba(15, 23, 42, .14);
+      color: #ffffff;
+      background: linear-gradient(135deg, #172033, #0f766e);
+      box-shadow: 0 10px 22px rgba(15, 23, 42, .16);
+    }
+
+    .baba-tabs button.active .baba-tab-icon {
+      color: #ffffff;
+    }
+
+    .baba-tab-icon {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    @media (max-width: 760px) {
+      .baba-tabs {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .28rem;
+        margin-bottom: .62rem;
+        padding: .3rem;
+      }
+
+      .baba-tabs button {
+        min-height: 44px;
+        padding: .48rem .28rem;
+        font-size: .66rem;
+      }
+
+      .baba-tab-icon {
+        width: .9rem;
+        height: .9rem;
+      }
+    }
+
+    @media (max-width: 390px) {
+      .baba-tabs button {
+        flex-direction: column;
+        gap: .18rem;
+        min-height: 52px;
+        font-size: .6rem;
       }
     }
   </style>

@@ -638,19 +638,29 @@
       return;
     }
 
-    const teamCount = Math.min(TEAM_NAMES.length, Math.max(2, Math.ceil(presentPlayers.length / 5)));
-    const teams = TEAM_NAMES.slice(0, teamCount).map((name, index) => makeEmptyTeam(`team_${index + 1}`, name));
-
     const goalkeepers = shuffle(presentPlayers.filter((player) => player.tipo === 'goleiro'));
     const fieldPlayers = shuffle(presentPlayers.filter((player) => player.tipo !== 'goleiro'));
 
-    goalkeepers.forEach((player, index) => {
+    if (fieldPlayers.length < 8) {
+      showToast('Marque pelo menos 8 jogadores de linha para deixar Time 1 e Time 2 completos.');
+      return;
+    }
+
+    const linePlayersPerTeam = 4;
+    const teamCount = Math.min(TEAM_NAMES.length, Math.max(2, Math.ceil(fieldPlayers.length / linePlayersPerTeam)));
+    const teams = TEAM_NAMES.slice(0, teamCount).map((name, index) => makeEmptyTeam(`team_${index + 1}`, name));
+
+    teams.forEach((team, index) => {
+      const start = index * linePlayersPerTeam;
+      team.jogadores.push(...fieldPlayers.slice(start, start + linePlayersPerTeam).map((player) => player.id));
+    });
+
+    fieldPlayers.slice(teamCount * linePlayersPerTeam).forEach((player, index) => {
       teams[index % teams.length].jogadores.push(player.id);
     });
 
-    fieldPlayers.forEach((player) => {
-      const target = [...teams].sort((a, b) => a.jogadores.length - b.jogadores.length)[0];
-      target.jogadores.push(player.id);
+    goalkeepers.forEach((player, index) => {
+      teams[index % teams.length].jogadores.push(player.id);
     });
 
     if (visitorPlayers.length) {
@@ -669,7 +679,7 @@
     baba.teamRevealIndex = 0;
     baba.status = 'times';
     baba.undoStack = [];
-    saveState('Times sorteados com equilibrio e goleiros distribuidos.');
+    saveState('Times sorteados: Time 1 e Time 2 com 4 jogadores de linha.');
     setActiveTab('teams');
   }
 
@@ -1417,7 +1427,7 @@
     if (els.dateDisplay) els.dateDisplay.textContent = formatBabaDateLong(baba?.dataISO || todayISO());
 
     setFlowButton(els.markPresent, {
-      variant: hasPresentPlayers ? 'complete' : 'primary',
+      variant: !hasOpenBaba ? 'disabled' : (hasPresentPlayers ? 'complete' : 'primary'),
       disabled: !hasOpenBaba,
     });
     setFlowButton(els.drawTeams, {
