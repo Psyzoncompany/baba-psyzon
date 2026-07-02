@@ -7,6 +7,11 @@
   const VISITOR_TEAM_NAME = 'Visitante';
   const PLAYER_BABA_PRICE = 15;
   const GOALKEEPER_BABA_PRICE = 7;
+  const GOAL_PRIORITIES = [
+    { id: 'alta', label: 'Alta', value: 3 },
+    { id: 'media', label: 'Media', value: 2 },
+    { id: 'baixa', label: 'Baixa', value: 1 },
+  ];
   const RANKING_MODES = [
     { id: 'goals', label: 'Gols', icon: 'baba-ball' },
     { id: 'wins', label: 'Vitorias', icon: 'baba-check' },
@@ -78,6 +83,7 @@
     goalImagePreview: $('#goal-image-preview'),
     goalName: $('#goal-name'),
     goalDescription: $('#goal-description'),
+    goalPriority: $('#goal-priority'),
     goalTarget: $('#goal-target'),
     goalCollected: $('#goal-collected'),
     goalsSummary: $('#goals-summary'),
@@ -166,6 +172,18 @@
       .replace(',', '.');
     const number = Number(normalized);
     return Number.isFinite(number) && number > 0 ? Number(number.toFixed(2)) : 0;
+  }
+
+  function normalizeGoalPriority(value) {
+    const normalized = String(value || '').toLowerCase();
+    if (['alta', 'high', '3'].includes(normalized)) return 'alta';
+    if (['baixa', 'low', '1'].includes(normalized)) return 'baixa';
+    return 'media';
+  }
+
+  function goalPriorityMeta(value) {
+    const id = normalizeGoalPriority(value);
+    return GOAL_PRIORITIES.find((priority) => priority.id === id) || GOAL_PRIORITIES[1];
   }
 
   function formatBabaDateLong(iso) {
@@ -263,11 +281,13 @@
     const valor = parseMoneyValue(safe.valor ?? safe.target ?? safe.meta);
     const arrecadado = parseMoneyValue(safe.arrecadado ?? safe.collected ?? safe.valorArrecadado);
     const foto = String(safe.foto || safe.image || safe.imageData || '').trim();
+    const prioridade = normalizeGoalPriority(safe.prioridade ?? safe.priority);
     if (!nome && !descricao && !valor && !arrecadado && !foto) return null;
     return {
       id: safe.id || newId('goal'),
       nome: nome || 'Meta sem nome',
       descricao,
+      prioridade,
       valor,
       arrecadado,
       foto,
@@ -461,6 +481,37 @@
 
   function playerName(id, baba = getActiveBaba()) {
     return getBabaPlayer(baba, id)?.nome || 'Jogador removido';
+  }
+
+  function hasPaymentRecord(baba, playerId) {
+    return Boolean(baba?.pagamentos && Object.prototype.hasOwnProperty.call(baba.pagamentos, playerId));
+  }
+
+  function playerAppearsInBaba(baba, playerId) {
+    if (!baba || !playerId) return false;
+    return (baba.jogadoresPresentes || []).includes(playerId)
+      || (baba.visitantes || []).some((player) => player.id === playerId)
+      || (baba.teams || []).some((team) => (team.jogadores || []).includes(playerId))
+      || hasPaymentRecord(baba, playerId);
+  }
+
+  function playerPaymentState(playerId, baba = getActiveBaba(), { force = false } = {}) {
+    if (!baba || !playerId) return null;
+    if (hasPaymentRecord(baba, playerId)) return baba.pagamentos[playerId] ? 'paid' : 'unpaid';
+    return force || playerAppearsInBaba(baba, playerId) ? 'unpaid' : null;
+  }
+
+  function playerPaymentNameHTML(playerId, baba = getActiveBaba(), options = {}) {
+    const name = options.name || playerName(playerId, baba);
+    const state = playerPaymentState(playerId, baba, options);
+    if (!state) return escapeHTML(name);
+    const label = state === 'paid' ? 'Pago' : 'Nao pagou';
+    return `
+      <span class="baba-player-payment is-${state}">
+        <span class="baba-player-payment__name">${escapeHTML(name)}</span>
+        <span class="baba-player-payment__status">${label}</span>
+      </span>
+    `;
   }
 
   function isOrganizer() {
@@ -799,6 +850,7 @@
     const editingGoal = editingGoalId ? state.purchaseGoals.find((item) => item.id === editingGoalId) : null;
     const nome = els.goalName?.value.trim() || '';
     const descricao = els.goalDescription?.value.trim() || '';
+    const prioridade = normalizeGoalPriority(els.goalPriority?.value);
     const valor = parseMoneyValue(els.goalTarget?.value);
     const arrecadado = parseMoneyValue(els.goalCollected?.value);
 
@@ -820,6 +872,7 @@
       Object.assign(editingGoal, {
         nome,
         descricao,
+        prioridade,
         valor,
         arrecadado,
         foto,
@@ -835,6 +888,7 @@
       id: newId('goal'),
       nome,
       descricao,
+      prioridade,
       valor,
       arrecadado,
       foto,
@@ -854,6 +908,7 @@
     setGoalFormMode(goal);
     if (els.goalName) els.goalName.value = goal.nome || '';
     if (els.goalDescription) els.goalDescription.value = goal.descricao || '';
+    if (els.goalPriority) els.goalPriority.value = normalizeGoalPriority(goal.prioridade);
     if (els.goalTarget) els.goalTarget.value = Number(goal.valor || 0);
     if (els.goalCollected) els.goalCollected.value = Number(goal.arrecadado || 0);
     if (els.goalImage) els.goalImage.value = '';
@@ -883,9 +938,7 @@
 
   function getPaymentPlayers(baba) {
     if (!baba) return [];
-    const fixedPlayers = [...new Set(baba.jogadoresPresentes || [])]
-      .map((id) => getPlayer(id))
-      .filter(Boolean);
+    const fixedPlayers = state.players;
     const visitors = (baba.visitantes || []).filter((player) => player?.ativo !== false);
     return [...fixedPlayers, ...visitors];
   }
@@ -1167,7 +1220,7 @@
     els.goalModalTitle.textContent = `Gol do ${team.name}`;
     els.goalPlayerList.innerHTML = team.jogadores.map((playerId) => `
       <button class="baba-goal-player" type="button" data-goal-player-id="${playerId}">
-        <strong>${escapeHTML(playerName(playerId, baba))}</strong>
+        <strong>${playerPaymentNameHTML(playerId, baba)}</strong>
         <small>${escapeHTML(team.name)}</small>
       </button>
     `).join('');
@@ -1802,6 +1855,7 @@
     const baba = getActiveBaba();
     const visitors = baba?.visitantes || [];
     const fixedHTML = state.players.length ? state.players.map((player) => {
+      const paid = playerPaymentState(player.id, baba, { force: Boolean(baba) }) === 'paid';
       const meta = [
         player.tipo === 'goleiro' ? '<small class="baba-goalie-pill">Goleiro</small>' : '',
         player.ativo ? '' : '<small class="baba-status-pill">Inativo</small>',
@@ -1809,10 +1863,11 @@
       return `
       <div class="baba-player-admin">
         <div class="baba-player-admin__info">
-          <strong>${escapeHTML(player.nome)}</strong>
+          <strong>${playerPaymentNameHTML(player.id, baba, { name: player.nome, force: Boolean(baba) })}</strong>
           ${meta ? `<div class="baba-player-admin__meta">${meta}</div>` : ''}
         </div>
         <div class="baba-player-admin__actions">
+          ${baba ? `<button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}">${paid ? 'Marcar nao pago' : 'Marcar pago'}</button>` : ''}
           <button class="baba-mini-btn" type="button" data-action="toggle-player" data-id="${player.id}">${player.ativo ? 'Desativar' : 'Ativar'}</button>
           <button class="baba-mini-btn danger" type="button" data-action="delete-player" data-id="${player.id}">Excluir</button>
         </div>
@@ -1823,10 +1878,11 @@
     const visitorHTML = visitors.length ? visitors.map((player) => `
       <div class="baba-player-admin">
         <div class="baba-player-admin__info">
-          <strong>${escapeHTML(player.nome)}</strong>
+          <strong>${playerPaymentNameHTML(player.id, baba, { name: player.nome, force: true })}</strong>
           <div class="baba-player-admin__meta"><small class="baba-visitor-pill">Visitante do baba atual</small></div>
         </div>
-        <div class="baba-player-admin__actions baba-player-admin__actions--single">
+        <div class="baba-player-admin__actions">
+          <button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}">${playerPaymentState(player.id, baba, { force: true }) === 'paid' ? 'Marcar nao pago' : 'Marcar pago'}</button>
           <button class="baba-mini-btn danger" type="button" data-action="delete-visitor" data-id="${player.id}">Remover</button>
         </div>
       </div>
@@ -1860,7 +1916,7 @@
         <label class="baba-present-item ${checked ? 'is-checked' : ''}">
           <input type="checkbox" data-present-id="${player.id}" ${checked ? 'checked' : ''} ${!isOrganizer() ? 'disabled' : ''}>
           <span>
-            <strong>${escapeHTML(player.nome)}</strong>
+            <strong>${playerPaymentNameHTML(player.id, baba, { name: player.nome, force: Boolean(baba) })}</strong>
             ${player.tipo === 'goleiro' ? '<small>Goleiro</small>' : ''}
           </span>
         </label>
@@ -1916,7 +1972,10 @@
 
   function renderPurchaseGoals() {
     if (!els.goalsList) return;
-    const goals = state.purchaseGoals || [];
+    const goals = [...(state.purchaseGoals || [])].sort((a, b) => (
+      goalPriorityMeta(b.prioridade).value - goalPriorityMeta(a.prioridade).value ||
+      Number(b.atualizadoEm || b.criadoEm || 0) - Number(a.atualizadoEm || a.criadoEm || 0)
+    ));
     if (els.goalsCountLabel) els.goalsCountLabel.textContent = `${goals.length} metas`;
 
     if (!goals.length) {
@@ -1929,6 +1988,7 @@
       const collected = Number(goal.arrecadado || 0);
       const remaining = Math.max(0, target - collected);
       const progress = target ? Math.min(100, Math.round((collected / target) * 100)) : 0;
+      const priority = goalPriorityMeta(goal.prioridade);
       return `
         <article class="baba-goal-card">
           <div class="baba-goal-card__image">
@@ -1937,7 +1997,10 @@
           <div class="baba-goal-card__body">
             <div class="baba-goal-card__title">
               <strong>${escapeHTML(goal.nome)}</strong>
-              <span>${progress}%</span>
+              <div class="baba-goal-card__badges">
+                <span class="is-priority-${priority.id === 'alta' ? 'high' : priority.id === 'baixa' ? 'low' : 'medium'}">${priority.label}</span>
+                <span>${progress}%</span>
+              </div>
             </div>
             ${goal.descricao ? `<p>${escapeHTML(goal.descricao)}</p>` : ''}
             <div class="baba-goal-progress" aria-label="Progresso da meta ${progress}%">
@@ -2042,7 +2105,7 @@
           <span><b>${team.golsPro - team.golsContra}</b>Saldo</span>
         </div>
         <div class="baba-team__players">
-          ${team.jogadores.map((id) => `<span class="baba-pill">${escapeHTML(playerName(id, baba))}</span>`).join('')}
+          ${team.jogadores.map((id) => `<span class="baba-pill">${playerPaymentNameHTML(id, baba)}</span>`).join('')}
         </div>
       </article>
     `;
@@ -2177,7 +2240,7 @@
         ${top.map((stats, index) => `
           <div class="baba-table-scorer ${index === 0 ? 'is-first baba-gold-leader' : ''}">
             <span>${index + 1}º lugar</span>
-            <strong>${escapeHTML(stats.nome)}</strong>
+            <strong>${playerPaymentNameHTML(stats.jogadorId, getActiveBaba(), { name: stats.nome, force: Boolean(getActiveBaba()) })}</strong>
             <span>${stats.totalGols} gol${stats.totalGols === 1 ? '' : 's'}</span>
           </div>
         `).join('')}
@@ -2254,7 +2317,7 @@
       return `
         <div class="baba-row">
           <div>
-            <strong>${escapeHTML(player?.nome || playerName(playerId, baba))}</strong>
+            <strong>${playerPaymentNameHTML(playerId, baba, { name: player?.nome || playerName(playerId, baba) })}</strong>
             ${player?.tipo === 'goleiro' ? '<small>Goleiro</small>' : ''}
           </div>
           <div class="baba-player-mini-stats">
@@ -2283,7 +2346,7 @@
       ${events.length ? events.map((goal) => `
         <div class="baba-row">
           <div>
-            <strong>${escapeHTML(goal.jogadorNome)}</strong>
+            <strong>${playerPaymentNameHTML(goal.jogadorId, baba, { name: goal.jogadorNome })}</strong>
             <small>${escapeHTML(goal.timeNome)}</small>
           </div>
           <b>${goal.minuto ? `${goal.minuto}'` : '-'}</b>
@@ -2566,7 +2629,7 @@
             <div>
               <div class="baba-ranking-title">
                 <svg aria-hidden="true" focusable="false"><use href="#${icon}"></use></svg>
-                <strong>${escapeHTML(stats.nome)}</strong>
+                <strong>${playerPaymentNameHTML(stats.jogadorId, getActiveBaba(), { name: stats.nome, force: Boolean(getActiveBaba()) })}</strong>
               </div>
               <div class="stats">
                 ${stat('baba-ball', `${stats.totalGols} gols`)}
@@ -2603,7 +2666,7 @@
             <div>
               <div class="baba-ranking-title">
                 <svg aria-hidden="true" focusable="false"><use href="#${position === 1 ? 'baba-trophy' : 'baba-save'}"></use></svg>
-                <strong>${escapeHTML(stats.nome)}</strong>
+                <strong>${playerPaymentNameHTML(stats.jogadorId, getActiveBaba(), { name: stats.nome, force: Boolean(getActiveBaba()) })}</strong>
               </div>
               <div class="stats">
                 <span><svg aria-hidden="true" focusable="false"><use href="#baba-x"></use></svg>${stats.golsSofridos} sofridos</span>
@@ -2656,12 +2719,12 @@
     if (!baba) return;
     els.historyDetailLabel.textContent = baba.dataCompleta;
     const championNames = baba.campeaoDoBaba?.nomes?.join(', ') || 'Sem campeao';
-    const championPlayers = (baba.campeaoDoBaba?.jogadores || []).map((id) => playerName(id, baba)).join(', ') || '-';
+    const championPlayers = (baba.campeaoDoBaba?.jogadores || []).map((id) => playerPaymentNameHTML(id, baba)).join(', ') || '-';
 
     els.historyDetail.innerHTML = `
       <div class="baba-stack">
         <div class="baba-row"><span>Campeao do baba</span><b>${escapeHTML(championNames)}</b></div>
-        <div class="baba-row"><span>Jogadores campeoes</span><b>${escapeHTML(championPlayers)}</b></div>
+        <div class="baba-row"><span>Jogadores campeoes</span><b>${championPlayers}</b></div>
         <div class="baba-row"><span>Presentes</span><b>${baba.jogadoresPresentes?.length || 0}</b></div>
         <div class="baba-row"><span>Finalizado</span><b>${formatTime(baba.finalizadoEm)}</b></div>
         ${(baba.teams || []).map((team) => `
