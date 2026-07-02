@@ -7,6 +7,7 @@
   const VISITOR_TEAM_NAME = 'Visitante';
   const PLAYER_BABA_PRICE = 15;
   const GOALKEEPER_BABA_PRICE = 7;
+  const PAYMENT_DUE_DAY = 30;
   const GOAL_PRIORITIES = [
     { id: 'alta', label: 'Alta', value: 3 },
     { id: 'media', label: 'Media', value: 2 },
@@ -140,6 +141,28 @@
     return new Date(now.getTime() - offset * 60000).toISOString().slice(0, 10);
   }
 
+  function currentPaymentMonthKey(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  }
+
+  function paymentMonthLabel(key = currentPaymentMonthKey()) {
+    const [year, month] = String(key).split('-').map(Number);
+    if (!year || !month) return 'mes atual';
+    return new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date(year, month - 1, 1));
+  }
+
+  function paymentDueDateLabel(key = currentPaymentMonthKey()) {
+    const [year, month] = String(key).split('-').map(Number);
+    if (!year || !month) return `todo dia ${PAYMENT_DUE_DAY}`;
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(new Date(year, month - 1, PAYMENT_DUE_DAY));
+  }
+
   function formatDate(iso) {
     if (!iso) return '-';
     const [year, month, day] = iso.split('-');
@@ -270,8 +293,22 @@
       players: [],
       babas: [],
       purchaseGoals: [],
+      monthlyPayments: {},
       updatedAt: Date.now(),
     };
+  }
+
+  function normalizeMonthlyPayments(value) {
+    const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    return Object.entries(source).reduce((records, [key, record]) => {
+      if (!/^\d{4}-\d{2}$/.test(String(key))) return records;
+      const safe = record && typeof record === 'object' ? record : {};
+      records[key] = {
+        pagamentos: safe.pagamentos && typeof safe.pagamentos === 'object' && !Array.isArray(safe.pagamentos) ? safe.pagamentos : {},
+        atualizadoEm: Number(safe.atualizadoEm || safe.updatedAt || Date.now()),
+      };
+      return records;
+    }, {});
   }
 
   function normalizePurchaseGoal(goal) {
@@ -301,6 +338,7 @@
     next.version = 1;
     next.players = Array.isArray(next.players) ? next.players : [];
     next.babas = Array.isArray(next.babas) ? next.babas : [];
+    next.monthlyPayments = normalizeMonthlyPayments(next.monthlyPayments);
     next.purchaseGoals = Array.isArray(next.purchaseGoals)
       ? next.purchaseGoals.map(normalizePurchaseGoal).filter(Boolean)
       : [];
@@ -308,6 +346,14 @@
       baba.visitantes = Array.isArray(baba.visitantes) ? baba.visitantes : [];
       baba.pagamentos = baba.pagamentos && typeof baba.pagamentos === 'object' && !Array.isArray(baba.pagamentos) ? baba.pagamentos : {};
     });
+    const currentMonth = currentPaymentMonthKey();
+    const activeBaba = next.babas.find((baba) => baba.id === next.activeBabaId);
+    if (!next.monthlyPayments[currentMonth] && activeBaba?.pagamentos && Object.keys(activeBaba.pagamentos).length) {
+      next.monthlyPayments[currentMonth] = {
+        pagamentos: { ...activeBaba.pagamentos },
+        atualizadoEm: Date.now(),
+      };
+    }
     next.activeBabaId = next.activeBabaId || null;
     next.updatedAt = next.updatedAt || Date.now();
     return next;
@@ -487,6 +533,32 @@
     return Boolean(baba?.pagamentos && Object.prototype.hasOwnProperty.call(baba.pagamentos, playerId));
   }
 
+  function getMonthlyPaymentRecord(key = currentPaymentMonthKey()) {
+    state.monthlyPayments = state.monthlyPayments && typeof state.monthlyPayments === 'object' && !Array.isArray(state.monthlyPayments)
+      ? state.monthlyPayments
+      : {};
+    if (!state.monthlyPayments[key]) {
+      state.monthlyPayments[key] = { pagamentos: {}, atualizadoEm: Date.now() };
+    }
+    const record = state.monthlyPayments[key];
+    record.pagamentos = record.pagamentos && typeof record.pagamentos === 'object' && !Array.isArray(record.pagamentos)
+      ? record.pagamentos
+      : {};
+    record.atualizadoEm = Number(record.atualizadoEm || Date.now());
+    return record;
+  }
+
+  function hasMonthlyPaymentRecord(playerId, key = currentPaymentMonthKey()) {
+    const record = state.monthlyPayments?.[key];
+    return Boolean(record?.pagamentos && Object.prototype.hasOwnProperty.call(record.pagamentos, playerId));
+  }
+
+  function isPlayerPaidThisMonth(playerId, baba = getActiveBaba()) {
+    const key = currentPaymentMonthKey();
+    if (hasMonthlyPaymentRecord(playerId, key)) return Boolean(state.monthlyPayments[key].pagamentos[playerId]);
+    return Boolean(baba?.pagamentos?.[playerId]);
+  }
+
   function playerAppearsInBaba(baba, playerId) {
     if (!baba || !playerId) return false;
     return (baba.jogadoresPresentes || []).includes(playerId)
@@ -496,9 +568,11 @@
   }
 
   function playerPaymentState(playerId, baba = getActiveBaba(), { force = false } = {}) {
-    if (!baba || !playerId) return null;
+    if (!playerId) return null;
+    const key = currentPaymentMonthKey();
+    if (hasMonthlyPaymentRecord(playerId, key)) return state.monthlyPayments[key].pagamentos[playerId] ? 'paid' : 'unpaid';
     if (hasPaymentRecord(baba, playerId)) return baba.pagamentos[playerId] ? 'paid' : 'unpaid';
-    return force || playerAppearsInBaba(baba, playerId) ? 'unpaid' : null;
+    return force || getPlayer(playerId) || playerAppearsInBaba(baba, playerId) ? 'unpaid' : null;
   }
 
   function playerPaymentNameHTML(playerId, baba = getActiveBaba(), options = {}) {
@@ -936,10 +1010,9 @@
     saveState('Valor arrecadado atualizado.');
   }
 
-  function getPaymentPlayers(baba) {
-    if (!baba) return [];
+  function getPaymentPlayers(baba = getActiveBaba()) {
     const fixedPlayers = state.players;
-    const visitors = (baba.visitantes || []).filter((player) => player?.ativo !== false);
+    const visitors = (baba?.visitantes || []).filter((player) => player?.ativo !== false);
     return [...fixedPlayers, ...visitors];
   }
 
@@ -949,10 +1022,9 @@
 
   function getPaymentStats(baba) {
     const players = getPaymentPlayers(baba);
-    const pagamentos = baba?.pagamentos && typeof baba.pagamentos === 'object' ? baba.pagamentos : {};
     return players.reduce((stats, player) => {
       const price = paymentPriceForPlayer(player);
-      const paid = Boolean(pagamentos[player.id]);
+      const paid = isPlayerPaidThisMonth(player.id, baba);
       stats.expected += price;
       if (paid) {
         stats.paid += price;
@@ -964,18 +1036,22 @@
   }
 
   function getBabaAccountBalance() {
-    return state.babas.reduce((sum, baba) => sum + getPaymentStats(baba).paid, 0);
+    return getPaymentStats(getActiveBaba()).paid;
   }
 
   function toggleBabaPayment(playerId) {
     if (!requireOrganizer()) return;
     const baba = getActiveBaba();
-    if (!baba) return showToast('Crie um baba primeiro.');
-    const player = getPaymentPlayers(baba).find((item) => item.id === playerId);
-    if (!player) return showToast('Marque o jogador como presente antes de registrar o pagamento.');
-    baba.pagamentos = baba.pagamentos && typeof baba.pagamentos === 'object' && !Array.isArray(baba.pagamentos) ? baba.pagamentos : {};
-    baba.pagamentos[playerId] = !Boolean(baba.pagamentos[playerId]);
-    saveState(baba.pagamentos[playerId] ? `${player.nome} marcado como pago.` : `${player.nome} voltou para pendente.`);
+    const player = getPaymentPlayers(baba).find((item) => item.id === playerId) || getPlayer(playerId);
+    if (!player) return showToast('Jogador nao encontrado para registrar o pagamento.');
+    const record = getMonthlyPaymentRecord();
+    record.pagamentos[playerId] = !isPlayerPaidThisMonth(playerId, baba);
+    record.atualizadoEm = Date.now();
+    if (baba) {
+      baba.pagamentos = baba.pagamentos && typeof baba.pagamentos === 'object' && !Array.isArray(baba.pagamentos) ? baba.pagamentos : {};
+      baba.pagamentos[playerId] = record.pagamentos[playerId];
+    }
+    saveState(record.pagamentos[playerId] ? `${player.nome} pagou o mes atual.` : `${player.nome} ficou pendente no mes atual.`);
   }
 
   function drawTeams() {
@@ -1855,7 +1931,7 @@
     const baba = getActiveBaba();
     const visitors = baba?.visitantes || [];
     const fixedHTML = state.players.length ? state.players.map((player) => {
-      const paid = playerPaymentState(player.id, baba, { force: Boolean(baba) }) === 'paid';
+      const paid = playerPaymentState(player.id, baba, { force: true }) === 'paid';
       const meta = [
         player.tipo === 'goleiro' ? '<small class="baba-goalie-pill">Goleiro</small>' : '',
         player.ativo ? '' : '<small class="baba-status-pill">Inativo</small>',
@@ -1863,11 +1939,11 @@
       return `
       <div class="baba-player-admin">
         <div class="baba-player-admin__info">
-          <strong>${playerPaymentNameHTML(player.id, baba, { name: player.nome, force: Boolean(baba) })}</strong>
+          <strong>${playerPaymentNameHTML(player.id, baba, { name: player.nome, force: true })}</strong>
           ${meta ? `<div class="baba-player-admin__meta">${meta}</div>` : ''}
         </div>
         <div class="baba-player-admin__actions">
-          ${baba ? `<button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}">${paid ? 'Marcar nao pago' : 'Marcar pago'}</button>` : ''}
+          <button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}">${paid ? 'Pagamento pendente' : 'Pagamento pago'}</button>
           <button class="baba-mini-btn" type="button" data-action="toggle-player" data-id="${player.id}">${player.ativo ? 'Desativar' : 'Ativar'}</button>
           <button class="baba-mini-btn danger" type="button" data-action="delete-player" data-id="${player.id}">Excluir</button>
         </div>
@@ -1882,7 +1958,7 @@
           <div class="baba-player-admin__meta"><small class="baba-visitor-pill">Visitante do baba atual</small></div>
         </div>
         <div class="baba-player-admin__actions">
-          <button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}">${playerPaymentState(player.id, baba, { force: true }) === 'paid' ? 'Marcar nao pago' : 'Marcar pago'}</button>
+          <button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}">${playerPaymentState(player.id, baba, { force: true }) === 'paid' ? 'Pagamento pendente' : 'Pagamento pago'}</button>
           <button class="baba-mini-btn danger" type="button" data-action="delete-visitor" data-id="${player.id}">Remover</button>
         </div>
       </div>
@@ -2031,13 +2107,7 @@
   function renderPayments(baba) {
     if (!els.paymentSummary || !els.paymentList) return;
 
-    if (!baba) {
-      els.paymentSummary.innerHTML = '';
-      els.paymentList.innerHTML = '<div class="baba-empty">Crie um baba para controlar pagamentos da rodada.</div>';
-      return;
-    }
-
-    baba.pagamentos = baba.pagamentos && typeof baba.pagamentos === 'object' && !Array.isArray(baba.pagamentos) ? baba.pagamentos : {};
+    const monthKey = currentPaymentMonthKey();
     const players = getPaymentPlayers(baba);
     const stats = getPaymentStats(baba);
     const pending = Math.max(0, stats.expected - stats.paid);
@@ -2047,7 +2117,7 @@
       <article>
         <span>Esperado</span>
         <strong>${formatCurrency(stats.expected)}</strong>
-        <small>${stats.players} jogadores</small>
+        <small>${stats.players} jogadores - ${paymentMonthLabel(monthKey)}</small>
       </article>
       <article>
         <span>Pago</span>
@@ -2055,19 +2125,19 @@
         <small>${stats.paidCount} confirmados</small>
       </article>
       <article>
-        <span>Pendente</span>
+        <span>Vence dia 30</span>
         <strong>${formatCurrency(pending)}</strong>
-        <small>${pendingCount} faltando</small>
+        <small>${pendingCount} faltando - ${paymentDueDateLabel(monthKey)}</small>
       </article>
     `;
 
     if (!players.length) {
-      els.paymentList.innerHTML = '<div class="baba-empty">Marque jogadores presentes para montar a lista de pagamento.</div>';
+      els.paymentList.innerHTML = '<div class="baba-empty">Cadastre a lista fixa para controlar os pagamentos mensais.</div>';
       return;
     }
 
     els.paymentList.innerHTML = players.map((player) => {
-      const paid = Boolean(baba.pagamentos[player.id]);
+      const paid = isPlayerPaidThisMonth(player.id, baba);
       const price = paymentPriceForPlayer(player);
       const label = player.tipo === 'goleiro' ? 'Goleiro' : (player.visitante ? 'Visitante' : 'Jogador');
       return `
@@ -2077,7 +2147,7 @@
             <small>${label} - ${formatCurrency(price)}</small>
           </div>
           <span class="baba-payment-status ${paid ? 'is-paid' : 'is-unpaid'}">${paid ? 'Pago' : 'Nao pagou'}</span>
-          ${isOrganizer() ? `<button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}">${paid ? 'Desfazer' : 'Marcar pago'}</button>` : ''}
+          ${isOrganizer() ? `<button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}">${paid ? 'Pagamento pendente' : 'Pagamento pago'}</button>` : ''}
         </div>
       `;
     }).join('');

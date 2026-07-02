@@ -3538,7 +3538,7 @@
           <article class="baba-card baba-card--wide baba-payments-card organizer-only">
             <div class="baba-card__head">
               <h2>Pagamentos do baba</h2>
-              <span>Jogador R$ 15 / Goleiro R$ 7</span>
+              <span>Mensal dia 30 - Jogador R$ 15 / Goleiro R$ 7</span>
             </div>
             <div id="payment-summary" class="baba-payment-summary"></div>
             <div id="payment-list" class="baba-payment-list"></div>
@@ -3816,8 +3816,22 @@
         };
       }
 
+      function normalizeMonthlyPayments(value) {
+        const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+        return Object.entries(source).reduce((records, [key, record]) => {
+          if (!/^\d{4}-\d{2}$/.test(String(key))) return records;
+          const safe = record && typeof record === 'object' ? record : {};
+          records[key] = {
+            pagamentos: safe.pagamentos && typeof safe.pagamentos === 'object' && !Array.isArray(safe.pagamentos) ? safe.pagamentos : {},
+            atualizadoEm: Number(safe.atualizadoEm || safe.updatedAt || Date.now()),
+          };
+          return records;
+        }, {});
+      }
+
       function normalizeBabaState(value) {
         const next = value && typeof value === 'object' ? value : {};
+        next.monthlyPayments = normalizeMonthlyPayments(next.monthlyPayments);
         next.purchaseGoals = Array.isArray(next.purchaseGoals)
           ? next.purchaseGoals.map(normalizePurchaseGoal).filter(Boolean)
           : [];
@@ -4168,6 +4182,7 @@
           (Array.isArray(state.players) && state.players.length)
           || (Array.isArray(state.babas) && state.babas.length)
           || (Array.isArray(state.purchaseGoals) && state.purchaseGoals.length)
+          || (state.monthlyPayments && typeof state.monthlyPayments === 'object' && Object.keys(state.monthlyPayments).length)
         ));
       }
 
