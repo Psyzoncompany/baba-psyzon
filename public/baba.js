@@ -717,7 +717,7 @@
     return new Promise((resolve) => {
       const image = new Image();
       image.onload = () => {
-        const maxSide = 720;
+        const maxSide = 560;
         const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
         const canvas = document.createElement('canvas');
         canvas.width = Math.max(1, Math.round(image.width * scale));
@@ -728,7 +728,7 @@
           return;
         }
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.78));
+        resolve(canvas.toDataURL('image/jpeg', 0.64));
       };
       image.onerror = () => resolve(dataUrl);
       image.src = dataUrl;
@@ -842,6 +842,10 @@
       stats.players += 1;
       return stats;
     }, { players: 0, paidCount: 0, expected: 0, paid: 0 });
+  }
+
+  function getBabaAccountBalance() {
+    return state.babas.reduce((sum, baba) => sum + getPaymentStats(baba).paid, 0);
   }
 
   function toggleBabaPayment(playerId) {
@@ -1807,12 +1811,18 @@
   function renderGoalsSummary() {
     if (!els.goalsSummary) return;
     const goals = state.purchaseGoals || [];
+    const balance = getBabaAccountBalance();
     const target = goals.reduce((sum, goal) => sum + Number(goal.valor || 0), 0);
     const collected = goals.reduce((sum, goal) => sum + Number(goal.arrecadado || 0), 0);
     const remaining = Math.max(0, target - collected);
     const progress = target ? Math.min(100, Math.round((collected / target) * 100)) : 0;
 
     els.goalsSummary.innerHTML = `
+      <article>
+        <span>Saldo da conta</span>
+        <strong>${formatCurrency(balance)}</strong>
+        <small>Pagamentos confirmados</small>
+      </article>
       <article>
         <span>Metas ativas</span>
         <strong>${goals.length}</strong>

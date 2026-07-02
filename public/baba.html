@@ -2626,8 +2626,15 @@
     .baba-goals-summary,
     .baba-payment-summary {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: .65rem;
+    }
+
+    .baba-goals-summary {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .baba-payment-summary {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .baba-goals-summary article,
@@ -3412,6 +3419,15 @@
             </form>
             <div id="players-admin-list" class="baba-player-list"></div>
           </article>
+
+          <article class="baba-card baba-card--wide baba-payments-card organizer-only">
+            <div class="baba-card__head">
+              <h2>Pagamentos do baba</h2>
+              <span>Jogador R$ 15 / Goleiro R$ 7</span>
+            </div>
+            <div id="payment-summary" class="baba-payment-summary"></div>
+            <div id="payment-list" class="baba-payment-list"></div>
+          </article>
         </div>
       </section>
 
@@ -3463,14 +3479,6 @@
               <div id="goals-list" class="baba-goals-list"></div>
             </article>
 
-            <article class="baba-card baba-card--wide baba-payments-card">
-              <div class="baba-card__head">
-                <h2>Pagamentos do baba</h2>
-                <span>Jogador R$ 15 / Goleiro R$ 7</span>
-              </div>
-              <div id="payment-summary" class="baba-payment-summary"></div>
-              <div id="payment-list" class="baba-payment-list"></div>
-            </article>
           </div>
         </div>
       </section>
