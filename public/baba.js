@@ -70,6 +70,10 @@
     monthlyRankingList: $('#monthly-ranking-list'),
     goalkeeperRankingList: $('#goalkeeper-ranking-list'),
     goalForm: $('#goal-form'),
+    goalFormTitle: $('#goal-form-title'),
+    goalFormSubtitle: $('#goal-form-subtitle'),
+    goalSubmit: $('#goal-submit-btn'),
+    goalCancelEdit: $('#goal-cancel-edit-btn'),
     goalImage: $('#goal-image'),
     goalImagePreview: $('#goal-image-preview'),
     goalName: $('#goal-name'),
@@ -113,6 +117,7 @@
   const expandedRankingKeys = new Set();
   let toastTimer = null;
   let goalTeamId = null;
+  let editingGoalId = null;
   let timerTick = null;
   let hasBooted = false;
   let tabsStickySentinel = null;
@@ -698,6 +703,36 @@
     els.goalImagePreview.classList.remove('has-image');
   }
 
+  function setPlainButtonLabel(button, label) {
+    if (!button) return;
+    const textNode = Array.from(button.childNodes).find((node) => node.nodeType === Node.TEXT_NODE);
+    if (textNode) textNode.nodeValue = label;
+    else button.append(document.createTextNode(label));
+  }
+
+  function setGoalImagePreview(src) {
+    if (!src || !els.goalImagePreview) {
+      resetGoalImagePreview();
+      return;
+    }
+    els.goalImagePreview.innerHTML = `<img src="${escapeHTML(src)}" alt="">`;
+    els.goalImagePreview.classList.add('has-image');
+  }
+
+  function setGoalFormMode(goal = null) {
+    editingGoalId = goal?.id || null;
+    if (els.goalFormTitle) els.goalFormTitle.textContent = goal ? 'Editar meta de compra' : 'Nova meta de compra';
+    if (els.goalFormSubtitle) els.goalFormSubtitle.textContent = goal ? 'Atualizar produto' : 'Produto do Baba';
+    setPlainButtonLabel(els.goalSubmit, goal ? 'Salvar meta' : 'Cadastrar meta');
+    els.goalCancelEdit?.classList.toggle('hidden', !goal);
+  }
+
+  function resetPurchaseGoalForm() {
+    els.goalForm?.reset();
+    resetGoalImagePreview();
+    setGoalFormMode(null);
+  }
+
   function previewGoalImage() {
     const file = els.goalImage?.files?.[0];
     if (!file) {
@@ -761,6 +796,7 @@
   async function addPurchaseGoal(event) {
     event.preventDefault();
     if (!requireOrganizer()) return;
+    const editingGoal = editingGoalId ? state.purchaseGoals.find((item) => item.id === editingGoalId) : null;
     const nome = els.goalName?.value.trim() || '';
     const descricao = els.goalDescription?.value.trim() || '';
     const valor = parseMoneyValue(els.goalTarget?.value);
@@ -773,9 +809,25 @@
 
     let foto = '';
     try {
-      foto = await readGoalImage(els.goalImage?.files?.[0]);
+      const selectedFile = els.goalImage?.files?.[0];
+      foto = selectedFile ? await readGoalImage(selectedFile) : (editingGoal?.foto || '');
     } catch (error) {
       showToast(error.message || 'Nao foi possivel salvar a foto.');
+      return;
+    }
+
+    if (editingGoal) {
+      Object.assign(editingGoal, {
+        nome,
+        descricao,
+        valor,
+        arrecadado,
+        foto,
+        atualizadoEm: Date.now(),
+      });
+      resetPurchaseGoalForm();
+      saveState('Meta atualizada.');
+      setActiveTab('goals');
       return;
     }
 
@@ -790,10 +842,23 @@
       atualizadoEm: Date.now(),
     });
 
-    els.goalForm.reset();
-    resetGoalImagePreview();
+    resetPurchaseGoalForm();
     saveState('Meta cadastrada.');
     setActiveTab('goals');
+  }
+
+  function editPurchaseGoal(goalId) {
+    if (!requireOrganizer()) return;
+    const goal = state.purchaseGoals.find((item) => item.id === goalId);
+    if (!goal) return;
+    setGoalFormMode(goal);
+    if (els.goalName) els.goalName.value = goal.nome || '';
+    if (els.goalDescription) els.goalDescription.value = goal.descricao || '';
+    if (els.goalTarget) els.goalTarget.value = Number(goal.valor || 0);
+    if (els.goalCollected) els.goalCollected.value = Number(goal.arrecadado || 0);
+    if (els.goalImage) els.goalImage.value = '';
+    setGoalImagePreview(goal.foto);
+    els.goalForm?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   }
 
   function deletePurchaseGoal(goalId) {
@@ -803,6 +868,7 @@
     const ok = confirm(`Remover a meta "${goal.nome}"?`);
     if (!ok) return;
     state.purchaseGoals = state.purchaseGoals.filter((item) => item.id !== goalId);
+    if (editingGoalId === goalId) resetPurchaseGoalForm();
     saveState('Meta removida.');
   }
 
@@ -1888,6 +1954,7 @@
                   <span>Atualizar arrecadado</span>
                   <input type="number" min="0" step="0.01" value="${collected}" data-goal-collected-id="${goal.id}">
                 </label>
+                <button class="baba-mini-btn" type="button" data-action="edit-goal" data-id="${goal.id}">Editar</button>
                 <button class="baba-mini-btn" type="button" data-action="save-goal-collected" data-id="${goal.id}">Salvar</button>
                 <button class="baba-mini-btn danger" type="button" data-action="delete-goal" data-id="${goal.id}">Excluir</button>
               </div>
@@ -2723,6 +2790,7 @@
     els.resetCurrent.addEventListener('click', resetCurrentBaba);
     els.playerForm.addEventListener('submit', addPlayer);
     els.goalForm?.addEventListener('submit', addPurchaseGoal);
+    els.goalCancelEdit?.addEventListener('click', resetPurchaseGoalForm);
     els.goalImage?.addEventListener('change', previewGoalImage);
     els.shareFab.addEventListener('click', shareBabaLink);
     els.closePresentModal.addEventListener('click', () => els.presentModal.classList.add('hidden'));
@@ -2773,6 +2841,7 @@
       if (actionButton?.dataset.action === 'toggle-player') return togglePlayerActive(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-player') return deletePlayer(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-visitor') return deleteVisitor(actionButton.dataset.id);
+      if (actionButton?.dataset.action === 'edit-goal') return editPurchaseGoal(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-goal') return deletePurchaseGoal(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'save-goal-collected') {
         const input = document.querySelector(`[data-goal-collected-id="${actionButton.dataset.id}"]`);

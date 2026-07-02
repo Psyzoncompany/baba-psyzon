@@ -2630,11 +2630,11 @@
     }
 
     .baba-goals-summary {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
     }
 
     .baba-payment-summary {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
     }
 
     .baba-goals-summary article,
@@ -2646,6 +2646,8 @@
       border: 1px solid rgba(15, 23, 42, .11);
       border-radius: var(--baba-radius);
       padding: .72rem;
+      min-width: 0;
+      overflow: hidden;
       background: rgba(255, 255, 255, .82);
       box-shadow: 0 12px 28px rgba(15, 23, 42, .08);
     }
@@ -2798,7 +2800,7 @@
 
     .baba-goals-list {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
       gap: .65rem;
     }
 
@@ -2810,6 +2812,7 @@
       border: 1px solid rgba(15, 23, 42, .11);
       border-radius: var(--baba-radius);
       padding: .68rem;
+      overflow: hidden;
       background: rgba(255, 255, 255, .78);
       box-shadow: 0 12px 28px rgba(15, 23, 42, .08);
     }
@@ -2893,7 +2896,7 @@
 
     .baba-goal-money {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.8rem), 1fr));
       gap: .38rem;
     }
 
@@ -2925,14 +2928,28 @@
 
     .baba-goal-inline-edit {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto auto;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: .42rem;
       align-items: end;
       padding-top: .12rem;
     }
 
+    .baba-goal-inline-edit label {
+      grid-column: 1 / -1;
+    }
+
+    .baba-goal-form-actions {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: .48rem;
+      align-items: center;
+    }
+
     .baba-goal-inline-edit button {
+      width: 100%;
+      min-width: 0;
       min-height: 42px;
+      padding-inline: .48rem;
     }
 
     .baba-payment-list {
@@ -3031,6 +3048,7 @@
       .baba-goal-card,
       .baba-goal-money,
       .baba-goal-inline-edit,
+      .baba-goal-form-actions,
       .baba-payment-item {
         grid-template-columns: 1fr;
       }
@@ -3438,8 +3456,8 @@
           <div class="baba-goals-layout">
             <article class="baba-card baba-goal-form-card organizer-only">
               <div class="baba-card__head">
-                <h2>Nova meta de compra</h2>
-                <span>Produto do Baba</span>
+                <h2 id="goal-form-title">Nova meta de compra</h2>
+                <span id="goal-form-subtitle">Produto do Baba</span>
               </div>
               <form id="goal-form" class="baba-goal-form">
                 <label class="baba-goal-photo-field">
@@ -3467,7 +3485,10 @@
                     <input id="goal-collected" type="number" min="0" step="0.01" placeholder="0,00">
                   </label>
                 </div>
-                <button id="goal-submit-btn" class="baba-primary" type="submit">Cadastrar meta</button>
+                <div class="baba-goal-form-actions">
+                  <button id="goal-submit-btn" class="baba-primary" type="submit">Cadastrar meta</button>
+                  <button id="goal-cancel-edit-btn" class="baba-secondary hidden" type="button">Cancelar</button>
+                </div>
               </form>
             </article>
 
@@ -3876,6 +3897,7 @@
           'close-team-detail-modal': 'baba-x',
           'close-game-detail-modal': 'baba-x',
           'goal-submit-btn': 'baba-plus',
+          'goal-cancel-edit-btn': 'baba-x',
         };
         Object.entries(staticIcons).forEach(([id, icon]) => addButtonIcon(root.getElementById?.(id) || document.getElementById(id), icon));
         addButtonIcon(document.querySelector('#player-form button[type="submit"]'), 'baba-user-plus');
@@ -3885,6 +3907,7 @@
             'toggle-player': 'baba-refresh',
             'delete-player': 'baba-trash',
             'delete-visitor': 'baba-trash',
+            'edit-goal': 'baba-pencil',
             'delete-goal': 'baba-trash',
             'save-goal-collected': 'baba-save',
             'toggle-payment': 'baba-wallet',
