@@ -3395,6 +3395,7 @@
             <button id="save-history-btn" class="baba-secondary" type="button">Finalizar e Salvar</button>
           </div>
         </div>
+        <img class="baba-hero__visual" src="img/baba-dashboard-pro-accent.png" alt="">
         <div class="baba-scoreboard">
           <div>
             <span>Campo 1</span>
@@ -3421,21 +3422,25 @@
       <section class="baba-view active" data-view="dashboard">
         <div class="baba-metrics">
           <article>
+            <svg class="baba-metric-icon" aria-hidden="true" focusable="false"><use href="#baba-users-check"></use></svg>
             <span>Presentes</span>
             <strong id="metric-present">0</strong>
             <small>Marcados</small>
           </article>
           <article>
+            <svg class="baba-metric-icon" aria-hidden="true" focusable="false"><use href="#baba-users"></use></svg>
             <span>Times</span>
             <strong id="metric-teams">0</strong>
             <small>Sorteados</small>
           </article>
           <article>
+            <svg class="baba-metric-icon" aria-hidden="true" focusable="false"><use href="#baba-flag"></use></svg>
             <span>Jogos</span>
             <strong id="metric-games">0</strong>
             <small>Salvos</small>
           </article>
           <article>
+            <svg class="baba-metric-icon" aria-hidden="true" focusable="false"><use href="#baba-next"></use></svg>
             <span>Proximo</span>
             <strong id="metric-next-team">-</strong>
             <small>Fila</small>
@@ -3449,7 +3454,7 @@
 
           <article class="baba-card">
             <div class="baba-card__head">
-              <h2>Fila de espera</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-next"></use></svg>Fila de espera</h2>
               <span>Rodizio</span>
             </div>
             <div id="queue-list" class="baba-stack"></div>
@@ -3457,7 +3462,7 @@
 
           <article class="baba-card">
             <div class="baba-card__head">
-              <h2>Artilheiros do dia</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-ball"></use></svg>Artilheiros do dia</h2>
               <div class="baba-card__actions">
                 <span>Top 4</span>
                 <button class="baba-export-btn" type="button" data-export-pdf="daily-scorers" title="Exportar artilheiros do dia em PDF">
@@ -3470,7 +3475,7 @@
 
           <article class="baba-card">
             <div class="baba-card__head">
-              <h2>Historico do baba atual</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg>Historico do baba atual</h2>
               <div class="baba-card__actions">
                 <span>Jogos</span>
                 <button class="baba-export-btn" type="button" data-export-pdf="current-history" title="Exportar historico do baba atual em PDF">
@@ -3483,7 +3488,7 @@
 
           <article class="baba-card baba-card--wide">
             <div class="baba-card__head">
-              <h2>Ultimo resultado</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-trophy"></use></svg>Ultimo resultado</h2>
               <span id="last-result-pill">Sem resultado</span>
             </div>
             <div id="last-result-panel" class="baba-empty">Finalize um jogo para ver quem fica em campo e quem sai.</div>
@@ -3494,7 +3499,7 @@
       <section class="baba-view" data-view="table">
         <article class="baba-card baba-card--standings">
           <div class="baba-card__head">
-            <h2>Tabela de times</h2>
+            <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-table-icon"></use></svg>Tabela de times</h2>
             <div class="baba-card__actions">
               <span>Pontos e gols</span>
               <button class="baba-export-btn" type="button" data-export-pdf="standings" title="Exportar tabela em PDF">
@@ -3515,7 +3520,7 @@
         <div class="baba-organizer-layout">
           <article class="baba-card baba-control-card organizer-only">
             <div class="baba-card__head">
-              <h2>Controle do Baba</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-whistle"></use></svg>Controle do Baba</h2>
               <span>AUTOMACAO</span>
             </div>
             <div class="baba-control-date">
@@ -3538,7 +3543,7 @@
 
           <article class="baba-card organizer-only">
             <div class="baba-card__head">
-              <h2>Cadastrar jogador</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-user-plus"></use></svg>Cadastrar jogador</h2>
               <span>Lista fixa</span>
             </div>
             <form id="player-form" class="baba-player-form">
@@ -3555,7 +3560,7 @@
 
           <article class="baba-card baba-card--wide baba-payments-card organizer-only">
             <div class="baba-card__head">
-              <h2>Pagamentos do baba</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-wallet"></use></svg>Pagamentos do baba</h2>
               <div class="baba-card__actions">
                 <span>Mensal dia 30 - Jogador R$ 15 / Goleiro R$ 7</span>
                 <button class="baba-export-btn" type="button" data-export-pdf="payments" title="Exportar pagamentos em PDF">
@@ -3576,7 +3581,7 @@
           <div class="baba-goals-layout">
             <article class="baba-card baba-goal-form-card organizer-only">
               <div class="baba-card__head">
-                <h2 id="goal-form-title">Nova meta de compra</h2>
+                <h2 id="goal-form-title"><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-plus"></use></svg>Nova meta de compra</h2>
                 <span id="goal-form-subtitle">Produto do Baba</span>
               </div>
               <form id="goal-form" class="baba-goal-form">
@@ -3622,7 +3627,7 @@
 
             <article class="baba-card baba-card--wide">
               <div class="baba-card__head">
-                <h2>Metas de compras</h2>
+                <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-target"></use></svg>Metas de compras</h2>
                 <span id="goals-count-label">0 metas</span>
               </div>
               <div id="goals-list" class="baba-goals-list"></div>
@@ -3646,35 +3651,35 @@
         <div class="baba-grid">
           <article class="baba-card">
             <div class="baba-card__head">
-              <h2>Ranking do mes</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-calendar"></use></svg>Ranking do mes</h2>
               <span id="monthly-ranking-label">Mes atual</span>
             </div>
             <div id="monthly-ranking-list" class="baba-ranking"></div>
           </article>
           <article class="baba-card">
             <div class="baba-card__head">
-              <h2>Ranking geral</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-chart"></use></svg>Ranking geral</h2>
               <span>Todos os babas</span>
             </div>
             <div id="ranking-list" class="baba-ranking"></div>
           </article>
           <article class="baba-card">
             <div class="baba-card__head">
-              <h2>Ranking do dia</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-trophy"></use></svg>Ranking do dia</h2>
               <span>Baba atual</span>
             </div>
             <div id="daily-ranking-list" class="baba-ranking"></div>
           </article>
           <article class="baba-card">
             <div class="baba-card__head">
-              <h2>Melhor goleiro</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-save"></use></svg>Melhor goleiro</h2>
               <span>Menos gols sofridos</span>
             </div>
             <div id="goalkeeper-ranking-list" class="baba-ranking"></div>
           </article>
           <article class="baba-card baba-card--wide">
             <div class="baba-card__head">
-              <h2>Historico mensal</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg>Historico mensal</h2>
               <span>Por mes</span>
             </div>
             <div id="monthly-history-tabs" class="baba-month-tabs"></div>
@@ -3687,14 +3692,14 @@
         <div class="baba-grid">
           <article class="baba-card">
             <div class="baba-card__head">
-              <h2>Historico dos babas</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg>Historico dos babas</h2>
               <span id="history-count-label">0 salvos</span>
             </div>
             <div id="history-list" class="baba-history"></div>
           </article>
           <article class="baba-card">
             <div class="baba-card__head">
-              <h2>Detalhes</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-table-icon"></use></svg>Detalhes</h2>
               <span id="history-detail-label">Selecione um baba</span>
             </div>
             <div id="history-detail" class="baba-empty">Abra um item do historico para ver placares, times, gols e campeoes.</div>

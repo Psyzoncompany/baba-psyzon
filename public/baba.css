@@ -328,6 +328,7 @@
 }
 
 .baba-hero {
+  position: relative;
   min-height: 19rem;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, .7fr);
@@ -339,6 +340,27 @@
     linear-gradient(90deg, rgba(3, 9, 7, .88), rgba(3, 9, 7, .35)),
     url("img/baba-worldcup-hero.png") center / cover;
   overflow: hidden;
+}
+
+.baba-hero__copy,
+.baba-scoreboard {
+  position: relative;
+  z-index: 2;
+}
+
+.baba-hero__visual {
+  position: absolute;
+  z-index: 1;
+  top: clamp(.8rem, 2vw, 1.35rem);
+  right: clamp(.75rem, 2.5vw, 1.8rem);
+  width: min(34vw, 27rem);
+  aspect-ratio: 16 / 7;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 22px;
+  object-fit: cover;
+  opacity: .78;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, .22);
+  pointer-events: none;
 }
 
 .baba-hero h1 {
@@ -1207,7 +1229,24 @@ body.baba-player-mode .baba-organizer-layout {
 }
 
 .baba-card {
+  position: relative;
+  overflow: hidden;
   padding: .85rem;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.baba-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(20, 164, 106, .80), rgba(56, 199, 244, .72), rgba(230, 167, 0, .70));
+  opacity: .88;
+}
+
+.baba-card:hover {
+  border-color: rgba(20, 164, 106, .26);
+  box-shadow: 0 22px 54px rgba(15, 23, 42, .15), inset 0 1px 0 rgba(255, 255, 255, .95);
 }
 
 .baba-card__head {
@@ -1219,8 +1258,24 @@ body.baba-player-mode .baba-organizer-layout {
 }
 
 .baba-card__head h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: .48rem;
+  min-width: 0;
   font-size: .94rem;
   line-height: 1.1;
+}
+
+.baba-card-icon {
+  width: 1.82rem;
+  height: 1.82rem;
+  flex: 0 0 auto;
+  border: 1px solid rgba(20, 164, 106, .20);
+  border-radius: 10px;
+  padding: .38rem;
+  color: #0f766e;
+  background: linear-gradient(135deg, #ecfeff, #f0fdf4);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .08);
 }
 
 .baba-card__head span {
@@ -1307,8 +1362,30 @@ body.baba-player-mode .baba-organizer-layout {
 }
 
 .baba-metrics article {
+  position: relative;
+  overflow: hidden;
   min-height: 4.85rem;
   padding: .65rem;
+}
+
+.baba-metrics article::after {
+  content: "";
+  position: absolute;
+  inset: auto -18% -45% auto;
+  width: 5.4rem;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: rgba(56, 199, 244, .11);
+}
+
+.baba-metric-icon {
+  position: absolute;
+  top: .62rem;
+  right: .62rem;
+  width: 1.55rem;
+  height: 1.55rem;
+  color: rgba(20, 164, 106, .86);
+  opacity: .88;
 }
 
 .baba-metrics span {
@@ -1500,6 +1577,10 @@ body.baba-player-mode .baba-organizer-layout {
     padding: .72rem;
   }
 
+  .baba-hero__visual {
+    display: none;
+  }
+
   .baba-hero h1 {
     font-size: clamp(1.62rem, 9vw, 2.35rem);
   }
@@ -1539,6 +1620,13 @@ body.baba-player-mode .baba-organizer-layout {
     padding: .48rem .34rem;
   }
 
+  .baba-metric-icon {
+    top: .42rem;
+    right: .42rem;
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+
   .baba-metrics span {
     font-size: .52rem;
   }
@@ -1562,6 +1650,13 @@ body.baba-player-mode .baba-organizer-layout {
 
   .baba-card__head h2 {
     font-size: .86rem;
+  }
+
+  .baba-card-icon {
+    width: 1.48rem;
+    height: 1.48rem;
+    border-radius: 8px;
+    padding: .32rem;
   }
 
   .baba-card__actions {

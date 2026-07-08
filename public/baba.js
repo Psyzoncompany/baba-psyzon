@@ -870,7 +870,9 @@
 
   function setGoalFormMode(goal = null) {
     editingGoalId = goal?.id || null;
-    if (els.goalFormTitle) els.goalFormTitle.textContent = goal ? 'Editar meta de compra' : 'Nova meta de compra';
+    if (els.goalFormTitle) {
+      els.goalFormTitle.innerHTML = `<svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#${goal ? 'baba-pencil' : 'baba-plus'}"></use></svg>${goal ? 'Editar meta de compra' : 'Nova meta de compra'}`;
+    }
     if (els.goalFormSubtitle) els.goalFormSubtitle.textContent = goal ? 'Atualizar produto' : 'Produto do Baba';
     setPlainButtonLabel(els.goalSubmit, goal ? 'Salvar meta' : 'Cadastrar meta');
     els.goalCancelEdit?.classList.toggle('hidden', !goal);
@@ -1374,17 +1376,44 @@
 
   function renderPdfTable(columns, rows, emptyMessage) {
     if (!rows?.length) return `<div class="pdf-empty">${escapeHTML(emptyMessage || 'Sem dados para exibir.')}</div>`;
+    const mobileCards = rows.map((row, index) => {
+      const firstCell = row[0] ?? '';
+      const title = (row[1] ?? firstCell) || `Registro ${index + 1}`;
+      const eyebrow = firstCell ? `${columns[0] || 'Item'} ${firstCell}` : `Registro ${index + 1}`;
+      return `
+        <article class="pdf-mobile-card">
+          <div class="pdf-mobile-card-title">
+            <span>${escapeHTML(eyebrow)}</span>
+            <strong>${escapeHTML(title)}</strong>
+          </div>
+          <dl>
+            ${columns.map((column, columnIndex) => `
+              <div>
+                <dt>${escapeHTML(column)}</dt>
+                <dd>${escapeHTML(row[columnIndex] ?? '-')}</dd>
+              </div>
+            `).join('')}
+          </dl>
+        </article>
+      `;
+    }).join('');
+
     return `
-      <table>
-        <thead>
-          <tr>${columns.map((column) => `<th>${escapeHTML(column)}</th>`).join('')}</tr>
-        </thead>
-        <tbody>
-          ${rows.map((row) => `
-            <tr>${row.map((cell) => `<td>${escapeHTML(cell ?? '-')}</td>`).join('')}</tr>
-          `).join('')}
-        </tbody>
-      </table>
+      <div class="pdf-table-wrap" role="region" aria-label="Tabela do relatorio">
+        <table>
+          <thead>
+            <tr>${columns.map((column) => `<th>${escapeHTML(column)}</th>`).join('')}</tr>
+          </thead>
+          <tbody>
+            ${rows.map((row) => `
+              <tr>${row.map((cell) => `<td>${escapeHTML(cell ?? '-')}</td>`).join('')}</tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="pdf-mobile-list" aria-label="Lista para celular">
+        ${mobileCards}
+      </div>
     `;
   }
 
@@ -1412,7 +1441,7 @@
   <meta charset="utf-8">
   <title>${escapeHTML(report.fileName)}</title>
   <style>
-    @page { size: A4; margin: 12mm; }
+    @page { size: 108mm 192mm; margin: 5mm; }
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -1525,6 +1554,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
+      table-layout: fixed;
       font-size: 9.5px;
     }
     th {
@@ -1540,10 +1570,81 @@
       border-bottom: 1px solid #edf1f6;
       padding: 8px 9px;
       vertical-align: top;
+      overflow-wrap: anywhere;
     }
     tbody tr:nth-child(even) td { background: #fbfdff; }
     tbody tr:last-child td { border-bottom: 0; }
     td:first-child, th:first-child { width: 38px; text-align: center; font-weight: 900; }
+    .pdf-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .pdf-mobile-list {
+      display: none;
+      gap: 9px;
+      padding: 10px;
+    }
+    .pdf-mobile-card {
+      overflow: hidden;
+      border: 1px solid #dbe5ef;
+      border-radius: 12px;
+      background: #ffffff;
+      break-inside: avoid;
+    }
+    .pdf-mobile-card-title {
+      display: grid;
+      gap: 3px;
+      padding: 10px 11px;
+      background: linear-gradient(135deg, #f7fbff, #eefcf6);
+      border-bottom: 1px solid #e7edf5;
+    }
+    .pdf-mobile-card-title span {
+      color: #0f766e;
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .pdf-mobile-card-title strong {
+      color: #172033;
+      font-size: 13px;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
+    .pdf-mobile-card dl {
+      display: grid;
+      gap: 0;
+      margin: 0;
+      padding: 0;
+    }
+    .pdf-mobile-card dl div {
+      display: grid;
+      grid-template-columns: 94px minmax(0, 1fr);
+      gap: 8px;
+      align-items: start;
+      border-bottom: 1px solid #edf1f6;
+      padding: 8px 11px;
+    }
+    .pdf-mobile-card dl div:nth-child(even) { background: #fbfdff; }
+    .pdf-mobile-card dl div:last-child { border-bottom: 0; }
+    .pdf-mobile-card dt {
+      color: #64748b;
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: .05em;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+    .pdf-mobile-card dd {
+      margin: 0;
+      color: #172033;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1.25;
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
     .pdf-empty {
       padding: 18px;
       color: #64748b;
@@ -1559,10 +1660,141 @@
       font-weight: 800;
       padding: 0 2px;
     }
+    @media screen and (max-width: 720px) {
+      body { background: #ffffff; }
+      .pdf-page {
+        gap: 10px;
+        padding: 10px;
+      }
+      .pdf-hero {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        border-radius: 16px;
+        padding: 14px;
+      }
+      .pdf-hero h1 {
+        font-size: 22px;
+        line-height: 1.05;
+      }
+      .pdf-hero img {
+        width: 100%;
+        height: 98px;
+      }
+      .pdf-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .pdf-summary article {
+        padding: 9px;
+      }
+      .pdf-section-head {
+        display: grid;
+        align-items: start;
+        gap: 5px;
+        padding: 11px 12px;
+      }
+      .pdf-section p {
+        text-align: left;
+      }
+      .pdf-table-wrap { display: none; }
+      .pdf-mobile-list { display: grid; }
+      .pdf-footer {
+        display: grid;
+        gap: 2px;
+        text-align: center;
+      }
+    }
+    @media screen and (max-width: 430px) {
+      .pdf-mobile-card dl div {
+        grid-template-columns: 1fr;
+        gap: 3px;
+      }
+      .pdf-mobile-card dd {
+        text-align: left;
+      }
+    }
     @media print {
       body { background: #ffffff; }
-      .pdf-page { min-height: auto; }
-      .pdf-section { box-shadow: none; }
+      .pdf-page {
+        gap: 8px;
+        min-height: auto;
+      }
+      .pdf-hero {
+        grid-template-columns: 1fr;
+        gap: 7px;
+        border-radius: 12px;
+        padding: 10px;
+        box-shadow: none;
+      }
+      .pdf-hero small { font-size: 7px; }
+      .pdf-hero h1 {
+        margin: 3px 0;
+        font-size: 18px;
+        line-height: 1.05;
+      }
+      .pdf-hero p {
+        font-size: 8px;
+        line-height: 1.25;
+      }
+      .pdf-hero img {
+        width: 100%;
+        height: 48px;
+        border-radius: 9px;
+      }
+      .pdf-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+      }
+      .pdf-summary article {
+        border-radius: 9px;
+        padding: 7px 8px;
+      }
+      .pdf-summary span { font-size: 6.8px; }
+      .pdf-summary strong { font-size: 11px; }
+      .pdf-section {
+        border-radius: 10px;
+        box-shadow: none;
+        break-inside: auto;
+      }
+      .pdf-section-head {
+        display: grid;
+        align-items: start;
+        gap: 3px;
+        padding: 8px 9px;
+      }
+      .pdf-section h2 { font-size: 11px; }
+      .pdf-section p {
+        font-size: 7px;
+        line-height: 1.25;
+        text-align: left;
+      }
+      .pdf-table-wrap { display: none; }
+      .pdf-mobile-list {
+        display: grid;
+        gap: 6px;
+        padding: 7px;
+      }
+      .pdf-mobile-card {
+        border-radius: 9px;
+      }
+      .pdf-mobile-card-title {
+        gap: 2px;
+        padding: 7px 8px;
+      }
+      .pdf-mobile-card-title span { font-size: 6.5px; }
+      .pdf-mobile-card-title strong { font-size: 10px; }
+      .pdf-mobile-card dl div {
+        grid-template-columns: 78px minmax(0, 1fr);
+        gap: 5px;
+        padding: 5px 8px;
+      }
+      .pdf-mobile-card dt { font-size: 6.5px; }
+      .pdf-mobile-card dd { font-size: 8px; }
+      .pdf-footer {
+        display: grid;
+        gap: 2px;
+        font-size: 6.5px;
+        text-align: center;
+      }
     }
   </style>
 </head>
