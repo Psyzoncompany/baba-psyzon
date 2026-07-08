@@ -1063,6 +1063,558 @@
     return getPaymentStats(getActiveBaba()).paid;
   }
 
+  function playerPaymentTypeLabel(player) {
+    if (player?.tipo === 'goleiro') return 'Goleiro';
+    if (player?.tipo === 'visitante' || player?.visitante) return 'Visitante';
+    return 'Jogador';
+  }
+
+  function reportContextLabel(baba = getActiveBaba()) {
+    if (!baba) return 'Sem baba ativo';
+    return baba.dataCompleta || formatBabaDateLong(baba.dataISO) || formatDate(baba.dataISO);
+  }
+
+  function reportSummaryItems(baba = getActiveBaba()) {
+    return [
+      ['Baba', reportContextLabel(baba)],
+      ['Presentes', String(baba?.jogadoresPresentes?.length || 0)],
+      ['Times', String(baba?.teams?.length || 0)],
+      ['Jogos', String(baba?.jogos?.length || 0)],
+    ];
+  }
+
+  function getStandingsSnapshot(baba = getActiveBaba()) {
+    if (!baba?.teams?.length) return [];
+    const match = baba.jogoAtual;
+    const liveStats = new Map();
+    (baba.teams || []).forEach((team) => {
+      liveStats.set(team.id, {
+        ...team,
+        saldo: Number(team.golsPro || 0) - Number(team.golsContra || 0),
+        isLive: false,
+      });
+    });
+
+    if (match) {
+      recomputeLiveScore(match);
+      const liveA = liveStats.get(match.timeA);
+      const liveB = liveStats.get(match.timeB);
+      const scoreA = Number(match.placarA || 0);
+      const scoreB = Number(match.placarB || 0);
+      if (liveA && liveB) {
+        liveA.golsPro += scoreA;
+        liveA.golsContra += scoreB;
+        liveB.golsPro += scoreB;
+        liveB.golsContra += scoreA;
+        liveA.isLive = true;
+        liveB.isLive = true;
+
+        if (scoreA > scoreB) {
+          liveA.pontos += 3;
+          liveA.vitorias += 1;
+          liveB.derrotas += 1;
+        } else if (scoreB > scoreA) {
+          liveB.pontos += 3;
+          liveB.vitorias += 1;
+          liveA.derrotas += 1;
+        } else if (match.iniciadoEm || match.goalEvents?.length) {
+          liveA.pontos += 1;
+          liveB.pontos += 1;
+          liveA.empates += 1;
+          liveB.empates += 1;
+        }
+
+        liveA.saldo = liveA.golsPro - liveA.golsContra;
+        liveB.saldo = liveB.golsPro - liveB.golsContra;
+      }
+    }
+
+    return Array.from(liveStats.values()).sort((a, b) => (
+      b.pontos - a.pontos ||
+      b.saldo - a.saldo ||
+      b.golsPro - a.golsPro ||
+      a.name.localeCompare(b.name)
+    ));
+  }
+
+  function rankingRowsForPdf(items = []) {
+    return items.map((stats, index) => [
+      index + 1,
+      stats.nome || playerName(stats.jogadorId),
+      stats.totalGols || 0,
+      stats.totalVitorias || 0,
+      stats.totalEmpates || 0,
+      stats.totalDerrotas || 0,
+      `${stats.aproveitamento || 0}%`,
+      stats.totalTitulosBaba || 0,
+    ]);
+  }
+
+  function goalkeeperRowsForPdf(items = []) {
+    return items.map((stats, index) => [
+      index + 1,
+      stats.nome || playerName(stats.jogadorId),
+      stats.jogos || 0,
+      stats.golsSofridos || 0,
+      stats.mediaSofridos || '0.0',
+      stats.totalBabas || 0,
+    ]);
+  }
+
+  function scorersRowsForPdf(baba = getActiveBaba(), limit = null) {
+    const rows = getDailyRankingList(baba, 'goals')
+      .filter((stats) => stats.totalGols > 0)
+      .map((stats, index) => [
+        index + 1,
+        stats.nome,
+        stats.totalGols,
+        stats.totalVitorias,
+        stats.mediaGols,
+        `${stats.aproveitamento}%`,
+      ]);
+    return Number.isFinite(limit) ? rows.slice(0, limit) : rows;
+  }
+
+  function standingsRowsForPdf(baba = getActiveBaba()) {
+    return getStandingsSnapshot(baba).map((team, index) => [
+      index + 1,
+      team.name,
+      team.pontos,
+      team.golsPro,
+      team.saldo,
+      team.vitorias,
+      team.empates,
+      team.derrotas,
+      team.isLive ? 'Ao vivo' : '',
+    ]);
+  }
+
+  function paymentRowsForPdf(baba = getActiveBaba(), paidOnly = true) {
+    return getPaymentPlayers(baba)
+      .filter((player) => isPlayerPaidThisMonth(player.id, baba) === paidOnly)
+      .sort((a, b) => a.nome.localeCompare(b.nome))
+      .map((player, index) => [
+        index + 1,
+        player.nome,
+        playerPaymentTypeLabel(player),
+        formatCurrency(paymentPriceForPlayer(player)),
+        paidOnly ? 'Pago' : 'Nao pagou',
+      ]);
+  }
+
+  function currentGamesRowsForPdf(baba = getActiveBaba()) {
+    return (baba?.jogos || []).map((game) => {
+      const teamA = getTeam(baba, game.timeA);
+      const teamB = getTeam(baba, game.timeB);
+      return [
+        game.numeroJogo,
+        `${teamA?.name || game.timeANome || 'Time'} x ${teamB?.name || game.timeBNome || 'Time'}`,
+        `${game.placarA} x ${game.placarB}`,
+        resultStatusLabel(game),
+        teamDetailName(baba, game.timeQueContinuou),
+        teamNamesFromValue(baba, game.timeQueSaiu),
+        game.motivoSaida || '-',
+      ];
+    });
+  }
+
+  function teamDetailName(baba, teamId, fallback = '-') {
+    return getTeam(baba, teamId)?.name || fallback;
+  }
+
+  function buildBabaPdfReport(type) {
+    const baba = getActiveBaba();
+    const now = new Date().toLocaleString('pt-BR');
+    const baseSummary = reportSummaryItems(baba);
+    const metricLabel = RANKING_MODES.find((item) => item.id === rankingMode)?.label || 'Gols';
+    const currentMonth = activeMonthKey(baba);
+    const monthlyHistoryKey = selectedMonthlyKey || getAvailableMonthKeys()[0] || currentMonth;
+    const report = {
+      type,
+      generatedAt: now,
+      eyebrow: 'Baba Amigos do Henrique',
+      title: '',
+      subtitle: reportContextLabel(baba),
+      fileName: `baba-${type}.pdf`,
+      summary: baseSummary,
+      sections: [],
+    };
+
+    if (type === 'payments') {
+      const stats = getPaymentStats(baba);
+      const pending = Math.max(0, stats.expected - stats.paid);
+      report.title = 'Lista de pagamentos';
+      report.subtitle = `${paymentMonthLabel()} - vencimento ${paymentDueDateLabel()}`;
+      report.summary = [
+        ['Esperado', formatCurrency(stats.expected)],
+        ['Pago', formatCurrency(stats.paid)],
+        ['Pendente', formatCurrency(pending)],
+        ['Confirmados', `${stats.paidCount}/${stats.players}`],
+      ];
+      report.sections = [
+        {
+          title: 'Jogadores que pagaram',
+          note: 'Lista confirmada para o mes atual.',
+          columns: ['#', 'Jogador', 'Tipo', 'Valor', 'Status'],
+          rows: paymentRowsForPdf(baba, true),
+          empty: 'Nenhum pagamento confirmado ainda.',
+        },
+        {
+          title: 'Pendentes',
+          note: 'Jogadores que ainda nao foram marcados como pagos.',
+          columns: ['#', 'Jogador', 'Tipo', 'Valor', 'Status'],
+          rows: paymentRowsForPdf(baba, false),
+          empty: 'Nenhum pagamento pendente.',
+        },
+      ];
+      return report;
+    }
+
+    if (type === 'standings') {
+      report.title = 'Tabela de times';
+      report.subtitle = `Pontos e gols - ${reportContextLabel(baba)}`;
+      report.sections = [
+        {
+          title: 'Classificacao',
+          note: 'Inclui placar ao vivo quando houver jogo em andamento.',
+          columns: ['Pos', 'Time', 'Pts', 'GP', 'SG', 'V', 'E', 'D', 'Status'],
+          rows: standingsRowsForPdf(baba),
+          empty: 'Sorteie os times para gerar a tabela.',
+        },
+        {
+          title: 'Artilheiros da tabela',
+          note: 'Top 4 do baba atual.',
+          columns: ['Pos', 'Jogador', 'Gols', 'V', 'Media', 'Aprov.'],
+          rows: scorersRowsForPdf(baba, 4),
+          empty: 'Sem gols registrados.',
+        },
+      ];
+      return report;
+    }
+
+    if (type === 'current-history') {
+      report.title = 'Historico do baba atual';
+      report.subtitle = `Jogos finalizados - ${reportContextLabel(baba)}`;
+      report.sections = [
+        {
+          title: 'Jogos finalizados',
+          note: 'Rodizio, placares e criterios de resultado.',
+          columns: ['Jogo', 'Partida', 'Placar', 'Resultado', 'Continua', 'Saiu', 'Motivo'],
+          rows: currentGamesRowsForPdf(baba),
+          empty: 'Nenhum jogo finalizado neste baba.',
+        },
+      ];
+      return report;
+    }
+
+    if (type === 'daily-scorers') {
+      report.title = 'Artilheiros do dia';
+      report.subtitle = `Ranking de gols - ${reportContextLabel(baba)}`;
+      report.sections = [
+        {
+          title: 'Ranking de artilharia',
+          note: 'Ordenado por gols, vitorias e aproveitamento.',
+          columns: ['Pos', 'Jogador', 'Gols', 'V', 'Media', 'Aprov.'],
+          rows: scorersRowsForPdf(baba),
+          empty: 'Sem gols no baba atual.',
+        },
+      ];
+      return report;
+    }
+
+    if (type === 'rankings') {
+      report.title = 'Rankings do baba';
+      report.subtitle = `Criterio atual: ${metricLabel}`;
+      report.summary = [
+        ...baseSummary,
+        ['Criterio', metricLabel],
+      ];
+      report.sections = [
+        {
+          title: `Ranking do mes - ${monthLabel(currentMonth)}`,
+          note: `Ordenado por ${metricLabel.toLowerCase()}.`,
+          columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
+          rows: rankingRowsForPdf(sortRanking(calculateMonthlyRanking(currentMonth, { includeActive: true }), rankingMode)),
+          empty: 'Sem dados no ranking do mes.',
+        },
+        {
+          title: 'Ranking geral',
+          note: `Todos os babas finalizados, ordenado por ${metricLabel.toLowerCase()}.`,
+          columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
+          rows: rankingRowsForPdf(sortRanking(calculateGeneralRanking(), rankingMode)),
+          empty: 'Sem dados no ranking geral.',
+        },
+        {
+          title: 'Ranking do dia',
+          note: `Baba atual, ordenado por ${metricLabel.toLowerCase()}.`,
+          columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
+          rows: rankingRowsForPdf(getDailyRankingList(baba, rankingMode)),
+          empty: 'Sem dados no ranking do dia.',
+        },
+        {
+          title: 'Melhor goleiro',
+          note: 'Menos gols sofridos primeiro.',
+          columns: ['Pos', 'Goleiro', 'Jogos', 'Sofridos', 'Media', 'Babas'],
+          rows: goalkeeperRowsForPdf(calculateGoalkeeperRanking({ includeActive: true })),
+          empty: 'Sem jogos com goleiros ainda.',
+        },
+        {
+          title: `Historico mensal - ${monthLabel(monthlyHistoryKey)}`,
+          note: `Mes selecionado no painel de ranking.`,
+          columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
+          rows: rankingRowsForPdf(sortRanking(calculateMonthlyRanking(monthlyHistoryKey, { includeActive: monthlyHistoryKey === activeMonthKey() }), rankingMode)),
+          empty: 'Sem historico mensal para exportar.',
+        },
+      ];
+      return report;
+    }
+
+    return null;
+  }
+
+  function renderPdfTable(columns, rows, emptyMessage) {
+    if (!rows?.length) return `<div class="pdf-empty">${escapeHTML(emptyMessage || 'Sem dados para exibir.')}</div>`;
+    return `
+      <table>
+        <thead>
+          <tr>${columns.map((column) => `<th>${escapeHTML(column)}</th>`).join('')}</tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => `
+            <tr>${row.map((cell) => `<td>${escapeHTML(cell ?? '-')}</td>`).join('')}</tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function renderPdfDocument(report) {
+    const headerImage = new URL('img/baba-pdf-report-header.png', window.location.href).href;
+    const summary = report.summary.map(([label, value]) => `
+      <article>
+        <span>${escapeHTML(label)}</span>
+        <strong>${escapeHTML(value)}</strong>
+      </article>
+    `).join('');
+    const sections = report.sections.map((section) => `
+      <section class="pdf-section">
+        <div class="pdf-section-head">
+          <h2>${escapeHTML(section.title)}</h2>
+          ${section.note ? `<p>${escapeHTML(section.note)}</p>` : ''}
+        </div>
+        ${renderPdfTable(section.columns, section.rows, section.empty)}
+      </section>
+    `).join('');
+
+    return `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHTML(report.fileName)}</title>
+  <style>
+    @page { size: A4; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #172033;
+      background: #f4f8fc;
+      font-family: Inter, Arial, sans-serif;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .pdf-page {
+      display: grid;
+      gap: 14px;
+      width: 100%;
+      min-height: 100vh;
+    }
+    .pdf-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 168px;
+      gap: 14px;
+      align-items: center;
+      overflow: hidden;
+      border: 1px solid #dbe5ef;
+      border-radius: 18px;
+      padding: 18px;
+      background: linear-gradient(135deg, #ffffff, #eefcf6 58%, #eaf6ff);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+    }
+    .pdf-hero small {
+      color: #0f766e;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .pdf-hero h1 {
+      margin: 5px 0 5px;
+      color: #172033;
+      font-size: 26px;
+      line-height: 1;
+    }
+    .pdf-hero p {
+      margin: 0;
+      color: #52647c;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .pdf-hero img {
+      width: 168px;
+      height: 104px;
+      object-fit: cover;
+      border-radius: 14px;
+      border: 1px solid rgba(15, 23, 42, .10);
+      background: #ffffff;
+    }
+    .pdf-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .pdf-summary article {
+      border: 1px solid #dbe5ef;
+      border-radius: 12px;
+      padding: 10px;
+      background: #ffffff;
+    }
+    .pdf-summary span {
+      display: block;
+      color: #64748b;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+    .pdf-summary strong {
+      display: block;
+      margin-top: 4px;
+      color: #172033;
+      font-size: 14px;
+      line-height: 1.1;
+    }
+    .pdf-section {
+      overflow: hidden;
+      border: 1px solid #dbe5ef;
+      border-radius: 14px;
+      background: #ffffff;
+      break-inside: avoid-page;
+    }
+    .pdf-section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid #e7edf5;
+      padding: 12px 14px;
+      background: #f8fbff;
+    }
+    .pdf-section h2 {
+      margin: 0;
+      color: #172033;
+      font-size: 15px;
+      line-height: 1.1;
+    }
+    .pdf-section p {
+      margin: 0;
+      color: #64748b;
+      font-size: 9px;
+      font-weight: 800;
+      text-align: right;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.5px;
+    }
+    th {
+      color: #52647c;
+      background: #f3f7fb;
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-align: left;
+      text-transform: uppercase;
+    }
+    th, td {
+      border-bottom: 1px solid #edf1f6;
+      padding: 8px 9px;
+      vertical-align: top;
+    }
+    tbody tr:nth-child(even) td { background: #fbfdff; }
+    tbody tr:last-child td { border-bottom: 0; }
+    td:first-child, th:first-child { width: 38px; text-align: center; font-weight: 900; }
+    .pdf-empty {
+      padding: 18px;
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 800;
+      background: #ffffff;
+    }
+    .pdf-footer {
+      display: flex;
+      justify-content: space-between;
+      color: #64748b;
+      font-size: 8px;
+      font-weight: 800;
+      padding: 0 2px;
+    }
+    @media print {
+      body { background: #ffffff; }
+      .pdf-page { min-height: auto; }
+      .pdf-section { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="pdf-page">
+    <header class="pdf-hero">
+      <div>
+        <small>${escapeHTML(report.eyebrow)}</small>
+        <h1>${escapeHTML(report.title)}</h1>
+        <p>${escapeHTML(report.subtitle)} - gerado em ${escapeHTML(report.generatedAt)}</p>
+      </div>
+      <img data-pdf-cover src="${headerImage}" alt="">
+    </header>
+    <section class="pdf-summary">${summary}</section>
+    ${sections}
+    <footer class="pdf-footer">
+      <span>Baba Amigos do Henrique</span>
+      <span>Exportacao em PDF</span>
+    </footer>
+  </main>
+</body>
+</html>`;
+  }
+
+  function exportBabaPdf(type) {
+    const report = buildBabaPdfReport(type);
+    if (!report) return showToast('Relatorio nao encontrado para exportar.');
+    const pdfWindow = window.open('', '_blank');
+    if (!pdfWindow) return showToast('Permita pop-ups para exportar o PDF.');
+    pdfWindow.document.open();
+    pdfWindow.document.write(renderPdfDocument(report));
+    pdfWindow.document.close();
+
+    const printReport = () => {
+      try {
+        pdfWindow.focus();
+        pdfWindow.print();
+        showToast('PDF pronto. Escolha salvar como PDF na janela de impressao.');
+      } catch (error) {
+        showToast('PDF aberto em nova janela.');
+      }
+    };
+
+    const cover = pdfWindow.document.querySelector('[data-pdf-cover]');
+    if (cover && !cover.complete) {
+      cover.addEventListener('load', () => window.setTimeout(printReport, 250), { once: true });
+      cover.addEventListener('error', () => window.setTimeout(printReport, 250), { once: true });
+      return;
+    }
+    window.setTimeout(printReport, 350);
+  }
+
   function toggleBabaPayment(playerId) {
     if (!requireOrganizer()) return;
     const baba = getActiveBaba();
@@ -3054,6 +3606,9 @@
     });
 
     document.addEventListener('click', (event) => {
+      const exportButton = event.target.closest('[data-export-pdf]');
+      if (exportButton) return exportBabaPdf(exportButton.dataset.exportPdf);
+
       const rankingToggle = event.target.closest('[data-rank-toggle]');
       if (rankingToggle) {
         const key = rankingToggle.dataset.rankToggle;

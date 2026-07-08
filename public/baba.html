@@ -3322,6 +3322,9 @@
       <path d="M4 5h16v14H4V5Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
       <path d="m7 16 4-4 3 3 2-2 3 3M8 9h.01" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
     </symbol>
+    <symbol id="baba-download" viewBox="0 0 24 24">
+      <path d="M12 4v10m0 0 4-4m-4 4-4-4M5 18h14" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
   </svg>
 
   <header class="baba-topbar">
@@ -3455,7 +3458,12 @@
           <article class="baba-card">
             <div class="baba-card__head">
               <h2>Artilheiros do dia</h2>
-              <span>Top 4</span>
+              <div class="baba-card__actions">
+                <span>Top 4</span>
+                <button class="baba-export-btn" type="button" data-export-pdf="daily-scorers" title="Exportar artilheiros do dia em PDF">
+                  <svg aria-hidden="true" focusable="false"><use href="#baba-download"></use></svg><span>PDF</span>
+                </button>
+              </div>
             </div>
             <div id="daily-top-scorers" class="baba-ranking baba-ranking--compact"></div>
           </article>
@@ -3463,7 +3471,12 @@
           <article class="baba-card">
             <div class="baba-card__head">
               <h2>Historico do baba atual</h2>
-              <span>Jogos</span>
+              <div class="baba-card__actions">
+                <span>Jogos</span>
+                <button class="baba-export-btn" type="button" data-export-pdf="current-history" title="Exportar historico do baba atual em PDF">
+                  <svg aria-hidden="true" focusable="false"><use href="#baba-download"></use></svg><span>PDF</span>
+                </button>
+              </div>
             </div>
             <div id="current-games-list" class="baba-stack"></div>
           </article>
@@ -3482,7 +3495,12 @@
         <article class="baba-card baba-card--standings">
           <div class="baba-card__head">
             <h2>Tabela de times</h2>
-            <span>Pontos e gols</span>
+            <div class="baba-card__actions">
+              <span>Pontos e gols</span>
+              <button class="baba-export-btn" type="button" data-export-pdf="standings" title="Exportar tabela em PDF">
+                <svg aria-hidden="true" focusable="false"><use href="#baba-download"></use></svg><span>PDF</span>
+              </button>
+            </div>
           </div>
           <div id="standings-list" class="baba-standings"></div>
           <div id="table-top-scorers" class="baba-table-scorers"></div>
@@ -3538,7 +3556,12 @@
           <article class="baba-card baba-card--wide baba-payments-card organizer-only">
             <div class="baba-card__head">
               <h2>Pagamentos do baba</h2>
-              <span>Mensal dia 30 - Jogador R$ 15 / Goleiro R$ 7</span>
+              <div class="baba-card__actions">
+                <span>Mensal dia 30 - Jogador R$ 15 / Goleiro R$ 7</span>
+                <button class="baba-export-btn" type="button" data-export-pdf="payments" title="Exportar pagamentos em PDF">
+                  <svg aria-hidden="true" focusable="false"><use href="#baba-download"></use></svg><span>PDF</span>
+                </button>
+              </div>
             </div>
             <div id="payment-summary" class="baba-payment-summary"></div>
             <div id="payment-list" class="baba-payment-list"></div>
@@ -3615,6 +3638,9 @@
             <strong>Ordenar ranking</strong>
             <span>Escolha o criterio</span>
           </div>
+          <button class="baba-export-btn baba-export-btn--toolbar" type="button" data-export-pdf="rankings" title="Exportar rankings em PDF">
+            <svg aria-hidden="true" focusable="false"><use href="#baba-download"></use></svg><span>Exportar PDF</span>
+          </button>
           <div id="ranking-filter-controls" class="baba-ranking-filters" role="group" aria-label="Filtros do ranking"></div>
         </div>
         <div class="baba-grid">

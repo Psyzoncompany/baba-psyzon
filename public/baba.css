@@ -1212,6 +1212,7 @@ body.baba-player-mode .baba-organizer-layout {
 
 .baba-card__head {
   min-height: 30px;
+  flex-wrap: wrap;
   margin-bottom: .65rem;
   padding-bottom: .5rem;
   border-bottom: 1px solid rgba(220, 252, 231, .09);
@@ -1225,6 +1226,65 @@ body.baba-player-mode .baba-organizer-layout {
 .baba-card__head span {
   font-size: .64rem;
   white-space: nowrap;
+}
+
+.baba-card__actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .42rem;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.baba-card__actions>span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.baba-export-btn {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .3rem;
+  flex: 0 0 auto;
+  border: 1px solid rgba(15, 23, 42, .13);
+  border-radius: 999px;
+  padding: .36rem .58rem;
+  color: #172033;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .08);
+  font-size: .66rem;
+  font-weight: 950;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.baba-export-btn:hover {
+  border-color: rgba(20, 164, 106, .30);
+  background: #eefbf5;
+}
+
+.baba-export-btn:focus-visible {
+  outline: 3px solid rgba(56, 199, 244, .42);
+  outline-offset: 3px;
+}
+
+.baba-export-btn svg {
+  width: .9rem;
+  height: .9rem;
+  flex: 0 0 auto;
+}
+
+.baba-export-btn--toolbar {
+  justify-self: end;
+}
+
+.baba-ranking-toolbar {
+  grid-template-columns: minmax(0, auto) auto minmax(0, 1fr) !important;
 }
 
 .baba-grid--live {
@@ -1502,6 +1562,28 @@ body.baba-player-mode .baba-organizer-layout {
 
   .baba-card__head h2 {
     font-size: .86rem;
+  }
+
+  .baba-card__actions {
+    gap: .32rem;
+  }
+
+  .baba-card__actions>span {
+    max-width: 8.8rem;
+  }
+
+  .baba-export-btn {
+    min-height: 30px;
+    padding: .34rem .48rem;
+    font-size: .62rem;
+  }
+
+  .baba-ranking-toolbar {
+    grid-template-columns: 1fr auto !important;
+  }
+
+  .baba-ranking-toolbar .baba-ranking-filters {
+    grid-column: 1 / -1;
   }
 
   .baba-match-live {
