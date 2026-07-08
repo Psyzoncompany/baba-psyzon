@@ -525,6 +525,30 @@
     `;
   }
 
+  function resultStatusLabel(record = {}) {
+    if (record.criterioDesempate === 'impar_par') {
+      return record.timeQueContinuou ? 'Empate: definido no impar/par' : 'Empate: aguardando impar/par';
+    }
+    if (record.decididoPorSorteio) return 'Empate: rodizio definido por sorteio';
+    if (record.empate || record.resultado === 'empate') return 'Empate';
+    return 'Resultado normal';
+  }
+
+  function getPendingTieBreakRoute(baba, pending = baba?.pendingTieBreak) {
+    const tiedTeamIds = (pending?.tiedTeams || []).filter((id) => getTeam(baba, id));
+    const tiedTeams = tiedTeamIds.map((id) => getTeam(baba, id)).filter(Boolean);
+    const sourceQueue = [...(pending?.queue || baba?.filaTimes || [])].filter(Boolean);
+    const nextTeamId = sourceQueue.find((id) => !tiedTeamIds.includes(id)) || null;
+    const remainingQueue = sourceQueue.filter((id) => id !== nextTeamId);
+    return {
+      tiedTeamIds,
+      tiedTeams,
+      nextTeamId,
+      nextTeam: getTeam(baba, nextTeamId),
+      remainingQueue,
+    };
+  }
+
   function playerName(id, baba = getActiveBaba()) {
     return getBabaPlayer(baba, id)?.nome || 'Jogador removido';
   }
@@ -1382,7 +1406,7 @@
       teamB.pontos += 1;
       teamA.empates += 1;
       teamB.empates += 1;
-      motivoSaida = baba.teams.length >= 4 ? 'empate: dois times sairam' : 'empate aguardando sorteio';
+      motivoSaida = baba.teams.length >= 4 ? 'empate: dois times sairam' : 'empate aguardando criterio';
 
       if (baba.teams.length >= 4) {
         timeQueContinuou = null;
@@ -1394,10 +1418,12 @@
         nextMatchPair = nextA && nextB ? [nextA, nextB] : null;
       } else if (baba.teams.length === 3) {
         decididoPorSorteio = true;
+        motivoSaida = 'empate aguardando impar/par';
         pendingTieBreak = {
           gameNumber: match.numeroJogo,
           tiedTeams: [teamA.id, teamB.id],
           queue: [...(baba.filaTimes || [])],
+          criterioDesempate: 'impar_par',
           createdAt: Date.now(),
         };
       } else {
@@ -1444,6 +1470,7 @@
       timeQueSaiu,
       motivoSaida,
       decididoPorSorteio,
+      criterioDesempate: pendingTieBreak ? 'impar_par' : (empate && decididoPorSorteio ? 'sorteio' : null),
       pendingTieBreak: Boolean(pendingTieBreak),
       finalizadoEm: Date.now(),
     };
@@ -1458,10 +1485,13 @@
       placarA: scoreA,
       placarB: scoreB,
       resumo: `${teamA.name} ${scoreA} x ${scoreB} ${teamB.name}`,
+      empate,
+      resultado: savedGame.resultado,
       timeQueContinuou,
       timeQueSaiu,
       motivoSaida,
       decididoPorSorteio,
+      criterioDesempate: savedGame.criterioDesempate,
     };
 
     if (pendingTieBreak) {
@@ -1487,37 +1517,57 @@
     }
 
     if (pendingTieBreak) {
-      saveState('Empate salvo. Sorteie o proximo confronto.');
+      saveState('Empate salvo. Defina no impar/par quem fica em quadra.');
     } else {
       saveState(empate && baba.teams.length >= 4 ? 'Empate salvo. Os dois times sairam e os proximos entraram.' : 'Jogo salvo. Proxima partida preparada.');
     }
   }
 
-  function resolveThreeTeamTie() {
+  function resolveThreeTeamTie(keepTeamId) {
     if (!requireOrganizer()) return;
     const baba = getActiveBaba();
     const pending = baba?.pendingTieBreak;
-    if (!baba || !pending) return showToast('Nao ha empate pendente para sortear.');
+    if (!baba || !pending) return showToast('Nao ha empate pendente para decidir.');
 
-    const tiedTeams = pending.tiedTeams || [];
-    const queue = [...(pending.queue || baba.filaTimes || [])];
-    const nextTeamId = queue.shift();
-    if (!nextTeamId || tiedTeams.length < 2) return showToast('Nao foi possivel montar o proximo jogo.');
+    const route = getPendingTieBreakRoute(baba, pending);
+    if (!route.nextTeamId || route.tiedTeamIds.length < 2) return showToast('Nao foi possivel montar o proximo jogo.');
 
-    const chosen = shuffle(tiedTeams)[0];
-    const out = tiedTeams.find((id) => id !== chosen);
-    baba.filaTimes = [...queue, out].filter(Boolean);
-    baba.jogoAtual = buildMatch(baba, chosen, nextTeamId);
+    const chosen = String(keepTeamId || '').trim();
+    if (!route.tiedTeamIds.includes(chosen)) return showToast('Escolha o time que venceu no impar/par.');
+
+    const out = route.tiedTeamIds.find((id) => id !== chosen);
+    const resolvedAt = Date.now();
+    baba.filaTimes = [...route.remainingQueue, out].filter(Boolean);
+    baba.jogoAtual = buildMatch(baba, chosen, route.nextTeamId);
     baba.pendingTieBreak = null;
     baba.status = 'preparado';
+
+    const savedGames = baba.jogos || [];
+    const resolvedGame = savedGames.find((game) => String(game.numeroJogo) === String(pending.gameNumber))
+      || savedGames[savedGames.length - 1];
+    if (resolvedGame) {
+      resolvedGame.timeQueContinuou = chosen;
+      resolvedGame.timeQueSaiu = out;
+      resolvedGame.timeQueEntrou = route.nextTeamId;
+      resolvedGame.motivoSaida = 'impar/par no empate';
+      resolvedGame.decididoPorSorteio = true;
+      resolvedGame.criterioDesempate = 'impar_par';
+      resolvedGame.pendingTieBreak = false;
+      resolvedGame.desempateResolvidoEm = resolvedAt;
+    }
+
     baba.lastResult = {
       ...(baba.lastResult || {}),
       timeQueContinuou: chosen,
       timeQueSaiu: out,
-      motivoSaida: 'sorteio por empate',
+      timeQueEntrou: route.nextTeamId,
+      motivoSaida: 'impar/par no empate',
       decididoPorSorteio: true,
+      criterioDesempate: 'impar_par',
+      desempateResolvidoEm: resolvedAt,
     };
-    saveState(`${getTeam(baba, chosen)?.name || 'Time'} continua apos sorteio.`);
+    baba.rankingDoBaba = calculateDailyRanking(baba);
+    saveState(`${getTeam(baba, chosen)?.name || 'Time'} continua pelo impar/par.`);
   }
 
   function undoLastGame() {
@@ -1536,6 +1586,7 @@
     const baba = getActiveBaba();
     if (!baba) return showToast('Crie um baba primeiro.');
     if (!baba.teams?.length) return showToast('Sorteie os times antes de finalizar.');
+    if (baba.pendingTieBreak) return showToast('Resolva o empate no impar/par antes de finalizar o baba.');
     if (baba.jogoAtual) {
       const ok = confirm('Existe um jogo em andamento. Finalizar o baba sem salvar esse jogo?');
       if (!ok) return;
@@ -2363,7 +2414,9 @@
           <strong>Jogo ${game.numeroJogo}: ${matchLineHTML(baba, getTeam(baba, game.timeA), game.placarA, game.placarB, getTeam(baba, game.timeB), true)}</strong>
           <small>${formatTime(game.finalizadoEm)}</small>
         </span>
-        <button class="baba-mini-btn" type="button" data-current-game="${game.numeroJogo}">Gols</button>
+        <button class="baba-mini-btn" type="button" data-current-game="${game.numeroJogo}">
+          <svg class="baba-btn-icon" aria-hidden="true" focusable="false"><use href="#baba-ball"></use></svg>Gols
+        </button>
       </div>
     `).join('');
   }
@@ -2411,8 +2464,14 @@
     els.gameDetailList.innerHTML = `
       <div class="baba-row">
         <strong>${matchLineHTML(baba, getTeam(baba, game.timeA), game.placarA, game.placarB, getTeam(baba, game.timeB))}</strong>
-        <b class="baba-result-tag ${game.empate ? 'is-draw' : 'is-win'}">${game.empate ? 'Empate' : 'Vitoria'}</b>
+        <b class="baba-result-tag ${game.empate ? 'is-draw' : 'is-win'}">${game.empate ? resultStatusLabel(game) : 'Vitoria'}</b>
       </div>
+      ${game.empate ? `
+        <div class="baba-row">
+          <span>Criterio do empate</span>
+          <b>${escapeHTML(resultStatusLabel(game))}</b>
+        </div>
+      ` : ''}
       ${events.length ? events.map((goal) => `
         <div class="baba-row">
           <div>
@@ -2434,10 +2493,50 @@
 
     if (baba?.pendingTieBreak) {
       els.currentMatchPanel.className = 'baba-current-match-panel';
-      const tied = (baba.pendingTieBreak.tiedTeams || []).map((id) => getTeam(baba, id)?.name).filter(Boolean).join(' x ');
+      const route = getPendingTieBreakRoute(baba, baba.pendingTieBreak);
+      const tied = route.tiedTeams.map((team) => team.name).filter(Boolean).join(' x ');
+      const choiceCards = route.tiedTeams.map((team) => {
+        const out = route.tiedTeams.find((item) => item.id !== team.id);
+        return `
+          <article class="baba-tiebreak-option">
+            <div class="baba-tiebreak-option__main">
+              <span>Continua em quadra</span>
+              <strong>${teamDetailButton(baba, team)}</strong>
+            </div>
+            <div class="baba-tiebreak-option__route">
+              <span>Sai para a fila</span>
+              <b>${teamDetailButton(baba, out, '-')}</b>
+            </div>
+            <button class="baba-tiebreak-confirm" type="button" data-action="choose-three-team-keep" data-team-id="${team.id}">
+              Confirmar ${escapeHTML(team.name)}
+            </button>
+          </article>
+        `;
+      }).join('');
       els.currentMatchPanel.innerHTML = `
-        <div class="baba-empty">Empate em ${escapeHTML(tied)}. Sorteie qual time continua e qual sera o proximo confronto.</div>
-        ${isOrganizer() ? '<div class="baba-live-actions baba-live-actions--single"><button class="baba-primary" type="button" data-action="resolve-three-team-tie">Sortear proximo time</button></div>' : ''}
+        <div class="baba-tiebreak-panel">
+          <div class="baba-tiebreak-hero">
+            <img src="img/baba-impar-par-tiebreak.png" alt="">
+            <div>
+              <span class="baba-kicker"><svg aria-hidden="true" focusable="false"><use href="#baba-whistle"></use></svg>Empate com 3 times</span>
+              <h3>Defina no impar/par quem fica.</h3>
+              <p>${escapeHTML(tied)} empataram. O vencedor do impar/par continua em quadra; o outro vai para a fila.</p>
+            </div>
+          </div>
+          <div class="baba-tiebreak-route">
+            <div>
+              <span>Proximo adversario</span>
+              <strong>${teamDetailButton(baba, route.nextTeam, 'Aguardando')}</strong>
+            </div>
+            <div>
+              <span>Decisao</span>
+              <strong>Impar/par entre os times empatados</strong>
+            </div>
+          </div>
+          ${isOrganizer()
+            ? `<div class="baba-tiebreak-options">${choiceCards}</div>`
+            : '<div class="baba-empty">O organizador vai selecionar aqui o time que venceu no impar/par.</div>'}
+        </div>
       `;
     } else if (!match || !teamA || !teamB) {
       els.currentMatchPanel.className = 'baba-current-match-panel';
@@ -2534,15 +2633,17 @@
         ? matchLineHTML(baba, resultTeamA, baba.lastResult.placarA, baba.lastResult.placarB, resultTeamB)
         : escapeHTML(baba.lastResult.resumo);
       els.lastResultPill.textContent = `Jogo ${baba.lastResult.jogo}`;
+      const keepHTML = keep ? teamDetailButton(baba, keep, '-') : '<span class="baba-result-pending">Aguardando impar/par</span>';
+      const outHTML = baba.lastResult.timeQueSaiu ? (teamButtonsFromValue(baba, baba.lastResult.timeQueSaiu) || escapeHTML(outNames)) : '<span class="baba-result-pending">Aguardando decisao</span>';
       els.lastResultPanel.innerHTML = `
         <div class="baba-row">
           <div>
             <strong>${resultLine}</strong>
-            <small><span class="baba-result-tag ${baba.lastResult.decididoPorSorteio ? 'is-draw' : 'is-win'}">${baba.lastResult.decididoPorSorteio ? 'Empate: rodizio definido por sorteio' : 'Resultado normal'}</span></small>
+            <small><span class="baba-result-tag ${baba.lastResult.empate || baba.lastResult.decididoPorSorteio ? 'is-draw' : 'is-win'}">${resultStatusLabel(baba.lastResult)}</span></small>
           </div>
         </div>
-        <div class="baba-row"><span>Continua em campo</span><b>${teamDetailButton(baba, keep, '-')}</b></div>
-        <div class="baba-row"><span>Saiu para a fila</span><b>${teamButtonsFromValue(baba, baba.lastResult.timeQueSaiu) || escapeHTML(outNames)}</b></div>
+        <div class="baba-row"><span>Continua em campo</span><b>${keepHTML}</b></div>
+        <div class="baba-row"><span>Saiu para a fila</span><b>${outHTML}</b></div>
         <div class="baba-row"><span>Motivo</span><b>${escapeHTML(baba.lastResult.motivoSaida)}</b></div>
       `;
     }
@@ -2989,7 +3090,8 @@
       if (actionButton?.dataset.action === 'start-prepared-match') return startPreparedMatch();
       if (actionButton?.dataset.action === 'pause-time') return pauseMatchTimer();
       if (actionButton?.dataset.action === 'edit-time') return editMatchTime();
-      if (actionButton?.dataset.action === 'resolve-three-team-tie') return resolveThreeTeamTie();
+      if (actionButton?.dataset.action === 'choose-three-team-keep') return resolveThreeTeamTie(actionButton.dataset.teamId);
+      if (actionButton?.dataset.action === 'resolve-three-team-tie') return resolveThreeTeamTie(actionButton.dataset.teamId);
       if (actionButton?.dataset.action === 'advance-team-reveal') return advanceTeamReveal();
       if (actionButton?.dataset.action === 'restart-team-reveal') return restartTeamReveal();
 
