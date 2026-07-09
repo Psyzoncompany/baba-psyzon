@@ -20,6 +20,14 @@
     { id: 'titles', label: 'Titulos', icon: 'baba-trophy' },
     { id: 'efficiency', label: 'Aproveitamento', icon: 'baba-chart' },
   ];
+  const PDF_ROW_LIMITS = {
+    payments: 18,
+    standings: 12,
+    currentHistory: 24,
+    dailyScorers: 26,
+    rankings: 8,
+    goalkeeper: 8,
+  };
 
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -1200,7 +1208,6 @@
         player.nome,
         playerPaymentTypeLabel(player),
         formatCurrency(paymentPriceForPlayer(player)),
-        paidOnly ? 'Pago' : 'Nao pagou',
       ]);
   }
 
@@ -1213,8 +1220,7 @@
         `${teamA?.name || game.timeANome || 'Time'} x ${teamB?.name || game.timeBNome || 'Time'}`,
         `${game.placarA} x ${game.placarB}`,
         resultStatusLabel(game),
-        teamDetailName(baba, game.timeQueContinuou),
-        teamNamesFromValue(baba, game.timeQueSaiu),
+        `Fica: ${teamDetailName(baba, game.timeQueContinuou)} / Sai: ${teamNamesFromValue(baba, game.timeQueSaiu)}`,
         game.motivoSaida || '-',
       ];
     });
@@ -1239,6 +1245,7 @@
       subtitle: reportContextLabel(baba),
       fileName: `baba-${type}.pdf`,
       summary: baseSummary,
+      icon: 'report',
       sections: [],
     };
 
@@ -1247,6 +1254,7 @@
       const pending = Math.max(0, stats.expected - stats.paid);
       report.title = 'Lista de pagamentos';
       report.subtitle = `${paymentMonthLabel()} - vencimento ${paymentDueDateLabel()}`;
+      report.icon = 'wallet';
       report.summary = [
         ['Esperado', formatCurrency(stats.expected)],
         ['Pago', formatCurrency(stats.paid)],
@@ -1256,15 +1264,19 @@
       report.sections = [
         {
           title: 'Jogadores que pagaram',
-          note: 'Lista confirmada para o mes atual.',
-          columns: ['#', 'Jogador', 'Tipo', 'Valor', 'Status'],
+          note: 'Confirmados no mes',
+          icon: 'check-circle',
+          maxRows: PDF_ROW_LIMITS.payments,
+          columns: ['#', 'Jogador', 'Tipo', 'Valor'],
           rows: paymentRowsForPdf(baba, true),
           empty: 'Nenhum pagamento confirmado ainda.',
         },
         {
           title: 'Pendentes',
-          note: 'Jogadores que ainda nao foram marcados como pagos.',
-          columns: ['#', 'Jogador', 'Tipo', 'Valor', 'Status'],
+          note: 'Ainda em aberto',
+          icon: 'alert-circle',
+          maxRows: PDF_ROW_LIMITS.payments,
+          columns: ['#', 'Jogador', 'Tipo', 'Valor'],
           rows: paymentRowsForPdf(baba, false),
           empty: 'Nenhum pagamento pendente.',
         },
@@ -1275,17 +1287,21 @@
     if (type === 'standings') {
       report.title = 'Tabela de times';
       report.subtitle = `Pontos e gols - ${reportContextLabel(baba)}`;
+      report.icon = 'table';
       report.sections = [
         {
           title: 'Classificacao',
-          note: 'Inclui placar ao vivo quando houver jogo em andamento.',
+          note: 'Tabela compacta',
+          icon: 'table',
+          maxRows: PDF_ROW_LIMITS.standings,
           columns: ['Pos', 'Time', 'Pts', 'GP', 'SG', 'V', 'E', 'D', 'Status'],
           rows: standingsRowsForPdf(baba),
           empty: 'Sorteie os times para gerar a tabela.',
         },
         {
           title: 'Artilheiros da tabela',
-          note: 'Top 4 do baba atual.',
+          note: 'Top 4',
+          icon: 'target',
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'Media', 'Aprov.'],
           rows: scorersRowsForPdf(baba, 4),
           empty: 'Sem gols registrados.',
@@ -1297,11 +1313,14 @@
     if (type === 'current-history') {
       report.title = 'Historico do baba atual';
       report.subtitle = `Jogos finalizados - ${reportContextLabel(baba)}`;
+      report.icon = 'history';
       report.sections = [
         {
           title: 'Jogos finalizados',
-          note: 'Rodizio, placares e criterios de resultado.',
-          columns: ['Jogo', 'Partida', 'Placar', 'Resultado', 'Continua', 'Saiu', 'Motivo'],
+          note: 'Ultimos jogos',
+          icon: 'history',
+          maxRows: PDF_ROW_LIMITS.currentHistory,
+          columns: ['Jogo', 'Partida', 'Placar', 'Resultado', 'Rodizio', 'Motivo'],
           rows: currentGamesRowsForPdf(baba),
           empty: 'Nenhum jogo finalizado neste baba.',
         },
@@ -1312,10 +1331,13 @@
     if (type === 'daily-scorers') {
       report.title = 'Artilheiros do dia';
       report.subtitle = `Ranking de gols - ${reportContextLabel(baba)}`;
+      report.icon = 'target';
       report.sections = [
         {
           title: 'Ranking de artilharia',
-          note: 'Ordenado por gols, vitorias e aproveitamento.',
+          note: 'Ordenado por gols',
+          icon: 'target',
+          maxRows: PDF_ROW_LIMITS.dailyScorers,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'Media', 'Aprov.'],
           rows: scorersRowsForPdf(baba),
           empty: 'Sem gols no baba atual.',
@@ -1327,42 +1349,53 @@
     if (type === 'rankings') {
       report.title = 'Rankings do baba';
       report.subtitle = `Criterio atual: ${metricLabel}`;
+      report.icon = 'chart';
       report.summary = [
         ...baseSummary,
         ['Criterio', metricLabel],
       ];
       report.sections = [
         {
-          title: `Ranking do mes - ${monthLabel(currentMonth)}`,
-          note: `Ordenado por ${metricLabel.toLowerCase()}.`,
+          title: `Mes - ${monthLabel(currentMonth)}`,
+          note: `Top ${PDF_ROW_LIMITS.rankings}`,
+          icon: 'calendar',
+          maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
           rows: rankingRowsForPdf(sortRanking(calculateMonthlyRanking(currentMonth, { includeActive: true }), rankingMode)),
           empty: 'Sem dados no ranking do mes.',
         },
         {
           title: 'Ranking geral',
-          note: `Todos os babas finalizados, ordenado por ${metricLabel.toLowerCase()}.`,
+          note: `Top ${PDF_ROW_LIMITS.rankings}`,
+          icon: 'chart',
+          maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
           rows: rankingRowsForPdf(sortRanking(calculateGeneralRanking(), rankingMode)),
           empty: 'Sem dados no ranking geral.',
         },
         {
           title: 'Ranking do dia',
-          note: `Baba atual, ordenado por ${metricLabel.toLowerCase()}.`,
+          note: `Top ${PDF_ROW_LIMITS.rankings}`,
+          icon: 'target',
+          maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
           rows: rankingRowsForPdf(getDailyRankingList(baba, rankingMode)),
           empty: 'Sem dados no ranking do dia.',
         },
         {
           title: 'Melhor goleiro',
-          note: 'Menos gols sofridos primeiro.',
+          note: `Top ${PDF_ROW_LIMITS.goalkeeper}`,
+          icon: 'shield',
+          maxRows: PDF_ROW_LIMITS.goalkeeper,
           columns: ['Pos', 'Goleiro', 'Jogos', 'Sofridos', 'Media', 'Babas'],
           rows: goalkeeperRowsForPdf(calculateGoalkeeperRanking({ includeActive: true })),
           empty: 'Sem jogos com goleiros ainda.',
         },
         {
-          title: `Historico mensal - ${monthLabel(monthlyHistoryKey)}`,
-          note: `Mes selecionado no painel de ranking.`,
+          title: `Historico - ${monthLabel(monthlyHistoryKey)}`,
+          note: `Top ${PDF_ROW_LIMITS.rankings}`,
+          icon: 'history',
+          maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
           rows: rankingRowsForPdf(sortRanking(calculateMonthlyRanking(monthlyHistoryKey, { includeActive: monthlyHistoryKey === activeMonthKey() }), rankingMode)),
           empty: 'Sem historico mensal para exportar.',
@@ -1374,12 +1407,55 @@
     return null;
   }
 
-  function renderPdfTable(columns, rows, emptyMessage) {
-    if (!rows?.length) return `<div class="pdf-empty">${escapeHTML(emptyMessage || 'Sem dados para exibir.')}</div>`;
+  function pdfIcon(name = 'report') {
+    const icons = {
+      report: '<path d="M6 3h9l3 3v15H6z"/><path d="M14 3v4h4"/><path d="M9 11h6"/><path d="M9 15h6"/>',
+      wallet: '<path d="M4 7h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4z"/><path d="M4 7V5a2 2 0 0 1 2-2h11"/><path d="M16 13h.01"/>',
+      table: '<path d="M4 5h16v14H4z"/><path d="M4 10h16"/><path d="M10 5v14"/>',
+      target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/>',
+      history: '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v6h6"/><path d="M12 7v5l3 2"/>',
+      chart: '<path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-3"/>',
+      calendar: '<path d="M5 4h14v16H5z"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="M5 9h14"/>',
+      shield: '<path d="M12 3l7 3v5c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9 12l2 2 4-5"/>',
+      'check-circle': '<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',
+      'alert-circle': '<circle cx="12" cy="12" r="9"/><path d="M12 7v6"/><path d="M12 17h.01"/>',
+      users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.8"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
+      trophy: '<path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M5 6H3a3 3 0 0 0 4 3"/><path d="M19 6h2a3 3 0 0 1-4 3"/>',
+      ball: '<circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 5h-5L8 10z"/><path d="M12 7V3"/><path d="M16 10l4-1"/><path d="M14.5 15l2.5 4"/><path d="M9.5 15L7 19"/><path d="M8 10L4 9"/>',
+    };
+    return `<span class="pdf-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name] || icons.report}</svg></span>`;
+  }
+
+  function pdfSummaryIcon(label) {
+    const normalized = String(label || '').toLowerCase();
+    if (normalized.includes('pago') || normalized.includes('confirm')) return 'check-circle';
+    if (normalized.includes('pend')) return 'alert-circle';
+    if (normalized.includes('esper')) return 'wallet';
+    if (normalized.includes('presente')) return 'users';
+    if (normalized.includes('time')) return 'shield';
+    if (normalized.includes('jogo')) return 'ball';
+    if (normalized.includes('criterio')) return 'chart';
+    if (normalized.includes('baba')) return 'calendar';
+    return 'report';
+  }
+
+  function limitPdfRows(rows = [], maxRows = null) {
+    const list = Array.isArray(rows) ? rows : [];
+    if (!Number.isFinite(maxRows) || maxRows <= 0 || list.length <= maxRows) {
+      return { rows: list, hidden: 0 };
+    }
+    return { rows: list.slice(0, maxRows), hidden: list.length - maxRows };
+  }
+
+  function renderPdfTable(section) {
+    const columns = section.columns || [];
+    const result = limitPdfRows(section.rows, section.maxRows);
+    const rows = result.rows;
+    if (!rows.length) return `<div class="pdf-empty">${escapeHTML(section.empty || 'Sem dados para exibir.')}</div>`;
     const mobileCards = rows.map((row, index) => {
       const firstCell = row[0] ?? '';
-      const title = (row[1] ?? firstCell) || `Registro ${index + 1}`;
-      const eyebrow = firstCell ? `${columns[0] || 'Item'} ${firstCell}` : `Registro ${index + 1}`;
+      const title = (row[1] ?? firstCell) || `Item ${index + 1}`;
+      const eyebrow = firstCell ? `${columns[0] || 'Item'} ${firstCell}` : `Item ${index + 1}`;
       return `
         <article class="pdf-mobile-card">
           <div class="pdf-mobile-card-title">
@@ -1397,10 +1473,15 @@
         </article>
       `;
     }).join('');
+    const hiddenRow = result.hidden ? `
+      <tfoot>
+        <tr><td colspan="${columns.length}">+ ${result.hidden} registros continuam salvos no sistema. PDF otimizado para uma pagina.</td></tr>
+      </tfoot>
+    ` : '';
 
     return `
       <div class="pdf-table-wrap" role="region" aria-label="Tabela do relatorio">
-        <table>
+        <table class="pdf-table pdf-table--cols-${Math.min(columns.length, 9)}">
           <thead>
             <tr>${columns.map((column) => `<th>${escapeHTML(column)}</th>`).join('')}</tr>
           </thead>
@@ -1409,6 +1490,7 @@
               <tr>${row.map((cell) => `<td>${escapeHTML(cell ?? '-')}</td>`).join('')}</tr>
             `).join('')}
           </tbody>
+          ${hiddenRow}
         </table>
       </div>
       <div class="pdf-mobile-list" aria-label="Lista para celular">
@@ -1418,20 +1500,24 @@
   }
 
   function renderPdfDocument(report) {
-    const headerImage = new URL('img/baba-pdf-report-header.png', window.location.href).href;
+    const headerImage = new URL('img/baba-pdf-report-header-pro.png', window.location.href).href;
     const summary = report.summary.map(([label, value]) => `
       <article>
-        <span>${escapeHTML(label)}</span>
-        <strong>${escapeHTML(value)}</strong>
+        ${pdfIcon(pdfSummaryIcon(label))}
+        <div>
+          <span>${escapeHTML(label)}</span>
+          <strong>${escapeHTML(value)}</strong>
+        </div>
       </article>
     `).join('');
+    const sectionLayout = report.sections.length > 1 ? 'pdf-sections--grid' : 'pdf-sections--single';
     const sections = report.sections.map((section) => `
       <section class="pdf-section">
         <div class="pdf-section-head">
-          <h2>${escapeHTML(section.title)}</h2>
+          <h2>${pdfIcon(section.icon || report.icon)}<span>${escapeHTML(section.title)}</span></h2>
           ${section.note ? `<p>${escapeHTML(section.note)}</p>` : ''}
         </div>
-        ${renderPdfTable(section.columns, section.rows, section.empty)}
+        ${renderPdfTable(section)}
       </section>
     `).join('');
 
@@ -1441,126 +1527,187 @@
   <meta charset="utf-8">
   <title>${escapeHTML(report.fileName)}</title>
   <style>
-    @page { size: 108mm 192mm; margin: 5mm; }
+    @page { size: A4 portrait; margin: 7mm; }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       color: #172033;
-      background: #f4f8fc;
+      background: #edf4f1;
       font-family: Inter, Arial, sans-serif;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     .pdf-page {
       display: grid;
-      gap: 14px;
+      gap: 10px;
       width: 100%;
-      min-height: 100vh;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 14px;
     }
     .pdf-hero {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 168px;
-      gap: 14px;
-      align-items: center;
+      position: relative;
       overflow: hidden;
-      border: 1px solid #dbe5ef;
-      border-radius: 18px;
+      min-height: 118px;
+      border: 1px solid rgba(255, 255, 255, .38);
+      border-radius: 12px;
       padding: 18px;
-      background: linear-gradient(135deg, #ffffff, #eefcf6 58%, #eaf6ff);
-      box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+      color: #ffffff;
+      background:
+        linear-gradient(90deg, rgba(4, 15, 12, .92), rgba(4, 15, 12, .72) 48%, rgba(4, 15, 12, .16)),
+        var(--pdf-hero-bg) center / cover no-repeat;
+      box-shadow: 0 12px 26px rgba(15, 23, 42, .10);
     }
-    .pdf-hero small {
-      color: #0f766e;
-      font-size: 10px;
+    .pdf-hero__content {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 6px;
+      max-width: 72%;
+    }
+    .pdf-hero__badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: #d9f99d;
+      font-size: 9px;
       font-weight: 900;
       letter-spacing: .08em;
       text-transform: uppercase;
     }
+    .pdf-hero .pdf-icon {
+      width: 26px;
+      height: 26px;
+      color: #facc15;
+      background: rgba(255, 255, 255, .14);
+      border-color: rgba(255, 255, 255, .22);
+    }
     .pdf-hero h1 {
-      margin: 5px 0 5px;
-      color: #172033;
-      font-size: 26px;
-      line-height: 1;
+      margin: 0;
+      color: #ffffff;
+      font-size: 28px;
+      line-height: .98;
     }
     .pdf-hero p {
       margin: 0;
-      color: #52647c;
+      color: rgba(255, 255, 255, .86);
       font-size: 11px;
       font-weight: 700;
     }
-    .pdf-hero img {
-      width: 168px;
-      height: 104px;
-      object-fit: cover;
-      border-radius: 14px;
-      border: 1px solid rgba(15, 23, 42, .10);
-      background: #ffffff;
+    .pdf-preload {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
     }
     .pdf-summary {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 8px;
     }
     .pdf-summary article {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
       border: 1px solid #dbe5ef;
-      border-radius: 12px;
-      padding: 10px;
+      border-radius: 8px;
+      padding: 9px 10px;
       background: #ffffff;
     }
+    .pdf-summary article > div { min-width: 0; }
     .pdf-summary span {
       display: block;
       color: #64748b;
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 900;
       letter-spacing: .05em;
       text-transform: uppercase;
     }
     .pdf-summary strong {
       display: block;
-      margin-top: 4px;
+      margin-top: 2px;
       color: #172033;
       font-size: 14px;
       line-height: 1.1;
+      overflow-wrap: anywhere;
+    }
+    .pdf-icon {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border: 1px solid #cdebd8;
+      border-radius: 7px;
+      color: #0f766e;
+      background: #ecfdf5;
+    }
+    .pdf-icon svg {
+      width: 14px;
+      height: 14px;
+    }
+    .pdf-sections {
+      display: grid;
+      gap: 8px;
+    }
+    .pdf-sections--grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
     }
     .pdf-section {
       overflow: hidden;
       border: 1px solid #dbe5ef;
-      border-radius: 14px;
+      border-radius: 8px;
       background: #ffffff;
       break-inside: avoid-page;
     }
     .pdf-section-head {
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 8px;
       border-bottom: 1px solid #e7edf5;
-      padding: 12px 14px;
+      padding: 9px 10px;
       background: #f8fbff;
+    }
+    .pdf-section h2 {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
     }
     .pdf-section h2 {
       margin: 0;
       color: #172033;
-      font-size: 15px;
+      font-size: 13px;
       line-height: 1.1;
+    }
+    .pdf-section h2 span {
+      min-width: 0;
+      overflow-wrap: anywhere;
     }
     .pdf-section p {
       margin: 0;
       color: #64748b;
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 800;
       text-align: right;
+      white-space: nowrap;
     }
-    table {
+    .pdf-table {
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
-      font-size: 9.5px;
+      font-size: 8.3px;
+      line-height: 1.12;
     }
     th {
       color: #52647c;
       background: #f3f7fb;
-      font-size: 8px;
+      font-size: 7px;
       font-weight: 900;
       letter-spacing: .04em;
       text-align: left;
@@ -1568,13 +1715,34 @@
     }
     th, td {
       border-bottom: 1px solid #edf1f6;
-      padding: 8px 9px;
+      padding: 5px 6px;
       vertical-align: top;
       overflow-wrap: anywhere;
     }
     tbody tr:nth-child(even) td { background: #fbfdff; }
     tbody tr:last-child td { border-bottom: 0; }
-    td:first-child, th:first-child { width: 38px; text-align: center; font-weight: 900; }
+    tfoot td {
+      color: #64748b;
+      background: #f8fbff;
+      font-size: 7.5px;
+      font-weight: 800;
+      text-align: center;
+    }
+    td:first-child, th:first-child { width: 28px; text-align: center; font-weight: 900; }
+    .pdf-table--cols-8,
+    .pdf-table--cols-9 {
+      font-size: 7.5px;
+    }
+    .pdf-table--cols-8 th,
+    .pdf-table--cols-9 th {
+      font-size: 6.5px;
+    }
+    .pdf-table--cols-8 th,
+    .pdf-table--cols-8 td,
+    .pdf-table--cols-9 th,
+    .pdf-table--cols-9 td {
+      padding: 4px;
+    }
     .pdf-table-wrap {
       width: 100%;
       overflow-x: auto;
@@ -1588,7 +1756,7 @@
     .pdf-mobile-card {
       overflow: hidden;
       border: 1px solid #dbe5ef;
-      border-radius: 12px;
+      border-radius: 8px;
       background: #ffffff;
       break-inside: avoid;
     }
@@ -1646,7 +1814,7 @@
       overflow-wrap: anywhere;
     }
     .pdf-empty {
-      padding: 18px;
+      padding: 14px;
       color: #64748b;
       font-size: 11px;
       font-weight: 800;
@@ -1658,7 +1826,7 @@
       color: #64748b;
       font-size: 8px;
       font-weight: 800;
-      padding: 0 2px;
+      padding: 0 2px 2px;
     }
     @media screen and (max-width: 720px) {
       body { background: #ffffff; }
@@ -1667,18 +1835,13 @@
         padding: 10px;
       }
       .pdf-hero {
-        grid-template-columns: 1fr;
-        gap: 10px;
-        border-radius: 16px;
+        border-radius: 12px;
         padding: 14px;
       }
+      .pdf-hero__content { max-width: 100%; }
       .pdf-hero h1 {
         font-size: 22px;
         line-height: 1.05;
-      }
-      .pdf-hero img {
-        width: 100%;
-        height: 98px;
       }
       .pdf-summary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1694,7 +1857,9 @@
       }
       .pdf-section p {
         text-align: left;
+        white-space: normal;
       }
+      .pdf-sections--grid { grid-template-columns: 1fr; }
       .pdf-table-wrap { display: none; }
       .pdf-mobile-list { display: grid; }
       .pdf-footer {
@@ -1715,101 +1880,131 @@
     @media print {
       body { background: #ffffff; }
       .pdf-page {
-        gap: 8px;
+        gap: 5px;
+        max-width: none;
         min-height: auto;
+        padding: 0;
       }
       .pdf-hero {
-        grid-template-columns: 1fr;
-        gap: 7px;
-        border-radius: 12px;
-        padding: 10px;
+        min-height: 29mm;
+        border-radius: 8px;
+        padding: 9px 10px;
         box-shadow: none;
       }
-      .pdf-hero small { font-size: 7px; }
+      .pdf-hero__content {
+        gap: 4px;
+        max-width: 70%;
+      }
+      .pdf-hero__badge { font-size: 7px; }
+      .pdf-hero .pdf-icon {
+        width: 19px;
+        height: 19px;
+      }
       .pdf-hero h1 {
-        margin: 3px 0;
-        font-size: 18px;
+        font-size: 20px;
         line-height: 1.05;
       }
       .pdf-hero p {
-        font-size: 8px;
+        font-size: 8.2px;
         line-height: 1.25;
-      }
-      .pdf-hero img {
-        width: 100%;
-        height: 48px;
-        border-radius: 9px;
       }
       .pdf-summary {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 6px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 5px;
+      }
+      .pdf-summary--count-5 {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
       }
       .pdf-summary article {
-        border-radius: 9px;
-        padding: 7px 8px;
+        gap: 5px;
+        border-radius: 6px;
+        padding: 5px 6px;
       }
-      .pdf-summary span { font-size: 6.8px; }
-      .pdf-summary strong { font-size: 11px; }
+      .pdf-summary span { font-size: 5.9px; }
+      .pdf-summary strong { font-size: 9.2px; }
+      .pdf-icon {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+      }
+      .pdf-icon svg {
+        width: 11px;
+        height: 11px;
+      }
+      .pdf-sections {
+        gap: 5px;
+      }
+      .pdf-sections--grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
       .pdf-section {
-        border-radius: 10px;
+        border-radius: 6px;
         box-shadow: none;
-        break-inside: auto;
+        break-inside: avoid-page;
       }
       .pdf-section-head {
-        display: grid;
-        align-items: start;
-        gap: 3px;
-        padding: 8px 9px;
+        gap: 4px;
+        padding: 5px 6px;
       }
-      .pdf-section h2 { font-size: 11px; }
+      .pdf-section h2 {
+        gap: 4px;
+        font-size: 9px;
+      }
       .pdf-section p {
-        font-size: 7px;
+        font-size: 6.4px;
         line-height: 1.25;
-        text-align: left;
+        text-align: right;
       }
-      .pdf-table-wrap { display: none; }
-      .pdf-mobile-list {
-        display: grid;
-        gap: 6px;
-        padding: 7px;
+      .pdf-table {
+        display: table;
+        font-size: 6.8px;
+        line-height: 1.08;
       }
-      .pdf-mobile-card {
-        border-radius: 9px;
+      th { font-size: 5.6px; }
+      th, td {
+        padding: 2.8px 3px;
       }
-      .pdf-mobile-card-title {
-        gap: 2px;
-        padding: 7px 8px;
+      td:first-child, th:first-child { width: 20px; }
+      .pdf-table--cols-8,
+      .pdf-table--cols-9 {
+        font-size: 6.1px;
       }
-      .pdf-mobile-card-title span { font-size: 6.5px; }
-      .pdf-mobile-card-title strong { font-size: 10px; }
-      .pdf-mobile-card dl div {
-        grid-template-columns: 78px minmax(0, 1fr);
-        gap: 5px;
-        padding: 5px 8px;
+      .pdf-table--cols-8 th,
+      .pdf-table--cols-9 th {
+        font-size: 5.2px;
       }
-      .pdf-mobile-card dt { font-size: 6.5px; }
-      .pdf-mobile-card dd { font-size: 8px; }
+      .pdf-table--cols-8 th,
+      .pdf-table--cols-8 td,
+      .pdf-table--cols-9 th,
+      .pdf-table--cols-9 td {
+        padding: 2.4px 2.5px;
+      }
+      tfoot td { font-size: 5.8px; }
+      .pdf-table-wrap { display: block; overflow: visible; }
+      .pdf-mobile-list { display: none !important; }
+      .pdf-empty {
+        padding: 8px;
+        font-size: 7px;
+      }
       .pdf-footer {
-        display: grid;
-        gap: 2px;
-        font-size: 6.5px;
-        text-align: center;
+        font-size: 6px;
+        padding-top: 1px;
       }
     }
   </style>
 </head>
 <body>
-  <main class="pdf-page">
-    <header class="pdf-hero">
-      <div>
-        <small>${escapeHTML(report.eyebrow)}</small>
+  <main class="pdf-page pdf-report--${escapeHTML(report.type)}">
+    <header class="pdf-hero" style="--pdf-hero-bg: url('${escapeHTML(headerImage)}')">
+      <div class="pdf-hero__content">
+        <span class="pdf-hero__badge">${pdfIcon(report.icon)}${escapeHTML(report.eyebrow)}</span>
         <h1>${escapeHTML(report.title)}</h1>
         <p>${escapeHTML(report.subtitle)} - gerado em ${escapeHTML(report.generatedAt)}</p>
       </div>
-      <img data-pdf-cover src="${headerImage}" alt="">
+      <img class="pdf-preload" data-pdf-cover src="${escapeHTML(headerImage)}" alt="">
     </header>
-    <section class="pdf-summary">${summary}</section>
-    ${sections}
+    <section class="pdf-summary pdf-summary--count-${Math.min(report.summary.length, 5)}">${summary}</section>
+    <section class="pdf-sections ${sectionLayout}">${sections}</section>
     <footer class="pdf-footer">
       <span>Baba Amigos do Henrique</span>
       <span>Exportacao em PDF</span>
