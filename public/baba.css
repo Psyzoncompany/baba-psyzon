@@ -2355,3 +2355,320 @@ body.baba-player-mode .baba-organizer-layout {
     padding: .65rem;
   }
 }
+
+/* v6.4 - senha flutuante + IA liquid glass profissional */
+body.baba-page .baba-password.baba-password-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10090;
+  display: grid;
+  place-items: center;
+  max-width: none;
+  border: 0;
+  border-radius: 0;
+  padding: clamp(1rem, 4vw, 2rem);
+  color: #102033;
+  background: rgba(15, 23, 42, .28);
+  box-shadow: none;
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+}
+
+body.baba-page.baba-password-is-open {
+  overflow: hidden;
+}
+
+body.baba-page .baba-password.baba-password-modal.hidden {
+  display: none !important;
+}
+
+body.baba-page .baba-password__window {
+  width: min(27rem, 100%);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .86rem;
+  border: 1px solid rgba(255, 255, 255, .68);
+  border-radius: 22px;
+  padding: 1rem;
+  color: #102033;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .96), rgba(246, 252, 255, .82)),
+    rgba(255, 255, 255, .78);
+  box-shadow: 0 28px 76px rgba(15, 23, 42, .28), inset 0 1px 0 rgba(255, 255, 255, .95);
+  backdrop-filter: blur(26px) saturate(160%);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+}
+
+body.baba-page .baba-password__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .8rem;
+  align-items: center;
+  border-bottom: 1px solid rgba(15, 23, 42, .08);
+  padding-bottom: .82rem;
+}
+
+body.baba-page .baba-password__head strong {
+  display: block;
+  color: #102033;
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+body.baba-page .baba-password__head small,
+body.baba-page .baba-password-modal small {
+  display: block;
+  margin-top: .2rem;
+  color: #66758a;
+  font-size: .75rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+body.baba-page .baba-password-modal label:not(.baba-password__remember) {
+  color: #526174;
+}
+
+body.baba-page .baba-password__field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .55rem;
+}
+
+body.baba-page .baba-password-modal input[type="password"] {
+  border-color: rgba(15, 23, 42, .14);
+  color: #102033;
+  background: rgba(255, 255, 255, .86);
+}
+
+body.baba-page .baba-password-modal input[type="password"]:focus {
+  border-color: rgba(20, 164, 106, .46);
+  box-shadow: 0 0 0 4px rgba(20, 164, 106, .12);
+}
+
+body.baba-page .baba-password-modal button[type="submit"] {
+  border: 0;
+  color: #082f2a;
+  background: linear-gradient(135deg, #facc15, #48d597 58%, #40b9ff);
+  box-shadow: 0 12px 26px rgba(20, 164, 106, .18);
+}
+
+body.baba-page .baba-password__close {
+  width: 2.25rem;
+  height: 2.25rem;
+  min-height: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(15, 23, 42, .1);
+  border-radius: 12px;
+  padding: 0;
+  color: #102033;
+  background: rgba(255, 255, 255, .72);
+  box-shadow: none;
+}
+
+body.baba-page .baba-password__close svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+body.baba-page .baba-password__remember {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  color: #334155;
+  font-size: .78rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1.25;
+  text-transform: none;
+}
+
+body.baba-page .baba-password__remember input {
+  width: 1rem;
+  height: 1rem;
+  min-height: 1rem;
+  padding: 0;
+  background: transparent;
+  accent-color: #14a46a;
+}
+
+body.baba-page .baba-ai-toggle {
+  border: 1px solid rgba(255, 255, 255, .74);
+  color: #102033;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .92), rgba(244, 249, 255, .70)),
+    rgba(255, 255, 255, .76);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, .18), inset 0 1px 0 rgba(255, 255, 255, .92);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  animation: none;
+}
+
+body.baba-page .baba-ai-toggle:hover {
+  border-color: rgba(20, 164, 106, .32);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .98), rgba(240, 253, 244, .80)),
+    rgba(255, 255, 255, .86);
+  filter: none;
+  transform: translateY(-2px);
+}
+
+body.baba-page .baba-ai-toggle__icon {
+  width: 2.12rem;
+  height: 2.12rem;
+  border-radius: 999px;
+  color: #0f766e;
+  background: linear-gradient(135deg, rgba(250, 204, 21, .32), rgba(20, 164, 106, .18), rgba(64, 185, 255, .16));
+}
+
+body.baba-page .baba-ai-toggle__text {
+  color: #102033;
+}
+
+body.baba-page .baba-ai-panel {
+  border: 1px solid rgba(255, 255, 255, .72);
+  color: #102033;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .94), rgba(247, 251, 255, .76)),
+    rgba(255, 255, 255, .78);
+  box-shadow: 0 30px 86px rgba(15, 23, 42, .26), inset 0 1px 0 rgba(255, 255, 255, .94);
+  backdrop-filter: blur(30px) saturate(165%);
+  -webkit-backdrop-filter: blur(30px) saturate(165%);
+}
+
+body.baba-page .baba-ai-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 5rem;
+  pointer-events: none;
+  background:
+    radial-gradient(18rem 5rem at 12% 0%, rgba(20, 164, 106, .18), transparent 62%),
+    radial-gradient(16rem 5rem at 88% 0%, rgba(250, 204, 21, .18), transparent 60%);
+}
+
+body.baba-page .baba-ai-head,
+body.baba-page .baba-ai-messages,
+body.baba-page .baba-ai-suggestions,
+body.baba-page .baba-ai-form {
+  position: relative;
+  z-index: 1;
+}
+
+body.baba-page .baba-ai-head {
+  border-bottom: 1px solid rgba(15, 23, 42, .08);
+  background: rgba(255, 255, 255, .34);
+}
+
+body.baba-page .baba-ai-avatar {
+  border-color: rgba(20, 164, 106, .18);
+  color: #0f766e;
+  background: linear-gradient(135deg, rgba(250, 204, 21, .30), rgba(20, 164, 106, .16), rgba(64, 185, 255, .14));
+}
+
+body.baba-page .baba-ai-head strong {
+  color: #102033;
+}
+
+body.baba-page .baba-ai-head small {
+  color: #66758a;
+}
+
+body.baba-page .baba-ai-close {
+  border-color: rgba(15, 23, 42, .08);
+  color: #102033;
+  background: rgba(255, 255, 255, .62);
+}
+
+body.baba-page .baba-ai-close:hover {
+  border-color: rgba(20, 164, 106, .26);
+  background: rgba(240, 253, 244, .86);
+}
+
+body.baba-page .baba-ai-messages {
+  background:
+    linear-gradient(180deg, rgba(248, 251, 255, .18), rgba(255, 255, 255, .08));
+}
+
+body.baba-page .baba-ai-message>div {
+  border-color: rgba(15, 23, 42, .08);
+  color: #172033;
+  background: rgba(255, 255, 255, .74);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, .07);
+}
+
+body.baba-page .baba-ai-message.is-user>div {
+  border-color: rgba(20, 164, 106, .22);
+  color: #052015;
+  background: linear-gradient(135deg, rgba(250, 204, 21, .72), rgba(126, 231, 135, .74));
+}
+
+body.baba-page .baba-ai-message__avatar {
+  border-color: rgba(64, 185, 255, .22);
+  color: #1987d8;
+  background: rgba(235, 248, 255, .88);
+}
+
+body.baba-page .baba-ai-message.is-typing span:not(.baba-ai-message__avatar) {
+  background: #14a46a;
+}
+
+body.baba-page .baba-ai-suggestions {
+  scrollbar-width: thin;
+}
+
+body.baba-page .baba-ai-suggestions button {
+  border-color: rgba(15, 23, 42, .09);
+  color: #334155;
+  background: rgba(255, 255, 255, .60);
+}
+
+body.baba-page .baba-ai-suggestions button:hover {
+  border-color: rgba(25, 135, 216, .24);
+  color: #102033;
+  background: rgba(239, 248, 255, .88);
+}
+
+body.baba-page .baba-ai-form {
+  border-top: 1px solid rgba(15, 23, 42, .08);
+  background: rgba(255, 255, 255, .36);
+}
+
+body.baba-page .baba-ai-form input {
+  border-color: rgba(15, 23, 42, .11);
+  color: #102033;
+  background: rgba(255, 255, 255, .78);
+}
+
+body.baba-page .baba-ai-form input::placeholder {
+  color: #7a8798;
+}
+
+body.baba-page .baba-ai-form input:focus {
+  border-color: rgba(25, 135, 216, .34);
+  box-shadow: 0 0 0 4px rgba(25, 135, 216, .12);
+}
+
+body.baba-page .baba-ai-form button {
+  color: #082f2a;
+  background: linear-gradient(135deg, #facc15, #48d597 62%, #40b9ff);
+  box-shadow: 0 10px 22px rgba(20, 164, 106, .17);
+}
+
+@media (max-width: 760px) {
+  body.baba-page .baba-password__window {
+    border-radius: 18px;
+    padding: .9rem;
+  }
+
+  body.baba-page .baba-password__field {
+    grid-template-columns: 1fr;
+  }
+
+  body.baba-page .baba-password-modal button[type="submit"] {
+    width: 100%;
+  }
+}

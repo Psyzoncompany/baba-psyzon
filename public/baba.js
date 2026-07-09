@@ -3,6 +3,7 @@
   const ADMIN_PASSWORD = '153090';
   const TEAM_NAMES = ['Barcelona', 'Arsenal', 'Real Madrid', 'PSG', 'Chelsea'];
   const MODE_KEY = 'psyzon_baba_mode';
+  const REMEMBER_ORGANIZER_KEY = 'psyzon_baba_organizer_remembered';
   const VISITOR_TEAM_ID = 'team_visitante';
   const VISITOR_TEAM_NAME = 'Visitante';
   const PLAYER_BABA_PRICE = 15;
@@ -48,6 +49,8 @@
     passwordForm: $('#organizer-password-form'),
     passwordInput: $('#organizer-password'),
     passwordFeedback: $('#password-feedback'),
+    rememberOrganizer: $('#remember-organizer-password'),
+    closePassword: $('#close-organizer-password'),
     modeReset: $('#mode-reset-btn'),
     logoutBtn: $('#baba-logout-btn'),
     createToday: $('#create-today-btn'),
@@ -658,6 +661,35 @@
     return true;
   }
 
+  function hasRememberedOrganizerAccess() {
+    return localStorage.getItem(REMEMBER_ORGANIZER_KEY) === ADMIN_PASSWORD;
+  }
+
+  function rememberOrganizerAccess(remember) {
+    if (remember) localStorage.setItem(REMEMBER_ORGANIZER_KEY, ADMIN_PASSWORD);
+    else localStorage.removeItem(REMEMBER_ORGANIZER_KEY);
+  }
+
+  function openOrganizerPassword() {
+    const remembered = hasRememberedOrganizerAccess();
+    els.passwordForm.classList.remove('hidden');
+    document.body.classList.add('baba-password-is-open');
+    els.passwordInput.value = remembered ? ADMIN_PASSWORD : '';
+    if (els.rememberOrganizer) els.rememberOrganizer.checked = remembered;
+    els.passwordFeedback.textContent = '';
+    window.setTimeout(() => {
+      els.passwordInput.focus();
+      if (remembered) els.passwordInput.select();
+    }, 40);
+  }
+
+  function closeOrganizerPassword() {
+    els.passwordForm.classList.add('hidden');
+    document.body.classList.remove('baba-password-is-open');
+    els.passwordInput.value = '';
+    els.passwordFeedback.textContent = '';
+  }
+
   function setMode(nextMode) {
     mode = nextMode;
     sessionStorage.setItem(MODE_KEY, nextMode);
@@ -665,6 +697,7 @@
     document.body.classList.toggle('baba-locked-viewer', isForcedViewerMode());
     els.gateway.classList.add('hidden');
     els.app.classList.remove('hidden');
+    closeOrganizerPassword();
     if (nextMode === 'player') setActiveTab('dashboard');
     render();
   }
@@ -676,9 +709,8 @@
     document.body.classList.remove('baba-locked-viewer');
     els.gateway.classList.remove('hidden');
     els.app.classList.add('hidden');
-    els.passwordForm.classList.add('hidden');
-    els.passwordInput.value = '';
-    els.passwordFeedback.textContent = '';
+    closeOrganizerPassword();
+    if (els.rememberOrganizer) els.rememberOrganizer.checked = hasRememberedOrganizerAccess();
   }
 
   function logout() {
@@ -1219,6 +1251,35 @@
     ]);
   }
 
+  function teamRosterRowsForPdf(baba = getActiveBaba()) {
+    const teams = getStandingsSnapshot(baba);
+    return teams.map((team) => {
+      const sourceTeam = getTeam(baba, team.id) || team;
+      const players = (sourceTeam.jogadores || [])
+        .map((playerId) => getBabaPlayer(baba, playerId))
+        .filter(Boolean);
+      const goalkeepers = players.filter((player) => player.tipo === 'goleiro').length;
+      const fieldPlayers = Math.max(0, players.length - goalkeepers);
+      return [
+        team.name,
+        players.map((player) => player.nome).join(', ') || '-',
+        fieldPlayers,
+        goalkeepers,
+      ];
+    });
+  }
+
+  function goalRankingRowsForPdf(items = []) {
+    return items.map((stats, index) => [
+      index + 1,
+      stats.nome || playerName(stats.jogadorId),
+      stats.totalGols || 0,
+      stats.totalVitorias || 0,
+      `${stats.aproveitamento || 0}%`,
+      stats.totalBabas || 0,
+    ]);
+  }
+
   function paymentRowsForPdf(baba = getActiveBaba(), paidOnly = true) {
     return getPaymentPlayers(baba)
       .filter((player) => isPlayerPaidThisMonth(player.id, baba) === paidOnly)
@@ -1250,6 +1311,29 @@
     return getTeam(baba, teamId)?.name || fallback;
   }
 
+  function activeYearForReport(baba = getActiveBaba()) {
+    const year = Number(String(baba?.dataISO || todayISO()).slice(0, 4));
+    return Number.isFinite(year) && year > 0 ? year : new Date().getFullYear();
+  }
+
+  function calculateYearlyRanking(year, { includeActive = true } = {}) {
+    const ranking = {};
+    state.babas
+      .filter((baba) => baba.status === 'finalizado' && Number(String(baba.dataISO || '').slice(0, 4)) === Number(year))
+      .forEach((baba) => {
+        Object.values(calculateDailyRanking(baba)).forEach((stats) => mergeRankingStats(ranking, stats));
+      });
+
+    const active = getActiveBaba();
+    const activeYear = Number(String(active?.dataISO || '').slice(0, 4));
+    if (includeActive && active && active.status !== 'finalizado' && activeYear === Number(year)) {
+      Object.values(calculateCurrentBabaRanking(active)).forEach((stats) => mergeRankingStats(ranking, stats));
+    }
+
+    Object.values(ranking).forEach(finalizeStats);
+    return ranking;
+  }
+
   function buildBabaPdfReport(type) {
     const baba = getActiveBaba();
     const now = new Date().toLocaleString('pt-BR');
@@ -1257,6 +1341,7 @@
     const metricLabel = RANKING_MODES.find((item) => item.id === rankingMode)?.label || 'Gols';
     const currentMonth = activeMonthKey(baba);
     const monthlyHistoryKey = selectedMonthlyKey || getAvailableMonthKeys()[0] || currentMonth;
+    const reportYear = activeYearForReport(baba);
     const report = {
       type,
       generatedAt: now,
@@ -1306,25 +1391,52 @@
 
     if (type === 'standings') {
       report.title = 'Tabela de times';
-      report.subtitle = `Pontos e gols - ${reportContextLabel(baba)}`;
+      report.subtitle = `Classificacao, elencos e rankings por gols - ${reportContextLabel(baba)}`;
       report.icon = 'table';
+      report.summary = [
+        ...baseSummary,
+        ['Ano', String(reportYear)],
+      ];
       report.sections = [
         {
           title: 'Classificacao',
-          note: 'Tabela compacta',
+          note: 'Pontos, gols e saldo',
           icon: 'table',
+          wide: true,
+          highlightTop: true,
           maxRows: PDF_ROW_LIMITS.standings,
           columns: ['Pos', 'Time', 'Pts', 'GP', 'SG', 'V', 'E', 'D', 'Status'],
           rows: standingsRowsForPdf(baba),
           empty: 'Sorteie os times para gerar a tabela.',
         },
         {
-          title: 'Artilheiros da tabela',
-          note: 'Top 4',
-          icon: 'target',
-          columns: ['Pos', 'Jogador', 'Gols', 'V', 'Media', 'Aprov.'],
-          rows: scorersRowsForPdf(baba, 4),
-          empty: 'Sem gols registrados.',
+          title: 'Jogadores por time',
+          note: 'Elencos sorteados',
+          icon: 'users',
+          wide: true,
+          columns: ['Time', 'Jogadores', 'Linha', 'Goleiros'],
+          rows: teamRosterRowsForPdf(baba),
+          empty: 'Nenhum jogador distribuido nos times.',
+        },
+        {
+          title: `Ranking do ano ${reportYear}`,
+          note: 'Classificado por gols',
+          icon: 'trophy',
+          highlightTop: true,
+          maxRows: PDF_ROW_LIMITS.rankings,
+          columns: ['Pos', 'Jogador', 'Gols', 'V', 'Aprov.', 'Babas'],
+          rows: goalRankingRowsForPdf(sortRanking(calculateYearlyRanking(reportYear, { includeActive: true }), 'goals')),
+          empty: 'Sem gols registrados neste ano.',
+        },
+        {
+          title: 'Ranking geral',
+          note: 'Classificado por gols',
+          icon: 'chart',
+          highlightTop: true,
+          maxRows: PDF_ROW_LIMITS.rankings,
+          columns: ['Pos', 'Jogador', 'Gols', 'V', 'Aprov.', 'Babas'],
+          rows: goalRankingRowsForPdf(sortRanking(calculateGeneralRanking(), 'goals')),
+          empty: 'Sem dados no ranking geral.',
         },
       ];
       return report;
@@ -1357,6 +1469,7 @@
           title: 'Ranking de artilharia',
           note: 'Ordenado por gols',
           icon: 'target',
+          highlightTop: true,
           maxRows: PDF_ROW_LIMITS.dailyScorers,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'Media', 'Aprov.'],
           rows: scorersRowsForPdf(baba),
@@ -1379,6 +1492,7 @@
           title: `Mes - ${monthLabel(currentMonth)}`,
           note: `Top ${PDF_ROW_LIMITS.rankings}`,
           icon: 'calendar',
+          highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
           rows: rankingRowsForPdf(sortRanking(calculateMonthlyRanking(currentMonth, { includeActive: true }), rankingMode)),
@@ -1388,6 +1502,7 @@
           title: 'Ranking geral',
           note: `Top ${PDF_ROW_LIMITS.rankings}`,
           icon: 'chart',
+          highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
           rows: rankingRowsForPdf(sortRanking(calculateGeneralRanking(), rankingMode)),
@@ -1397,6 +1512,7 @@
           title: 'Ranking do dia',
           note: `Top ${PDF_ROW_LIMITS.rankings}`,
           icon: 'target',
+          highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
           rows: rankingRowsForPdf(getDailyRankingList(baba, rankingMode)),
@@ -1406,6 +1522,7 @@
           title: 'Melhor goleiro',
           note: `Top ${PDF_ROW_LIMITS.goalkeeper}`,
           icon: 'shield',
+          highlightTop: true,
           maxRows: PDF_ROW_LIMITS.goalkeeper,
           columns: ['Pos', 'Goleiro', 'Jogos', 'Sofridos', 'Media', 'Babas'],
           rows: goalkeeperRowsForPdf(calculateGoalkeeperRanking({ includeActive: true })),
@@ -1415,6 +1532,7 @@
           title: `Historico - ${monthLabel(monthlyHistoryKey)}`,
           note: `Top ${PDF_ROW_LIMITS.rankings}`,
           icon: 'history',
+          highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
           rows: rankingRowsForPdf(sortRanking(calculateMonthlyRanking(monthlyHistoryKey, { includeActive: monthlyHistoryKey === activeMonthKey() }), rankingMode)),
@@ -1476,8 +1594,9 @@
       const firstCell = row[0] ?? '';
       const title = (row[1] ?? firstCell) || `Item ${index + 1}`;
       const eyebrow = firstCell ? `${columns[0] || 'Item'} ${firstCell}` : `Item ${index + 1}`;
+      const isGold = Boolean(section.highlightTop && index === 0);
       return `
-        <article class="pdf-mobile-card">
+        <article class="pdf-mobile-card ${isGold ? 'is-pdf-gold' : ''}">
           <div class="pdf-mobile-card-title">
             <span>${escapeHTML(eyebrow)}</span>
             <strong>${escapeHTML(title)}</strong>
@@ -1506,8 +1625,8 @@
             <tr>${columns.map((column) => `<th>${escapeHTML(column)}</th>`).join('')}</tr>
           </thead>
           <tbody>
-            ${rows.map((row) => `
-              <tr>${row.map((cell) => `<td>${escapeHTML(cell ?? '-')}</td>`).join('')}</tr>
+            ${rows.map((row, index) => `
+              <tr class="${section.highlightTop && index === 0 ? 'is-pdf-gold' : ''}">${row.map((cell) => `<td>${escapeHTML(cell ?? '-')}</td>`).join('')}</tr>
             `).join('')}
           </tbody>
           ${hiddenRow}
@@ -1532,7 +1651,7 @@
     `).join('');
     const sectionLayout = report.sections.length > 1 ? 'pdf-sections--grid' : 'pdf-sections--single';
     const sections = report.sections.map((section) => `
-      <section class="pdf-section">
+      <section class="pdf-section ${section.wide ? 'pdf-section--wide' : ''}">
         <div class="pdf-section-head">
           <h2>${pdfIcon(section.icon || report.icon)}<span>${escapeHTML(section.title)}</span></h2>
           ${section.note ? `<p>${escapeHTML(section.note)}</p>` : ''}
@@ -1552,7 +1671,10 @@
     body {
       margin: 0;
       color: #172033;
-      background: #edf4f1;
+      background:
+        radial-gradient(780px 420px at 8% -8%, rgba(20, 164, 106, .14), transparent 62%),
+        radial-gradient(720px 380px at 92% 0%, rgba(250, 204, 21, .16), transparent 58%),
+        #eef5f2;
       font-family: Inter, Arial, sans-serif;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
@@ -1677,12 +1799,16 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
       align-items: start;
     }
+    .pdf-section--wide {
+      grid-column: 1 / -1;
+    }
     .pdf-section {
       overflow: hidden;
       border: 1px solid #dbe5ef;
       border-radius: 8px;
       background: #ffffff;
       break-inside: avoid-page;
+      box-shadow: 0 12px 26px rgba(15, 23, 42, .07);
     }
     .pdf-section-head {
       display: flex;
@@ -1741,6 +1867,16 @@
     }
     tbody tr:nth-child(even) td { background: #fbfdff; }
     tbody tr:last-child td { border-bottom: 0; }
+    tbody tr.is-pdf-gold td {
+      border-color: rgba(214, 161, 0, .22);
+      color: #5f4100;
+      background: linear-gradient(90deg, rgba(255, 247, 205, .96), rgba(255, 251, 235, .88));
+      font-weight: 900;
+    }
+    tbody tr.is-pdf-gold td:first-child {
+      color: #ffffff;
+      background: linear-gradient(135deg, #b77900, #facc15);
+    }
     tfoot td {
       color: #64748b;
       background: #f8fbff;
@@ -1779,6 +1915,16 @@
       border-radius: 8px;
       background: #ffffff;
       break-inside: avoid;
+    }
+    .pdf-mobile-card.is-pdf-gold {
+      border-color: rgba(214, 161, 0, .38);
+      box-shadow: 0 10px 24px rgba(214, 161, 0, .12);
+    }
+    .pdf-mobile-card.is-pdf-gold .pdf-mobile-card-title {
+      background: linear-gradient(135deg, #fff2b7, #fffbea);
+    }
+    .pdf-mobile-card.is-pdf-gold .pdf-mobile-card-title span {
+      color: #986b00;
     }
     .pdf-mobile-card-title {
       display: grid;
@@ -1961,6 +2107,9 @@
         border-radius: 6px;
         box-shadow: none;
         break-inside: avoid-page;
+      }
+      .pdf-section--wide {
+        grid-column: 1 / -1;
       }
       .pdf-section-head {
         gap: 4px;
@@ -4569,19 +4718,24 @@
     });
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && babaAssistant.open) closeBabaAssistant();
+      if (event.key === 'Escape' && !els.passwordForm.classList.contains('hidden')) closeOrganizerPassword();
     });
   }
 
   function wireEvents() {
     wireBabaAssistant();
-    els.enterOrganizer.addEventListener('click', () => {
-      els.passwordForm.classList.remove('hidden');
-      els.passwordInput.focus();
-    });
+    els.enterOrganizer.addEventListener('click', openOrganizerPassword);
     els.enterPlayer.addEventListener('click', () => setMode('player'));
+    els.closePassword?.addEventListener('click', closeOrganizerPassword);
+    els.passwordForm.addEventListener('click', (event) => {
+      if (event.target === els.passwordForm) closeOrganizerPassword();
+    });
     els.passwordForm.addEventListener('submit', (event) => {
       event.preventDefault();
-      if (els.passwordInput.value === ADMIN_PASSWORD) setMode('organizer');
+      if (els.passwordInput.value === ADMIN_PASSWORD) {
+        rememberOrganizerAccess(Boolean(els.rememberOrganizer?.checked));
+        setMode('organizer');
+      }
       else {
         els.passwordFeedback.textContent = 'Senha incorreta.';
         els.passwordInput.select();

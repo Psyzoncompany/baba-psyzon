@@ -3373,13 +3373,28 @@
             <i class="baba-choice-arrow" aria-hidden="true">›</i>
           </button>
         </div>
-        <form id="organizer-password-form" class="baba-password hidden">
-          <label for="organizer-password">Senha do organizador</label>
-          <div>
-            <input id="organizer-password" type="password" inputmode="numeric" autocomplete="off" placeholder="Digite a senha">
-            <button type="submit">Liberar</button>
+        <form id="organizer-password-form" class="baba-password baba-password-modal hidden" aria-labelledby="organizer-password-title" aria-modal="true" role="dialog">
+          <div class="baba-password__window">
+            <div class="baba-password__head">
+              <span>
+                <strong id="organizer-password-title">Acesso do organizador</strong>
+                <small>Digite a senha para liberar os controles do baba.</small>
+              </span>
+              <button id="close-organizer-password" class="baba-password__close" type="button" aria-label="Fechar janela de senha">
+                <svg aria-hidden="true" focusable="false"><use href="#baba-x"></use></svg>
+              </button>
+            </div>
+            <label for="organizer-password">Senha do organizador</label>
+            <div class="baba-password__field">
+              <input id="organizer-password" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Digite a senha">
+              <button type="submit">Liberar</button>
+            </div>
+            <label class="baba-password__remember" for="remember-organizer-password">
+              <input id="remember-organizer-password" type="checkbox">
+              <span>Lembrar senha neste aparelho</span>
+            </label>
+            <small id="password-feedback"></small>
           </div>
-          <small id="password-feedback"></small>
         </form>
       </div>
     </section>
