@@ -28,6 +28,14 @@
     rankings: 8,
     goalkeeper: 8,
   };
+  const BABA_ASSISTANT_QUICK_QUESTIONS = [
+    'Quem fez mais gols?',
+    'Quem mais ganhou?',
+    'Quem e o melhor jogador?',
+    'Quem esta em melhor fase?',
+    'Quem ainda nao pagou?',
+    'Compare dois jogadores',
+  ];
 
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -137,6 +145,18 @@
   let hasBooted = false;
   let tabsStickySentinel = null;
   let tabsScrollFrame = null;
+  const babaAssistant = {
+    wired: false,
+    open: false,
+    typing: false,
+    messages: [],
+    context: {
+      players: [],
+      topic: '',
+      period: '',
+    },
+    els: {},
+  };
 
   function newId(prefix) {
     if (window.crypto?.randomUUID) return `${prefix}_${window.crypto.randomUUID()}`;
@@ -3972,7 +3992,588 @@
     window.prompt('Copie o link direto do Baba:', url);
   }
 
+  function babaAssistantIcon(name = 'spark') {
+    const icons = {
+      spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z"/><path d="M5 15l.9 2.4L8 18l-2.1.6L5 21l-.9-2.4L2 18l2.1-.6L5 15Z"/><path d="M19 14l.9 2.4L22 17l-2.1.6L19 20l-.9-2.4L16 17l2.1-.6L19 14Z"/>',
+      send: '<path d="M4 12 20 4l-4 16-3.5-6.5L4 12Z"/><path d="m12.5 13.5 7-9"/>',
+      close: '<path d="M6 6l12 12M18 6 6 18"/>',
+      ball: '<circle cx="12" cy="12" r="9"/><path d="m12 7 4 3-1.5 5h-5L8 10l4-3Z"/><path d="M12 7V3M16 10l4-1M14.5 15l2.5 4M9.5 15 7 19M8 10 4 9"/>',
+      chart: '<path d="M4 19h16"/><path d="M7 16V9"/><path d="M12 16V5"/><path d="M17 16v-4"/>',
+    };
+    return `<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${icons[name] || icons.spark}</svg>`;
+  }
+
+  function initBabaAssistant() {
+    const existing = document.getElementById('baba-ai-assistant');
+    if (existing) {
+      babaAssistant.els = {
+        root: existing,
+        toggle: existing.querySelector('#baba-ai-toggle'),
+        panel: existing.querySelector('#baba-ai-panel'),
+        close: existing.querySelector('#baba-ai-close'),
+        messages: existing.querySelector('#baba-ai-messages'),
+        form: existing.querySelector('#baba-ai-form'),
+        input: existing.querySelector('#baba-ai-input'),
+      };
+      return;
+    }
+
+    const root = document.createElement('section');
+    root.id = 'baba-ai-assistant';
+    root.className = 'baba-ai-assistant';
+    root.setAttribute('aria-label', 'IA do Baba');
+    root.innerHTML = `
+      <button id="baba-ai-toggle" class="baba-ai-toggle" type="button" aria-expanded="false" aria-controls="baba-ai-panel" title="IA do Baba">
+        <span class="baba-ai-toggle__icon">${babaAssistantIcon('spark')}</span>
+        <span class="baba-ai-toggle__text">IA do Baba</span>
+      </button>
+      <aside id="baba-ai-panel" class="baba-ai-panel" aria-hidden="true">
+        <header class="baba-ai-head">
+          <span class="baba-ai-avatar">${babaAssistantIcon('spark')}</span>
+          <span>
+            <strong>IA do Baba</strong>
+            <small>Pergunte sobre jogadores, gols, partidas e pagamentos.</small>
+          </span>
+          <button id="baba-ai-close" class="baba-ai-close" type="button" aria-label="Fechar IA do Baba">${babaAssistantIcon('close')}</button>
+        </header>
+        <div id="baba-ai-messages" class="baba-ai-messages" role="log" aria-live="polite"></div>
+        <div class="baba-ai-suggestions" aria-label="Sugestoes rapidas">
+          ${BABA_ASSISTANT_QUICK_QUESTIONS.map((question) => `<button type="button" data-ai-question="${escapeHTML(question)}">${escapeHTML(question)}</button>`).join('')}
+        </div>
+        <form id="baba-ai-form" class="baba-ai-form">
+          <input id="baba-ai-input" type="text" autocomplete="off" placeholder="Pergunte sobre o baba..." aria-label="Pergunta para IA do Baba">
+          <button type="submit" aria-label="Enviar pergunta">${babaAssistantIcon('send')}</button>
+        </form>
+      </aside>
+    `;
+    document.body.appendChild(root);
+    babaAssistant.els = {
+      root,
+      toggle: root.querySelector('#baba-ai-toggle'),
+      panel: root.querySelector('#baba-ai-panel'),
+      close: root.querySelector('#baba-ai-close'),
+      messages: root.querySelector('#baba-ai-messages'),
+      form: root.querySelector('#baba-ai-form'),
+      input: root.querySelector('#baba-ai-input'),
+    };
+    renderBabaAssistantMessages();
+  }
+
+  function openBabaAssistant() {
+    initBabaAssistant();
+    babaAssistant.open = true;
+    document.body.classList.add('baba-ai-is-open');
+    babaAssistant.els.root?.classList.add('is-open');
+    babaAssistant.els.toggle?.setAttribute('aria-expanded', 'true');
+    babaAssistant.els.panel?.setAttribute('aria-hidden', 'false');
+    if (!babaAssistant.messages.length) {
+      babaAssistant.messages.push({
+        role: 'bot',
+        text: 'Fala! Sou a IA do Baba.\n\nPosso analisar gols, vitorias, ranking, desempenho, partidas, presencas e pagamentos.\n\nPergunte algo como:\n- Quem fez mais gols?\n- Quem esta em melhor fase?\n- Quem ainda nao pagou?\n- Compare Carlos e Joao.',
+      });
+      renderBabaAssistantMessages();
+    }
+    window.setTimeout(() => babaAssistant.els.input?.focus(), 80);
+  }
+
+  function closeBabaAssistant() {
+    babaAssistant.open = false;
+    document.body.classList.remove('baba-ai-is-open');
+    babaAssistant.els.root?.classList.remove('is-open');
+    babaAssistant.els.toggle?.setAttribute('aria-expanded', 'false');
+    babaAssistant.els.panel?.setAttribute('aria-hidden', 'true');
+  }
+
+  function formatBabaAssistantText(text) {
+    return escapeHTML(text)
+      .replace(/\n- /g, '<br><span class="baba-ai-bullet">- ')
+      .replace(/\n/g, '<br>')
+      .replace(/(<span class="baba-ai-bullet">- [^<]*(?:<br>|$))/g, '$1</span>');
+  }
+
+  function renderBabaAssistantMessages() {
+    initBabaAssistant();
+    const messages = babaAssistant.messages.map((message) => `
+      <article class="baba-ai-message is-${message.role}">
+        ${message.role === 'bot' ? `<span class="baba-ai-message__avatar">${babaAssistantIcon('spark')}</span>` : ''}
+        <div>${formatBabaAssistantText(message.text)}</div>
+      </article>
+    `).join('');
+    const typing = babaAssistant.typing ? `
+      <article class="baba-ai-message is-bot is-typing">
+        <span class="baba-ai-message__avatar">${babaAssistantIcon('chart')}</span>
+        <div><span></span><span></span><span></span></div>
+      </article>
+    ` : '';
+    if (babaAssistant.els.messages) {
+      babaAssistant.els.messages.innerHTML = messages + typing;
+      babaAssistant.els.messages.scrollTop = babaAssistant.els.messages.scrollHeight;
+    }
+  }
+
+  function normalizeAssistantText(value) {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^\w\s/-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function assistantAllPlayers() {
+    const players = new Map();
+    state.players.forEach((player) => {
+      if (player?.id) players.set(player.id, player);
+    });
+    state.babas.forEach((baba) => {
+      (baba.visitantes || []).forEach((player) => {
+        if (player?.id && !players.has(player.id)) players.set(player.id, player);
+      });
+    });
+    return Array.from(players.values());
+  }
+
+  function assistantFindPlayers(question) {
+    const normalized = normalizeAssistantText(question);
+    return assistantAllPlayers()
+      .map((player) => ({ player, key: normalizeAssistantText(player.nome) }))
+      .filter(({ key }) => key.length >= 3 && normalized.includes(key))
+      .map(({ player }) => player);
+  }
+
+  function assistantLatestBabas(limit = Infinity) {
+    return state.babas
+      .filter((baba) => baba && (baba.status === 'finalizado' || baba.id === state.activeBabaId))
+      .slice()
+      .sort((a, b) => {
+        const dateSort = String(b.dataISO || '').localeCompare(String(a.dataISO || ''));
+        if (dateSort) return dateSort;
+        return Number(b.finalizadoEm || b.criadoEm || 0) - Number(a.finalizadoEm || a.criadoEm || 0);
+      })
+      .slice(0, limit);
+  }
+
+  function assistantDateFromQuestion(normalized) {
+    const brDate = normalized.match(/\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/);
+    if (brDate) {
+      const day = brDate[1].padStart(2, '0');
+      const month = brDate[2].padStart(2, '0');
+      const year = brDate[3] ? String(Number(brDate[3]) < 100 ? 2000 + Number(brDate[3]) : brDate[3]) : String(new Date().getFullYear());
+      return `${year}-${month}-${day}`;
+    }
+    const dayOnly = normalized.match(/\bdia\s+(\d{1,2})\b/);
+    if (dayOnly) {
+      const active = getActiveBaba();
+      const base = active?.dataISO || todayISO();
+      return `${base.slice(0, 8)}${dayOnly[1].padStart(2, '0')}`;
+    }
+    return '';
+  }
+
+  function assistantMonthFromQuestion(normalized) {
+    const monthNames = [
+      ['janeiro', '01'], ['fevereiro', '02'], ['marco', '03'], ['abril', '04'],
+      ['maio', '05'], ['junho', '06'], ['julho', '07'], ['agosto', '08'],
+      ['setembro', '09'], ['outubro', '10'], ['novembro', '11'], ['dezembro', '12'],
+    ];
+    const named = monthNames.find(([name]) => normalized.includes(name));
+    if (named) {
+      const yearMatch = normalized.match(/\b(20\d{2})\b/);
+      return `${yearMatch?.[1] || new Date().getFullYear()}-${named[1]}`;
+    }
+    if (normalized.includes('mes passado')) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - 1);
+      return currentPaymentMonthKey(date);
+    }
+    if (normalized.includes('este mes') || normalized.includes('mes atual') || normalized.includes('no mes')) {
+      return activeMonthKey();
+    }
+    return '';
+  }
+
+  function assistantResolvePeriod(question) {
+    const normalized = normalizeAssistantText(question);
+    const active = getActiveBaba();
+    const exactDate = assistantDateFromQuestion(normalized);
+    const wantsActiveBaba = normalized.includes('baba atual') || normalized.includes('jogo atual') || normalized.includes('partida atual');
+    if (normalized.includes('hoje') || normalized.includes('dia de hoje') || wantsActiveBaba) {
+      const todayBabas = state.babas.filter((baba) => baba.dataISO === todayISO());
+      const babas = wantsActiveBaba && active ? [active] : (todayBabas.length ? todayBabas : (active ? [active] : []));
+      return { label: wantsActiveBaba ? 'baba atual' : 'hoje', babas };
+    }
+    if (normalized.includes('ontem')) {
+      const date = new Date();
+      date.setDate(date.getDate() - 1);
+      const iso = todayISOFromDate(date);
+      return { label: 'ontem', babas: state.babas.filter((baba) => baba.dataISO === iso) };
+    }
+    if (exactDate) {
+      return { label: `dia ${formatDate(exactDate)}`, babas: state.babas.filter((baba) => baba.dataISO === exactDate) };
+    }
+    const lastMany = normalized.match(/ultimos?\s+(\d+)\s+babas?/);
+    if (lastMany) {
+      const amount = Math.max(1, Math.min(20, Number(lastMany[1])));
+      return { label: `ultimos ${amount} babas`, babas: assistantLatestBabas(amount) };
+    }
+    if (normalized.includes('ultimo baba') || normalized.includes('ultima rodada')) {
+      return { label: 'ultimo baba', babas: assistantLatestBabas(1) };
+    }
+    const monthKey = assistantMonthFromQuestion(normalized);
+    if (monthKey) {
+      const includeActive = active && monthKeyFromISO(active.dataISO) === monthKey;
+      return {
+        label: monthLabel(monthKey),
+        babas: state.babas.filter((baba) => monthKeyFromISO(baba.dataISO) === monthKey && (baba.status === 'finalizado' || (includeActive && baba.id === active.id))),
+      };
+    }
+    return { label: 'ranking geral', babas: assistantLatestBabas() };
+  }
+
+  function todayISOFromDate(date) {
+    const offset = date.getTimezoneOffset();
+    return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 10);
+  }
+
+  function assistantRankingForBabas(babas) {
+    const ranking = {};
+    (babas || []).forEach((baba) => {
+      const daily = baba.id === state.activeBabaId && baba.status !== 'finalizado'
+        ? calculateCurrentBabaRanking(baba)
+        : calculateDailyRanking(baba);
+      Object.values(daily).forEach((stats) => mergeRankingStats(ranking, stats));
+    });
+    Object.values(ranking).forEach(finalizeStats);
+    return ranking;
+  }
+
+  function assistantRankingForQuestion(question) {
+    const period = assistantResolvePeriod(question);
+    const ranking = period.label === 'ranking geral'
+      ? assistantRankingForBabas(period.babas)
+      : assistantRankingForBabas(period.babas);
+    return { period, ranking };
+  }
+
+  function assistantTopLine(items, metric, periodLabel) {
+    if (!items.length) return `Ainda nao existem dados suficientes para esse criterio em ${periodLabel}.`;
+    const top = items[0];
+    const second = items[1];
+    const metricDisplay = rankingMetricDisplay(top, metric);
+    const gap = second ? rankingMetricValue(top, metric) - rankingMetricValue(second, metric) : 0;
+    const gapText = second && gap > 0 ? ` Ele tem ${gap} de vantagem sobre ${second.nome}, que aparece em segundo com ${rankingMetricDisplay(second, metric).value}.` : '';
+    return `${top.nome} lidera em ${periodLabel}, com ${metricDisplay.value} ${metricDisplay.label}.${gapText}`;
+  }
+
+  function assistantDescribeStats(stats) {
+    if (!stats) return 'Sem estatisticas registradas.';
+    return `${stats.totalGols || 0} gols, ${stats.totalVitorias || 0} vitorias, ${stats.totalEmpates || 0} empates, ${stats.totalDerrotas || 0} derrotas, ${stats.aproveitamento || 0}% de aproveitamento e ${stats.totalBabas || 0} babas.`;
+  }
+
+  function assistantPerformanceScore(stats, recent = null) {
+    if (!stats) return 0;
+    const recentBoost = recent ? (Number(recent.totalGols || 0) * 2.2) + (Number(recent.totalVitorias || 0) * 1.6) + (Number(recent.aproveitamento || 0) * .16) : 0;
+    return (Number(stats.totalGols || 0) * 4)
+      + (Number(stats.totalVitorias || 0) * 3)
+      + (Number(stats.totalTitulosBaba || 0) * 5)
+      + (Number(stats.aproveitamento || 0) * .35)
+      + (Number(stats.totalBabas || 0) * 1.2)
+      - (Number(stats.totalDerrotas || 0) * .7)
+      + recentBoost;
+  }
+
+  function assistantBestPlayer(question) {
+    const { period, ranking } = assistantRankingForQuestion(question);
+    const recentRanking = assistantRankingForBabas(assistantLatestBabas(5));
+    const players = Object.values(ranking).filter((stats) => Number(stats.totalJogos || 0) > 0 || Number(stats.totalGols || 0) > 0);
+    if (!players.length) return `Ainda nao existem dados suficientes para definir o melhor jogador em ${period.label}.`;
+    const scored = players
+      .map((stats) => ({ stats, score: assistantPerformanceScore(stats, recentRanking[stats.jogadorId]) }))
+      .sort((a, b) => b.score - a.score || b.stats.totalGols - a.stats.totalGols || b.stats.totalVitorias - a.stats.totalVitorias || a.stats.nome.localeCompare(b.stats.nome));
+    const best = scored[0].stats;
+    babaAssistant.context.players = [best.jogadorId];
+    babaAssistant.context.topic = 'best';
+    return `Considerando uma analise calculada de gols, vitorias, aproveitamento, presenca, titulos e fase recente, ${best.nome} aparece como melhor jogador em ${period.label}.\n\nNumeros dele: ${assistantDescribeStats(best)}\n\nCriterio usado: gols e vitorias pesam mais, aproveitamento e regularidade ajudam, e os ultimos 5 babas entram como fase recente.`;
+  }
+
+  function assistantLowestPerformance(question) {
+    const { period, ranking } = assistantRankingForQuestion(question);
+    const players = Object.values(ranking).filter((stats) => Number(stats.totalBabas || 0) >= 1 && Number(stats.totalJogos || 0) > 0);
+    if (!players.length) return `Ainda nao ha dados suficientes para avaliar desempenho em ${period.label}.`;
+    const enough = players.filter((stats) => stats.totalBabas >= 5);
+    const base = enough.length ? enough : players;
+    const recentRanking = assistantRankingForBabas(assistantLatestBabas(5));
+    const lowest = base
+      .map((stats) => ({ stats, score: assistantPerformanceScore(stats, recentRanking[stats.jogadorId]) }))
+      .sort((a, b) => a.score - b.score || a.stats.aproveitamento - b.stats.aproveitamento || a.stats.nome.localeCompare(b.stats.nome))[0].stats;
+    babaAssistant.context.players = [lowest.jogadorId];
+    babaAssistant.context.topic = 'lowest';
+    return `Pelos dados registrados, ${lowest.nome} aparece com o desempenho estatistico mais baixo em ${period.label}${enough.length ? ' entre jogadores com pelo menos 5 participacoes' : ''}.\n\nNumeros: ${assistantDescribeStats(lowest)}\n\nIsso nao significa que ele seja ruim; e apenas uma leitura esportiva dos dados atuais.`;
+  }
+
+  function assistantRecentPhase(question) {
+    const latest = assistantLatestBabas(5);
+    const previous = assistantLatestBabas(10).slice(5);
+    const recent = assistantRankingForBabas(latest);
+    const before = assistantRankingForBabas(previous);
+    const recentItems = Object.values(recent).filter((stats) => stats.totalJogos > 0 || stats.totalGols > 0);
+    if (!recentItems.length) return 'Ainda nao ha dados suficientes nos ultimos babas para analisar fase recente.';
+    const improved = recentItems
+      .map((stats) => {
+        const prev = before[stats.jogadorId];
+        return {
+          stats,
+          recentScore: assistantPerformanceScore(stats),
+          delta: assistantPerformanceScore(stats) - assistantPerformanceScore(prev),
+          prev,
+        };
+      })
+      .sort((a, b) => b.recentScore - a.recentScore || b.delta - a.delta || a.stats.nome.localeCompare(b.stats.nome))[0];
+    babaAssistant.context.players = [improved.stats.jogadorId];
+    babaAssistant.context.topic = 'recent';
+    const previousText = improved.prev ? `Nos 5 anteriores tinha ${improved.prev.totalGols || 0} gols e ${improved.prev.totalVitorias || 0} vitorias.` : 'Nao encontrei 5 babas anteriores suficientes para comparar toda a evolucao.';
+    return `${improved.stats.nome} esta em melhor fase recente pelos ultimos ${latest.length} babas.\n\nNeste recorte: ${assistantDescribeStats(improved.stats)}\n${previousText}\n\nUsei gols, vitorias, aproveitamento e volume de jogos para chegar nessa analise.`;
+  }
+
+  function assistantPaymentAnswer(question) {
+    if (!isOrganizer()) {
+      return 'Pagamentos sao informacao administrativa. Entre como organizador para consultar quem pagou, pendencias e valores.';
+    }
+    const baba = getActiveBaba();
+    const normalized = normalizeAssistantText(question);
+    const players = getPaymentPlayers(baba);
+    if (!players.length) return 'Nao encontrei jogadores cadastrados para calcular pagamentos.';
+    const playerAsked = assistantFindPlayers(question)[0] || (/\bele\b|\bela\b/.test(normalized) ? getPlayer(babaAssistant.context.players[0]) : null);
+    if (playerAsked) {
+      const paid = isPlayerPaidThisMonth(playerAsked.id, baba);
+      const value = formatCurrency(paymentPriceForPlayer(playerAsked));
+      babaAssistant.context.players = [playerAsked.id];
+      return paid
+        ? `${playerAsked.nome} esta marcado como pago no mes atual. Valor registrado: ${value}.`
+        : `${playerAsked.nome} ainda consta como pendente no mes atual. Valor esperado: ${value}.`;
+    }
+    const paid = players.filter((player) => isPlayerPaidThisMonth(player.id, baba));
+    const pending = players.filter((player) => !isPlayerPaidThisMonth(player.id, baba));
+    const stats = getPaymentStats(baba);
+    const pendingValue = Math.max(0, stats.expected - stats.paid);
+    const asksPerformance = normalized.includes('gol') || normalized.includes('vitor') || normalized.includes('ganh') || normalized.includes('aproveitamento');
+    if (asksPerformance && (normalized.includes('nao pag') || normalized.includes('devend') || normalized.includes('pendente'))) {
+      const { period, ranking } = assistantRankingForQuestion(question);
+      const pendingIds = new Set(pending.map((player) => player.id));
+      const metric = normalized.includes('vitor') || normalized.includes('ganh') ? 'wins' : (normalized.includes('aproveitamento') ? 'efficiency' : 'goals');
+      const items = sortRanking(ranking, metric).filter((item) => pendingIds.has(item.jogadorId));
+      if (!items.length) return `Nao encontrei desempenho registrado em ${period.label} entre jogadores pendentes de pagamento.`;
+      const top = items[0];
+      babaAssistant.context.players = [top.jogadorId];
+      return `${top.nome} lidera entre os jogadores pendentes de pagamento em ${period.label}: ${assistantDescribeStats(top)}\n\nPagamento dele ainda consta como pendente no mes atual.`;
+    }
+    if (asksPerformance && (normalized.includes('ja pag') || normalized.includes('pagaram') || normalized.includes('pagou'))) {
+      const { period, ranking } = assistantRankingForQuestion(question);
+      const paidIds = new Set(paid.map((player) => player.id));
+      const metric = normalized.includes('vitor') || normalized.includes('ganh') ? 'wins' : (normalized.includes('aproveitamento') ? 'efficiency' : 'goals');
+      const items = sortRanking(ranking, metric).filter((item) => paidIds.has(item.jogadorId));
+      if (!items.length) return `Nao encontrei desempenho registrado em ${period.label} entre jogadores que ja pagaram.`;
+      const top = items[0];
+      babaAssistant.context.players = [top.jogadorId];
+      return `${top.nome} lidera entre os jogadores com pagamento confirmado em ${period.label}: ${assistantDescribeStats(top)}.`;
+    }
+    if (normalized.includes('quem pagou') || normalized.includes('ja pagou') || normalized.includes('pagaram')) {
+      if (!paid.length) return 'Ainda nao encontrei pagamentos confirmados no mes atual.';
+      return `Pagamentos confirmados no mes atual (${paid.length}/${players.length}):\n- ${paid.map((player) => `${player.nome} (${formatCurrency(paymentPriceForPlayer(player))})`).join('\n- ')}\n\nTotal recebido: ${formatCurrency(stats.paid)}.`;
+    }
+    if (normalized.includes('arrecad') || normalized.includes('receb')) {
+      return `Arrecadacao do mes atual: ${formatCurrency(stats.paid)} recebidos de ${formatCurrency(stats.expected)} esperados.\n\nFalta receber: ${formatCurrency(pendingValue)}.`;
+    }
+    if (!pending.length) return `Todos os ${players.length} jogadores esperados estao marcados como pagos no mes atual. Total recebido: ${formatCurrency(stats.paid)}.`;
+    return `Ainda existem ${pending.length} pagamentos pendentes:\n- ${pending.map((player) => `${player.nome} - ${formatCurrency(paymentPriceForPlayer(player))}`).join('\n- ')}\n\nTotal pendente: ${formatCurrency(pendingValue)}.`;
+  }
+
+  function assistantComparePlayers(question) {
+    const normalized = normalizeAssistantText(question);
+    let players = assistantFindPlayers(question);
+    if (players.length < 2 && babaAssistant.context.players.length >= 2 && (normalized.includes('fase') || normalized.includes('melhor') || normalized.includes('compare'))) {
+      players = babaAssistant.context.players.map((id) => getPlayer(id)).filter(Boolean);
+    }
+    if (players.length < 2) return 'Para comparar, me diga dois nomes. Exemplo: "Compare Carlos e Joao".';
+    const selected = players.slice(0, 2);
+    const { period, ranking } = assistantRankingForQuestion(question);
+    const statsA = ranking[selected[0].id] || makeEmptyPlayerStats(selected[0].id, selected[0].nome);
+    const statsB = ranking[selected[1].id] || makeEmptyPlayerStats(selected[1].id, selected[1].nome);
+    const scoreA = assistantPerformanceScore(statsA);
+    const scoreB = assistantPerformanceScore(statsB);
+    const winner = scoreA === scoreB ? null : (scoreA > scoreB ? statsA : statsB);
+    babaAssistant.context.players = selected.map((player) => player.id);
+    babaAssistant.context.topic = 'compare';
+    const verdict = winner
+      ? `${winner.nome} leva vantagem pelo criterio combinado de gols, vitorias, aproveitamento e regularidade.`
+      : 'Os dois ficam muito proximos pelo criterio combinado.';
+    return `Comparacao em ${period.label}:\n\n${statsA.nome}:\n- ${assistantDescribeStats(statsA)}\n\n${statsB.nome}:\n- ${assistantDescribeStats(statsB)}\n\n${verdict}`;
+  }
+
+  function assistantPlayerAnswer(question) {
+    const normalized = normalizeAssistantText(question);
+    const asked = assistantFindPlayers(question)[0] || (/\bele\b|\bela\b|\bdele\b|\bdela\b/.test(normalized) ? getPlayer(babaAssistant.context.players[0]) : null);
+    if (!asked) return '';
+    const { period, ranking } = assistantRankingForQuestion(question);
+    const stats = ranking[asked.id] || makeEmptyPlayerStats(asked.id, asked.nome);
+    babaAssistant.context.players = [asked.id];
+    if (normalized.includes('pag')) return assistantPaymentAnswer(question);
+    if (normalized.includes('gol')) return `${asked.nome} tem ${stats.totalGols || 0} gols em ${period.label}. Media: ${stats.mediaGols || 0} por baba.`;
+    if (normalized.includes('vitor') || normalized.includes('ganh')) return `${asked.nome} tem ${stats.totalVitorias || 0} vitorias em ${period.label}, com ${stats.aproveitamento || 0}% de aproveitamento.`;
+    if (normalized.includes('perd')) return `${asked.nome} tem ${stats.totalDerrotas || 0} derrotas em ${period.label}.`;
+    if (normalized.includes('aproveitamento') || normalized.includes('desempenho')) return `${asked.nome} em ${period.label}: ${assistantDescribeStats(stats)}`;
+    return `${asked.nome} em ${period.label}: ${assistantDescribeStats(stats)}`;
+  }
+
+  function assistantPresenceAnswer(question) {
+    const normalized = normalizeAssistantText(question);
+    const period = assistantResolvePeriod(question);
+    if (!period.babas.length) return `Nao encontrei babas registrados para ${period.label}.`;
+    if (normalized.includes('quem jogou') || normalized.includes('quem veio') || normalized.includes('presentes')) {
+      const names = new Set();
+      period.babas.forEach((baba) => (baba.jogadoresPresentes || []).forEach((id) => names.add(playerName(id, baba))));
+      if (!names.size) return `Nao encontrei presencas registradas em ${period.label}.`;
+      return `Participaram em ${period.label} (${names.size}):\n- ${Array.from(names).sort((a, b) => a.localeCompare(b)).join('\n- ')}`;
+    }
+    if (normalized.includes('nao veio') || normalized.includes('faltou')) {
+      const active = period.babas[0];
+      const present = new Set(period.babas.flatMap((baba) => baba.jogadoresPresentes || []));
+      const absent = state.players.filter((player) => player.ativo !== false && !present.has(player.id));
+      if (!absent.length) return `Nao encontrei faltas em ${period.label}.`;
+      return `Jogadores sem presenca registrada em ${period.label}:\n- ${absent.map((player) => player.nome || playerName(player.id, active)).join('\n- ')}`;
+    }
+    const ranking = assistantRankingForBabas(period.babas);
+    const top = Object.values(ranking).filter((stats) => stats.totalBabas > 0).sort((a, b) => b.totalBabas - a.totalBabas || a.nome.localeCompare(b.nome))[0];
+    if (!top) return `Nao encontrei presencas suficientes em ${period.label}.`;
+    babaAssistant.context.players = [top.jogadorId];
+    return `${top.nome} e quem mais participou em ${period.label}, com ${top.totalBabas} presencas registradas.`;
+  }
+
+  function assistantTeamAnswer(question) {
+    const normalized = normalizeAssistantText(question);
+    const period = assistantResolvePeriod(question);
+    if (!period.babas.length) return `Nao encontrei babas para analisar times em ${period.label}.`;
+    const teamRows = [];
+    period.babas.forEach((baba) => {
+      (baba.teams || []).forEach((team) => {
+        if (!team?.id) return;
+        let row = teamRows.find((item) => item.name === team.name);
+        if (!row) {
+          row = { name: team.name, gols: 0, vitorias: 0, derrotas: 0, empates: 0, jogadores: new Set() };
+          teamRows.push(row);
+        }
+        row.gols += Number(team.golsPro || 0);
+        row.vitorias += Number(team.vitorias || 0);
+        row.derrotas += Number(team.derrotas || 0);
+        row.empates += Number(team.empates || 0);
+        (team.jogadores || []).forEach((id) => row.jogadores.add(playerName(id, baba)));
+      });
+    });
+    if (!teamRows.length) return `Ainda nao existem times sorteados em ${period.label}.`;
+    const namedTeam = teamRows.find((team) => normalized.includes(normalizeAssistantText(team.name)));
+    if (namedTeam && (normalized.includes('quem jogou') || normalized.includes('formacao') || normalized.includes('jogadores'))) {
+      return `${namedTeam.name} em ${period.label} teve estes jogadores registrados:\n- ${Array.from(namedTeam.jogadores).sort((a, b) => a.localeCompare(b)).join('\n- ')}`;
+    }
+    const metric = normalized.includes('gol') ? 'gols' : 'vitorias';
+    const best = teamRows.sort((a, b) => b[metric] - a[metric] || b.gols - a.gols || a.name.localeCompare(b.name))[0];
+    return `${best.name} lidera entre os times em ${period.label}, com ${best.vitorias} vitorias, ${best.gols} gols, ${best.empates} empates e ${best.derrotas} derrotas.`;
+  }
+
+  function answerBabaAssistantQuestion(question) {
+    const normalized = normalizeAssistantText(question);
+    if (!normalized) return 'Digite uma pergunta sobre gols, vitorias, jogadores, times, presencas ou pagamentos.';
+    if (normalized.includes('ajuda') || normalized.includes('o que voce faz')) {
+      return 'Posso consultar os dados reais do baba e responder sobre gols, vitorias, ranking, desempenho, fase recente, presencas, times e pagamentos.\n\nExemplos:\n- Quem fez mais gols?\n- Quem mais ganhou neste mes?\n- Compare dois jogadores\n- Quem esta em melhor fase?\n- Quem ainda nao pagou?';
+    }
+    const mentionedPlayers = assistantFindPlayers(question);
+    const hasPayment = /\bpag|devend|pendente|arrecad|receb|mensal/.test(normalized);
+    const hasCompare = normalized.includes('compare')
+      || normalized.includes('comparacao')
+      || /\bmelhor\b.*\bou\b/.test(normalized)
+      || (mentionedPlayers.length >= 2 && (normalized.includes(' ou ') || normalized.includes(' entre ') || normalized.includes('mais gols') || normalized.includes('mais vitorias') || normalized.includes('ganha mais')));
+    const hasTeam = /\btime\b|\btimes\b|barcelona|real madrid|arsenal|psg|chelsea|visitante/.test(normalized);
+    const hasPresence = /presenca|particip|quem jogou|quem veio|faltou|nao veio|frequencia/.test(normalized);
+    const hasRecent = /fase|recent|ultimamente|melhorou|evoluiu|caiu de rendimento/.test(normalized);
+    const hasLowest = /pior|menor desempenho|mais perdeu|menos ganhou/.test(normalized);
+    const playerDirect = assistantPlayerAnswer(question);
+
+    if (hasPayment) return assistantPaymentAnswer(question);
+    if (hasCompare) return assistantComparePlayers(question);
+    if (playerDirect && !/quem\s+/.test(normalized)) return playerDirect;
+    if (hasPresence) return assistantPresenceAnswer(question);
+    if (hasTeam) return assistantTeamAnswer(question);
+    if (hasRecent) return assistantRecentPhase(question);
+    if (hasLowest) return assistantLowestPerformance(question);
+    if (/melhor jogador|melhor desempenho|mais decisivo/.test(normalized)) return assistantBestPlayer(question);
+
+    const { period, ranking } = assistantRankingForQuestion(question);
+    if (normalized.includes('vitoria') || normalized.includes('ganhou') || normalized.includes('ganhar')) {
+      const items = sortRanking(ranking, 'wins');
+      if (items[0]) babaAssistant.context.players = [items[0].jogadorId];
+      return assistantTopLine(items, 'wins', period.label);
+    }
+    if (normalized.includes('derrota') || normalized.includes('perdeu')) {
+      const items = sortRanking(ranking, 'losses');
+      if (items[0]) babaAssistant.context.players = [items[0].jogadorId];
+      return assistantTopLine(items, 'losses', period.label);
+    }
+    if (normalized.includes('aproveitamento') || normalized.includes('eficiencia')) {
+      const items = sortRanking(ranking, 'efficiency');
+      if (items[0]) babaAssistant.context.players = [items[0].jogadorId];
+      return assistantTopLine(items, 'efficiency', period.label);
+    }
+    if (normalized.includes('goleiro')) {
+      const goalkeepers = calculateGoalkeeperRanking({ includeActive: true });
+      if (!goalkeepers.length) return 'Ainda nao encontrei jogos suficientes com goleiros para montar esse ranking.';
+      const top = goalkeepers[0];
+      return `${top.nome} aparece como melhor goleiro pelo criterio de menos gols sofridos: ${top.golsSofridos} sofridos em ${top.jogos} jogos, media ${top.mediaSofridos}.`;
+    }
+    if (normalized.includes('gol') || normalized.includes('artilheiro') || normalized.includes('marcou')) {
+      const items = sortRanking(ranking, 'goals');
+      if (items[0]) babaAssistant.context.players = [items[0].jogadorId];
+      return assistantTopLine(items, 'goals', period.label);
+    }
+    return 'Ainda nao consegui identificar a consulta. Tente perguntar sobre gols, vitorias, desempenho, fase recente, times, presencas ou pagamentos.';
+  }
+
+  function submitBabaAssistantQuestion(question) {
+    const text = String(question || '').trim();
+    if (!text) return;
+    openBabaAssistant();
+    babaAssistant.messages.push({ role: 'user', text });
+    babaAssistant.typing = true;
+    renderBabaAssistantMessages();
+    if (babaAssistant.els.input) babaAssistant.els.input.value = '';
+    window.setTimeout(() => {
+      const answer = answerBabaAssistantQuestion(text);
+      babaAssistant.typing = false;
+      babaAssistant.messages.push({ role: 'bot', text: answer });
+      renderBabaAssistantMessages();
+    }, 420);
+  }
+
+  function wireBabaAssistant() {
+    initBabaAssistant();
+    if (babaAssistant.wired) return;
+    babaAssistant.wired = true;
+    babaAssistant.els.toggle?.addEventListener('click', () => (babaAssistant.open ? closeBabaAssistant() : openBabaAssistant()));
+    babaAssistant.els.close?.addEventListener('click', closeBabaAssistant);
+    babaAssistant.els.form?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      submitBabaAssistantQuestion(babaAssistant.els.input?.value);
+    });
+    babaAssistant.els.root?.addEventListener('click', (event) => {
+      const suggestion = event.target.closest('[data-ai-question]');
+      if (suggestion) submitBabaAssistantQuestion(suggestion.dataset.aiQuestion);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && babaAssistant.open) closeBabaAssistant();
+    });
+  }
+
   function wireEvents() {
+    wireBabaAssistant();
     els.enterOrganizer.addEventListener('click', () => {
       els.passwordForm.classList.remove('hidden');
       els.passwordInput.focus();

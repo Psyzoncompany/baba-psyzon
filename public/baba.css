@@ -1967,3 +1967,391 @@ body.baba-player-mode .baba-organizer-layout {
     justify-self: center;
   }
 }
+
+/* v6.3 - IA do Baba */
+.baba-ai-assistant {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: calc(5.4rem + env(safe-area-inset-bottom));
+  z-index: 10070;
+  pointer-events: none;
+}
+
+.baba-ai-toggle,
+.baba-ai-close,
+.baba-ai-form button,
+.baba-ai-suggestions button {
+  font: inherit;
+}
+
+.baba-ai-toggle {
+  pointer-events: auto;
+  min-width: 3.75rem;
+  min-height: 3.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .48rem;
+  border: 1px solid rgba(250, 204, 21, .42);
+  border-radius: 999px;
+  padding: .72rem .92rem;
+  color: #071712;
+  background: linear-gradient(135deg, #facc15, #39d98a 52%, #38bdf8);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, .35), 0 0 0 0 rgba(250, 204, 21, .38);
+  cursor: pointer;
+  animation: babaAiPulse 2.8s ease-in-out infinite;
+}
+
+.baba-ai-toggle:hover {
+  transform: translateY(-2px);
+  filter: saturate(1.08);
+}
+
+.baba-ai-toggle__icon,
+.baba-ai-avatar,
+.baba-ai-message__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.baba-ai-toggle svg {
+  width: 1.22rem;
+  height: 1.22rem;
+}
+
+.baba-ai-toggle__text {
+  max-width: 7.5rem;
+  font-size: .78rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.baba-ai-panel {
+  pointer-events: auto;
+  position: absolute;
+  right: 0;
+  bottom: 4.85rem;
+  width: min(24.5rem, calc(100vw - 1.5rem));
+  max-height: min(42rem, calc(100vh - 8rem));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  overflow: hidden;
+  border: 1px solid rgba(220, 252, 231, .18);
+  border-radius: 18px;
+  color: var(--baba-text);
+  background:
+    linear-gradient(160deg, rgba(10, 25, 20, .96), rgba(6, 18, 13, .98)),
+    var(--baba-panel-strong);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, .48), inset 0 1px 0 rgba(255, 255, 255, .08);
+  opacity: 0;
+  transform: translateY(12px) scale(.98);
+  transform-origin: right bottom;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity .2s ease, transform .2s ease, visibility .2s ease;
+}
+
+.baba-ai-assistant.is-open .baba-ai-panel {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.baba-ai-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: .72rem;
+  align-items: center;
+  padding: .85rem;
+  border-bottom: 1px solid rgba(220, 252, 231, .12);
+  background: linear-gradient(135deg, rgba(20, 164, 106, .18), rgba(56, 189, 248, .10));
+}
+
+.baba-ai-avatar {
+  width: 2.55rem;
+  height: 2.55rem;
+  border: 1px solid rgba(250, 204, 21, .38);
+  border-radius: 12px;
+  color: #facc15;
+  background: rgba(255, 255, 255, .08);
+}
+
+.baba-ai-avatar svg,
+.baba-ai-close svg,
+.baba-ai-form button svg,
+.baba-ai-message__avatar svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.baba-ai-head strong,
+.baba-ai-head small {
+  display: block;
+  min-width: 0;
+}
+
+.baba-ai-head strong {
+  font-size: .98rem;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.baba-ai-head small {
+  margin-top: .16rem;
+  color: var(--baba-muted);
+  font-size: .72rem;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.baba-ai-close {
+  width: 2.18rem;
+  height: 2.18rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(220, 252, 231, .14);
+  border-radius: 10px;
+  color: var(--baba-text);
+  background: rgba(255, 255, 255, .06);
+  cursor: pointer;
+}
+
+.baba-ai-close:hover {
+  border-color: rgba(250, 204, 21, .34);
+  background: rgba(250, 204, 21, .12);
+}
+
+.baba-ai-messages {
+  min-height: 15rem;
+  max-height: 27rem;
+  display: grid;
+  align-content: start;
+  gap: .7rem;
+  overflow-y: auto;
+  padding: .85rem;
+  scrollbar-width: thin;
+}
+
+.baba-ai-message {
+  display: flex;
+  gap: .48rem;
+  min-width: 0;
+}
+
+.baba-ai-message.is-user {
+  justify-content: flex-end;
+}
+
+.baba-ai-message>div {
+  max-width: min(19rem, 86%);
+  border: 1px solid rgba(220, 252, 231, .12);
+  border-radius: 14px;
+  padding: .68rem .76rem;
+  color: var(--baba-text);
+  background: rgba(255, 255, 255, .07);
+  font-size: .82rem;
+  font-weight: 730;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+}
+
+.baba-ai-message.is-user>div {
+  color: #052015;
+  border-color: rgba(250, 204, 21, .38);
+  background: linear-gradient(135deg, #facc15, #7ee787);
+  font-weight: 850;
+}
+
+.baba-ai-message__avatar {
+  width: 1.82rem;
+  height: 1.82rem;
+  margin-top: .1rem;
+  border: 1px solid rgba(56, 189, 248, .28);
+  border-radius: 9px;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, .10);
+}
+
+.baba-ai-bullet {
+  display: inline-block;
+  margin-top: .12rem;
+}
+
+.baba-ai-message.is-typing>div {
+  display: inline-flex;
+  gap: .28rem;
+  align-items: center;
+  min-width: 4rem;
+}
+
+.baba-ai-message.is-typing span:not(.baba-ai-message__avatar) {
+  width: .38rem;
+  height: .38rem;
+  border-radius: 999px;
+  background: #d9f99d;
+  animation: babaAiTyping 1s ease-in-out infinite;
+}
+
+.baba-ai-message.is-typing span:nth-child(2) {
+  animation-delay: .15s;
+}
+
+.baba-ai-message.is-typing span:nth-child(3) {
+  animation-delay: .3s;
+}
+
+.baba-ai-suggestions {
+  display: flex;
+  gap: .42rem;
+  overflow-x: auto;
+  padding: 0 .85rem .75rem;
+}
+
+.baba-ai-suggestions button {
+  flex: 0 0 auto;
+  border: 1px solid rgba(220, 252, 231, .13);
+  border-radius: 999px;
+  padding: .46rem .62rem;
+  color: var(--baba-text);
+  background: rgba(255, 255, 255, .06);
+  font-size: .68rem;
+  font-weight: 850;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.baba-ai-suggestions button:hover {
+  border-color: rgba(56, 189, 248, .30);
+  background: rgba(56, 189, 248, .12);
+}
+
+.baba-ai-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .48rem;
+  padding: .76rem;
+  border-top: 1px solid rgba(220, 252, 231, .12);
+  background: rgba(0, 0, 0, .14);
+}
+
+.baba-ai-form input {
+  min-width: 0;
+  min-height: 2.72rem;
+  border: 1px solid rgba(220, 252, 231, .16);
+  border-radius: 12px;
+  padding: .72rem .78rem;
+  color: var(--baba-text);
+  background: rgba(255, 255, 255, .08);
+  font-size: .86rem;
+  outline: none;
+}
+
+.baba-ai-form input:focus {
+  border-color: rgba(56, 189, 248, .42);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, .12);
+}
+
+.baba-ai-form button {
+  width: 2.72rem;
+  min-height: 2.72rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 12px;
+  color: #062118;
+  background: linear-gradient(135deg, #facc15, #38d98d);
+  cursor: pointer;
+}
+
+.baba-ai-toggle:focus-visible,
+.baba-ai-close:focus-visible,
+.baba-ai-form button:focus-visible,
+.baba-ai-suggestions button:focus-visible {
+  outline: 3px solid rgba(56, 199, 244, .42);
+  outline-offset: 3px;
+}
+
+@keyframes babaAiPulse {
+  0%, 100% {
+    box-shadow: 0 18px 42px rgba(0, 0, 0, .35), 0 0 0 0 rgba(250, 204, 21, .34);
+  }
+  55% {
+    box-shadow: 0 18px 42px rgba(0, 0, 0, .35), 0 0 0 11px rgba(250, 204, 21, 0);
+  }
+}
+
+@keyframes babaAiTyping {
+  0%, 100% {
+    opacity: .35;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+@media (max-width: 760px) {
+  .baba-ai-assistant {
+    right: .62rem;
+    bottom: calc(.62rem + env(safe-area-inset-bottom));
+  }
+
+  .baba-ai-toggle {
+    min-width: 3.3rem;
+    min-height: 3.3rem;
+    padding: .66rem;
+  }
+
+  .baba-ai-toggle__text {
+    display: none;
+  }
+
+  .baba-ai-panel {
+    position: fixed;
+    inset: auto .55rem calc(4.5rem + env(safe-area-inset-bottom)) .55rem;
+    width: auto;
+    max-height: min(78vh, 38rem);
+    border-radius: 16px;
+    transform-origin: center bottom;
+  }
+
+  .baba-ai-head {
+    padding: .72rem;
+  }
+
+  .baba-ai-avatar {
+    width: 2.28rem;
+    height: 2.28rem;
+    border-radius: 10px;
+  }
+
+  .baba-ai-head small {
+    font-size: .66rem;
+  }
+
+  .baba-ai-messages {
+    min-height: 12rem;
+    max-height: 49vh;
+    padding: .7rem;
+  }
+
+  .baba-ai-message>div {
+    max-width: 88%;
+    padding: .62rem .68rem;
+    font-size: .76rem;
+  }
+
+  .baba-ai-suggestions {
+    padding: 0 .7rem .65rem;
+  }
+
+  .baba-ai-form {
+    padding: .65rem;
+  }
+}
