@@ -1,4 +1,4 @@
-import { db, storage } from './js/firebase-init.js';
+import { db } from './js/firebase-init.js';
 import {
   collection,
   doc,
@@ -14,12 +14,6 @@ import {
   startAfter,
   writeBatch,
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-import {
-  getDownloadURL,
-  ref as storageRef,
-  uploadString,
-} from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js';
-
 const SCHEMA_VERSION = 2;
 const STORAGE_KEY = 'psyzon_baba_state_v1';
 const DEVICE_ID_KEY = 'psyzon_baba_public_device_id';
@@ -37,7 +31,6 @@ const unsubscribers = new Set();
 const activeSubscriptions = new Map();
 const loadedBabas = new Map();
 const monthStatsCache = new Map();
-const failedGoalImageUploads = new Set();
 let saveTimer = null;
 let flushTimer = null;
 let lastLocalState = null;
@@ -357,23 +350,6 @@ function computeAggregateStats(state) {
   return { general, monthly };
 }
 
-async function uploadGoalImage(goal) {
-  if (!String(goal?.foto || '').startsWith('data:image/')) return goal?.foto || '';
-  const goalId = safeId(goal.id);
-  if (failedGoalImageUploads.has(goalId)) return null;
-  const path = `baba/purchase-goals/${safeId(goal.id)}/image`;
-  const imageRef = storageRef(storage, path);
-  try {
-    await uploadString(imageRef, goal.foto, 'data_url');
-    failedGoalImageUploads.delete(goalId);
-    return getDownloadURL(imageRef);
-  } catch (error) {
-    failedGoalImageUploads.add(goalId);
-    console.warn('Nao foi possivel enviar a imagem da meta para o Firebase Storage. Verifique o CORS do bucket.', error);
-    return null;
-  }
-}
-
 function babaMetadata(baba, currentGameId = null) {
   return compact({
     id: baba.id,
@@ -617,15 +593,18 @@ async function persistGlobalData(state, previousState = null) {
     let imageUrl = goal.foto || '';
     let imageUploadPending = false;
     if (String(imageUrl).startsWith('data:image/')) {
-      const uploadedUrl = await uploadGoalImage(goal);
-      imageUploadPending = !uploadedUrl;
-      imageUrl = uploadedUrl || previousState?.purchaseGoals?.find((item) => item.id === goal.id)?.foto || '';
-      if (String(imageUrl).startsWith('data:image/')) imageUrl = '';
+      const imageBytes = estimateJsonSize(imageUrl);
+      if (imageBytes > 650_000) {
+        imageUploadPending = true;
+        imageUrl = previousState?.purchaseGoals?.find((item) => item.id === goal.id)?.foto || '';
+        if (String(imageUrl).startsWith('data:image/') && estimateJsonSize(imageUrl) > 650_000) imageUrl = '';
+      }
     }
     operations.push(setOperation(doc(db, 'baba_purchase_goals', safeId(goal.id)), compact({
       ...goal,
       foto: imageUrl,
-      imagePath: imageUrl ? `baba/purchase-goals/${safeId(goal.id)}/image` : null,
+      imagePath: null,
+      imageStoredInline: Boolean(String(imageUrl).startsWith('data:image/')),
       imageUploadPending,
       schemaVersion: SCHEMA_VERSION,
       deleted: false,

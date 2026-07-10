@@ -1001,18 +1001,27 @@
     return new Promise((resolve) => {
       const image = new Image();
       image.onload = () => {
-        const maxSide = 560;
-        const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+        let maxSide = 520;
+        let quality = 0.68;
         const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(image.width * scale));
-        canvas.height = Math.max(1, Math.round(image.height * scale));
         const context = canvas.getContext('2d');
         if (!context) {
           resolve(dataUrl);
           return;
         }
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.64));
+        let output = dataUrl;
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+          canvas.width = Math.max(1, Math.round(image.width * scale));
+          canvas.height = Math.max(1, Math.round(image.height * scale));
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          output = canvas.toDataURL('image/jpeg', quality);
+          if (output.length < 260000) break;
+          quality = Math.max(0.42, quality - 0.08);
+          maxSide = Math.max(320, Math.round(maxSide * 0.88));
+        }
+        resolve(output);
       };
       image.onerror = () => resolve(dataUrl);
       image.src = dataUrl;
