@@ -53,6 +53,9 @@
     closePassword: $('#close-organizer-password'),
     modeReset: $('#mode-reset-btn'),
     logoutBtn: $('#baba-logout-btn'),
+    moreToggle: $('#baba-more-toggle'),
+    moreMenu: $('#baba-more-menu'),
+    headerManage: $('[data-header-tab="organizer"]'),
     createToday: $('#create-today-btn'),
     saveHistory: $('#save-history-btn'),
     dateInput: $('#baba-date-input'),
@@ -693,6 +696,7 @@
   function setMode(nextMode) {
     mode = nextMode;
     sessionStorage.setItem(MODE_KEY, nextMode);
+    document.body.classList.add('baba-app-mode');
     document.body.classList.toggle('baba-player-mode', nextMode === 'player');
     document.body.classList.toggle('baba-locked-viewer', isForcedViewerMode());
     els.gateway.classList.add('hidden');
@@ -705,6 +709,7 @@
   function resetMode() {
     mode = null;
     sessionStorage.removeItem(MODE_KEY);
+    document.body.classList.remove('baba-app-mode');
     document.body.classList.remove('baba-player-mode');
     document.body.classList.remove('baba-locked-viewer');
     els.gateway.classList.remove('hidden');
@@ -4068,7 +4073,11 @@
 
   function setActiveTab(tab) {
     const safeTab = !isOrganizer() && tab === 'organizer' ? 'dashboard' : tab;
-    $$('.baba-tabs button').forEach((button) => button.classList.toggle('active', button.dataset.tab === safeTab));
+    $$('.baba-tabs [data-tab]').forEach((button) => button.classList.toggle('active', button.dataset.tab === safeTab));
+    const isMoreTab = ['teams', 'goals', 'organizer'].includes(safeTab);
+    els.moreToggle?.classList.toggle('active', isMoreTab);
+    els.moreToggle?.setAttribute('aria-expanded', 'false');
+    els.moreMenu?.classList.add('hidden');
     $$('.baba-view').forEach((view) => view.classList.toggle('active', view.dataset.view === safeTab));
   }
 
@@ -4778,8 +4787,24 @@
       if (event.target === els.gameDetailModal) els.gameDetailModal.classList.add('hidden');
     });
 
-    $$('.baba-tabs button').forEach((button) => {
+    $$('.baba-tabs [data-tab]').forEach((button) => {
       button.addEventListener('click', () => setActiveTab(button.dataset.tab));
+    });
+
+    els.moreToggle?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const willOpen = els.moreMenu?.classList.contains('hidden');
+      els.moreMenu?.classList.toggle('hidden', !willOpen);
+      els.moreToggle?.setAttribute('aria-expanded', String(Boolean(willOpen)));
+    });
+
+    els.headerManage?.addEventListener('click', () => setActiveTab('organizer'));
+
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('.baba-more-nav')) {
+        els.moreMenu?.classList.add('hidden');
+        els.moreToggle?.setAttribute('aria-expanded', 'false');
+      }
     });
 
     document.addEventListener('change', (event) => {

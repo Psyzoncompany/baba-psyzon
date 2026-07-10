@@ -1,0 +1,928 @@
+:root {
+  --liquid-bg: #f2f6fa;
+  --liquid-surface: rgba(255, 255, 255, .72);
+  --liquid-surface-strong: rgba(255, 255, 255, .9);
+  --liquid-border: rgba(255, 255, 255, .82);
+  --liquid-line: rgba(15, 35, 58, .12);
+  --liquid-navy: #071f38;
+  --liquid-navy-soft: #12344f;
+  --liquid-teal: #087f6c;
+  --liquid-teal-soft: #e1f4ef;
+  --liquid-gold: #d6a21d;
+  --liquid-red: #c9384f;
+  --liquid-text: #13263a;
+  --liquid-muted: #607287;
+  --liquid-shadow: 0 18px 45px rgba(20, 42, 68, .12);
+}
+
+html body.baba-page,
+html body.baba-page::before,
+html body.baba-page *::before,
+html body.baba-page *::after {
+  background-image: none !important;
+  mask-image: none !important;
+}
+
+html body.baba-page {
+  min-height: 100vh;
+  color: var(--liquid-text) !important;
+  background: var(--liquid-bg) !important;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html body.baba-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: #f2f6fa !important;
+}
+
+.baba-unified-header {
+  position: sticky !important;
+  top: .75rem !important;
+  z-index: 70;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  width: min(1480px, calc(100% - 2rem)) !important;
+  margin: .75rem auto 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 1px solid rgba(255, 255, 255, .16) !important;
+  border-radius: 8px !important;
+  color: #fff !important;
+  background: rgba(7, 31, 56, .94) !important;
+  box-shadow: 0 18px 42px rgba(7, 31, 56, .2) !important;
+  backdrop-filter: blur(28px) saturate(135%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(135%) !important;
+}
+
+.baba-header-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(15rem, .7fr) auto;
+  align-items: center;
+  gap: 1rem;
+  min-height: 88px;
+  padding: .8rem 1rem;
+}
+
+.baba-unified-header .baba-brand {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  min-width: 0;
+  color: #fff !important;
+}
+
+.baba-unified-header .baba-brand img {
+  width: 58px !important;
+  height: 58px !important;
+  flex: 0 0 58px;
+  object-fit: contain;
+}
+
+.baba-unified-header .baba-brand__copy {
+  display: grid !important;
+  gap: .2rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.baba-unified-header .baba-brand__copy strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: #fff !important;
+  font-size: 1.15rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.baba-unified-header .baba-brand__copy small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(232, 241, 249, .68) !important;
+  font-size: .73rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.baba-header-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .55rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.baba-online-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .48rem;
+  min-height: 38px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 999px;
+  padding: .45rem .7rem;
+  color: #fff;
+  background: rgba(255, 255, 255, .08) !important;
+  white-space: nowrap;
+}
+
+.baba-online-pill i,
+.baba-sync-strip__dot {
+  width: .5rem;
+  height: .5rem;
+  flex: 0 0 .5rem;
+  border-radius: 50%;
+  background: #21c99a !important;
+  box-shadow: 0 0 0 4px rgba(33, 201, 154, .12);
+}
+
+.baba-online-pill strong {
+  max-width: 13rem;
+  overflow: hidden;
+  color: #fff !important;
+  font-size: .76rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+}
+
+.baba-unified-header .baba-sync-strip {
+  position: static !important;
+  display: flex !important;
+  width: auto !important;
+  margin: 0 !important;
+  gap: .45rem;
+  border: 0 !important;
+  padding: 0 !important;
+  color: rgba(232, 241, 249, .68) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.baba-unified-header .baba-sync-strip__main,
+.baba-unified-header .baba-sync-strip__state {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  min-width: 0;
+  color: inherit !important;
+}
+
+.baba-unified-header .baba-sync-strip__main svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+}
+
+.baba-unified-header .baba-sync-strip__main span,
+.baba-unified-header .baba-sync-strip__state span {
+  color: inherit !important;
+  font-size: .68rem;
+  white-space: nowrap;
+}
+
+.baba-unified-header #baba-sync-message {
+  display: none !important;
+}
+
+.baba-unified-header .baba-sync-strip__dot {
+  width: .4rem;
+  height: .4rem;
+  flex-basis: .4rem;
+}
+
+.baba-header-actions {
+  display: flex !important;
+  justify-content: flex-end;
+  gap: .42rem !important;
+  min-width: 0;
+}
+
+.baba-unified-header .baba-nav button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, .13) !important;
+  border-radius: 8px !important;
+  color: #fff !important;
+  background: rgba(255, 255, 255, .07) !important;
+  box-shadow: none !important;
+}
+
+.baba-unified-header .baba-nav button:hover {
+  border-color: rgba(255, 255, 255, .28) !important;
+  background: rgba(255, 255, 255, .13) !important;
+}
+
+.baba-manage-button {
+  min-width: 154px;
+  padding: .6rem .85rem !important;
+  border-color: var(--liquid-gold) !important;
+  background: var(--liquid-teal) !important;
+}
+
+.baba-manage-button svg,
+.baba-icon-button svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 1.15rem;
+}
+
+.baba-icon-button {
+  width: 42px;
+  min-width: 42px;
+  padding: 0 !important;
+}
+
+.baba-unified-header .baba-tabs {
+  position: relative !important;
+  top: auto !important;
+  z-index: 2;
+  display: none;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: .55rem !important;
+  width: auto !important;
+  min-width: calc(100% - 2rem) !important;
+  max-width: none !important;
+  justify-self: stretch !important;
+  box-sizing: border-box;
+  margin: 0 1rem .9rem !important;
+  padding: .65rem 0 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-top: 1px solid rgba(255, 255, 255, .1) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+body.baba-app-mode .baba-unified-header .baba-tabs {
+  display: grid !important;
+}
+
+body:not(.baba-app-mode) .baba-header-status,
+body:not(.baba-app-mode) .baba-manage-button {
+  display: none !important;
+}
+
+body:not(.baba-app-mode) .baba-header-main {
+  min-height: 68px;
+}
+
+body:not(.baba-app-mode) #mode-reset-btn {
+  display: none !important;
+}
+
+.baba-unified-header .baba-tabs > button,
+.baba-unified-header .baba-more-nav > button {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 48px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .55rem;
+  border: 1px solid rgba(255, 255, 255, .11) !important;
+  border-radius: 8px !important;
+  padding: .55rem .7rem !important;
+  color: rgba(234, 242, 250, .76) !important;
+  background: rgba(255, 255, 255, .045) !important;
+  box-shadow: none !important;
+  font-size: .8rem !important;
+  font-weight: 750 !important;
+}
+
+.baba-unified-header .baba-tabs > button:hover,
+.baba-unified-header .baba-more-nav > button:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, .1) !important;
+  transform: none !important;
+}
+
+.baba-unified-header .baba-tabs > button.active,
+.baba-unified-header .baba-more-nav > button.active {
+  border-color: var(--liquid-teal) !important;
+  color: #fff !important;
+  background: var(--liquid-teal) !important;
+  box-shadow: inset 0 -3px 0 var(--liquid-gold) !important;
+}
+
+.baba-tab-icon,
+.baba-tab-chevron {
+  width: 1.05rem !important;
+  height: 1.05rem !important;
+  flex: 0 0 1.05rem;
+}
+
+.baba-tab-chevron {
+  width: .9rem !important;
+  height: .9rem !important;
+  flex-basis: .9rem;
+}
+
+.baba-more-nav {
+  position: relative;
+  min-width: 0;
+}
+
+.baba-more-menu {
+  position: absolute;
+  top: calc(100% + .5rem);
+  right: 0;
+  z-index: 90;
+  display: grid;
+  gap: .35rem;
+  width: min(220px, 80vw);
+  border: 1px solid rgba(255, 255, 255, .78);
+  border-radius: 8px;
+  padding: .45rem;
+  color: var(--liquid-text);
+  background: rgba(250, 253, 255, .9) !important;
+  box-shadow: var(--liquid-shadow);
+  backdrop-filter: blur(24px) saturate(130%);
+  -webkit-backdrop-filter: blur(24px) saturate(130%);
+}
+
+.baba-more-menu button {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: .6rem;
+  border: 0;
+  border-radius: 6px;
+  padding: .55rem .65rem;
+  color: var(--liquid-text) !important;
+  background: transparent !important;
+  font-size: .78rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.baba-more-menu button:hover,
+.baba-more-menu button.active {
+  color: var(--liquid-teal) !important;
+  background: var(--liquid-teal-soft) !important;
+}
+
+.baba-shell {
+  width: min(1480px, calc(100% - 2rem)) !important;
+  margin: 1rem auto 5rem !important;
+}
+
+.baba-gateway,
+.baba-hero,
+.baba-card,
+.baba-metrics article,
+.baba-modal__panel,
+.baba-password__window,
+.baba-ai-panel {
+  border: 1px solid var(--liquid-border) !important;
+  border-radius: 8px !important;
+  background: var(--liquid-surface) !important;
+  box-shadow: var(--liquid-shadow) !important;
+  backdrop-filter: blur(24px) saturate(125%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(125%) !important;
+}
+
+.baba-gateway {
+  min-height: calc(100vh - 8rem) !important;
+  grid-template-columns: minmax(260px, .72fr) minmax(0, 1.28fr) !important;
+  overflow: hidden;
+}
+
+.baba-gateway__media {
+  min-height: 34rem !important;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  background: #dff2ed !important;
+}
+
+.baba-gateway__media::after {
+  display: none !important;
+}
+
+.baba-home-logo {
+  position: static !important;
+  width: min(68%, 300px) !important;
+  max-height: 300px !important;
+  object-fit: contain;
+  filter: none !important;
+}
+
+.baba-gateway__panel {
+  width: 100% !important;
+  min-width: 0;
+  margin: 0 !important;
+  box-sizing: border-box;
+  gap: 1rem !important;
+  padding: clamp(1.25rem, 4vw, 3rem) !important;
+  background: transparent !important;
+}
+
+.baba-gateway .baba-gateway__panel > .baba-kicker {
+  display: inline-flex !important;
+}
+
+.baba-gateway .baba-gateway__panel > h1,
+.baba-gateway .baba-gateway__panel > p {
+  display: block !important;
+}
+
+.baba-gateway h1,
+.baba-hero h1 {
+  max-width: 18ch !important;
+  color: var(--liquid-text) !important;
+  font-size: 2.4rem !important;
+  line-height: 1.08 !important;
+  font-weight: 800 !important;
+}
+
+.baba-gateway p,
+.baba-hero p {
+  color: var(--liquid-muted) !important;
+}
+
+.baba-kicker,
+.baba-gateway__badge {
+  border-color: rgba(8, 127, 108, .2) !important;
+  color: var(--liquid-teal) !important;
+  background: var(--liquid-teal-soft) !important;
+}
+
+.baba-choice,
+.baba-row,
+.baba-team,
+.baba-history-item,
+.baba-player-admin,
+.baba-present-item,
+.baba-match-live,
+.baba-table__row,
+.baba-scoreboard,
+.baba-empty,
+.baba-team__stats span,
+.baba-pill,
+.baba-goal-card,
+.baba-payment-item {
+  border: 1px solid var(--liquid-line) !important;
+  border-radius: 8px !important;
+  color: var(--liquid-text) !important;
+  background: rgba(255, 255, 255, .58) !important;
+  box-shadow: none !important;
+}
+
+.baba-choice {
+  position: relative;
+  min-height: 104px !important;
+  display: grid !important;
+  grid-template-columns: 2.5rem minmax(0, 1fr) 2.25rem !important;
+  grid-template-rows: auto auto;
+  align-items: center !important;
+  gap: .2rem .8rem !important;
+  padding: .85rem 1rem !important;
+}
+
+.baba-choice::after {
+  display: none !important;
+}
+
+.baba-choice:hover,
+.baba-row:hover,
+.baba-team:hover,
+.baba-history-item:hover {
+  border-color: rgba(8, 127, 108, .3) !important;
+  background: rgba(255, 255, 255, .86) !important;
+  box-shadow: 0 12px 28px rgba(20, 42, 68, .09) !important;
+  transform: translateY(-1px);
+}
+
+.baba-choice-icon {
+  position: static !important;
+  grid-column: 1 !important;
+  grid-row: 1 / span 2 !important;
+  align-self: center;
+  justify-self: center;
+  width: 2.1rem !important;
+  height: 2.1rem !important;
+  border-radius: 0 !important;
+  color: var(--liquid-teal);
+  box-shadow: none !important;
+}
+
+.baba-choice span {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  align-self: end !important;
+  min-width: 0;
+  color: var(--liquid-text) !important;
+  font-size: 1rem !important;
+  line-height: 1.2 !important;
+  font-weight: 800 !important;
+}
+
+.baba-choice small {
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+  align-self: start !important;
+  min-width: 0;
+  color: var(--liquid-muted) !important;
+  font-size: .75rem !important;
+  line-height: 1.35 !important;
+}
+
+.baba-choice .baba-choice-arrow {
+  grid-column: 3 !important;
+  grid-row: 1 / span 2 !important;
+  width: 2.2rem !important;
+  height: 2.2rem !important;
+  color: #fff !important;
+  background: var(--liquid-navy) !important;
+  box-shadow: none !important;
+  font-size: 1.45rem !important;
+}
+
+.baba-choice:nth-child(2) .baba-choice-arrow {
+  background: var(--liquid-teal) !important;
+  box-shadow: none !important;
+}
+
+.baba-choice span,
+.baba-card__head h2,
+.baba-row strong,
+.baba-team h3,
+.baba-history strong,
+.baba-player-admin strong,
+.baba-present-item strong,
+.baba-metrics strong,
+.baba-scoreboard strong,
+.baba-table__row strong,
+.baba-table__row b {
+  color: var(--liquid-text) !important;
+}
+
+.baba-choice small,
+.baba-card__head span,
+.baba-row small,
+.baba-team small,
+.baba-history small,
+.baba-empty,
+.baba-metrics small,
+.baba-metrics span {
+  color: var(--liquid-muted) !important;
+}
+
+.baba-hero {
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(14rem, .42fr) minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 1rem !important;
+  margin: 0 0 .9rem !important;
+  padding: .9rem !important;
+  overflow: visible !important;
+}
+
+.baba-hero__visual,
+.baba-hero h1,
+.baba-hero p {
+  display: none !important;
+}
+
+.baba-hero__copy {
+  gap: .55rem !important;
+}
+
+.baba-hero__actions {
+  gap: .45rem !important;
+}
+
+.baba-scoreboard {
+  min-height: 92px !important;
+  grid-template-columns: 1fr auto 1fr !important;
+  padding: .8rem !important;
+  background: rgba(255, 255, 255, .72) !important;
+}
+
+.baba-scoreboard__score {
+  min-width: 104px !important;
+  color: var(--liquid-navy) !important;
+  font-size: 2rem !important;
+  font-weight: 850 !important;
+}
+
+.baba-primary,
+.baba-goal-btn,
+.baba-goal-player,
+.baba-timer,
+.baba-password button[type="submit"] {
+  border-color: var(--liquid-teal) !important;
+  color: #fff !important;
+  background: var(--liquid-teal) !important;
+  box-shadow: none !important;
+}
+
+.baba-secondary,
+.baba-action-grid button,
+.baba-player-form button,
+.baba-mini-btn,
+.baba-export-btn,
+.baba-list-btn,
+.baba-password__close {
+  border-color: var(--liquid-line) !important;
+  color: var(--liquid-text) !important;
+  background: rgba(255, 255, 255, .72) !important;
+  box-shadow: none !important;
+}
+
+.baba-primary:hover,
+.baba-goal-btn:hover,
+.baba-goal-player:hover {
+  background: #076d5e !important;
+}
+
+.baba-action-grid .danger,
+.baba-mini-btn.danger {
+  border-color: rgba(201, 56, 79, .22) !important;
+  color: var(--liquid-red) !important;
+  background: #fff0f2 !important;
+}
+
+.baba-password input,
+.baba-date-row input,
+.baba-player-form input,
+.baba-player-form select,
+.baba-match-form input,
+.baba-goal-form input,
+.baba-goal-form select,
+.baba-ai-input {
+  border: 1px solid var(--liquid-line) !important;
+  border-radius: 7px !important;
+  color: var(--liquid-text) !important;
+  background: rgba(255, 255, 255, .8) !important;
+  box-shadow: none !important;
+}
+
+.baba-password input:focus,
+.baba-date-row input:focus,
+.baba-player-form input:focus,
+.baba-player-form select:focus,
+.baba-match-form input:focus,
+.baba-goal-form input:focus,
+.baba-ai-input:focus {
+  border-color: rgba(8, 127, 108, .62) !important;
+  box-shadow: 0 0 0 3px rgba(8, 127, 108, .1) !important;
+}
+
+.baba-card__head {
+  border-bottom-color: var(--liquid-line) !important;
+}
+
+.baba-card-icon,
+.baba-metric-icon {
+  color: var(--liquid-teal) !important;
+}
+
+.baba-table__head {
+  color: var(--liquid-muted) !important;
+  background: rgba(230, 238, 245, .72) !important;
+}
+
+.baba-table__row.is-live {
+  border-color: rgba(8, 127, 108, .28) !important;
+  background: var(--liquid-teal-soft) !important;
+  box-shadow: inset 4px 0 0 var(--liquid-teal) !important;
+}
+
+.baba-gold-leader,
+.baba-ranking-card--top1,
+.baba-table__row.is-first,
+.baba-table-scorer.is-first {
+  border-color: rgba(214, 162, 29, .4) !important;
+  color: #6d4d00 !important;
+  background: #fff8df !important;
+  box-shadow: inset 4px 0 0 var(--liquid-gold) !important;
+}
+
+.baba-ranking-medal--gold,
+.baba-position-badge.is-first {
+  color: #fff !important;
+  background: var(--liquid-gold) !important;
+}
+
+.baba-ai-toggle {
+  border: 1px solid rgba(255, 255, 255, .76) !important;
+  border-radius: 8px !important;
+  color: #fff !important;
+  background: rgba(7, 31, 56, .9) !important;
+  box-shadow: 0 14px 32px rgba(7, 31, 56, .2) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+}
+
+.baba-ai-toggle .baba-ai-toggle__text,
+.baba-ai-toggle .baba-ai-toggle__icon {
+  color: #fff !important;
+}
+
+.baba-ai-head,
+.baba-ai-suggestions,
+.baba-ai-compose {
+  border-color: var(--liquid-line) !important;
+  background: rgba(255, 255, 255, .64) !important;
+}
+
+.baba-ai-panel,
+.baba-ai-panel strong {
+  color: var(--liquid-text) !important;
+}
+
+.baba-ai-panel small,
+.baba-ai-message--assistant {
+  color: var(--liquid-muted) !important;
+}
+
+.baba-ai-suggestions button {
+  border-color: rgba(8, 127, 108, .16) !important;
+  color: var(--liquid-teal) !important;
+  background: var(--liquid-teal-soft) !important;
+}
+
+@media (max-width: 1080px) {
+  .baba-header-main {
+    grid-template-columns: minmax(15rem, 1fr) auto;
+  }
+
+  .baba-header-status {
+    display: none;
+  }
+
+  .baba-gateway {
+    grid-template-columns: minmax(220px, .6fr) minmax(0, 1.4fr) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .baba-unified-header {
+    top: .35rem !important;
+    width: calc(100% - .7rem) !important;
+    margin-top: .35rem !important;
+  }
+
+  .baba-header-main {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .45rem;
+    min-height: 60px;
+    padding: .45rem;
+  }
+
+  .baba-unified-header .baba-brand {
+    gap: .45rem;
+  }
+
+  .baba-unified-header .baba-brand img {
+    width: 42px !important;
+    height: 42px !important;
+    flex-basis: 42px;
+  }
+
+  .baba-brand__copy strong {
+    font-size: .8rem;
+  }
+
+  .baba-brand__copy small {
+    display: none;
+  }
+
+  .baba-manage-button {
+    width: 42px;
+    min-width: 42px;
+    padding: 0 !important;
+  }
+
+  .baba-manage-button span,
+  #baba-logout-btn {
+    display: none !important;
+  }
+
+  .baba-unified-header .baba-tabs {
+    gap: .25rem !important;
+    margin: 0 .45rem .45rem !important;
+    padding-top: .4rem !important;
+  }
+
+  .baba-unified-header .baba-tabs > button,
+  .baba-unified-header .baba-more-nav > button {
+    min-height: 46px !important;
+    flex-direction: column;
+    gap: .15rem;
+    padding: .3rem .1rem !important;
+    font-size: .58rem !important;
+  }
+
+  .baba-tab-chevron {
+    display: none;
+  }
+
+  .baba-more-menu {
+    position: fixed;
+    top: auto;
+    right: .7rem;
+    bottom: 1rem;
+    width: min(260px, calc(100vw - 1.4rem));
+  }
+
+  .baba-shell {
+    width: calc(100% - .7rem) !important;
+    margin-top: .55rem !important;
+  }
+
+  .baba-gateway {
+    min-height: 0 !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .baba-gateway__media {
+    min-height: 150px !important;
+    padding: 1rem;
+  }
+
+  .baba-home-logo {
+    width: 110px !important;
+    height: 110px !important;
+  }
+
+  .baba-gateway__panel {
+    padding: 1rem !important;
+  }
+
+  .baba-gateway h1 {
+    font-size: 1.75rem !important;
+  }
+
+  .baba-mode-grid {
+    display: grid !important;
+    grid-template-columns: 1fr;
+  }
+
+  .baba-choice {
+    min-height: 104px !important;
+  }
+
+  .baba-hero {
+    grid-template-columns: 1fr !important;
+  }
+
+  .baba-hero__copy {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+  }
+
+  .baba-scoreboard {
+    min-height: 82px !important;
+    padding: .55rem !important;
+  }
+
+  .baba-scoreboard__score {
+    min-width: 72px !important;
+    font-size: 1.45rem !important;
+  }
+
+  .baba-scoreboard strong {
+    font-size: .68rem !important;
+  }
+
+  .baba-ai-toggle,
+  .baba-ai-panel {
+    bottom: 1rem !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .baba-brand__copy strong {
+    max-width: 11rem;
+  }
+
+  .baba-unified-header .baba-tabs > button,
+  .baba-unified-header .baba-more-nav > button {
+    font-size: .53rem !important;
+  }
+
+  .baba-tab-icon {
+    width: .9rem !important;
+    height: .9rem !important;
+    flex-basis: .9rem;
+  }
+}

@@ -3180,6 +3180,7 @@
       };
     }
   </script>
+  <link href="baba-liquid.css" rel="stylesheet">
 </head>
 
 <body class="baba-page">
@@ -3325,35 +3326,84 @@
     <symbol id="baba-download" viewBox="0 0 24 24">
       <path d="M12 4v10m0 0 4-4m-4 4-4-4M5 18h14" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" />
     </symbol>
+    <symbol id="baba-shield" viewBox="0 0 24 24">
+      <path d="M12 3 20 6v6c0 5-3.2 8-8 9-4.8-1-8-4-8-9V6l8-3Z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" />
+      <path d="m9 12 2 2 4-5" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="baba-dots" viewBox="0 0 24 24">
+      <circle cx="5" cy="12" r="1.7" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.7" fill="currentColor" />
+      <circle cx="19" cy="12" r="1.7" fill="currentColor" />
+    </symbol>
+    <symbol id="baba-chevron" viewBox="0 0 24 24">
+      <path d="m7 9 5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
   </svg>
 
-  <header class="baba-topbar">
-    <div class="baba-brand" aria-label="Baba Amigos">
-      <img src="icons/baba-icon-192.png" alt="">
-      <span>Baba Amigos do Henrique</span>
+  <header class="baba-topbar baba-unified-header">
+    <div class="baba-header-main">
+      <div class="baba-brand" aria-label="Baba Amigos do Henrique">
+        <img src="img/baba-brand-liquid-v1.png" alt="">
+        <span class="baba-brand__copy">
+          <strong>Baba Amigos do Henrique</strong>
+          <small id="active-baba-subtitle">Organize times, jogos e ranking em tempo real.</small>
+        </span>
+      </div>
+
+      <div class="baba-header-status">
+        <span class="baba-online-pill">
+          <i aria-hidden="true"></i>
+          <strong id="active-status-label">Nenhum baba aberto</strong>
+        </span>
+        <div id="baba-sync-strip" class="baba-sync-strip" role="status" aria-live="polite">
+          <div class="baba-sync-strip__main">
+            <svg aria-hidden="true" focusable="false"><use href="#baba-cloud"></use></svg>
+            <span id="baba-sync-message">Conectando dispositivos...</span>
+          </div>
+          <div class="baba-sync-strip__state">
+            <i class="baba-sync-strip__dot" aria-hidden="true"></i>
+            <span id="baba-sync-state">Sincronizando</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="baba-nav baba-header-actions" aria-label="Acoes da conta">
+        <button class="baba-manage-button organizer-only" type="button" data-header-tab="organizer">
+          <svg aria-hidden="true" focusable="false"><use href="#baba-shield"></use></svg>
+          <span>Gerenciar baba</span>
+        </button>
+        <button id="mode-reset-btn" class="baba-icon-button" type="button" title="Trocar modo" aria-label="Trocar modo">
+          <svg aria-hidden="true" focusable="false"><use href="#baba-refresh"></use></svg>
+        </button>
+        <button id="baba-logout-btn" class="baba-icon-button" type="button" title="Sair" aria-label="Sair">
+          <svg aria-hidden="true" focusable="false"><use href="#baba-exit"></use></svg>
+        </button>
+      </nav>
     </div>
-    <nav class="baba-nav" aria-label="Navegacao principal">
-      <button id="mode-reset-btn" type="button">Trocar modo</button>
-      <button id="baba-logout-btn" type="button">Sair</button>
+
+    <nav class="baba-tabs" aria-label="Areas do Baba">
+      <button class="active" type="button" data-tab="dashboard"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-play"></use></svg><span>Ao vivo</span></button>
+      <button type="button" data-tab="table"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-table-icon"></use></svg><span>Tabela</span></button>
+      <button type="button" data-tab="ranking"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-chart"></use></svg><span>Ranking</span></button>
+      <button type="button" data-tab="history"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg><span>Historico</span></button>
+      <div class="baba-more-nav">
+        <button id="baba-more-toggle" type="button" aria-haspopup="true" aria-expanded="false">
+          <svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-dots"></use></svg><span>Mais</span>
+          <svg class="baba-tab-chevron" aria-hidden="true" focusable="false"><use href="#baba-chevron"></use></svg>
+        </button>
+        <div id="baba-more-menu" class="baba-more-menu hidden" role="menu">
+          <button type="button" data-tab="teams" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-users"></use></svg><span>Times</span></button>
+          <button type="button" data-tab="goals" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-target"></use></svg><span>Metas</span></button>
+          <button class="organizer-only" type="button" data-tab="organizer" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-shield"></use></svg><span>Organizador</span></button>
+        </div>
+      </div>
     </nav>
   </header>
-
-  <div id="baba-sync-strip" class="baba-sync-strip" role="status" aria-live="polite">
-    <div class="baba-sync-strip__main">
-      <svg aria-hidden="true" focusable="false"><use href="#baba-cloud"></use></svg>
-      <strong>Baba online</strong>
-      <span id="baba-sync-message">Conectando placar, times e ranking entre os dispositivos...</span>
-    </div>
-    <div class="baba-sync-strip__state">
-      <i class="baba-sync-strip__dot" aria-hidden="true"></i>
-      <span id="baba-sync-state">Sincronizando</span>
-    </div>
-  </div>
 
   <main class="baba-shell">
     <section id="mode-gateway" class="baba-gateway">
       <div class="baba-gateway__media">
-        <img class="baba-home-logo" src="img/baba-amigos-logo.png" alt="Baba Amigos do Henrique">
+        <img class="baba-home-logo" src="img/baba-brand-liquid-v1.png" alt="Baba Amigos do Henrique">
       </div>
       <div class="baba-gateway__panel">
         <span class="baba-kicker">Baba em tempo real</span>
@@ -3361,13 +3411,13 @@
         <p>Crie o baba de hoje, marque presentes, sorteie times, registre placares, controle o rodizio e salve ranking e historico.</p>
         <div class="baba-mode-grid">
           <button id="enter-organizer-btn" class="baba-choice" type="button">
-            <img class="baba-choice-icon" src="img/baba-home-organizer-icon.png" alt="">
+            <svg class="baba-choice-icon" aria-hidden="true" focusable="false"><use href="#baba-shield"></use></svg>
             <span>Entrar como Organizador</span>
             <small>Gerencie, organize e controle seu baba.</small>
             <i class="baba-choice-arrow" aria-hidden="true">›</i>
           </button>
           <button id="enter-player-btn" class="baba-choice" type="button">
-            <img class="baba-choice-icon" src="img/baba-home-player-icon.png" alt="">
+            <svg class="baba-choice-icon" aria-hidden="true" focusable="false"><use href="#baba-users"></use></svg>
             <span>Entrar como Jogador</span>
             <small>Participe, jogue e faca parte do time.</small>
             <i class="baba-choice-arrow" aria-hidden="true">›</i>
@@ -3402,15 +3452,12 @@
     <section id="baba-app" class="baba-app hidden">
       <section class="baba-hero">
         <div class="baba-hero__copy">
-          <span class="baba-kicker"><svg><use href="#baba-ball"></use></svg><span id="active-status-label">Nenhum baba aberto</span></span>
-          <h1>Baba Amigos de Henrique</h1>
-          <p id="active-baba-subtitle">Crie o baba de hoje para iniciar a convocacao e o sorteio dos times.</p>
+          <span class="baba-kicker"><svg><use href="#baba-ball"></use></svg><span>Placar atual</span></span>
           <div class="baba-hero__actions organizer-only">
             <button id="create-today-btn" class="baba-primary" type="button">Iniciar Baba</button>
             <button id="save-history-btn" class="baba-secondary" type="button">Finalizar e Salvar</button>
           </div>
         </div>
-        <img class="baba-hero__visual" src="img/baba-dashboard-pro-accent.png" alt="">
         <div class="baba-scoreboard">
           <div>
             <span>Campo 1</span>
@@ -3423,16 +3470,6 @@
           </div>
         </div>
       </section>
-
-      <nav class="baba-tabs" aria-label="Areas do Baba">
-        <button class="active" type="button" data-tab="dashboard"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-play"></use></svg><span>Ao vivo</span></button>
-        <button type="button" data-tab="table"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-table-icon"></use></svg><span>Tabela</span></button>
-        <button type="button" data-tab="teams"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-users"></use></svg><span>Times</span></button>
-        <button class="organizer-only" type="button" data-tab="organizer"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-pencil"></use></svg><span>Organizador</span></button>
-        <button type="button" data-tab="goals"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-target"></use></svg><span>Metas</span></button>
-        <button type="button" data-tab="ranking"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-chart"></use></svg><span>Ranking</span></button>
-        <button type="button" data-tab="history"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg><span>Historico</span></button>
-      </nav>
 
       <section class="baba-view active" data-view="dashboard">
         <div class="baba-metrics">
