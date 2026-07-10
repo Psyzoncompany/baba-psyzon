@@ -9,6 +9,10 @@ service cloud.firestore {
       return request.resource.data.schemaVersion == 2;
     }
 
+    function existingSchemaV2() {
+      return resource.data.schemaVersion == 2;
+    }
+
     function validPointer() {
       return isSchemaV2()
         && request.resource.data.keys().hasOnly([
@@ -156,7 +160,8 @@ service cloud.firestore {
         && request.resource.data.id == goalId
         && request.resource.data.keys().hasOnly([
           'id', 'nome', 'descricao', 'prioridade', 'valor', 'arrecadado', 'foto', 'imagePath',
-          'criadoEm', 'atualizadoEm', 'schemaVersion', 'deleted', 'updatedAtMs'
+          'imageStoredInline', 'imageUploadPending', 'criadoEm', 'atualizadoEm', 'schemaVersion',
+          'deleted', 'updatedAtMs'
         ]);
       allow delete: if false;
     }
@@ -209,8 +214,15 @@ service cloud.firestore {
 
     match /migrations/{migrationId} {
       allow read: if true;
-      allow create, update: if request.resource.data.schemaTo == 2
+      allow create: if request.resource.data.schemaTo == 2
         && request.resource.data.sourcePath == 'orders_public/baba_live_state';
+      allow update: if (request.resource.data.schemaTo == 2 || existingSchemaV2() || resource.data.schemaTo == 2)
+        && request.resource.data.sourcePath == 'orders_public/baba_live_state'
+        && request.resource.data.keys().hasOnly([
+          'status', 'sourcePath', 'targetBabaId', 'schemaFrom', 'schemaTo', 'chunkCount',
+          'sourceBytes', 'checksum', 'startedAt', 'startedAtMs', 'completedAt', 'completedAtMs',
+          'backupChunks', 'backupChecksum', 'validatedCounts', 'error', 'failedAt', 'failedAtMs'
+        ]);
       allow delete: if false;
 
       match /legacy_chunks/{chunkId} {
