@@ -1,0 +1,26 @@
+[
+  {
+    "origin": [
+      "https://sitey-caixa.vercel.app",
+      "https://sitey-caixa-16e06.web.app",
+      "https://sitey-caixa-16e06.firebaseapp.com",
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "http://localhost:5000",
+      "http://127.0.0.1:5000",
+      "http://127.0.0.1:5500"
+    ],
+    "method": ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"],
+    "responseHeader": [
+      "Authorization",
+      "Content-Type",
+      "X-Firebase-Storage-Version",
+      "X-Goog-Upload-Command",
+      "X-Goog-Upload-Header-Content-Length",
+      "X-Goog-Upload-Header-Content-Type",
+      "X-Goog-Upload-Protocol",
+      "X-Goog-Upload-URL"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]

@@ -37,6 +37,7 @@ const unsubscribers = new Set();
 const activeSubscriptions = new Map();
 const loadedBabas = new Map();
 const monthStatsCache = new Map();
+const failedGoalImageUploads = new Set();
 let saveTimer = null;
 let flushTimer = null;
 let lastLocalState = null;
@@ -358,10 +359,19 @@ function computeAggregateStats(state) {
 
 async function uploadGoalImage(goal) {
   if (!String(goal?.foto || '').startsWith('data:image/')) return goal?.foto || '';
+  const goalId = safeId(goal.id);
+  if (failedGoalImageUploads.has(goalId)) return null;
   const path = `baba/purchase-goals/${safeId(goal.id)}/image`;
   const imageRef = storageRef(storage, path);
-  await uploadString(imageRef, goal.foto, 'data_url');
-  return getDownloadURL(imageRef);
+  try {
+    await uploadString(imageRef, goal.foto, 'data_url');
+    failedGoalImageUploads.delete(goalId);
+    return getDownloadURL(imageRef);
+  } catch (error) {
+    failedGoalImageUploads.add(goalId);
+    console.warn('Nao foi possivel enviar a imagem da meta para o Firebase Storage. Verifique o CORS do bucket.', error);
+    return null;
+  }
 }
 
 function babaMetadata(baba, currentGameId = null) {
@@ -605,11 +615,18 @@ async function persistGlobalData(state, previousState = null) {
   for (const goal of state.purchaseGoals || []) {
     nextGoals.add(goal.id);
     let imageUrl = goal.foto || '';
-    if (String(imageUrl).startsWith('data:image/')) imageUrl = await uploadGoalImage(goal);
+    let imageUploadPending = false;
+    if (String(imageUrl).startsWith('data:image/')) {
+      const uploadedUrl = await uploadGoalImage(goal);
+      imageUploadPending = !uploadedUrl;
+      imageUrl = uploadedUrl || previousState?.purchaseGoals?.find((item) => item.id === goal.id)?.foto || '';
+      if (String(imageUrl).startsWith('data:image/')) imageUrl = '';
+    }
     operations.push(setOperation(doc(db, 'baba_purchase_goals', safeId(goal.id)), compact({
       ...goal,
       foto: imageUrl,
       imagePath: imageUrl ? `baba/purchase-goals/${safeId(goal.id)}/image` : null,
+      imageUploadPending,
       schemaVersion: SCHEMA_VERSION,
       deleted: false,
       updatedAtMs: now(),
