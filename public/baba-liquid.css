@@ -1065,3 +1065,239 @@ html body.baba-page .baba-goal-player small {
     flex-basis: .9rem;
   }
 }
+
+/* Match card: stable alignment, solid controls and a light futsal backdrop. */
+html body.baba-page button {
+  background-image: none !important;
+}
+
+html body.baba-page {
+  background-color: #eef4f5 !important;
+  background-image: url("img/baba-futsal-court-light-v1.jpg") !important;
+  background-position: center top !important;
+  background-size: cover !important;
+  background-attachment: fixed !important;
+  background-repeat: no-repeat !important;
+}
+
+html body.baba-page::before {
+  display: none !important;
+}
+
+.baba-grid--live > .baba-card:first-child {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-color: rgba(23, 54, 77, .14) !important;
+  background: rgba(255, 255, 255, .72) !important;
+  box-shadow: 0 14px 34px rgba(23, 54, 77, .12) !important;
+  backdrop-filter: blur(16px) saturate(112%);
+  -webkit-backdrop-filter: blur(16px) saturate(112%);
+}
+
+.baba-current-match-panel .baba-match-live {
+  width: 100%;
+  gap: .8rem !important;
+  border: 1px solid rgba(23, 54, 77, .14) !important;
+  border-radius: 8px !important;
+  padding: 1rem !important;
+  background: rgba(255, 255, 255, .74) !important;
+  box-shadow: 0 10px 24px rgba(23, 54, 77, .08) !important;
+  backdrop-filter: blur(12px) saturate(112%);
+  -webkit-backdrop-filter: blur(12px) saturate(112%);
+}
+
+.baba-current-match-panel .baba-timer {
+  min-height: 42px !important;
+  border: 1px solid rgba(8, 127, 108, .22) !important;
+  border-radius: 8px !important;
+  padding: .5rem .9rem !important;
+  color: #ffffff !important;
+  background: #087f6c !important;
+  box-shadow: 0 8px 18px rgba(8, 127, 108, .18) !important;
+  font-size: 1rem !important;
+}
+
+.baba-current-match-panel .baba-timer.is-over {
+  border-color: rgba(190, 24, 93, .22) !important;
+  color: #ffffff !important;
+  background: #be185d !important;
+}
+
+.baba-current-match-panel .baba-live-scoreboard {
+  grid-template-columns: minmax(0, 1fr) 7rem minmax(0, 1fr) !important;
+  gap: 1rem !important;
+  width: min(100%, 760px);
+  margin-inline: auto;
+  padding: .35rem 0 .9rem !important;
+  border-bottom: 1px solid rgba(23, 54, 77, .14);
+}
+
+.baba-current-match-panel .baba-live-team {
+  min-width: 0;
+  font-size: 1rem !important;
+}
+
+.baba-current-match-panel .baba-live-team .baba-team-link {
+  width: 100%;
+  min-width: 0;
+  gap: .55rem;
+}
+
+.baba-current-match-panel .baba-live-team .baba-team-link-logo {
+  width: 2.35rem !important;
+  height: 2.35rem !important;
+  flex: 0 0 2.35rem;
+}
+
+.baba-current-match-panel .baba-live-team--home .baba-team-link {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.baba-current-match-panel .baba-live-team--away .baba-team-link {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.baba-current-match-panel .baba-live-score {
+  min-width: 7rem !important;
+  font-size: 2.75rem !important;
+  line-height: 1;
+}
+
+.baba-current-match-panel .baba-live-actions {
+  gap: .6rem !important;
+  width: 100%;
+  padding: .7rem 0 !important;
+  border-bottom: 1px solid rgba(23, 54, 77, .14) !important;
+}
+
+.baba-current-match-panel .baba-match-live.is-prepared .baba-live-actions--single {
+  grid-template-columns: minmax(0, 1fr) minmax(10rem, .28fr) !important;
+}
+
+.baba-start-game-btn,
+.baba-live-main-btn,
+.baba-goal-btn,
+.baba-control-flow button.is-flow-primary,
+.baba-control-flow button.is-flow-next {
+  border-color: #087f6c !important;
+  color: #ffffff !important;
+  background: #087f6c !important;
+  box-shadow: 0 8px 18px rgba(8, 127, 108, .18) !important;
+}
+
+.baba-start-game-btn:hover:not(:disabled),
+.baba-live-main-btn:hover:not(:disabled),
+.baba-goal-btn:hover:not(:disabled),
+.baba-control-flow button.is-flow-primary:hover:not(:disabled),
+.baba-control-flow button.is-flow-next:hover:not(:disabled) {
+  border-color: #066a5b !important;
+  background: #066a5b !important;
+}
+
+.baba-control-flow .baba-start-game-btn:disabled,
+.baba-control-flow button.is-flow-disabled {
+  border-color: rgba(23, 54, 77, .14) !important;
+  color: #64748b !important;
+  background: #e8eef2 !important;
+  box-shadow: none !important;
+}
+
+.baba-live-control-btn,
+.baba-secondary,
+.baba-ranking-filters button,
+.baba-month-tabs button {
+  background-color: rgba(255, 255, 255, .88) !important;
+}
+
+.baba-ranking-filters button.active,
+.baba-month-tabs button.active {
+  border-color: #17364d !important;
+  color: #ffffff !important;
+  background: #17364d !important;
+}
+
+.baba-current-match-panel .baba-match-live__meta {
+  gap: .5rem !important;
+  margin-top: 0;
+}
+
+.baba-current-match-panel .baba-match-live__meta .baba-pill {
+  min-height: 32px;
+  border-color: rgba(23, 54, 77, .14) !important;
+  border-radius: 8px !important;
+  color: #17364d !important;
+  background: rgba(255, 255, 255, .88) !important;
+}
+
+@media (min-width: 761px) {
+  .baba-grid--live > .baba-card:first-child {
+    padding: 1rem !important;
+  }
+
+  .baba-current-match-panel .baba-live-main-btn,
+  .baba-current-match-panel .baba-start-game-btn {
+    min-height: 52px !important;
+    border-radius: 8px !important;
+  }
+
+  .baba-current-match-panel .baba-live-control-btn {
+    min-height: 52px !important;
+    border-radius: 8px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .baba-grid--live > .baba-card:first-child {
+    padding: .65rem !important;
+  }
+
+  html body.baba-page {
+    background-position: left top !important;
+    background-size: auto 100vh !important;
+  }
+
+  .baba-current-match-panel .baba-match-live {
+    gap: .65rem !important;
+    padding: .75rem !important;
+  }
+
+  .baba-current-match-panel .baba-live-scoreboard {
+    grid-template-columns: minmax(0, 1fr) 5.25rem minmax(0, 1fr) !important;
+    gap: .35rem !important;
+  }
+
+  .baba-current-match-panel .baba-live-score {
+    min-width: 5.25rem !important;
+    font-size: 2.2rem !important;
+  }
+
+  .baba-current-match-panel .baba-live-team {
+    font-size: .78rem !important;
+  }
+
+  .baba-current-match-panel .baba-live-team .baba-team-link {
+    flex-direction: column;
+    gap: .25rem;
+    text-align: center;
+  }
+
+  .baba-current-match-panel .baba-live-team .baba-team-link-logo {
+    width: 2rem !important;
+    height: 2rem !important;
+    flex-basis: 2rem;
+  }
+
+  .baba-current-match-panel .baba-match-live.is-prepared .baba-live-actions--single {
+    grid-template-columns: 1fr !important;
+  }
+
+  .baba-current-match-panel .baba-live-main-btn,
+  .baba-current-match-panel .baba-start-game-btn,
+  .baba-current-match-panel .baba-live-control-btn {
+    min-height: 48px !important;
+    border-radius: 8px !important;
+  }
+}

@@ -2345,14 +2345,6 @@
     saveState();
   }
 
-  function openDrawnTeams() {
-    if (!requireOrganizer()) return;
-    const baba = getActiveBaba();
-    if (!baba?.teams?.length) return showToast('Sorteie os times antes de iniciar.');
-    setActiveTab('teams');
-    showToast('Confira os times sorteados e inicie o primeiro jogo por la.');
-  }
-
   function startFirstGame() {
     if (!requireOrganizer()) return;
     const baba = getActiveBaba();
@@ -3469,7 +3461,7 @@
     `;
 
     if (fullyRevealed) {
-      const startHTML = isOrganizer() && !baba.jogoAtual ? '<button class="baba-primary" type="button" data-action="start-first-live">Iniciar primeiro jogo</button>' : '';
+      const startHTML = isOrganizer() && !baba.jogoAtual ? '<button class="baba-primary baba-start-game-btn" type="button" data-action="start-first-live">Iniciar primeiro jogo</button>' : '';
       els.teamsGrid.innerHTML = `
         ${baba.teams.map((team, position) => renderTeamCard(team, position)).join('')}
         <div class="baba-team-reveal-actions baba-team-reveal-actions--all">
@@ -3780,7 +3772,7 @@
       const canStart = isOrganizer() && baba?.teams?.length >= 2;
       els.currentMatchPanel.innerHTML = `
         <div class="baba-empty">Nenhum jogo iniciado.</div>
-        ${canStart ? '<div class="baba-live-actions baba-live-actions--single"><button class="baba-primary" type="button" data-action="start-first-live">Iniciar primeiro jogo</button></div>' : ''}
+        ${canStart ? '<div class="baba-live-actions baba-live-actions--single"><button class="baba-primary baba-start-game-btn" type="button" data-action="start-first-live">Iniciar primeiro jogo</button></div>' : ''}
       `;
     } else {
       els.currentMatchPanel.className = 'baba-current-match-panel';
@@ -3794,7 +3786,7 @@
       if (isOrganizer()) {
         organizerControls = isPrepared ? `
           <div class="baba-live-actions baba-live-actions--single">
-            <button class="baba-live-main-btn" type="button" data-action="start-prepared-match">Iniciar partida</button>
+            <button class="baba-live-main-btn baba-start-game-btn" type="button" data-action="start-prepared-match">Iniciar primeiro jogo</button>
             <button class="baba-live-control-btn" type="button" data-action="edit-time">Editar tempo</button>
           </div>
         ` : isOver ? `
@@ -3818,7 +3810,7 @@
         `;
       }
       els.currentMatchPanel.innerHTML = `
-        <div class="baba-match-live">
+        <div class="baba-match-live ${isPrepared ? 'is-prepared' : ''}">
           <div class="baba-timer ${isOver ? 'is-over' : ''}" id="current-timer">
             <svg class="baba-live-icon" aria-hidden="true" focusable="false"><use href="#baba-clock"></use></svg>
             <span class="baba-timer__text">${timerLabel}</span>
@@ -4866,7 +4858,7 @@
     });
     els.markPresent.addEventListener('click', () => els.presentModal.classList.remove('hidden'));
     els.drawTeams.addEventListener('click', drawTeams);
-    els.startFirstGame.addEventListener('click', openDrawnTeams);
+    els.startFirstGame.addEventListener('click', startFirstGame);
     els.undoGame.addEventListener('click', undoLastGame);
     els.finishBaba.addEventListener('click', finishBaba);
     els.resetCurrent.addEventListener('click', resetCurrentBaba);
