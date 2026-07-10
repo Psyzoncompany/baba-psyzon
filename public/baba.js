@@ -4,7 +4,6 @@
   const TEAM_NAMES = ['Barcelona', 'Arsenal', 'Real Madrid', 'PSG', 'Chelsea'];
   const MODE_KEY = 'psyzon_baba_mode';
   const REMEMBER_ORGANIZER_KEY = 'psyzon_baba_organizer_remembered';
-  const MORE_TAB_TARGETS = ['more', 'table', 'goals', 'payments', 'organizer'];
   const VISITOR_TEAM_ID = 'team_visitante';
   const VISITOR_TEAM_NAME = 'Visitante';
   const PLAYER_BABA_PRICE = 15;
@@ -61,8 +60,6 @@
     markPresent: $('#mark-present-btn'),
     drawTeams: $('#draw-teams-btn'),
     startFirstGame: $('#start-first-game-btn'),
-    controlStep: $('#baba-control-step'),
-    editPresent: $('#edit-present-btn'),
     undoGame: $('#undo-game-btn'),
     finishBaba: $('#finish-baba-btn'),
     resetCurrent: $('#reset-current-btn'),
@@ -297,17 +294,6 @@
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;');
-  }
-
-  function emptyStateHTML({ icon = 'baba-ball', title = 'Nada por aqui', text = '', action = '' } = {}) {
-    return `
-      <div class="baba-empty baba-empty--guided">
-        <svg aria-hidden="true" focusable="false"><use href="#${icon}"></use></svg>
-        <strong>${escapeHTML(title)}</strong>
-        ${text ? `<p>${escapeHTML(text)}</p>` : ''}
-        ${action || ''}
-      </div>
-    `;
   }
 
   function shuffle(items) {
@@ -707,7 +693,6 @@
   function setMode(nextMode) {
     mode = nextMode;
     sessionStorage.setItem(MODE_KEY, nextMode);
-    document.body.classList.toggle('baba-organizer-mode', nextMode === 'organizer');
     document.body.classList.toggle('baba-player-mode', nextMode === 'player');
     document.body.classList.toggle('baba-locked-viewer', isForcedViewerMode());
     els.gateway.classList.add('hidden');
@@ -721,7 +706,6 @@
     mode = null;
     sessionStorage.removeItem(MODE_KEY);
     document.body.classList.remove('baba-player-mode');
-    document.body.classList.remove('baba-organizer-mode');
     document.body.classList.remove('baba-locked-viewer');
     els.gateway.classList.remove('hidden');
     els.app.classList.add('hidden');
@@ -3075,109 +3059,36 @@
     const hasPresentPlayers = Boolean((baba?.jogadoresPresentes || []).length);
     const hasDrawnTeams = Boolean((baba?.teams || []).length);
     const hasFinishedGame = Boolean((baba?.jogos || []).length);
-    const hasActiveMatch = Boolean(baba?.jogoAtual);
     const canDrawTeams = hasOpenBaba && hasPresentPlayers;
     const canOpenTeams = hasOpenBaba && hasDrawnTeams;
 
     if (els.dateDisplay) els.dateDisplay.textContent = formatBabaDateLong(baba?.dataISO || todayISO());
 
-    let step = {
-      count: 'ETAPA 1 DE 3',
-      title: 'Marque quem veio hoje',
-      note: `${baba?.jogadoresPresentes?.length || 0} jogadores selecionados`,
-      status: '',
-      icon: 'baba-users-check',
-    };
-
-    if (!hasOpenBaba) {
-      step = {
-        count: 'AGUARDANDO BABA',
-        title: 'Crie o baba de hoje',
-        note: 'Use o botao Iniciar Baba para abrir a rodada.',
-        status: '',
-        icon: 'baba-calendar',
-      };
-    } else if (hasPresentPlayers && !hasDrawnTeams) {
-      step = {
-        count: 'ETAPA 2 DE 3',
-        title: 'Tudo pronto para sortear',
-        note: `${baba.jogadoresPresentes.length} jogadores presentes`,
-        status: 'Presentes concluidos',
-        icon: 'baba-shuffle',
-      };
-    } else if (hasDrawnTeams && !hasActiveMatch && !hasFinishedGame) {
-      step = {
-        count: 'ETAPA 3 DE 3',
-        title: 'Comecar o baba',
-        note: `${baba.teams.length} times sorteados`,
-        status: 'Presentes e times sorteados',
-        icon: 'baba-ball',
-      };
-    } else if (hasDrawnTeams) {
-      step = {
-        count: 'BABA EM ANDAMENTO',
-        title: hasActiveMatch ? 'Jogo em campo' : 'Rodada pronta',
-        note: hasActiveMatch ? 'Controle gols, tempo e finalizacao no painel ao vivo.' : `${hasFinishedGame ? `${baba.jogos.length} jogos salvos` : 'Times prontos'}`,
-        status: 'Presentes e times sorteados',
-        icon: 'baba-whistle',
-      };
-    }
-
-    if (els.controlStep) {
-      els.controlStep.innerHTML = `
-        <span>${escapeHTML(step.count)}</span>
-        <div>
-          <svg aria-hidden="true" focusable="false"><use href="#${step.icon}"></use></svg>
-          <strong>${escapeHTML(step.title)}</strong>
-        </div>
-        <p>${escapeHTML(step.note)}</p>
-        ${step.status ? `<small>${escapeHTML(step.status)}</small>` : ''}
-      `;
-    }
-
     setFlowButton(els.markPresent, {
       variant: !hasOpenBaba ? 'disabled' : (hasPresentPlayers ? 'complete' : 'primary'),
       disabled: !hasOpenBaba,
-      hidden: hasPresentPlayers,
-      label: 'Marcar presentes',
-    });
-    setFlowButton(els.editPresent, {
-      variant: 'neutral',
-      disabled: !hasOpenBaba || !hasPresentPlayers,
-      hidden: !hasOpenBaba || !hasPresentPlayers,
-      label: 'Editar presentes',
     });
     setFlowButton(els.drawTeams, {
       variant: !canDrawTeams ? 'disabled' : (hasDrawnTeams ? 'complete' : 'next'),
       disabled: !canDrawTeams,
-      hidden: !hasPresentPlayers || hasDrawnTeams,
-      label: 'Sortear times',
     });
     setFlowButton(els.startFirstGame, {
       variant: !canOpenTeams ? 'disabled' : 'next',
       disabled: !canOpenTeams,
-      hidden: !hasDrawnTeams || hasActiveMatch || hasFinishedGame,
-      label: 'Iniciar 1o jogo',
     });
     setFlowButton(els.undoGame, {
       variant: 'neutral',
       hidden: !hasFinishedGame,
       disabled: !hasFinishedGame,
-      label: 'Desfazer ultimo jogo',
     });
     setFlowButton(els.finishBaba, {
-      variant: hasDrawnTeams ? 'primary' : 'disabled',
+      variant: 'neutral',
       disabled: !hasOpenBaba,
-      hidden: !hasOpenBaba || !hasDrawnTeams,
-      label: 'Finalizar Baba',
     });
     setFlowButton(els.resetCurrent, {
       variant: 'danger',
       disabled: !hasOpenBaba,
-      hidden: !hasOpenBaba,
-      label: 'Resetar baba atual',
     });
-    document.querySelector('.baba-control-more-actions')?.classList.toggle('hidden', !hasOpenBaba || (!hasPresentPlayers && !hasFinishedGame));
   }
 
   function renderHeader(baba) {
@@ -3237,11 +3148,7 @@
         </div>
       </div>
     `;
-    }).join('') : emptyStateHTML({
-      icon: 'baba-user-plus',
-      title: 'Lista fixa vazia',
-      text: 'Cadastre os jogadores do baba para marcar presenca, pagamentos e ranking.',
-    });
+    }).join('') : '<div class="baba-empty">Cadastre a lista fixa de jogadores do baba.</div>';
 
     const visitorHTML = visitors.length ? visitors.map((player) => `
       <div class="baba-player-admin">
@@ -3254,11 +3161,7 @@
           <button class="baba-mini-btn danger" type="button" data-action="delete-visitor" data-id="${player.id}">Remover</button>
         </div>
       </div>
-    `).join('') : emptyStateHTML({
-      icon: 'baba-users',
-      title: 'Sem visitantes hoje',
-      text: 'Cadastre visitantes apenas quando alguem jogar somente neste baba.',
-    });
+    `).join('') : '<div class="baba-empty">Visitantes aparecem aqui e somem no proximo baba.</div>';
 
     els.playersAdminList.innerHTML = `
       <div class="baba-admin-section">
@@ -3278,11 +3181,7 @@
     els.presentCountLabel.textContent = `${present.size} marcados`;
 
     if (!activePlayers.length) {
-      els.presentList.innerHTML = emptyStateHTML({
-        icon: 'baba-user-plus',
-        title: 'Nenhum jogador cadastrado',
-        text: 'Cadastre a lista fixa antes de marcar quem veio hoje.',
-      });
+      els.presentList.innerHTML = '<div class="baba-empty">Cadastre jogadores para montar a lista de presenca.</div>';
       return;
     }
 
@@ -3355,11 +3254,7 @@
     if (els.goalsCountLabel) els.goalsCountLabel.textContent = `${goals.length} metas`;
 
     if (!goals.length) {
-      els.goalsList.innerHTML = emptyStateHTML({
-        icon: 'baba-target',
-        title: 'Nenhuma meta cadastrada',
-        text: 'Adicione bolas, coletes, redes ou outros produtos para acompanhar a arrecadacao.',
-      });
+      els.goalsList.innerHTML = '<div class="baba-empty">Nenhuma meta cadastrada ainda. Use o painel do organizador para adicionar o primeiro produto.</div>';
       return;
     }
 
@@ -3436,12 +3331,7 @@
     `;
 
     if (!players.length) {
-      els.paymentList.innerHTML = emptyStateHTML({
-        icon: 'baba-wallet',
-        title: 'Sem jogadores para cobrar',
-        text: 'Cadastre a lista fixa de jogadores para controlar os pagamentos mensais.',
-        action: '<button class="baba-empty-action organizer-only" type="button" data-go-tab="organizer">Abrir configuracoes</button>',
-      });
+      els.paymentList.innerHTML = '<div class="baba-empty">Cadastre a lista fixa para controlar os pagamentos mensais.</div>';
       return;
     }
 
@@ -3464,16 +3354,7 @@
 
   function renderTeams(baba) {
     if (!baba?.teams?.length) {
-      els.teamsGrid.innerHTML = `
-        <div class="baba-card">
-          ${emptyStateHTML({
-            icon: 'baba-shirt',
-            title: 'Nenhum time sorteado',
-            text: 'Marque os presentes e sorteie os times para revelar as equipes.',
-            action: isOrganizer() ? '<button class="baba-empty-action" type="button" data-go-tab="organizer">Organizar Baba</button>' : '',
-          })}
-        </div>
-      `;
+      els.teamsGrid.innerHTML = '<div class="baba-card"><div class="baba-empty">Nenhum time sorteado ainda.</div></div>';
       return;
     }
 
@@ -3523,12 +3404,7 @@
 
   function renderStandings(baba) {
     if (!baba?.teams?.length) {
-      els.standingsList.innerHTML = emptyStateHTML({
-        icon: 'baba-table-icon',
-        title: 'Tabela ainda sem times',
-        text: 'Depois do sorteio, pontos, saldo e gols aparecem aqui.',
-        action: isOrganizer() ? '<button class="baba-empty-action" type="button" data-go-tab="organizer">Sortear times</button>' : '',
-      });
+      els.standingsList.innerHTML = '<div class="baba-empty">Sorteie os times para ver a tabela.</div>';
       if (els.tableTopScorers) els.tableTopScorers.innerHTML = '';
       return;
     }
@@ -3814,14 +3690,7 @@
       els.currentMatchPanel.className = 'baba-current-match-panel';
       const canStart = isOrganizer() && baba?.teams?.length >= 2;
       els.currentMatchPanel.innerHTML = `
-        ${emptyStateHTML({
-          icon: 'baba-ball',
-          title: 'Nenhum jogo em campo',
-          text: 'Marque os presentes e sorteie os times para comecar.',
-          action: isOrganizer()
-            ? '<button class="baba-empty-action" type="button" data-go-tab="organizer">Organizar Baba</button>'
-            : '',
-        })}
+        <div class="baba-empty">Nenhum jogo iniciado.</div>
         ${canStart ? '<div class="baba-live-actions baba-live-actions--single"><button class="baba-primary" type="button" data-action="start-first-live">Iniciar primeiro jogo</button></div>' : ''}
       `;
     } else {
@@ -3836,25 +3705,25 @@
       if (isOrganizer()) {
         organizerControls = isPrepared ? `
           <div class="baba-live-actions baba-live-actions--single">
-            <button class="baba-live-main-btn" type="button" data-action="start-prepared-match"><svg aria-hidden="true" focusable="false"><use href="#baba-play"></use></svg><span>Iniciar partida</span></button>
-            <button class="baba-live-control-btn" type="button" data-action="edit-time"><svg aria-hidden="true" focusable="false"><use href="#baba-pencil"></use></svg><span>Editar tempo</span></button>
+            <button class="baba-live-main-btn" type="button" data-action="start-prepared-match">Iniciar partida</button>
+            <button class="baba-live-control-btn" type="button" data-action="edit-time">Editar tempo</button>
           </div>
         ` : isOver ? `
           <div class="baba-live-actions baba-live-actions--single">
-            <button class="baba-live-control-btn" type="button" data-action="edit-time"><svg aria-hidden="true" focusable="false"><use href="#baba-pencil"></use></svg><span>Editar tempo</span></button>
-            <button class="baba-live-control-btn baba-live-control-btn--danger" type="button" data-action="finish-live-match"><svg aria-hidden="true" focusable="false"><use href="#baba-flag"></use></svg><span>Finalizar jogo</span></button>
+            <button class="baba-live-control-btn" type="button" data-action="edit-time">Editar tempo</button>
+            <button class="baba-live-control-btn baba-live-control-btn--danger" type="button" data-action="finish-live-match">Finalizar jogo</button>
           </div>
         ` : `
           <div class="baba-live-actions">
             <div class="baba-live-goal-actions">
-              <button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamA.id}"><svg aria-hidden="true" focusable="false"><use href="#baba-ball"></use></svg><span>Gol ${escapeHTML(teamA.name)}</span></button>
-              <button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamB.id}"><svg aria-hidden="true" focusable="false"><use href="#baba-ball"></use></svg><span>Gol ${escapeHTML(teamB.name)}</span></button>
+              <button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamA.id}">Gol ${escapeHTML(teamA.name)}</button>
+              <button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamB.id}">Gol ${escapeHTML(teamB.name)}</button>
             </div>
             <div class="baba-live-secondary-actions">
-              <button class="baba-live-control-btn" type="button" data-action="pause-time"><svg aria-hidden="true" focusable="false"><use href="#${match.timerRunning ? 'baba-pause' : 'baba-play'}"></use></svg><span>${match.timerRunning ? 'Pausar' : 'Retomar'}</span></button>
-              <button class="baba-live-control-btn" type="button" data-action="edit-time"><svg aria-hidden="true" focusable="false"><use href="#baba-pencil"></use></svg><span>Editar tempo</span></button>
-              <button class="baba-live-control-btn" type="button" data-action="undo-goal"><svg aria-hidden="true" focusable="false"><use href="#baba-undo"></use></svg><span>Desfazer gol</span></button>
-              <button class="baba-live-control-btn baba-live-control-btn--danger" type="button" data-action="finish-live-match"><svg aria-hidden="true" focusable="false"><use href="#baba-flag"></use></svg><span>Finalizar jogo</span></button>
+              <button class="baba-live-control-btn" type="button" data-action="pause-time">${match.timerRunning ? 'Pausar' : 'Retomar'}</button>
+              <button class="baba-live-control-btn" type="button" data-action="edit-time">Editar tempo</button>
+              <button class="baba-live-control-btn" type="button" data-action="undo-goal">Desfazer gol</button>
+              <button class="baba-live-control-btn baba-live-control-btn--danger" type="button" data-action="finish-live-match">Finalizar jogo</button>
             </div>
           </div>
         `;
@@ -3884,11 +3753,7 @@
     }
 
     if (!baba?.filaTimes?.length) {
-      els.queueList.innerHTML = emptyStateHTML({
-        icon: 'baba-next',
-        title: 'Fila vazia',
-        text: 'Quando houver tres ou mais times, a ordem de entrada aparece aqui.',
-      });
+      els.queueList.innerHTML = '<div class="baba-empty">Sem times aguardando.</div>';
     } else {
       els.queueList.innerHTML = baba.filaTimes.map((teamId, index) => {
         const team = getTeam(baba, teamId);
@@ -3906,11 +3771,7 @@
 
     if (!baba?.lastResult) {
       els.lastResultPill.textContent = 'Sem resultado';
-      els.lastResultPanel.innerHTML = emptyStateHTML({
-        icon: 'baba-trophy',
-        title: 'Sem resultado ainda',
-        text: 'Finalize o primeiro jogo para registrar quem continua e quem vai para a fila.',
-      });
+      els.lastResultPanel.innerHTML = '<div class="baba-empty">Finalize um jogo para ver quem fica em campo e quem sai.</div>';
     } else {
       const keep = getTeam(baba, baba.lastResult.timeQueContinuou);
       const outNames = teamNamesFromValue(baba, baba.lastResult.timeQueSaiu);
@@ -4148,17 +4009,8 @@
     const finished = state.babas.filter((baba) => baba.status === 'finalizado');
     els.historyCountLabel.textContent = `${finished.length} salvos`;
     if (!finished.length) {
-      els.historyList.innerHTML = emptyStateHTML({
-        icon: 'baba-history-icon',
-        title: 'Nenhum baba finalizado',
-        text: 'Finalize o baba atual para salvar placares, times, gols e campeoes aqui.',
-        action: isOrganizer() ? '<button class="baba-empty-action" type="button" data-go-tab="organizer">Gerenciar Baba</button>' : '',
-      });
-      els.historyDetail.innerHTML = emptyStateHTML({
-        icon: 'baba-table-icon',
-        title: 'Detalhes aguardando historico',
-        text: 'Quando um baba for salvo, selecione o item para ver partidas, times e campeoes.',
-      });
+      els.historyList.innerHTML = '<div class="baba-empty">Nenhum baba finalizado ainda.</div>';
+      els.historyDetail.innerHTML = '<div class="baba-empty">Finalize um baba para consultar os detalhes.</div>';
       return;
     }
 
@@ -4215,11 +4067,8 @@
   }
 
   function setActiveTab(tab) {
-    const organizerOnlyTabs = ['organizer', 'payments'];
-    const requestedTab = String(tab || 'dashboard');
-    const safeTab = !isOrganizer() && organizerOnlyTabs.includes(requestedTab) ? 'dashboard' : requestedTab;
-    const activeMainTab = MORE_TAB_TARGETS.includes(safeTab) && safeTab !== 'more' ? 'more' : safeTab;
-    $$('.baba-tabs button').forEach((button) => button.classList.toggle('active', button.dataset.tab === activeMainTab));
+    const safeTab = !isOrganizer() && tab === 'organizer' ? 'dashboard' : tab;
+    $$('.baba-tabs button').forEach((button) => button.classList.toggle('active', button.dataset.tab === safeTab));
     $$('.baba-view').forEach((view) => view.classList.toggle('active', view.dataset.view === safeTab));
   }
 
@@ -4321,17 +4170,17 @@
     const root = document.createElement('section');
     root.id = 'baba-ai-assistant';
     root.className = 'baba-ai-assistant';
-    root.setAttribute('aria-label', 'Assistente do Baba');
+    root.setAttribute('aria-label', 'IA do Baba');
     root.innerHTML = `
-      <button id="baba-ai-toggle" class="baba-ai-toggle" type="button" aria-expanded="false" aria-controls="baba-ai-panel" title="Pergunte a IA">
+      <button id="baba-ai-toggle" class="baba-ai-toggle" type="button" aria-expanded="false" aria-controls="baba-ai-panel" title="IA do Baba">
         <span class="baba-ai-toggle__icon">${babaAssistantIcon('spark')}</span>
-        <span class="baba-ai-toggle__text">Pergunte a IA</span>
+        <span class="baba-ai-toggle__text">IA do Baba</span>
       </button>
       <aside id="baba-ai-panel" class="baba-ai-panel" aria-hidden="true">
         <header class="baba-ai-head">
           <span class="baba-ai-avatar">${babaAssistantIcon('spark')}</span>
           <span>
-            <strong>Assistente do Baba</strong>
+            <strong>IA do Baba</strong>
             <small>Pergunte sobre jogadores, gols, partidas e pagamentos.</small>
           </span>
           <button id="baba-ai-close" class="baba-ai-close" type="button" aria-label="Fechar IA do Baba">${babaAssistantIcon('close')}</button>
@@ -4369,7 +4218,7 @@
     if (!babaAssistant.messages.length) {
       babaAssistant.messages.push({
         role: 'bot',
-        text: 'Fala! Sou o Assistente do Baba.\n\nPosso analisar gols, vitorias, ranking, desempenho, partidas, presencas e pagamentos.\n\nPergunte algo como:\n- Quem fez mais gols?\n- Quem esta em melhor fase?\n- Quem ainda nao pagou?\n- Compare Carlos e Joao.',
+        text: 'Fala! Sou a IA do Baba.\n\nPosso analisar gols, vitorias, ranking, desempenho, partidas, presencas e pagamentos.\n\nPergunte algo como:\n- Quem fez mais gols?\n- Quem esta em melhor fase?\n- Quem ainda nao pagou?\n- Compare Carlos e Joao.',
       });
       renderBabaAssistantMessages();
     }
@@ -4913,7 +4762,6 @@
     els.goalImage?.addEventListener('change', previewGoalImage);
     els.shareFab.addEventListener('click', shareBabaLink);
     els.closePresentModal.addEventListener('click', () => els.presentModal.classList.add('hidden'));
-    els.editPresent?.addEventListener('click', () => els.presentModal.classList.remove('hidden'));
     els.closeGoalModal.addEventListener('click', closeGoalPicker);
     els.closeTeamDetailModal.addEventListener('click', () => els.teamDetailModal.classList.add('hidden'));
     els.closeGameDetailModal.addEventListener('click', () => els.gameDetailModal.classList.add('hidden'));
@@ -4940,9 +4788,6 @@
     });
 
     document.addEventListener('click', (event) => {
-      const navTarget = event.target.closest('[data-go-tab]');
-      if (navTarget) return setActiveTab(navTarget.dataset.goTab);
-
       const exportButton = event.target.closest('[data-export-pdf]');
       if (exportButton) return exportBabaPdf(exportButton.dataset.exportPdf);
 
