@@ -1097,21 +1097,29 @@ html body.baba-page::before {
 
 .baba-current-match-panel .baba-match-live {
   width: 100%;
-  gap: .8rem !important;
+  display: grid !important;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  gap: 1rem !important;
   border: 1px solid rgba(23, 54, 77, .14) !important;
   border-radius: 8px !important;
-  padding: 1rem !important;
-  background: rgba(255, 255, 255, .74) !important;
+  padding: 1.15rem 1.4rem !important;
+  background: rgba(255, 255, 255, .82) !important;
   box-shadow: 0 10px 24px rgba(23, 54, 77, .08) !important;
   backdrop-filter: blur(12px) saturate(112%);
   -webkit-backdrop-filter: blur(12px) saturate(112%);
 }
 
 .baba-current-match-panel .baba-timer {
+  justify-self: center;
   min-height: 42px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: .55rem;
   border: 1px solid rgba(8, 127, 108, .22) !important;
   border-radius: 8px !important;
-  padding: .5rem .9rem !important;
+  padding: .58rem 1.05rem !important;
   color: #ffffff !important;
   background: #087f6c !important;
   box-shadow: 0 8px 18px rgba(8, 127, 108, .18) !important;
@@ -1125,11 +1133,13 @@ html body.baba-page::before {
 }
 
 .baba-current-match-panel .baba-live-scoreboard {
-  grid-template-columns: minmax(0, 1fr) 7rem minmax(0, 1fr) !important;
-  gap: 1rem !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(7.5rem, auto) minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 1.1rem !important;
   width: min(100%, 760px);
   margin-inline: auto;
-  padding: .35rem 0 .9rem !important;
+  padding: .25rem 0 1rem !important;
   border-bottom: 1px solid rgba(23, 54, 77, .14);
 }
 
@@ -1142,6 +1152,7 @@ html body.baba-page::before {
   width: 100%;
   min-width: 0;
   gap: .55rem;
+  align-items: center;
 }
 
 .baba-current-match-panel .baba-live-team .baba-team-link-logo {
@@ -1161,20 +1172,29 @@ html body.baba-page::before {
 }
 
 .baba-current-match-panel .baba-live-score {
-  min-width: 7rem !important;
+  min-width: 7.5rem !important;
+  display: inline-grid !important;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  justify-items: center;
+  gap: .35rem;
   font-size: 2.75rem !important;
   line-height: 1;
 }
 
 .baba-current-match-panel .baba-live-actions {
-  gap: .6rem !important;
-  width: 100%;
-  padding: .7rem 0 !important;
+  display: grid !important;
+  align-items: stretch;
+  justify-content: center;
+  gap: .75rem !important;
+  width: min(100%, 760px);
+  margin-inline: auto;
+  padding: .85rem 0 !important;
   border-bottom: 1px solid rgba(23, 54, 77, .14) !important;
 }
 
 .baba-current-match-panel .baba-match-live.is-prepared .baba-live-actions--single {
-  grid-template-columns: minmax(0, 1fr) minmax(10rem, .28fr) !important;
+  grid-template-columns: minmax(0, 1fr) minmax(10.5rem, .32fr) !important;
 }
 
 .baba-start-game-btn,
@@ -1220,8 +1240,12 @@ html body.baba-page::before {
 }
 
 .baba-current-match-panel .baba-match-live__meta {
-  gap: .5rem !important;
-  margin-top: 0;
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .55rem !important;
+  width: min(100%, 760px);
+  margin: 0 auto;
 }
 
 .baba-current-match-panel .baba-match-live__meta .baba-pill {
@@ -1235,6 +1259,11 @@ html body.baba-page::before {
 @media (min-width: 761px) {
   .baba-grid--live > .baba-card:first-child {
     padding: 1rem !important;
+  }
+
+  .baba-current-match-panel .baba-match-live.is-prepared {
+    min-height: 270px;
+    align-content: center;
   }
 
   .baba-current-match-panel .baba-live-main-btn,
@@ -1265,12 +1294,15 @@ html body.baba-page::before {
   }
 
   .baba-current-match-panel .baba-live-scoreboard {
-    grid-template-columns: minmax(0, 1fr) 5.25rem minmax(0, 1fr) !important;
-    gap: .35rem !important;
+    grid-template-columns: minmax(0, 1fr) minmax(5.7rem, auto) minmax(0, 1fr) !important;
+    gap: .45rem !important;
+    width: 100%;
+    padding-bottom: .75rem !important;
   }
 
   .baba-current-match-panel .baba-live-score {
-    min-width: 5.25rem !important;
+    min-width: 5.7rem !important;
+    gap: .18rem;
     font-size: 2.2rem !important;
   }
 
@@ -1284,6 +1316,12 @@ html body.baba-page::before {
     text-align: center;
   }
 
+  .baba-current-match-panel .baba-live-team--home .baba-team-link,
+  .baba-current-match-panel .baba-live-team--away .baba-team-link {
+    justify-content: center;
+    text-align: center;
+  }
+
   .baba-current-match-panel .baba-live-team .baba-team-link-logo {
     width: 2rem !important;
     height: 2rem !important;
@@ -1292,6 +1330,7 @@ html body.baba-page::before {
 
   .baba-current-match-panel .baba-match-live.is-prepared .baba-live-actions--single {
     grid-template-columns: 1fr !important;
+    width: 100%;
   }
 
   .baba-current-match-panel .baba-live-main-btn,
@@ -1299,5 +1338,9 @@ html body.baba-page::before {
   .baba-current-match-panel .baba-live-control-btn {
     min-height: 48px !important;
     border-radius: 8px !important;
+  }
+
+  .baba-current-match-panel .baba-match-live__meta {
+    width: 100%;
   }
 }
