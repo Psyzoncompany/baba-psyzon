@@ -332,6 +332,8 @@
       babas: [],
       purchaseGoals: [],
       monthlyPayments: {},
+      playerStats: {},
+      monthlyStats: {},
       updatedAt: Date.now(),
     };
   }
@@ -407,6 +409,8 @@
     next.players = Array.isArray(next.players) ? next.players : [];
     next.babas = Array.isArray(next.babas) ? next.babas : [];
     next.monthlyPayments = normalizeMonthlyPayments(next.monthlyPayments);
+    next.playerStats = next.playerStats && typeof next.playerStats === 'object' && !Array.isArray(next.playerStats) ? next.playerStats : {};
+    next.monthlyStats = next.monthlyStats && typeof next.monthlyStats === 'object' && !Array.isArray(next.monthlyStats) ? next.monthlyStats : {};
     next.purchaseGoals = Array.isArray(next.purchaseGoals)
       ? next.purchaseGoals.map(normalizePurchaseGoal).filter(Boolean)
       : [];
@@ -426,6 +430,51 @@
     next.activeBabaId = next.activeBabaId || null;
     next.updatedAt = next.updatedAt || Date.now();
     return next;
+  }
+
+  function subtractStatsFromRanking(ranking, stats) {
+    const playerId = stats?.jogadorId || stats?.playerId;
+    const target = playerId ? ranking?.[playerId] : null;
+    if (!target) return;
+    [
+      'totalGols',
+      'totalVitorias',
+      'totalEmpates',
+      'totalDerrotas',
+      'totalJogos',
+      'totalBabas',
+      'totalTitulosBaba',
+      'goalkeeperGames',
+      'goalsConceded',
+    ].forEach((field) => {
+      target[field] = Math.max(0, Number(target[field] || 0) - Number(stats[field] || 0));
+    });
+    finalizeStats(target);
+  }
+
+  function applyDeletedBabaToPersistedStats(baba) {
+    const monthKey = monthKeyFromISO(baba?.dataISO);
+    const hasGeneralStats = state.playerStats && Object.keys(state.playerStats).length;
+    const monthlyStats = monthKey ? state.monthlyStats?.[monthKey] : null;
+
+    if (!hasGeneralStats && !monthlyStats) return;
+
+    Object.values(calculateDailyRanking(baba)).forEach((stats) => {
+      if (hasGeneralStats) subtractStatsFromRanking(state.playerStats, stats);
+      if (monthlyStats) subtractStatsFromRanking(monthlyStats, stats);
+    });
+
+    const goalkeeperRanking = {};
+    collectGoalkeeperRankingFromBaba(goalkeeperRanking, baba);
+    Object.values(goalkeeperRanking).forEach((stats) => {
+      const mapped = {
+        jogadorId: stats.jogadorId,
+        goalkeeperGames: Number(stats.jogos || 0),
+        goalsConceded: Number(stats.golsSofridos || 0),
+      };
+      if (hasGeneralStats) subtractStatsFromRanking(state.playerStats, mapped);
+      if (monthlyStats) subtractStatsFromRanking(monthlyStats, mapped);
+    });
   }
 
   function saveState(message) {
@@ -2886,6 +2935,7 @@
     if (state.activeBabaId === babaId) {
       state.activeBabaId = state.babas.find((item) => item.status !== 'finalizado')?.id || null;
     }
+    applyDeletedBabaToPersistedStats(baba);
     saveState('Baba removido do historico.');
   }
 

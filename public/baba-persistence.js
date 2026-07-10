@@ -1035,6 +1035,14 @@ function scheduleRemoteFlush() {
   flushTimer = setTimeout(mergeRemoteIntoLocal, 80);
 }
 
+function syncMonthStatsCacheFromState(state) {
+  if (!state?.monthlyStats || typeof state.monthlyStats !== 'object' || Array.isArray(state.monthlyStats)) return;
+  monthStatsCache.clear();
+  Object.entries(state.monthlyStats).forEach(([monthKey, ranking]) => {
+    monthStatsCache.set(monthKey, clone(ranking || {}));
+  });
+}
+
 function subscribe(refOrQuery, handler, errorLabel) {
   const unsubscribe = onSnapshot(refOrQuery, handler, (error) => {
     console.error(`Falha no listener ${errorLabel}:`, error);
@@ -1165,6 +1173,7 @@ async function scheduleSave(raw, reason = 'local-change') {
   if (applyingRemote || migrationRunning) return;
   const state = parseState(raw);
   if (!hasUsefulState(state)) return;
+  syncMonthStatsCacheFromState(state);
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     try {
