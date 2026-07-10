@@ -2511,13 +2511,12 @@
         <small>${escapeHTML(team.name)}</small>
       </button>
     `).join('');
-    const fieldPlayers = team.jogadores.filter((playerId) => getBabaPlayer(baba, playerId)?.tipo !== 'goleiro');
-    const externalPlayerHTML = fieldPlayers.length <= 3 ? `
+    const externalPlayerHTML = `
       <button class="baba-goal-player" type="button" data-goal-player-id="${EXTERNAL_GOAL_SCORER_ID}">
-        <strong>Jogador de fora</strong>
-        <small>Gol sem artilheiro cadastrado</small>
+        <strong>Nao marcar jogador</strong>
+        <small>Gol sem artilheiro no ranking</small>
       </button>
-    ` : '';
+    `;
     els.goalPlayerList.innerHTML = `${playersHTML}${externalPlayerHTML}`;
     els.goalModal.classList.remove('hidden');
   }
