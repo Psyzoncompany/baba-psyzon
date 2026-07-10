@@ -475,6 +475,9 @@
       if (hasGeneralStats) subtractStatsFromRanking(state.playerStats, mapped);
       if (monthlyStats) subtractStatsFromRanking(monthlyStats, mapped);
     });
+
+    if (!hasFinishedBabas()) state.playerStats = {};
+    if (monthKey && !hasFinishedBabasInMonth(monthKey) && state.monthlyStats) delete state.monthlyStats[monthKey];
   }
 
   function saveState(message) {
@@ -2997,8 +3000,16 @@
     return ranking;
   }
 
+  function hasFinishedBabas() {
+    return state.babas.some((baba) => baba.status === 'finalizado');
+  }
+
+  function hasFinishedBabasInMonth(monthKey) {
+    return Boolean(monthKey) && state.babas.some((baba) => baba.status === 'finalizado' && monthKeyFromISO(baba.dataISO) === monthKey);
+  }
+
   function calculateGeneralRanking() {
-    if (state.playerStats && Object.keys(state.playerStats).length) {
+    if (hasFinishedBabas() && state.playerStats && Object.keys(state.playerStats).length) {
       const persisted = JSON.parse(JSON.stringify(state.playerStats));
       Object.values(persisted).forEach(finalizeStats);
       return persisted;
@@ -3054,7 +3065,8 @@
   }
 
   function calculateMonthlyRanking(monthKey, { includeActive = false } = {}) {
-    const persisted = state.monthlyStats?.[monthKey];
+    const hasHistoryInMonth = hasFinishedBabasInMonth(monthKey);
+    const persisted = hasHistoryInMonth ? state.monthlyStats?.[monthKey] : null;
     const ranking = persisted ? JSON.parse(JSON.stringify(persisted)) : {};
     if (!persisted) {
       state.babas
@@ -3123,7 +3135,9 @@
 
   function calculateGoalkeeperRanking({ includeActive = true } = {}) {
     const ranking = {};
-    const persisted = Object.values(state.playerStats || {}).filter((stats) => Number(stats.goalkeeperGames || 0) > 0);
+    const persisted = hasFinishedBabas()
+      ? Object.values(state.playerStats || {}).filter((stats) => Number(stats.goalkeeperGames || 0) > 0)
+      : [];
     if (persisted.length) {
       persisted.forEach((stats) => {
         ranking[stats.jogadorId || stats.playerId] = {
@@ -3173,7 +3187,9 @@
     const activeKey = activeMonthKey();
     if (activeKey) keys.add(activeKey);
     Object.keys(state.monthlyPayments || {}).forEach((key) => keys.add(key));
-    Object.keys(state.monthlyStats || {}).forEach((key) => keys.add(key));
+    Object.keys(state.monthlyStats || {}).forEach((key) => {
+      if (hasFinishedBabasInMonth(key)) keys.add(key);
+    });
     return Array.from(keys).sort((a, b) => b.localeCompare(a));
   }
 
