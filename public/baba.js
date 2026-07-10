@@ -153,6 +153,8 @@
   let hasBooted = false;
   let tabsStickySentinel = null;
   let tabsScrollFrame = null;
+  let cloudApplyTimer = null;
+  let goalCelebrationTimer = null;
   const babaAssistant = {
     wired: false,
     open: false,
@@ -438,6 +440,50 @@
     els.toast.textContent = message;
     els.toast.classList.add('show');
     toastTimer = setTimeout(() => els.toast.classList.remove('show'), 3200);
+  }
+
+  function applyCloudState(nextState) {
+    if (nextState) {
+      state = normalizeState(JSON.parse(JSON.stringify(nextState)));
+    } else {
+      state = readState();
+    }
+    render();
+  }
+
+  function scheduleCloudStateApply(nextState = null) {
+    clearTimeout(cloudApplyTimer);
+    cloudApplyTimer = setTimeout(() => applyCloudState(nextState), 60);
+  }
+
+  function showGoalCelebration(playerName, teamName) {
+    const player = String(playerName || '').trim();
+    if (!player) return;
+    let celebration = document.getElementById('baba-goal-celebration');
+    if (!celebration) {
+      celebration = document.createElement('div');
+      celebration.id = 'baba-goal-celebration';
+      celebration.className = 'baba-goal-celebration';
+      celebration.setAttribute('aria-live', 'polite');
+      document.body.appendChild(celebration);
+    }
+    celebration.innerHTML = `
+      <div class="baba-goal-fireworks" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="baba-goal-celebration__card">
+        <small>Gol confirmado</small>
+        <strong>${escapeHTML(player)}</strong>
+        <span>${escapeHTML(teamName || 'Time')}</span>
+      </div>
+    `;
+    clearTimeout(goalCelebrationTimer);
+    celebration.classList.remove('is-showing');
+    void celebration.offsetWidth;
+    celebration.classList.add('is-showing');
+    goalCelebrationTimer = setTimeout(() => {
+      celebration.classList.remove('is-showing');
+    }, 3000);
   }
 
   function getActiveBaba() {
@@ -2549,6 +2595,7 @@
     });
     recomputeLiveScore(match);
     closeGoalPicker();
+    if (!isExternalPlayer) showGoalCelebration(player.nome, team.name);
     saveState(isExternalPlayer ? 'Gol de jogador de fora registrado.' : `Gol de ${player.nome} registrado.`);
   }
 
@@ -4992,14 +5039,11 @@
       }
     });
 
-    window.addEventListener('cloud-data-updated', () => {
-      state = readState();
-      render();
+    window.addEventListener('baba-remote-state-ready', (event) => {
+      scheduleCloudStateApply(event.detail?.state || null);
     });
-    window.addEventListener('cloud-data-refresh-requested', () => {
-      state = readState();
-      render();
-    });
+    window.addEventListener('cloud-data-updated', () => scheduleCloudStateApply());
+    window.addEventListener('cloud-data-refresh-requested', () => scheduleCloudStateApply());
   }
 
   function boot() {

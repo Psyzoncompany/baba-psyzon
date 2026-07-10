@@ -1019,9 +1019,12 @@ function mergeRemoteIntoLocal() {
   next.activeBabaId = activeBabaId || null;
   applyingRemote = true;
   try {
-    tools?.writeCurrentBabaRaw?.(stateRaw(next), { remote: true });
+    const raw = stateRaw(next);
+    tools?.writeCurrentBabaRaw?.(raw, { remote: true });
     lastLocalState = clone(next);
-    tools?.scheduleAppRefresh?.('baba-schema-v2');
+    window.dispatchEvent(new CustomEvent('baba-remote-state-ready', {
+      detail: { source: 'baba-schema-v2', state: next, raw },
+    }));
   } finally {
     applyingRemote = false;
   }
