@@ -802,6 +802,103 @@ html body.baba-page .baba-goal-player small {
   background: var(--liquid-teal-soft) !important;
 }
 
+@media (min-width: 1081px) {
+  .baba-unified-header {
+    top: .5rem !important;
+    row-gap: 0 !important;
+    margin-top: .5rem !important;
+    background: #102d49 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .baba-header-main {
+    grid-template-columns: minmax(0, 1.2fr) minmax(14rem, .65fr) auto;
+    gap: .75rem;
+    height: 58px;
+    min-height: 0;
+    padding: .45rem .75rem;
+  }
+
+  .baba-unified-header .baba-brand {
+    gap: .6rem;
+  }
+
+  .baba-unified-header .baba-brand img {
+    width: 44px !important;
+    height: 44px !important;
+    flex-basis: 44px;
+  }
+
+  .baba-unified-header .baba-brand__copy {
+    gap: .08rem;
+  }
+
+  .baba-unified-header .baba-brand__copy strong {
+    font-size: 1rem;
+  }
+
+  .baba-unified-header .baba-brand__copy small {
+    font-size: .66rem;
+  }
+
+  .baba-header-status {
+    gap: .4rem;
+  }
+
+  .baba-online-pill {
+    min-height: 32px;
+    gap: .38rem;
+    padding: .32rem .58rem;
+  }
+
+  .baba-online-pill strong {
+    font-size: .7rem;
+  }
+
+  .baba-unified-header .baba-nav button {
+    min-height: 36px;
+  }
+
+  .baba-manage-button {
+    min-width: 142px;
+    padding: .42rem .7rem !important;
+  }
+
+  .baba-manage-button svg,
+  .baba-icon-button svg {
+    width: 1rem;
+    height: 1rem;
+    flex-basis: 1rem;
+  }
+
+  .baba-icon-button {
+    width: 36px;
+    min-width: 36px;
+  }
+
+  .baba-unified-header .baba-tabs {
+    gap: .4rem !important;
+    min-width: calc(100% - 1.5rem) !important;
+    margin: 0 .75rem .45rem !important;
+    padding-top: .35rem !important;
+  }
+
+  .baba-unified-header .baba-tabs > button,
+  .baba-unified-header .baba-more-nav > button {
+    min-height: 38px !important;
+    gap: .42rem;
+    padding: .35rem .55rem !important;
+    font-size: .74rem !important;
+  }
+
+  .baba-tab-icon {
+    width: .95rem !important;
+    height: .95rem !important;
+    flex-basis: .95rem;
+  }
+}
+
 @media (max-width: 1080px) {
   .baba-header-main {
     grid-template-columns: minmax(15rem, 1fr) auto;

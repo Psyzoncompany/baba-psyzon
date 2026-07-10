@@ -1,0 +1,226 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSchemaV2() {
+      return request.resource.data.schemaVersion == 2;
+    }
+
+    function validPointer() {
+      return isSchemaV2()
+        && request.resource.data.keys().hasOnly([
+          'activeBabaId', 'status', 'currentGameId', 'schemaVersion', 'migrationId',
+          'sourceId', 'updatedAt', 'updatedAtMs'
+        ]);
+    }
+
+    function validBaba() {
+      return isSchemaV2()
+        && request.resource.data.id is string
+        && request.resource.data.keys().hasOnly([
+          'id', 'dateKey', 'dataISO', 'dataCompleta', 'dia', 'mes', 'ano', 'status',
+          'currentGameId', 'currentQueue', 'filaTimes', 'campeaoDoBaba', 'lastResult',
+          'pendingTieBreak', 'teamRevealIndex', 'criadoEm', 'finalizadoEm', 'schemaVersion',
+          'statsApplied', 'deleted', 'updatedAtMs'
+        ]);
+    }
+
+    match /orders/{orderId} {
+      allow read, write: if signedIn();
+    }
+
+    match /orders_public/baba_live_state {
+      allow read: if true;
+      allow create, update: if validPointer();
+      allow delete: if false;
+    }
+
+    match /orders_public/{orderId} {
+      allow read: if true;
+      allow write: if signedIn();
+    }
+
+    match /order_clients/{token} {
+      allow read: if true;
+      allow write: if signedIn();
+    }
+
+    match /order_feedback/{token} {
+      allow read: if true;
+      allow write: if signedIn();
+
+      match /items/{itemId} {
+        allow read, create: if true;
+        allow update, delete: if false;
+      }
+    }
+
+    match /babas/{babaId} {
+      allow read: if true;
+      allow create, update: if validBaba() && request.resource.data.id == babaId;
+      allow delete: if false;
+
+      match /participants/{participantId} {
+        allow read: if true;
+        allow create, update: if isSchemaV2()
+          && request.resource.data.playerId == participantId
+          && request.resource.data.keys().hasOnly([
+            'playerId', 'name', 'nameSnapshot', 'type', 'present', 'visitor', 'active',
+            'teamId', 'joinedAt', 'schemaVersion', 'deleted', 'updatedAtMs'
+          ]);
+        allow delete: if false;
+      }
+
+      match /teams/{teamId} {
+        allow read: if true;
+        allow create, update: if isSchemaV2()
+          && request.resource.data.id == teamId
+          && request.resource.data.keys().hasOnly([
+            'id', 'name', 'tipo', 'order', 'status', 'pontos', 'golsPro', 'golsContra',
+            'vitorias', 'empates', 'derrotas', 'logo', 'schemaVersion', 'deleted', 'updatedAtMs'
+          ]);
+        allow delete: if false;
+      }
+
+      match /games/{gameId} {
+        allow read: if true;
+        allow create, update: if isSchemaV2()
+          && request.resource.data.id == gameId
+          && request.resource.data.keys().hasOnly([
+            'id', 'sequence', 'numeroJogo', 'status', 'teamAId', 'teamBId', 'timeA', 'timeB',
+            'timeANome', 'timeBNome', 'scoreA', 'scoreB', 'placarA', 'placarB', 'winnerTeamId',
+            'loserTeamId', 'vencedor', 'perdedor', 'draw', 'empate', 'resultado',
+            'timeQueContinuou', 'timeQueSaiu', 'timeQueEntrou', 'motivoSaida',
+            'decididoPorSorteio', 'criterioDesempate', 'pendingTieBreak', 'dataHora',
+            'durationSeconds', 'timerRemainingSeconds', 'timerStartedAt', 'timerRunning',
+            'iniciadoEm', 'finalizadoEm', 'desempateResolvidoEm', 'schemaVersion', 'deleted',
+            'updatedAtMs'
+          ]);
+        allow delete: if false;
+      }
+
+      match /goals/{goalId} {
+        allow read: if true;
+        allow create, update: if isSchemaV2()
+          && request.resource.data.id == goalId
+          && request.resource.data.babaId == babaId
+          && request.resource.data.keys().hasOnly([
+            'id', 'gameId', 'playerId', 'playerNameSnapshot', 'external', 'teamId', 'teamNameSnapshot',
+            'minute', 'createdAtMs', 'babaId', 'schemaVersion', 'deleted'
+          ]);
+        allow delete: if false;
+      }
+
+      match /payments/{playerId} {
+        allow read: if true;
+        allow create, update: if isSchemaV2()
+          && request.resource.data.playerId == playerId
+          && request.resource.data.keys().hasOnly([
+            'playerId', 'paid', 'amount', 'method', 'paidAt', 'updatedAtMs',
+            'schemaVersion', 'deleted'
+          ]);
+        allow delete: if false;
+      }
+
+      match /stats/{playerId} {
+        allow read: if true;
+        allow create, update: if isSchemaV2()
+          && request.resource.data.playerId == playerId
+          && request.resource.data.keys().hasOnly([
+            'jogadorId', 'playerId', 'nome', 'totalGols', 'totalVitorias', 'totalEmpates',
+            'totalDerrotas', 'totalJogos', 'totalBabas', 'totalTitulosBaba',
+            'goalkeeperGames', 'goalsConceded', 'mediaGols', 'aproveitamento', 'schemaVersion',
+            'deleted', 'updatedAtMs'
+          ]);
+        allow delete: if false;
+      }
+    }
+
+    match /baba_players/{playerId} {
+      allow read: if true;
+      allow create, update: if isSchemaV2()
+        && request.resource.data.playerId == playerId
+        && request.resource.data.keys().hasOnly([
+          'id', 'playerId', 'nome', 'name', 'tipo', 'type', 'ativo', 'active', 'criadoEm',
+          'createdAtMs', 'schemaVersion', 'deleted', 'updatedAtMs'
+        ]);
+      allow delete: if false;
+    }
+
+    match /baba_purchase_goals/{goalId} {
+      allow read: if true;
+      allow create, update: if isSchemaV2()
+        && request.resource.data.id == goalId
+        && request.resource.data.keys().hasOnly([
+          'id', 'nome', 'descricao', 'prioridade', 'valor', 'arrecadado', 'foto', 'imagePath',
+          'criadoEm', 'atualizadoEm', 'schemaVersion', 'deleted', 'updatedAtMs'
+        ]);
+      allow delete: if false;
+    }
+
+    match /baba_months/{monthKey} {
+      allow read: if true;
+      allow create, update: if isSchemaV2()
+        && request.resource.data.monthKey == monthKey
+        && request.resource.data.keys().hasOnly([
+          'id', 'monthKey', 'schemaVersion', 'updatedAtMs', 'deleted'
+        ]);
+      allow delete: if false;
+
+      match /payments/{playerId} {
+        allow read: if true;
+        allow create, update: if isSchemaV2()
+          && request.resource.data.playerId == playerId
+          && request.resource.data.keys().hasOnly([
+            'playerId', 'paid', 'updatedAtMs', 'schemaVersion'
+          ]);
+        allow delete: if false;
+      }
+
+      match /stats/{playerId} {
+        allow read: if true;
+        allow create, update: if isSchemaV2()
+          && request.resource.data.playerId == playerId
+          && request.resource.data.keys().hasOnly([
+            'jogadorId', 'playerId', 'nome', 'totalGols', 'totalVitorias', 'totalEmpates',
+            'totalDerrotas', 'totalJogos', 'totalBabas', 'totalTitulosBaba',
+            'goalkeeperGames', 'goalsConceded', 'mediaGols', 'aproveitamento', 'schemaVersion',
+            'deleted', 'updatedAtMs'
+          ]);
+        allow delete: if false;
+      }
+    }
+
+    match /player_stats/{playerId} {
+      allow read: if true;
+      allow create, update: if isSchemaV2()
+        && request.resource.data.playerId == playerId
+        && request.resource.data.keys().hasOnly([
+          'jogadorId', 'playerId', 'nome', 'totalGols', 'totalVitorias', 'totalEmpates',
+          'totalDerrotas', 'totalJogos', 'totalBabas', 'totalTitulosBaba',
+          'goalkeeperGames', 'goalsConceded', 'mediaGols', 'aproveitamento', 'schemaVersion',
+          'deleted', 'updatedAtMs'
+        ]);
+      allow delete: if false;
+    }
+
+    match /migrations/{migrationId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.schemaTo == 2
+        && request.resource.data.sourcePath == 'orders_public/baba_live_state';
+      allow delete: if false;
+
+      match /legacy_chunks/{chunkId} {
+        allow read: if true;
+        allow create, update: if isSchemaV2()
+          && request.resource.data.index is int
+          && request.resource.data.data is string
+          && request.resource.data.data.size() <= 180000;
+        allow delete: if false;
+      }
+    }
+  }
+}

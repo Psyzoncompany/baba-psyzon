@@ -1,0 +1,10 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "legacy_chunks",
+      "fieldPath": "data",
+      "indexes": []
+    }
+  ]
+}

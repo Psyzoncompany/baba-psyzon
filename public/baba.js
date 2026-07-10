@@ -6,6 +6,7 @@
   const REMEMBER_ORGANIZER_KEY = 'psyzon_baba_organizer_remembered';
   const VISITOR_TEAM_ID = 'team_visitante';
   const VISITOR_TEAM_NAME = 'Visitante';
+  const EXTERNAL_GOAL_SCORER_ID = '__external_goal_scorer__';
   const PLAYER_BABA_PRICE = 15;
   const GOALKEEPER_BABA_PRICE = 7;
   const PAYMENT_DUE_DAY = 30;
@@ -144,6 +145,7 @@
   let selectedMonthlyKey = null;
   let rankingMode = 'goals';
   const expandedRankingKeys = new Set();
+  const loadingHistoryIds = new Set();
   let toastTimer = null;
   let goalTeamId = null;
   let editingGoalId = null;
@@ -367,6 +369,36 @@
     };
   }
 
+  function createUndoSnapshot(baba) {
+    return {
+      schemaVersion: 2,
+      teams: JSON.parse(JSON.stringify(baba.teams || [])),
+      filaTimes: [...(baba.filaTimes || [])],
+      jogoAtual: baba.jogoAtual ? JSON.parse(JSON.stringify(baba.jogoAtual)) : null,
+      jogosLength: (baba.jogos || []).length,
+      lastResult: baba.lastResult ? JSON.parse(JSON.stringify(baba.lastResult)) : null,
+      pendingTieBreak: baba.pendingTieBreak ? JSON.parse(JSON.stringify(baba.pendingTieBreak)) : null,
+      status: baba.status,
+      teamRevealIndex: Number(baba.teamRevealIndex || 0),
+      campeaoDoBaba: baba.campeaoDoBaba ? JSON.parse(JSON.stringify(baba.campeaoDoBaba)) : null,
+      finalizadoEm: baba.finalizadoEm || null,
+      createdAt: Date.now(),
+    };
+  }
+
+  function normalizeUndoStack(value) {
+    if (!Array.isArray(value)) return [];
+    return value.slice(-10).map((entry) => {
+      if (entry?.schemaVersion === 2) return entry;
+      try {
+        const legacyBaba = typeof entry === 'string' ? JSON.parse(entry) : entry;
+        return legacyBaba && typeof legacyBaba === 'object' ? createUndoSnapshot(legacyBaba) : null;
+      } catch (error) {
+        return null;
+      }
+    }).filter(Boolean);
+  }
+
   function normalizeState(value) {
     const next = value && typeof value === 'object' ? value : createEmptyState();
     next.version = 1;
@@ -379,6 +411,7 @@
     next.babas.forEach((baba) => {
       baba.visitantes = Array.isArray(baba.visitantes) ? baba.visitantes : [];
       baba.pagamentos = baba.pagamentos && typeof baba.pagamentos === 'object' && !Array.isArray(baba.pagamentos) ? baba.pagamentos : {};
+      baba.undoStack = normalizeUndoStack(baba.undoStack);
     });
     const currentMonth = currentPaymentMonthKey();
     const activeBaba = next.babas.find((baba) => baba.id === next.activeBabaId);
@@ -2471,12 +2504,20 @@
 
     goalTeamId = teamId;
     els.goalModalTitle.textContent = `Gol do ${team.name}`;
-    els.goalPlayerList.innerHTML = team.jogadores.map((playerId) => `
+    const playersHTML = team.jogadores.map((playerId) => `
       <button class="baba-goal-player" type="button" data-goal-player-id="${playerId}">
         <strong>${playerPaymentNameHTML(playerId, baba)}</strong>
         <small>${escapeHTML(team.name)}</small>
       </button>
     `).join('');
+    const fieldPlayers = team.jogadores.filter((playerId) => getBabaPlayer(baba, playerId)?.tipo !== 'goleiro');
+    const externalPlayerHTML = fieldPlayers.length <= 3 ? `
+      <button class="baba-goal-player" type="button" data-goal-player-id="${EXTERNAL_GOAL_SCORER_ID}">
+        <strong>Jogador de fora</strong>
+        <small>Gol sem artilheiro cadastrado</small>
+      </button>
+    ` : '';
+    els.goalPlayerList.innerHTML = `${playersHTML}${externalPlayerHTML}`;
     els.goalModal.classList.remove('hidden');
   }
 
@@ -2490,15 +2531,17 @@
     const baba = getActiveBaba();
     const match = baba?.jogoAtual;
     const team = getTeam(baba, goalTeamId);
-    const player = getBabaPlayer(baba, playerId);
-    if (!match || !team || !player) return;
+    const isExternalPlayer = playerId === EXTERNAL_GOAL_SCORER_ID;
+    const player = isExternalPlayer ? null : getBabaPlayer(baba, playerId);
+    if (!match || !team || (!isExternalPlayer && !player)) return;
 
     match.goalEvents = match.goalEvents || [];
     const elapsed = Math.max(0, Number(match.durationSeconds || 8 * 60) - getRemainingSeconds(match));
     match.goalEvents.push({
       id: newId('goal'),
-      jogadorId: player.id,
-      jogadorNome: player.nome,
+      jogadorId: player?.id || null,
+      jogadorNome: player?.nome || 'Jogador de fora',
+      external: isExternalPlayer,
       time: team.id,
       timeNome: team.name,
       minuto: Math.max(1, Math.ceil(elapsed / 60)),
@@ -2506,7 +2549,7 @@
     });
     recomputeLiveScore(match);
     closeGoalPicker();
-    saveState(`Gol de ${player.nome} registrado.`);
+    saveState(isExternalPlayer ? 'Gol de jogador de fora registrado.' : `Gol de ${player.nome} registrado.`);
   }
 
   function undoLastGoal() {
@@ -2535,8 +2578,8 @@
 
     const goals = match.gols || aggregateGoalEvents(match.goalEvents || []);
 
-    baba.undoStack = baba.undoStack || [];
-    baba.undoStack.push(JSON.stringify(baba));
+    baba.undoStack = normalizeUndoStack(baba.undoStack);
+    baba.undoStack.push(createUndoSnapshot(baba));
     if (baba.undoStack.length > 10) baba.undoStack.shift();
 
     const empate = scoreA === scoreB;
@@ -2728,9 +2771,23 @@
     const baba = getActiveBaba();
     const lastSnapshot = baba?.undoStack?.pop();
     if (!lastSnapshot) return showToast('Nao ha jogo para desfazer.');
-    const restored = JSON.parse(lastSnapshot);
-    const index = state.babas.findIndex((item) => item.id === restored.id);
-    if (index >= 0) state.babas[index] = restored;
+    if (typeof lastSnapshot === 'string') {
+      const restored = JSON.parse(lastSnapshot);
+      const index = state.babas.findIndex((item) => item.id === restored.id);
+      if (index >= 0) state.babas[index] = restored;
+    } else {
+      baba.teams = JSON.parse(JSON.stringify(lastSnapshot.teams || []));
+      baba.filaTimes = [...(lastSnapshot.filaTimes || [])];
+      baba.jogoAtual = lastSnapshot.jogoAtual ? JSON.parse(JSON.stringify(lastSnapshot.jogoAtual)) : null;
+      baba.jogos = (baba.jogos || []).slice(0, Number(lastSnapshot.jogosLength || 0));
+      baba.lastResult = lastSnapshot.lastResult ? JSON.parse(JSON.stringify(lastSnapshot.lastResult)) : null;
+      baba.pendingTieBreak = lastSnapshot.pendingTieBreak ? JSON.parse(JSON.stringify(lastSnapshot.pendingTieBreak)) : null;
+      baba.status = lastSnapshot.status || 'jogando';
+      baba.teamRevealIndex = Number(lastSnapshot.teamRevealIndex || 0);
+      baba.campeaoDoBaba = lastSnapshot.campeaoDoBaba ? JSON.parse(JSON.stringify(lastSnapshot.campeaoDoBaba)) : null;
+      baba.finalizadoEm = lastSnapshot.finalizadoEm || null;
+      baba.rankingDoBaba = calculateDailyRanking(baba);
+    }
     saveState('Ultimo jogo desfeito.');
   }
 
@@ -2844,6 +2901,11 @@
   }
 
   function calculateGeneralRanking() {
+    if (state.playerStats && Object.keys(state.playerStats).length) {
+      const persisted = JSON.parse(JSON.stringify(state.playerStats));
+      Object.values(persisted).forEach(finalizeStats);
+      return persisted;
+    }
     const ranking = {};
     state.players.forEach((player) => {
       ranking[player.id] = makeEmptyPlayerStats(player.id, player.nome);
@@ -2895,12 +2957,15 @@
   }
 
   function calculateMonthlyRanking(monthKey, { includeActive = false } = {}) {
-    const ranking = {};
-    state.babas
-      .filter((baba) => baba.status === 'finalizado' && monthKeyFromISO(baba.dataISO) === monthKey)
-      .forEach((baba) => {
-        Object.values(calculateDailyRanking(baba)).forEach((stats) => mergeRankingStats(ranking, stats));
-      });
+    const persisted = state.monthlyStats?.[monthKey];
+    const ranking = persisted ? JSON.parse(JSON.stringify(persisted)) : {};
+    if (!persisted) {
+      state.babas
+        .filter((baba) => baba.status === 'finalizado' && monthKeyFromISO(baba.dataISO) === monthKey)
+        .forEach((baba) => {
+          Object.values(calculateDailyRanking(baba)).forEach((stats) => mergeRankingStats(ranking, stats));
+        });
+    }
 
     const active = getActiveBaba();
     if (includeActive && active && active.status !== 'finalizado' && monthKeyFromISO(active.dataISO) === monthKey) {
@@ -2924,6 +2989,7 @@
         _babas: new Set(),
       };
     }
+    if (!(ranking[player.id]._babas instanceof Set)) ranking[player.id]._babas = new Set();
     if (baba?.id) ranking[player.id]._babas.add(baba.id);
     return ranking[player.id];
   }
@@ -2960,9 +3026,24 @@
 
   function calculateGoalkeeperRanking({ includeActive = true } = {}) {
     const ranking = {};
-    state.babas
-      .filter((baba) => baba.status === 'finalizado')
-      .forEach((baba) => collectGoalkeeperRankingFromBaba(ranking, baba));
+    const persisted = Object.values(state.playerStats || {}).filter((stats) => Number(stats.goalkeeperGames || 0) > 0);
+    if (persisted.length) {
+      persisted.forEach((stats) => {
+        ranking[stats.jogadorId || stats.playerId] = {
+          jogadorId: stats.jogadorId || stats.playerId,
+          nome: stats.nome || stats.name || playerName(stats.jogadorId || stats.playerId),
+          jogos: Number(stats.goalkeeperGames || 0),
+          golsSofridos: Number(stats.goalsConceded || 0),
+          totalBabas: Number(stats.totalBabas || 0),
+          _persistedBabas: Number(stats.totalBabas || 0),
+          _babas: new Set(),
+        };
+      });
+    } else {
+      state.babas
+        .filter((baba) => baba.status === 'finalizado')
+        .forEach((baba) => collectGoalkeeperRankingFromBaba(ranking, baba));
+    }
 
     const active = getActiveBaba();
     if (includeActive && active && active.status !== 'finalizado') {
@@ -2971,8 +3052,9 @@
 
     return Object.values(ranking)
       .map((stats) => {
-        stats.totalBabas = stats._babas?.size || 0;
+        stats.totalBabas = Number(stats._persistedBabas || 0) + (stats._babas?.size || 0);
         delete stats._babas;
+        delete stats._persistedBabas;
         stats.mediaSofridos = stats.jogos ? Number((stats.golsSofridos / stats.jogos).toFixed(2)) : 0;
         return stats;
       })
@@ -2993,6 +3075,8 @@
     });
     const activeKey = activeMonthKey();
     if (activeKey) keys.add(activeKey);
+    Object.keys(state.monthlyPayments || {}).forEach((key) => keys.add(key));
+    Object.keys(state.monthlyStats || {}).forEach((key) => keys.add(key));
     return Array.from(keys).sort((a, b) => b.localeCompare(a));
   }
 
@@ -3807,6 +3891,9 @@
     const general = sortRanking(calculateGeneralRanking(), rankingMode);
     const daily = getDailyRankingList(baba, rankingMode);
     const currentMonth = activeMonthKey(baba);
+    if (currentMonth && !state.monthlyStats?.[currentMonth]) {
+      window.BabaRepository?.loadMonthStats?.(currentMonth).catch(() => {});
+    }
     const monthly = sortRanking(calculateMonthlyRanking(currentMonth, { includeActive: true }), rankingMode);
     const goalkeepers = calculateGoalkeeperRanking({ includeActive: true });
     if (els.monthlyRankingLabel) els.monthlyRankingLabel.textContent = monthLabel(currentMonth);
@@ -3841,6 +3928,9 @@
       return;
     }
     if (!selectedMonthlyKey || !keys.includes(selectedMonthlyKey)) selectedMonthlyKey = keys[0];
+    if (!state.monthlyStats?.[selectedMonthlyKey]) {
+      window.BabaRepository?.loadMonthStats?.(selectedMonthlyKey).catch(() => {});
+    }
     els.monthlyHistoryTabs.innerHTML = keys.map((key) => `
       <button class="${key === selectedMonthlyKey ? 'active' : ''}" type="button" data-month-key="${key}">${escapeHTML(monthLabel(key))}</button>
     `).join('');
@@ -4023,7 +4113,7 @@
       selectedHistoryId = finished[0].id;
     }
 
-    els.historyList.innerHTML = finished.map((baba) => `
+    const historyItems = finished.map((baba) => `
       <button class="baba-history-item ${baba.id === selectedHistoryId ? 'active' : ''}" type="button" data-history-id="${baba.id}">
         <span>
           <strong>${escapeHTML(baba.dataCompleta)}</strong>
@@ -4035,8 +4125,23 @@
         </span>
       </button>
     `).join('');
+    const moreButton = window.BabaRepository?.hasMoreHistory?.()
+      ? '<button class="baba-btn secondary" type="button" data-history-more>Carregar historico anterior</button>'
+      : '';
+    els.historyList.innerHTML = `${historyItems}${moreButton}`;
 
-    renderHistoryDetail(finished.find((baba) => baba.id === selectedHistoryId));
+    const selected = finished.find((baba) => baba.id === selectedHistoryId);
+    if (selected && !selected.__detailLoaded && window.BabaRepository?.loadBaba) {
+      els.historyDetail.innerHTML = '<div class="baba-empty">Carregando placares, times e gols...</div>';
+      if (!loadingHistoryIds.has(selected.id)) {
+        loadingHistoryIds.add(selected.id);
+        window.BabaRepository.loadBaba(selected.id)
+          .catch((error) => showToast(error.message || 'Nao foi possivel carregar este baba.'))
+          .finally(() => loadingHistoryIds.delete(selected.id));
+      }
+      return;
+    }
+    renderHistoryDetail(selected);
   }
 
   function renderHistoryDetail(baba) {
@@ -4870,6 +4975,14 @@
       if (historyButton) {
         selectedHistoryId = historyButton.dataset.historyId;
         renderHistory();
+      }
+
+      const historyMoreButton = event.target.closest('[data-history-more]');
+      if (historyMoreButton) {
+        historyMoreButton.disabled = true;
+        window.BabaRepository?.loadMoreHistory?.()
+          .catch((error) => showToast(error.message || 'Nao foi possivel carregar o historico anterior.'))
+          .finally(() => { historyMoreButton.disabled = false; });
       }
 
       const monthButton = event.target.closest('[data-month-key]');

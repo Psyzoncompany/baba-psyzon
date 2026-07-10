@@ -1,45 +1,19 @@
-# Firestore Rules (modo sem login no admin e no cliente)
+# Regras Firebase do Baba schema v2
 
-Cole as regras abaixo no **Firebase Console → Firestore Database → Rules**.
+As regras versionadas ficam na raiz do projeto:
 
-```rules
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
+- `firestore.rules`: Firestore geral e colecoes do Baba.
+- `storage.rules`: imagens das metas de compra.
+- `firestore.indexes.json`: indices compostos. O schema v2 usa apenas indices simples no momento.
 
-    // =========================
-    // ADMIN (painel sem login Firebase)
-    // =========================
-    // Como não há auth no painel, precisa permitir escrita.
-    match /orders/{oid} {
-      allow read, write: if true;
-    }
+Publique as regras antes de abrir a versao nova do Baba em producao:
 
-    match /orders_public/{oid} {
-      allow read, write: if true;
-    }
-
-    match /order_clients/{token} {
-      allow read, write: if true;
-    }
-
-    // =========================
-    // CLIENTE (link com token)
-    // =========================
-    match /order_feedback/{token} {
-      allow read: if true;
-
-      match /items/{itemId} {
-        allow create, read: if true;
-        allow update, delete: if false;
-        allow list: if false;
-      }
-    }
-  }
-}
+```bash
+firebase deploy --only firestore:rules,firestore:indexes,storage
 ```
 
-## Observações
-- Este conjunto resolve imediatamente os erros `Missing or insufficient permissions` ao criar/atualizar `order_clients` e `orders_public` no painel.
-- Como está sem autenticação, as coleções de admin ficam abertas para leitura/escrita.
-- Próximo passo recomendado (hardening): migrar escrita de admin para usuário autenticado ou Cloud Functions.
+O documento `orders_public/baba_live_state` aceita somente o ponteiro do schema v2. Os documentos do Baba possuem validacao de campos e as imagens ficam limitadas a 2 MiB no Firebase Storage.
+
+## Limite de seguranca atual
+
+O Baba permite acompanhamento publico e ainda usa uma senha de organizador apenas no navegador. Por isso, as colecoes do Baba precisam aceitar gravacoes sem Firebase Auth, embora as regras limitem formato, caminhos e tamanho. Para autorizacao forte, o proximo passo e autenticar o organizador no Firebase e exigir um `custom claim` de administrador nas operacoes de escrita.
