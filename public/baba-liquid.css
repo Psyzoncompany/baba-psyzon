@@ -1096,7 +1096,9 @@ html body.baba-page::before {
 }
 
 .baba-current-match-panel .baba-match-live {
+  box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
   display: grid !important;
   grid-template-columns: 1fr;
   justify-items: center;
@@ -1110,8 +1112,15 @@ html body.baba-page::before {
   -webkit-backdrop-filter: blur(12px) saturate(112%);
 }
 
+.baba-current-match-panel .baba-match-live *,
+.baba-current-match-panel .baba-match-live *::before,
+.baba-current-match-panel .baba-match-live *::after {
+  box-sizing: border-box;
+}
+
 .baba-current-match-panel .baba-timer {
   justify-self: center;
+  max-width: 100%;
   min-height: 42px !important;
   display: inline-flex !important;
   align-items: center;
@@ -1133,11 +1142,13 @@ html body.baba-page::before {
 }
 
 .baba-current-match-panel .baba-live-scoreboard {
+  box-sizing: border-box;
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) minmax(7.5rem, auto) minmax(0, 1fr) !important;
   align-items: center !important;
   gap: 1.1rem !important;
   width: min(100%, 760px);
+  max-width: 100%;
   margin-inline: auto;
   padding: .25rem 0 1rem !important;
   border-bottom: 1px solid rgba(23, 54, 77, .14);
@@ -1145,14 +1156,26 @@ html body.baba-page::before {
 
 .baba-current-match-panel .baba-live-team {
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   font-size: 1rem !important;
 }
 
 .baba-current-match-panel .baba-live-team .baba-team-link {
   width: 100%;
+  max-width: 100%;
   min-width: 0;
   gap: .55rem;
   align-items: center;
+}
+
+.baba-current-match-panel .baba-live-team .baba-team-link span,
+.baba-current-match-panel .baba-live-team .baba-team-link strong {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .baba-current-match-panel .baba-live-team .baba-team-link-logo {
@@ -1183,14 +1206,26 @@ html body.baba-page::before {
 }
 
 .baba-current-match-panel .baba-live-actions {
+  box-sizing: border-box;
   display: grid !important;
   align-items: stretch;
   justify-content: center;
   gap: .75rem !important;
   width: min(100%, 760px);
+  max-width: 100%;
   margin-inline: auto;
   padding: .85rem 0 !important;
   border-bottom: 1px solid rgba(23, 54, 77, .14) !important;
+}
+
+.baba-current-match-panel .baba-live-actions > *,
+.baba-current-match-panel .baba-live-main-btn,
+.baba-current-match-panel .baba-start-game-btn,
+.baba-current-match-panel .baba-live-control-btn {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  justify-self: stretch;
 }
 
 .baba-current-match-panel .baba-match-live.is-prepared .baba-live-actions--single {
@@ -1240,6 +1275,7 @@ html body.baba-page::before {
 }
 
 .baba-current-match-panel .baba-match-live__meta {
+  box-sizing: border-box;
   display: flex !important;
   flex-wrap: wrap;
   justify-content: center;
@@ -1291,23 +1327,24 @@ html body.baba-page::before {
   .baba-current-match-panel .baba-match-live {
     gap: .65rem !important;
     padding: .75rem !important;
+    overflow: hidden;
   }
 
   .baba-current-match-panel .baba-live-scoreboard {
-    grid-template-columns: minmax(0, 1fr) minmax(5.7rem, auto) minmax(0, 1fr) !important;
-    gap: .45rem !important;
+    grid-template-columns: minmax(0, 1fr) minmax(4.9rem, auto) minmax(0, 1fr) !important;
+    gap: .32rem !important;
     width: 100%;
     padding-bottom: .75rem !important;
   }
 
   .baba-current-match-panel .baba-live-score {
-    min-width: 5.7rem !important;
-    gap: .18rem;
-    font-size: 2.2rem !important;
+    min-width: 4.9rem !important;
+    gap: .12rem;
+    font-size: 1.9rem !important;
   }
 
   .baba-current-match-panel .baba-live-team {
-    font-size: .78rem !important;
+    font-size: .7rem !important;
   }
 
   .baba-current-match-panel .baba-live-team .baba-team-link {
@@ -1323,14 +1360,15 @@ html body.baba-page::before {
   }
 
   .baba-current-match-panel .baba-live-team .baba-team-link-logo {
-    width: 2rem !important;
-    height: 2rem !important;
-    flex-basis: 2rem;
+    width: 1.65rem !important;
+    height: 1.65rem !important;
+    flex-basis: 1.65rem;
   }
 
   .baba-current-match-panel .baba-match-live.is-prepared .baba-live-actions--single {
     grid-template-columns: 1fr !important;
     width: 100%;
+    max-width: 100%;
   }
 
   .baba-current-match-panel .baba-live-main-btn,
