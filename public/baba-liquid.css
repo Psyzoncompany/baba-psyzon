@@ -584,6 +584,37 @@ body:not(.baba-app-mode) #mode-reset-btn {
   color: var(--liquid-muted) !important;
 }
 
+html body.baba-page .baba-row b {
+  color: var(--liquid-navy-soft) !important;
+}
+
+html body.baba-page .baba-player-mini-stats span {
+  border: 1px solid var(--liquid-line);
+  color: var(--liquid-navy-soft) !important;
+  background: #e8eef4 !important;
+}
+
+html body.baba-page .baba-player-mini-stats span:first-child {
+  border-color: rgba(8, 127, 108, .18);
+  color: #076d5e !important;
+  background: var(--liquid-teal-soft) !important;
+}
+
+html body.baba-page .baba-player-mini-stats span:last-child {
+  border-color: rgba(214, 162, 29, .24);
+  color: #6d4d00 !important;
+  background: #fff8df !important;
+}
+
+/* Player names stay neutral; payment state is communicated by the adjacent badge. */
+html body.baba-page .baba-player-payment__name,
+html body.baba-page .baba-player-payment.is-paid .baba-player-payment__name,
+html body.baba-page .baba-player-payment.is-unpaid .baba-player-payment__name,
+html body.baba-page .baba-payment-name.is-paid,
+html body.baba-page .baba-payment-name.is-unpaid {
+  color: var(--liquid-text) !important;
+}
+
 .baba-hero {
   min-height: 0 !important;
   display: grid !important;
@@ -632,6 +663,17 @@ body:not(.baba-app-mode) #mode-reset-btn {
   color: #fff !important;
   background: var(--liquid-teal) !important;
   box-shadow: none !important;
+}
+
+html body.baba-page .baba-goal-player strong,
+html body.baba-page .baba-goal-player .baba-player-payment__name,
+html body.baba-page .baba-goal-player .baba-player-payment.is-paid .baba-player-payment__name,
+html body.baba-page .baba-goal-player .baba-player-payment.is-unpaid .baba-player-payment__name {
+  color: #fff !important;
+}
+
+html body.baba-page .baba-goal-player small {
+  color: rgba(255, 255, 255, .82) !important;
 }
 
 .baba-secondary,
