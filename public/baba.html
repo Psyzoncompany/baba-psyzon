@@ -2700,6 +2700,48 @@
       grid-column: 1 / -1 !important;
     }
 
+    .baba-player-payment-card {
+      grid-column: 1 / -1 !important;
+    }
+
+    .baba-player-payment-sections {
+      display: grid;
+      grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+      gap: .8rem;
+      align-items: start;
+    }
+
+    .baba-management-section {
+      min-width: 0;
+      padding: .72rem;
+      border: 1px solid rgba(15, 23, 42, .1);
+      border-radius: 10px;
+      background: rgba(248, 250, 252, .68);
+    }
+
+    .baba-section-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .6rem;
+      margin-bottom: .65rem;
+    }
+
+    .baba-section-heading>div {
+      display: grid;
+      gap: .16rem;
+    }
+
+    .baba-section-heading strong {
+      color: #172033;
+      font-size: .88rem;
+    }
+
+    .baba-section-heading small {
+      color: #64748b;
+      font-size: .68rem;
+    }
+
     body.baba-player-mode .baba-goals-layout {
       grid-template-columns: 1fr;
     }
@@ -3125,6 +3167,10 @@
 
     @media (max-width: 980px) {
       .baba-goals-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .baba-player-payment-sections {
         grid-template-columns: 1fr;
       }
     }
@@ -3593,35 +3639,46 @@
             </div>
           </article>
 
-          <article class="baba-card organizer-only">
+          <article class="baba-card baba-card--wide baba-player-payment-card organizer-only">
             <div class="baba-card__head">
-              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-user-plus"></use></svg>Cadastrar jogador</h2>
-              <span>Lista fixa</span>
-            </div>
-            <form id="player-form" class="baba-player-form">
-              <input id="player-name" type="text" placeholder="Nome do jogador" required>
-              <select id="player-type">
-                <option value="jogador">Jogador de linha</option>
-                <option value="goleiro">Goleiro</option>
-                <option value="visitante">Visitante do baba</option>
-              </select>
-              <button type="submit">Cadastrar</button>
-            </form>
-            <div id="players-admin-list" class="baba-player-list"></div>
-          </article>
-
-          <article class="baba-card baba-card--wide baba-payments-card organizer-only">
-            <div class="baba-card__head">
-              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-wallet"></use></svg>Pagamentos do baba</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-user-plus"></use></svg>Jogadores e pagamentos</h2>
               <div class="baba-card__actions">
-                <span>Mensal dia 30 - Jogador R$ 15 / Goleiro R$ 7</span>
+                <span>Cadastro, lista e mensalidades</span>
                 <button class="baba-export-btn" type="button" data-export-pdf="payments" title="Exportar pagamentos em PDF">
                   <svg aria-hidden="true" focusable="false"><use href="#baba-download"></use></svg><span>PDF</span>
                 </button>
               </div>
             </div>
-            <div id="payment-summary" class="baba-payment-summary"></div>
-            <div id="payment-list" class="baba-payment-list"></div>
+            <div class="baba-player-payment-sections">
+              <section class="baba-management-section" aria-labelledby="player-management-title">
+                <div class="baba-section-heading">
+                  <div>
+                    <strong id="player-management-title">Cadastrar jogador</strong>
+                    <small>Lista fixa, goleiros e visitantes</small>
+                  </div>
+                </div>
+                <form id="player-form" class="baba-player-form">
+                  <input id="player-name" type="text" placeholder="Nome do jogador" required>
+                  <select id="player-type">
+                    <option value="jogador">Jogador de linha</option>
+                    <option value="goleiro">Goleiro</option>
+                    <option value="visitante">Visitante do baba</option>
+                  </select>
+                  <button type="submit">Cadastrar</button>
+                </form>
+                <div id="players-admin-list" class="baba-player-list"></div>
+              </section>
+              <section class="baba-management-section" aria-labelledby="payment-management-title">
+                <div class="baba-section-heading">
+                  <div>
+                    <strong id="payment-management-title">Pagamentos do baba</strong>
+                    <small>Mensal dia 30 - Jogador R$ 15 / Goleiro R$ 7</small>
+                  </div>
+                </div>
+                <div id="payment-summary" class="baba-payment-summary"></div>
+                <div id="payment-list" class="baba-payment-list"></div>
+              </section>
+            </div>
           </article>
         </div>
       </section>
@@ -3968,8 +4025,14 @@
 
       function scheduleAppRefresh(source = 'html-helper') {
         window.setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('cloud-data-updated', { detail: { source } }));
-          window.dispatchEvent(new CustomEvent('cloud-data-refresh-requested', { detail: { source, hasRemoteChange: true } }));
+          const raw = readCurrentBabaRaw();
+          let state = null;
+          try {
+            state = raw ? normalizeBabaState(JSON.parse(raw)) : null;
+          } catch (error) {
+            console.warn('Nao foi possivel aplicar a atualizacao parcial do Baba:', error);
+          }
+          window.dispatchEvent(new CustomEvent('baba-remote-state-ready', { detail: { source, state } }));
         }, 0);
       }
 
@@ -4002,7 +4065,6 @@
             originalSetItem(key, normalized);
             if (!applyingRemote) {
               window.BabaPublicSync?.scheduleSave?.(normalized, 'local-change');
-              scheduleAppRefresh('team-normalizer');
             }
           };
 
@@ -4051,7 +4113,6 @@
               nativeSetItem.call(this, key, normalized);
               if (!applyingRemote) {
                 window.BabaPublicSync?.scheduleSave?.(normalized, 'native-local-change');
-                scheduleAppRefresh('team-normalizer');
               }
             },
             configurable: true,

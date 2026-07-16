@@ -146,6 +146,7 @@
   let rankingMode = 'goals';
   const expandedRankingKeys = new Set();
   const loadingHistoryIds = new Set();
+  const renderedHTMLCache = new WeakMap();
   let toastTimer = null;
   let goalTeamId = null;
   let editingGoalId = null;
@@ -154,6 +155,10 @@
   let tabsStickySentinel = null;
   let tabsScrollFrame = null;
   let cloudApplyTimer = null;
+  let lastRenderedStateSignature = '';
+  let pendingActionButton = null;
+  let savingButtonState = null;
+  let savingButtonFallbackTimer = null;
   let goalCelebrationTimer = null;
   const babaAssistant = {
     wired: false,
@@ -301,6 +306,96 @@
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;');
+  }
+
+  function stableControlSelector(element) {
+    if (!element) return '';
+    if (element.id) return `#${CSS.escape(element.id)}`;
+    const attributes = ['data-present-id', 'data-move-player-id', 'data-add-player-team', 'data-goal-collected-id'];
+    const attribute = attributes.find((name) => element.hasAttribute?.(name));
+    return attribute ? `[${attribute}="${CSS.escape(element.getAttribute(attribute))}"]` : '';
+  }
+
+  function actionButtonSelector(button) {
+    if (!button) return '';
+    if (button.id) return `#${CSS.escape(button.id)}`;
+    const parts = ['data-action', 'data-id', 'data-team-id', 'data-history-id']
+      .filter((name) => button.hasAttribute(name))
+      .map((name) => `[${name}="${CSS.escape(button.getAttribute(name))}"]`);
+    if (parts.length) return `button${parts.join('')}`;
+    return button.form?.id && button.type === 'submit'
+      ? `#${CSS.escape(button.form.id)} button[type="submit"]`
+      : '';
+  }
+
+  function rememberActionButton(event) {
+    const button = event.target.closest?.('button');
+    if (!button || button.disabled) return;
+    pendingActionButton = button;
+    queueMicrotask(() => {
+      if (pendingActionButton === button) pendingActionButton = null;
+    });
+  }
+
+  function clearSavingButton() {
+    clearTimeout(savingButtonFallbackTimer);
+    if (!savingButtonState) return;
+    const button = document.querySelector(savingButtonState.selector);
+    if (button) {
+      button.innerHTML = savingButtonState.html;
+      button.disabled = savingButtonState.disabled;
+      button.removeAttribute('aria-busy');
+    }
+    savingButtonState = null;
+  }
+
+  function markActionButtonSaving() {
+    const selector = actionButtonSelector(pendingActionButton);
+    pendingActionButton = null;
+    if (!selector) return;
+    const button = document.querySelector(selector);
+    if (!button) return;
+    clearSavingButton();
+    savingButtonState = { selector, html: button.innerHTML, disabled: button.disabled };
+    button.textContent = 'Salvando...';
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    savingButtonFallbackTimer = setTimeout(clearSavingButton, 2500);
+  }
+
+  function setHTML(element, html) {
+    if (!element) return false;
+    const nextHTML = String(html ?? '');
+    if (renderedHTMLCache.get(element) === nextHTML || element.innerHTML === nextHTML) {
+      renderedHTMLCache.set(element, nextHTML);
+      return false;
+    }
+
+    const active = element.contains(document.activeElement) ? document.activeElement : null;
+    const activeSelector = stableControlSelector(active);
+    const selection = active && 'selectionStart' in active
+      ? { start: active.selectionStart, end: active.selectionEnd }
+      : null;
+    const scrollTop = element.scrollTop;
+    element.innerHTML = nextHTML;
+    renderedHTMLCache.set(element, nextHTML);
+    element.scrollTop = scrollTop;
+
+    if (activeSelector) {
+      const replacement = element.querySelector(activeSelector);
+      replacement?.focus({ preventScroll: true });
+      if (replacement && selection && typeof replacement.setSelectionRange === 'function') {
+        replacement.setSelectionRange(selection.start, selection.end);
+      }
+    }
+    return true;
+  }
+
+  function renderStateSignature(value = state) {
+    if (!value) return '';
+    const clean = JSON.parse(JSON.stringify(value));
+    delete clean.updatedAt;
+    return JSON.stringify(clean);
   }
 
   function shuffle(items) {
@@ -484,6 +579,7 @@
     state.updatedAt = Date.now();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     render();
+    markActionButtonSaving();
     if (message) showToast(message);
   }
 
@@ -495,10 +591,15 @@
   }
 
   function applyCloudState(nextState) {
+    const next = nextState
+      ? normalizeState(JSON.parse(JSON.stringify(nextState)))
+      : readState();
+    const signature = renderStateSignature(next);
+    if (signature === lastRenderedStateSignature) return;
     if (nextState) {
-      state = normalizeState(JSON.parse(JSON.stringify(nextState)));
+      state = next;
     } else {
-      state = readState();
+      state = next;
     }
     render();
   }
@@ -1480,7 +1581,7 @@
     state.babas
       .filter((baba) => baba.status === 'finalizado' && Number(String(baba.dataISO || '').slice(0, 4)) === Number(year))
       .forEach((baba) => {
-        Object.values(calculateDailyRanking(baba)).forEach((stats) => mergeRankingStats(ranking, stats));
+        Object.values(getFinishedBabaRanking(baba)).forEach((stats) => mergeRankingStats(ranking, stats));
       });
 
     const active = getActiveBaba();
@@ -3066,42 +3167,20 @@
     return Boolean(monthKey) && state.babas.some((baba) => baba.status === 'finalizado' && monthKeyFromISO(baba.dataISO) === monthKey);
   }
 
+  function getFinishedBabaRanking(baba) {
+    if (!baba || baba.status !== 'finalizado') return {};
+    const saved = baba.rankingDoBaba && typeof baba.rankingDoBaba === 'object' && !Array.isArray(baba.rankingDoBaba)
+      ? baba.rankingDoBaba
+      : null;
+    if (saved && Object.keys(saved).length) return JSON.parse(JSON.stringify(saved));
+    return calculateDailyRanking(baba);
+  }
+
   function calculateGeneralRanking() {
     if (!hasFinishedBabas()) return {};
-    if (hasFinishedBabas() && state.playerStats && Object.keys(state.playerStats).length) {
-      const persisted = JSON.parse(JSON.stringify(state.playerStats));
-      Object.values(persisted).forEach(finalizeStats);
-      return persisted;
-    }
     const ranking = {};
-    state.players.forEach((player) => {
-      ranking[player.id] = makeEmptyPlayerStats(player.id, player.nome);
-    });
-
     state.babas.filter((baba) => baba.status === 'finalizado').forEach((baba) => {
-      const playerIds = new Set([...(baba.jogadoresPresentes || [])]);
-      (baba.teams || []).forEach((team) => (team.jogadores || []).forEach((id) => playerIds.add(id)));
-      (baba.visitantes || []).forEach((player) => playerIds.add(player.id));
-      playerIds.forEach((id) => ensureStats(ranking, id, baba).totalBabas += 1);
-      if (baba.campeaoDoBaba?.jogadores) {
-        baba.campeaoDoBaba.jogadores.forEach((id) => ensureStats(ranking, id, baba).totalTitulosBaba += 1);
-      }
-
-      (baba.jogos || []).forEach((game) => {
-        const teamAPlayers = gameTeamPlayers(baba, game, game.timeA);
-        const teamBPlayers = gameTeamPlayers(baba, game, game.timeB);
-
-        if (game.empate) {
-          [...teamAPlayers, ...teamBPlayers].forEach((id) => ensureStats(ranking, id, baba).totalEmpates += 1);
-        } else {
-          gameTeamPlayers(baba, game, game.vencedor).forEach((id) => ensureStats(ranking, id, baba).totalVitorias += 1);
-          gameTeamPlayers(baba, game, game.perdedor).forEach((id) => ensureStats(ranking, id, baba).totalDerrotas += 1);
-        }
-
-        (game.gols || []).forEach((goal) => {
-          ensureStats(ranking, goal.jogadorId, baba).totalGols += Number(goal.quantidade || 0);
-        });
-      });
+      Object.values(getFinishedBabaRanking(baba)).forEach((stats) => mergeRankingStats(ranking, stats));
     });
 
     Object.values(ranking).forEach(finalizeStats);
@@ -3119,20 +3198,18 @@
     target.totalJogos += Number(stats.totalJogos || 0);
     target.totalBabas += Number(stats.totalBabas || 0);
     target.totalTitulosBaba += Number(stats.totalTitulosBaba || 0);
+    target.goalkeeperGames = Number(target.goalkeeperGames || 0) + Number(stats.goalkeeperGames || 0);
+    target.goalsConceded = Number(target.goalsConceded || 0) + Number(stats.goalsConceded || 0);
     ranking[stats.jogadorId] = target;
   }
 
   function calculateMonthlyRanking(monthKey, { includeActive = false } = {}) {
-    const hasHistoryInMonth = hasFinishedBabasInMonth(monthKey);
-    const persisted = hasHistoryInMonth ? state.monthlyStats?.[monthKey] : null;
-    const ranking = persisted ? JSON.parse(JSON.stringify(persisted)) : {};
-    if (!persisted) {
-      state.babas
-        .filter((baba) => baba.status === 'finalizado' && monthKeyFromISO(baba.dataISO) === monthKey)
-        .forEach((baba) => {
-          Object.values(calculateDailyRanking(baba)).forEach((stats) => mergeRankingStats(ranking, stats));
-        });
-    }
+    const ranking = {};
+    state.babas
+      .filter((baba) => baba.status === 'finalizado' && monthKeyFromISO(baba.dataISO) === monthKey)
+      .forEach((baba) => {
+        Object.values(getFinishedBabaRanking(baba)).forEach((stats) => mergeRankingStats(ranking, stats));
+      });
 
     const active = getActiveBaba();
     if (includeActive && active && active.status !== 'finalizado' && monthKeyFromISO(active.dataISO) === monthKey) {
@@ -3193,26 +3270,32 @@
 
   function calculateGoalkeeperRanking({ includeActive = false } = {}) {
     const ranking = {};
-    const persisted = hasFinishedBabas()
-      ? Object.values(state.playerStats || {}).filter((stats) => Number(stats.goalkeeperGames || 0) > 0)
-      : [];
-    if (persisted.length) {
-      persisted.forEach((stats) => {
-        ranking[stats.jogadorId || stats.playerId] = {
-          jogadorId: stats.jogadorId || stats.playerId,
-          nome: stats.nome || stats.name || playerName(stats.jogadorId || stats.playerId),
-          jogos: Number(stats.goalkeeperGames || 0),
-          golsSofridos: Number(stats.goalsConceded || 0),
-          totalBabas: Number(stats.totalBabas || 0),
-          _persistedBabas: Number(stats.totalBabas || 0),
-          _babas: new Set(),
-        };
+    state.babas
+      .filter((baba) => baba.status === 'finalizado')
+      .forEach((baba) => {
+        const savedGoalkeepers = Object.values(getFinishedBabaRanking(baba))
+          .filter((stats) => Number(stats.goalkeeperGames || 0) > 0);
+        if (!savedGoalkeepers.length) {
+          collectGoalkeeperRankingFromBaba(ranking, baba);
+          return;
+        }
+        savedGoalkeepers.forEach((stats) => {
+          const playerId = stats.jogadorId || stats.playerId;
+          if (!ranking[playerId]) {
+            ranking[playerId] = {
+              jogadorId: playerId,
+              nome: stats.nome || stats.name || playerName(playerId, baba),
+              jogos: 0,
+              golsSofridos: 0,
+              totalBabas: 0,
+              _babas: new Set(),
+            };
+          }
+          ranking[playerId].jogos += Number(stats.goalkeeperGames || 0);
+          ranking[playerId].golsSofridos += Number(stats.goalsConceded || 0);
+          ranking[playerId]._babas.add(baba.id);
+        });
       });
-    } else {
-      state.babas
-        .filter((baba) => baba.status === 'finalizado')
-        .forEach((baba) => collectGoalkeeperRankingFromBaba(ranking, baba));
-    }
 
     const active = getActiveBaba();
     if (includeActive && active && active.status !== 'finalizado') {
@@ -3221,9 +3304,8 @@
 
     return Object.values(ranking)
       .map((stats) => {
-        stats.totalBabas = Number(stats._persistedBabas || 0) + (stats._babas?.size || 0);
+        stats.totalBabas = stats._babas?.size || 0;
         delete stats._babas;
-        delete stats._persistedBabas;
         stats.mediaSofridos = stats.jogos ? Number((stats.golsSofridos / stats.jogos).toFixed(2)) : 0;
         return stats;
       })
@@ -3242,9 +3324,6 @@
       const key = monthKeyFromISO(baba.dataISO);
       if (key) keys.add(key);
     });
-    Object.keys(state.monthlyStats || {}).forEach((key) => {
-      if (hasFinishedBabasInMonth(key)) keys.add(key);
-    });
     return Array.from(keys).sort((a, b) => b.localeCompare(a));
   }
 
@@ -3259,6 +3338,8 @@
       totalJogos: 0,
       totalBabas: 0,
       totalTitulosBaba: 0,
+      goalkeeperGames: 0,
+      goalsConceded: 0,
       mediaGols: 0,
       aproveitamento: 0,
     };
@@ -3293,6 +3374,7 @@
     renderRankings(baba);
     renderHistory();
     renderTimerOnly();
+    lastRenderedStateSignature = renderStateSignature(state);
   }
 
   function setFlowButton(button, state) {
@@ -3374,9 +3456,9 @@
     const teamB = getTeam(baba, current?.timeB);
     const nextTeam = getTeam(baba, baba?.filaTimes?.[0]);
 
-    els.fieldTeamA.innerHTML = teamA ? teamDetailButton(baba, teamA) : teamLabel(teamA);
-    els.fieldTeamB.innerHTML = teamB ? teamDetailButton(baba, teamB) : teamLabel(teamB);
-    els.liveScore.innerHTML = current ? scoreBadgeHTML(current.placarA, current.placarB) : scoreBadgeHTML(0, 0);
+    setHTML(els.fieldTeamA, teamA ? teamDetailButton(baba, teamA) : teamLabel(teamA));
+    setHTML(els.fieldTeamB, teamB ? teamDetailButton(baba, teamB) : teamLabel(teamB));
+    setHTML(els.liveScore, current ? scoreBadgeHTML(current.placarA, current.placarB) : scoreBadgeHTML(0, 0));
     els.metricPresent.textContent = String(baba?.jogadoresPresentes?.length || 0);
     els.metricTeams.textContent = String(baba?.teams?.length || 0);
     els.metricGames.textContent = String(baba?.jogos?.length || 0);
@@ -3420,7 +3502,7 @@
       </div>
     `).join('') : '<div class="baba-empty">Visitantes aparecem aqui e somem no proximo baba.</div>';
 
-    els.playersAdminList.innerHTML = `
+    setHTML(els.playersAdminList, `
       <div class="baba-admin-section">
         <span>Lista fixa</span>
         ${fixedHTML}
@@ -3429,7 +3511,7 @@
         <span>Visitantes do baba</span>
         ${visitorHTML}
       </div>
-    `;
+    `);
   }
 
   function renderPresentList(baba) {
@@ -3438,11 +3520,11 @@
     els.presentCountLabel.textContent = `${present.size} marcados`;
 
     if (!activePlayers.length) {
-      els.presentList.innerHTML = '<div class="baba-empty">Cadastre jogadores para montar a lista de presenca.</div>';
+      setHTML(els.presentList, '<div class="baba-empty">Cadastre jogadores para montar a lista de presenca.</div>');
       return;
     }
 
-    els.presentList.innerHTML = activePlayers.map((player) => {
+    setHTML(els.presentList, activePlayers.map((player) => {
       const checked = present.has(player.id);
       return `
         <label class="baba-present-item ${checked ? 'is-checked' : ''}">
@@ -3453,7 +3535,7 @@
           </span>
         </label>
       `;
-    }).join('');
+    }).join(''));
   }
 
   function renderGoalsAndPayments(baba) {
@@ -3471,7 +3553,7 @@
     const remaining = Math.max(0, target - collected);
     const progress = target ? Math.min(100, Math.round((collected / target) * 100)) : 0;
 
-    els.goalsSummary.innerHTML = `
+    setHTML(els.goalsSummary, `
       <article>
         <span>Saldo da conta</span>
         <strong>${formatCurrency(balance)}</strong>
@@ -3492,7 +3574,7 @@
         <strong>${formatCurrency(remaining)}</strong>
         <small>Para bater as metas</small>
       </article>
-    `;
+    `);
   }
 
   function goalImageHTML(goal) {
@@ -3511,11 +3593,11 @@
     if (els.goalsCountLabel) els.goalsCountLabel.textContent = `${goals.length} metas`;
 
     if (!goals.length) {
-      els.goalsList.innerHTML = '<div class="baba-empty">Nenhuma meta cadastrada ainda. Use o painel do organizador para adicionar o primeiro produto.</div>';
+      setHTML(els.goalsList, '<div class="baba-empty">Nenhuma meta cadastrada ainda. Use o painel do organizador para adicionar o primeiro produto.</div>');
       return;
     }
 
-    els.goalsList.innerHTML = goals.map((goal) => {
+    setHTML(els.goalsList, goals.map((goal) => {
       const target = Number(goal.valor || 0);
       const collected = Number(goal.arrecadado || 0);
       const remaining = Math.max(0, target - collected);
@@ -3557,7 +3639,7 @@
           </div>
         </article>
       `;
-    }).join('');
+    }).join(''));
   }
 
   function renderPayments(baba) {
@@ -3569,7 +3651,7 @@
     const pending = Math.max(0, stats.expected - stats.paid);
     const pendingCount = Math.max(0, stats.players - stats.paidCount);
 
-    els.paymentSummary.innerHTML = `
+    setHTML(els.paymentSummary, `
       <article>
         <span>Esperado</span>
         <strong>${formatCurrency(stats.expected)}</strong>
@@ -3585,14 +3667,14 @@
         <strong>${formatCurrency(pending)}</strong>
         <small>${pendingCount} faltando - ${paymentDueDateLabel(monthKey)}</small>
       </article>
-    `;
+    `);
 
     if (!players.length) {
-      els.paymentList.innerHTML = '<div class="baba-empty">Cadastre a lista fixa para controlar os pagamentos mensais.</div>';
+      setHTML(els.paymentList, '<div class="baba-empty">Cadastre a lista fixa para controlar os pagamentos mensais.</div>');
       return;
     }
 
-    els.paymentList.innerHTML = players.map((player) => {
+    setHTML(els.paymentList, players.map((player) => {
       const paid = isPlayerPaidThisMonth(player.id, baba);
       const price = paymentPriceForPlayer(player);
       const label = player.tipo === 'goleiro' ? 'Goleiro' : (player.visitante ? 'Visitante' : 'Jogador');
@@ -3606,12 +3688,12 @@
           ${isOrganizer() ? `<button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}">${paid ? 'Pagamento pendente' : 'Pagamento pago'}</button>` : ''}
         </div>
       `;
-    }).join('');
+    }).join(''));
   }
 
   function renderTeams(baba) {
     if (!baba?.teams?.length) {
-      els.teamsGrid.innerHTML = '<div class="baba-card"><div class="baba-empty">Nenhum time sorteado ainda.</div></div>';
+      setHTML(els.teamsGrid, '<div class="baba-card"><div class="baba-empty">Nenhum time sorteado ainda.</div></div>');
       return;
     }
 
@@ -3666,31 +3748,31 @@
 
     if (fullyRevealed) {
       const startHTML = isOrganizer() && !baba.jogoAtual ? '<button class="baba-primary baba-start-game-btn" type="button" data-action="start-first-live">Iniciar primeiro jogo</button>' : '';
-      els.teamsGrid.innerHTML = `
+      setHTML(els.teamsGrid, `
         ${baba.teams.map((team, position) => renderTeamCard(team, position)).join('')}
         <div class="baba-team-reveal-actions baba-team-reveal-actions--all">
           ${startHTML}
           <button class="baba-secondary" type="button" data-action="restart-team-reveal">Rever sorteio</button>
           <span>Todos os times foram revelados. Clique no nome de qualquer time para ver os jogadores.</span>
         </div>
-      `;
+      `);
       return;
     }
 
     const team = baba.teams[index];
-    els.teamsGrid.innerHTML = `
+    setHTML(els.teamsGrid, `
       ${renderTeamCard(team, index, { reveal: true })}
       <div class="baba-team-reveal-actions baba-team-reveal-actions--single">
         <button class="baba-primary" type="button" data-action="advance-team-reveal">Ver proximo time</button>
         <span>Avance para revelar o proximo time sorteado.</span>
       </div>
-    `;
+    `);
   }
 
   function renderStandings(baba) {
     if (!baba?.teams?.length) {
-      els.standingsList.innerHTML = '<div class="baba-empty">Sorteie os times para ver a tabela.</div>';
-      if (els.tableTopScorers) els.tableTopScorers.innerHTML = '';
+      setHTML(els.standingsList, '<div class="baba-empty">Sorteie os times para ver a tabela.</div>');
+      setHTML(els.tableTopScorers, '');
       return;
     }
 
@@ -3745,7 +3827,7 @@
       a.name.localeCompare(b.name)
     ));
 
-    els.standingsList.innerHTML = `
+    setHTML(els.standingsList, `
       <div class="baba-table">
         <div class="baba-table__row baba-table__head">
           <span>Pos</span><span>Time</span><span>Pts</span><span>GP</span><span>SG</span><span>V</span><span>E</span><span>D</span>
@@ -3766,7 +3848,7 @@
           </div>
         `).join('')}
       </div>
-    `;
+    `);
     renderTableTopScorers(baba);
   }
 
@@ -3776,16 +3858,16 @@
       .filter((stats) => stats.totalGols > 0)
       .slice(0, 4);
     if (!top.length) {
-      els.tableTopScorers.innerHTML = `
+      setHTML(els.tableTopScorers, `
         <div class="baba-table-scorers__head">
           <span>Top 4 artilheiros</span>
           <small>Baba atual</small>
         </div>
         <div class="baba-empty">Sem gols registrados na tabela.</div>
-      `;
+      `);
       return;
     }
-    els.tableTopScorers.innerHTML = `
+    setHTML(els.tableTopScorers, `
       <div class="baba-table-scorers__head">
         <span>Top 4 artilheiros</span>
         <small>Baba atual</small>
@@ -3799,7 +3881,7 @@
           </div>
         `).join('')}
       </div>
-    `;
+    `);
   }
 
   function getSortedGeneralRanking() {
@@ -3825,23 +3907,23 @@
     const top = getDailyRankingList(baba, 'goals')
       .filter((stats) => stats.totalGols > 0);
     if (!top.length) {
-      els.dailyTopScorers.innerHTML = '<div class="baba-empty">Sem gols no baba atual.</div>';
+      setHTML(els.dailyTopScorers, '<div class="baba-empty">Sem gols no baba atual.</div>');
       return;
     }
-    els.dailyTopScorers.innerHTML = renderRankingList(top, 'Sem gols no baba atual.', {
+    setHTML(els.dailyTopScorers, renderRankingList(top, 'Sem gols no baba atual.', {
       compact: true,
       expandKey: 'daily-top-scorers',
       limit: 4,
-    });
+    }));
   }
 
   function renderCurrentGames(baba) {
     const games = baba?.jogos || [];
     if (!games.length) {
-      els.currentGamesList.innerHTML = '<div class="baba-empty">Nenhum jogo finalizado neste baba.</div>';
+      setHTML(els.currentGamesList, '<div class="baba-empty">Nenhum jogo finalizado neste baba.</div>');
       return;
     }
-    els.currentGamesList.innerHTML = games.slice().reverse().map((game) => `
+    setHTML(els.currentGamesList, games.slice().reverse().map((game) => `
       <div class="baba-history-item baba-history-item--compact">
         <span>
           <strong>Jogo ${game.numeroJogo}: ${matchLineHTML(baba, getTeam(baba, game.timeA), game.placarA, game.placarB, getTeam(baba, game.timeB), true)}</strong>
@@ -3851,7 +3933,7 @@
           <svg class="baba-btn-icon" aria-hidden="true" focusable="false"><use href="#baba-ball"></use></svg>Gols
         </button>
       </div>
-    `).join('');
+    `).join(''));
   }
 
   function openTeamDetail(teamId, babaId = null) {
@@ -3946,7 +4028,7 @@
           </article>
         `;
       }).join('');
-      els.currentMatchPanel.innerHTML = `
+      setHTML(els.currentMatchPanel, `
         <div class="baba-tiebreak-panel">
           <div class="baba-tiebreak-hero">
             <img src="img/baba-impar-par-tiebreak.png" alt="">
@@ -3970,14 +4052,14 @@
             ? `<div class="baba-tiebreak-options">${choiceCards}</div>`
             : '<div class="baba-empty">O organizador vai selecionar aqui o time que venceu no impar/par.</div>'}
         </div>
-      `;
+      `);
     } else if (!match || !teamA || !teamB) {
       els.currentMatchPanel.className = 'baba-current-match-panel';
       const canStart = isOrganizer() && baba?.teams?.length >= 2;
-      els.currentMatchPanel.innerHTML = `
+      setHTML(els.currentMatchPanel, `
         <div class="baba-empty">Nenhum jogo iniciado.</div>
         ${canStart ? '<div class="baba-live-actions baba-live-actions--single"><button class="baba-primary baba-start-game-btn" type="button" data-action="start-first-live">Iniciar primeiro jogo</button></div>' : ''}
-      `;
+      `);
     } else {
       els.currentMatchPanel.className = 'baba-current-match-panel';
       const remaining = getRemainingSeconds(match);
@@ -4013,7 +4095,7 @@
           </div>
         `;
       }
-      els.currentMatchPanel.innerHTML = `
+      setHTML(els.currentMatchPanel, `
         <div class="baba-match-live ${isPrepared ? 'is-prepared' : ''}">
           <div class="baba-timer ${isOver ? 'is-over' : ''}" id="current-timer">
             <svg class="baba-live-icon" aria-hidden="true" focusable="false"><use href="#baba-clock"></use></svg>
@@ -4034,13 +4116,13 @@
             <span class="baba-pill">${teamA.jogadores.length} x ${teamB.jogadores.length} jogadores</span>
           </div>
         </div>
-      `;
+      `);
     }
 
     if (!baba?.filaTimes?.length) {
-      els.queueList.innerHTML = '<div class="baba-empty">Sem times aguardando.</div>';
+      setHTML(els.queueList, '<div class="baba-empty">Sem times aguardando.</div>');
     } else {
-      els.queueList.innerHTML = baba.filaTimes.map((teamId, index) => {
+      setHTML(els.queueList, baba.filaTimes.map((teamId, index) => {
         const team = getTeam(baba, teamId);
         return `
           <div class="baba-row">
@@ -4051,12 +4133,12 @@
             <b>#${index + 1}</b>
           </div>
         `;
-      }).join('');
+      }).join(''));
     }
 
     if (!baba?.lastResult) {
       els.lastResultPill.textContent = 'Sem resultado';
-      els.lastResultPanel.innerHTML = '<div class="baba-empty">Finalize um jogo para ver quem fica em campo e quem sai.</div>';
+      setHTML(els.lastResultPanel, '<div class="baba-empty">Finalize um jogo para ver quem fica em campo e quem sai.</div>');
     } else {
       const keep = getTeam(baba, baba.lastResult.timeQueContinuou);
       const outNames = teamNamesFromValue(baba, baba.lastResult.timeQueSaiu);
@@ -4068,7 +4150,7 @@
       els.lastResultPill.textContent = `Jogo ${baba.lastResult.jogo}`;
       const keepHTML = keep ? teamDetailButton(baba, keep, '-') : '<span class="baba-result-pending">Aguardando impar/par</span>';
       const outHTML = baba.lastResult.timeQueSaiu ? (teamButtonsFromValue(baba, baba.lastResult.timeQueSaiu) || escapeHTML(outNames)) : '<span class="baba-result-pending">Aguardando decisao</span>';
-      els.lastResultPanel.innerHTML = `
+      setHTML(els.lastResultPanel, `
         <div class="baba-row">
           <div>
             <strong>${resultLine}</strong>
@@ -4078,7 +4160,7 @@
         <div class="baba-row"><span>Continua em campo</span><b>${keepHTML}</b></div>
         <div class="baba-row"><span>Saiu para a fila</span><b>${outHTML}</b></div>
         <div class="baba-row"><span>Motivo</span><b>${escapeHTML(baba.lastResult.motivoSaida)}</b></div>
-      `;
+      `);
     }
   }
 
@@ -4087,30 +4169,27 @@
     const general = sortRanking(calculateGeneralRanking(), rankingMode);
     const daily = getDailyRankingList(baba, rankingMode);
     const currentMonth = activeMonthKey(baba);
-    if (currentMonth && hasFinishedBabasInMonth(currentMonth) && !state.monthlyStats?.[currentMonth]) {
-      window.BabaRepository?.loadMonthStats?.(currentMonth).catch(() => {});
-    }
     const monthly = sortRanking(calculateMonthlyRanking(currentMonth, { includeActive: false }), rankingMode);
     const goalkeepers = calculateGoalkeeperRanking({ includeActive: false });
     if (els.monthlyRankingLabel) els.monthlyRankingLabel.textContent = `${monthLabel(currentMonth)} - babas salvos`;
     if (els.monthlyRankingList) {
-      els.monthlyRankingList.innerHTML = renderRankingList(monthly, rankingEmptyMessage('neste mes'), {
+      setHTML(els.monthlyRankingList, renderRankingList(monthly, rankingEmptyMessage('neste mes'), {
         expandKey: 'monthly-current',
         metric: rankingMode,
-      });
+      }));
     }
-    els.rankingList.innerHTML = renderRankingList(general, rankingEmptyMessage('no ranking geral'), {
+    setHTML(els.rankingList, renderRankingList(general, rankingEmptyMessage('no ranking geral'), {
       expandKey: 'general',
       metric: rankingMode,
-    });
-    els.dailyRankingList.innerHTML = renderRankingList(daily, rankingEmptyMessage('no baba atual'), {
+    }));
+    setHTML(els.dailyRankingList, renderRankingList(daily, rankingEmptyMessage('no baba atual'), {
       expandKey: 'daily',
       metric: rankingMode,
-    });
+    }));
     if (els.goalkeeperRankingList) {
-      els.goalkeeperRankingList.innerHTML = renderGoalkeeperRankingList(goalkeepers, 'Ainda nao ha jogos com goleiros para montar este ranking.', {
+      setHTML(els.goalkeeperRankingList, renderGoalkeeperRankingList(goalkeepers, 'Ainda nao ha jogos com goleiros para montar este ranking.', {
         expandKey: 'goalkeepers',
-      });
+      }));
     }
     renderMonthlyHistory();
   }
@@ -4119,22 +4198,19 @@
     if (!els.monthlyHistoryTabs || !els.monthlyHistoryRanking) return;
     const keys = getAvailableMonthKeys();
     if (!keys.length) {
-      els.monthlyHistoryTabs.innerHTML = '';
-      els.monthlyHistoryRanking.innerHTML = '<div class="baba-empty">Sem historico mensal ainda.</div>';
+      setHTML(els.monthlyHistoryTabs, '');
+      setHTML(els.monthlyHistoryRanking, '<div class="baba-empty">Sem historico mensal ainda.</div>');
       return;
     }
     if (!selectedMonthlyKey || !keys.includes(selectedMonthlyKey)) selectedMonthlyKey = keys[0];
-    if (!state.monthlyStats?.[selectedMonthlyKey]) {
-      window.BabaRepository?.loadMonthStats?.(selectedMonthlyKey).catch(() => {});
-    }
-    els.monthlyHistoryTabs.innerHTML = keys.map((key) => `
+    setHTML(els.monthlyHistoryTabs, keys.map((key) => `
       <button class="${key === selectedMonthlyKey ? 'active' : ''}" type="button" data-month-key="${key}">${escapeHTML(monthLabel(key))}</button>
-    `).join('');
+    `).join(''));
     const ranking = sortRanking(calculateMonthlyRanking(selectedMonthlyKey, { includeActive: false }), rankingMode);
-    els.monthlyHistoryRanking.innerHTML = renderRankingList(ranking, rankingEmptyMessage('neste mes'), {
+    setHTML(els.monthlyHistoryRanking, renderRankingList(ranking, rankingEmptyMessage('neste mes'), {
       expandKey: `month-${selectedMonthlyKey}`,
       metric: rankingMode,
-    });
+    }));
   }
 
   function rankingEmptyMessage(scope) {
@@ -4146,12 +4222,12 @@
 
   function renderRankingFilters() {
     if (!els.rankingFilterControls) return;
-    els.rankingFilterControls.innerHTML = RANKING_MODES.map((modeOption) => `
+    setHTML(els.rankingFilterControls, RANKING_MODES.map((modeOption) => `
       <button class="${rankingMode === modeOption.id ? 'active' : ''}" type="button" data-ranking-mode="${modeOption.id}" aria-pressed="${rankingMode === modeOption.id ? 'true' : 'false'}">
         <svg aria-hidden="true" focusable="false"><use href="#${modeOption.icon}"></use></svg>
         <span>${modeOption.label}</span>
       </button>
-    `).join('');
+    `).join(''));
   }
 
   function rankingMetricValue(stats, metric = 'goals') {
@@ -4300,8 +4376,8 @@
     const finished = state.babas.filter((baba) => baba.status === 'finalizado');
     els.historyCountLabel.textContent = `${finished.length} salvos`;
     if (!finished.length) {
-      els.historyList.innerHTML = '<div class="baba-empty">Nenhum baba finalizado ainda.</div>';
-      els.historyDetail.innerHTML = '<div class="baba-empty">Finalize um baba para consultar os detalhes.</div>';
+      setHTML(els.historyList, '<div class="baba-empty">Nenhum baba finalizado ainda.</div>');
+      setHTML(els.historyDetail, '<div class="baba-empty">Finalize um baba para consultar os detalhes.</div>');
       return;
     }
 
@@ -4324,11 +4400,11 @@
     const moreButton = window.BabaRepository?.hasMoreHistory?.()
       ? '<button class="baba-btn secondary" type="button" data-history-more>Carregar historico anterior</button>'
       : '';
-    els.historyList.innerHTML = `${historyItems}${moreButton}`;
+    setHTML(els.historyList, `${historyItems}${moreButton}`);
 
     const selected = finished.find((baba) => baba.id === selectedHistoryId);
     if (selected && !selected.__detailLoaded && window.BabaRepository?.loadBaba) {
-      els.historyDetail.innerHTML = '<div class="baba-empty">Carregando placares, times e gols...</div>';
+      setHTML(els.historyDetail, '<div class="baba-empty">Carregando placares, times e gols...</div>');
       if (!loadingHistoryIds.has(selected.id)) {
         loadingHistoryIds.add(selected.id);
         window.BabaRepository.loadBaba(selected.id)
@@ -4346,7 +4422,7 @@
     const championNames = baba.campeaoDoBaba?.nomes?.join(', ') || 'Sem campeao';
     const championPlayers = (baba.campeaoDoBaba?.jogadores || []).map((id) => playerPaymentNameHTML(id, baba)).join(', ') || '-';
 
-    els.historyDetail.innerHTML = `
+    setHTML(els.historyDetail, `
       <div class="baba-stack">
         <div class="baba-row"><span>Campeao do baba</span><b>${escapeHTML(championNames)}</b></div>
         <div class="baba-row"><span>Jogadores campeoes</span><b>${championPlayers}</b></div>
@@ -4369,7 +4445,7 @@
           </div>
         `).join('')}
       </div>
-    `;
+    `);
   }
 
   function setActiveTab(tab) {
@@ -5034,6 +5110,7 @@
 
   function wireEvents() {
     wireBabaAssistant();
+    document.addEventListener('click', rememberActionButton, true);
     els.enterOrganizer.addEventListener('click', openOrganizerPassword);
     els.enterPlayer.addEventListener('click', () => setMode('player'));
     els.closePassword?.addEventListener('click', closeOrganizerPassword);
@@ -5196,8 +5273,9 @@
     window.addEventListener('baba-remote-state-ready', (event) => {
       scheduleCloudStateApply(event.detail?.state || null);
     });
-    window.addEventListener('cloud-data-updated', () => scheduleCloudStateApply());
-    window.addEventListener('cloud-data-refresh-requested', () => scheduleCloudStateApply());
+    window.addEventListener('baba-save-progress', (event) => {
+      if (!event.detail?.saving) clearSavingButton();
+    });
   }
 
   function boot() {

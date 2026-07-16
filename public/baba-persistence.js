@@ -29,8 +29,11 @@ const tools = window.BabaHtmlTools;
 const pointerRef = doc(db, ...POINTER_PATH);
 const unsubscribers = new Set();
 const activeSubscriptions = new Map();
+const activeRefreshTimers = new Map();
 const loadedBabas = new Map();
 const monthStatsCache = new Map();
+const finishedBabaStatsCache = new Map();
+const loadingFinishedBabaStats = new Map();
 let saveTimer = null;
 let flushTimer = null;
 let lastLocalState = null;
@@ -40,6 +43,9 @@ let migrationRunning = false;
 let repositoryStarted = false;
 let historyCursor = null;
 let hasMoreHistory = true;
+let lastRemoteViewSignature = '';
+let localWritePending = false;
+let saveGeneration = 0;
 
 function now() {
   return Date.now();
@@ -117,6 +123,12 @@ function hasUsefulState(state) {
 
 function stateRaw(state) {
   return JSON.stringify(tools?.normalizeBabaState?.(clone(state)) || state);
+}
+
+function stateViewSignature(state) {
+  const copy = clone(state) || {};
+  delete copy.updatedAt;
+  return stateRaw(copy);
 }
 
 function updateStatus(status, stateText, message) {
@@ -987,8 +999,12 @@ async function fetchBaba(babaId) {
 }
 
 function mergeRemoteIntoLocal() {
+  if (localWritePending) {
+    scheduleRemoteFlush();
+    return;
+  }
   const current = readLocalState() || emptyState();
-  const next = { ...current, updatedAt: now() };
+  const next = { ...current };
   if (window.__babaRemotePlayers) next.players = clone(window.__babaRemotePlayers);
   if (window.__babaRemotePurchaseGoals) next.purchaseGoals = clone(window.__babaRemotePurchaseGoals);
   if (window.__babaRemoteMonthlyPayments) next.monthlyPayments = clone(window.__babaRemoteMonthlyPayments);
@@ -1000,6 +1016,7 @@ function mergeRemoteIntoLocal() {
     if (meta.deleted) {
       byId.delete(meta.id);
       loadedBabas.delete(meta.id);
+      finishedBabaStatsCache.delete(meta.id);
     }
     else if (!loadedBabas.has(meta.id)) {
       const existing = byId.get(meta.id) || {};
@@ -1023,7 +1040,7 @@ function mergeRemoteIntoLocal() {
         pagamentos: existing.pagamentos || {},
         filaTimes: meta.filaTimes || meta.currentQueue || [],
         jogoAtual: existing.jogoAtual || null,
-        rankingDoBaba: existing.rankingDoBaba || {},
+        rankingDoBaba: finishedBabaStatsCache.get(meta.id) || existing.rankingDoBaba || {},
         undoStack: existing.undoStack || [],
       }));
     }
@@ -1031,6 +1048,13 @@ function mergeRemoteIntoLocal() {
   loadedBabas.forEach((baba, id) => { if (baba) byId.set(id, clone(baba)); });
   next.babas = [...byId.values()].sort((a, b) => Number(b.criadoEm || 0) - Number(a.criadoEm || 0));
   next.activeBabaId = activeBabaId || null;
+  const viewSignature = stateViewSignature(next);
+  if (viewSignature === lastRemoteViewSignature || viewSignature === stateViewSignature(current)) {
+    lastRemoteViewSignature = viewSignature;
+    return;
+  }
+  lastRemoteViewSignature = viewSignature;
+  next.updatedAt = now();
   applyingRemote = true;
   try {
     const raw = stateRaw(next);
@@ -1047,6 +1071,21 @@ function mergeRemoteIntoLocal() {
 function scheduleRemoteFlush() {
   clearTimeout(flushTimer);
   flushTimer = setTimeout(mergeRemoteIntoLocal, 80);
+}
+
+function scheduleBabaRefresh(id) {
+  clearTimeout(activeRefreshTimers.get(id));
+  activeRefreshTimers.set(id, setTimeout(async () => {
+    activeRefreshTimers.delete(id);
+    try {
+      const refreshed = await fetchBaba(id);
+      loadedBabas.set(id, refreshed);
+      if (refreshed?.status === 'finalizado') finishedBabaStatsCache.set(id, clone(refreshed.rankingDoBaba || {}));
+      scheduleRemoteFlush();
+    } catch (error) {
+      console.error(`Falha ao atualizar o Baba ${id}:`, error);
+    }
+  }, 90));
 }
 
 function syncMonthStatsCacheFromState(state) {
@@ -1066,11 +1105,30 @@ function subscribe(refOrQuery, handler, errorLabel) {
   return unsubscribe;
 }
 
+async function loadFinishedBabaStats(babaId) {
+  const id = safeId(babaId);
+  if (finishedBabaStatsCache.has(id)) return finishedBabaStatsCache.get(id);
+  if (loadingFinishedBabaStats.has(id)) return loadingFinishedBabaStats.get(id);
+  const request = getDocs(collection(db, 'babas', id, 'stats'))
+    .then((snapshot) => {
+      const ranking = {};
+      snapshot.docs.forEach((item) => {
+        if (!item.data().deleted) ranking[item.id] = item.data();
+      });
+      finishedBabaStatsCache.set(id, ranking);
+      return ranking;
+    })
+    .finally(() => loadingFinishedBabaStats.delete(id));
+  loadingFinishedBabaStats.set(id, request);
+  return request;
+}
+
 async function loadBaba(babaId, { realtime = false } = {}) {
   if (!babaId) return null;
   const id = safeId(babaId);
   const baba = await fetchBaba(id);
   loadedBabas.set(id, baba);
+  if (baba?.status === 'finalizado') finishedBabaStatsCache.set(id, clone(baba.rankingDoBaba || {}));
   scheduleRemoteFlush();
   if (realtime && !activeSubscriptions.has(id)) {
     const refs = [
@@ -1082,11 +1140,14 @@ async function loadBaba(babaId, { realtime = false } = {}) {
       collection(db, 'babas', id, 'payments'),
       collection(db, 'babas', id, 'stats'),
     ];
-    const localUnsubscribers = refs.map((target) => subscribe(target, async () => {
-      loadedBabas.set(id, await fetchBaba(id));
-      scheduleRemoteFlush();
+    const localUnsubscribers = refs.map((target) => subscribe(target, () => {
+      scheduleBabaRefresh(id);
     }, `do Baba ${id}`));
-    activeSubscriptions.set(id, () => localUnsubscribers.forEach((unsubscribe) => unsubscribe()));
+    activeSubscriptions.set(id, () => {
+      localUnsubscribers.forEach((unsubscribe) => unsubscribe());
+      clearTimeout(activeRefreshTimers.get(id));
+      activeRefreshTimers.delete(id);
+    });
   }
   return baba;
 }
@@ -1125,6 +1186,12 @@ function startV2Subscriptions() {
     historyCursor = snapshot.docs[snapshot.docs.length - 1] || null;
     hasMoreHistory = snapshot.size === RECENT_BABA_LIMIT;
     scheduleRemoteFlush();
+    const finishedIds = window.__babaRemoteMetadata
+      .filter((item) => item.status === 'finalizado' && !item.deleted)
+      .map((item) => item.id);
+    Promise.all(finishedIds.map((id) => loadFinishedBabaStats(id)))
+      .then(() => scheduleRemoteFlush())
+      .catch((error) => console.warn('Falha ao carregar estatisticas dos babas finalizados:', error));
   }, 'do historico');
   subscribe(collection(db, 'baba_months'), (snapshot) => {
     const months = snapshot.docs.map((item) => item.id);
@@ -1187,6 +1254,9 @@ async function scheduleSave(raw, reason = 'local-change') {
   if (applyingRemote || migrationRunning) return;
   const state = parseState(raw);
   if (!hasUsefulState(state)) return;
+  const generation = ++saveGeneration;
+  localWritePending = true;
+  updateStatus('online', 'Salvando', 'Salvando alteracoes em segundo plano...');
   syncMonthStatsCacheFromState(state);
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
@@ -1201,6 +1271,12 @@ async function scheduleSave(raw, reason = 'local-change') {
         isPermissionError(error)
           ? 'Publique as regras do schema v2 para liberar a nova estrutura.'
           : 'Nao foi possivel salvar agora; a copia deste aparelho foi mantida.');
+    } finally {
+      if (generation === saveGeneration) {
+        localWritePending = false;
+        window.dispatchEvent(new CustomEvent('baba-save-progress', { detail: { saving: false } }));
+        scheduleRemoteFlush();
+      }
     }
   }, 420);
 }

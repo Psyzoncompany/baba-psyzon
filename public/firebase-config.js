@@ -1319,9 +1319,8 @@ const applyCloudState = (uid, data, { source = 'cloud' } = {}) => {
 
     if (!window.BackendInitialized) {
         bootstrapBackendUI();
-    } else {
+    } else if (hasRemoteChange) {
         window.dispatchEvent(new CustomEvent('cloud-data-updated', { detail: { source } }));
-        scheduleRealtimePageRefresh({ source, hasRemoteChange });
     }
 
     return true;

@@ -2254,7 +2254,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(updateUserAvatar, 4000);
 
   // Real-time Firebase sync: re-render current section when remote data changes
-  window.addEventListener('cloud-data-refresh-requested', () => {
+  window.addEventListener('cloud-data-updated', () => {
     renderSection(currentSection);
   });
   window.addEventListener('storage', (event) => {
