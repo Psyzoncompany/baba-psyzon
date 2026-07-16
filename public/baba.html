@@ -2742,6 +2742,191 @@
       font-size: .68rem;
     }
 
+    .baba-team-player-card {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .7rem;
+      min-height: 46px;
+      padding: .58rem .68rem;
+      border: 1px solid rgba(15, 23, 42, .11);
+      border-radius: 9px;
+      color: #172033;
+      background: rgba(255, 255, 255, .82);
+      text-align: left;
+      cursor: pointer;
+      transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+    }
+
+    .baba-team-player-card:hover,
+    .baba-team-player-card:focus-visible {
+      border-color: rgba(20, 164, 106, .48);
+      box-shadow: 0 8px 22px rgba(15, 23, 42, .1);
+      transform: translateY(-1px);
+      outline: none;
+    }
+
+    .baba-team-player-card__identity {
+      min-width: 0;
+      display: grid;
+      gap: .12rem;
+    }
+
+    .baba-team-player-card__identity strong {
+      overflow: hidden;
+      color: #172033;
+      font-size: .82rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .baba-team-player-card__identity small,
+    .baba-team-player-card__hint {
+      color: #64748b;
+      font-size: .66rem;
+      font-weight: 800;
+    }
+
+    .baba-roster-modal__panel {
+      width: min(760px, 100%);
+    }
+
+    .baba-roster-detail,
+    .baba-player-detail-content {
+      display: grid;
+      gap: .75rem;
+    }
+
+    .baba-roster-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: .45rem;
+    }
+
+    .baba-roster-summary span,
+    .baba-player-stat {
+      display: grid;
+      gap: .16rem;
+      padding: .62rem;
+      border: 1px solid rgba(15, 23, 42, .09);
+      border-radius: 9px;
+      background: rgba(248, 250, 252, .84);
+    }
+
+    .baba-roster-summary small,
+    .baba-player-stat small {
+      color: #64748b;
+      font-size: .62rem;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .baba-roster-summary b,
+    .baba-player-stat b {
+      color: #172033;
+      font-size: 1rem;
+    }
+
+    .baba-roster-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .5rem;
+    }
+
+    .baba-roster-add,
+    .baba-player-management {
+      display: grid;
+      gap: .55rem;
+      padding: .72rem;
+      border: 1px solid rgba(20, 164, 106, .2);
+      border-radius: 10px;
+      background: rgba(236, 253, 245, .66);
+    }
+
+    .baba-roster-add__controls,
+    .baba-player-management__move,
+    .baba-player-management__actions {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+
+    .baba-roster-add select,
+    .baba-player-management select {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid rgba(15, 23, 42, .14);
+      border-radius: 8px;
+      padding: .5rem .65rem;
+      color: #172033;
+      background: #fff;
+      font: inherit;
+    }
+
+    .baba-player-profile {
+      display: flex;
+      align-items: center;
+      gap: .7rem;
+      padding: .75rem;
+      border-radius: 11px;
+      color: #fff;
+      background: linear-gradient(135deg, #172033, #255c50);
+    }
+
+    .baba-player-profile__avatar {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 50%;
+      color: #17362d;
+      background: linear-gradient(135deg, #f8c846, #d9f99d);
+      font-size: 1rem;
+      font-weight: 950;
+    }
+
+    .baba-player-profile__copy {
+      min-width: 0;
+      display: grid;
+      gap: .16rem;
+    }
+
+    .baba-player-profile__copy strong {
+      color: #fff;
+      font-size: 1rem;
+    }
+
+    .baba-player-profile__copy span {
+      color: rgba(255, 255, 255, .74);
+      font-size: .72rem;
+      font-weight: 750;
+    }
+
+    .baba-player-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .48rem;
+    }
+
+    .baba-player-management__actions .baba-secondary,
+    .baba-player-management__actions .baba-mini-btn {
+      flex: 1 1 0;
+    }
+
+    .baba-pdf-print-frame {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      width: 1px;
+      height: 1px;
+      border: 0;
+      opacity: .01;
+      pointer-events: none;
+    }
+
     body.baba-player-mode .baba-goals-layout {
       grid-template-columns: 1fr;
     }
@@ -3176,6 +3361,22 @@
     }
 
     @media (max-width: 760px) {
+      .baba-roster-list {
+        grid-template-columns: 1fr;
+      }
+
+      .baba-roster-summary,
+      .baba-player-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .baba-roster-add__controls,
+      .baba-player-management__move,
+      .baba-player-management__actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
       .baba-goals-summary,
       .baba-payment-summary {
         grid-template-columns: 1fr;
@@ -3842,12 +4043,22 @@
   </div>
 
   <div id="team-detail-modal" class="baba-modal hidden" role="dialog" aria-modal="true" aria-labelledby="team-detail-title">
-    <div class="baba-modal__panel">
+    <div class="baba-modal__panel baba-roster-modal__panel">
       <div class="baba-card__head">
         <h2 id="team-detail-title">Time</h2>
         <button id="close-team-detail-modal" class="baba-mini-btn" type="button">Fechar</button>
       </div>
-      <div id="team-detail-list" class="baba-stack"></div>
+      <div id="team-detail-list" class="baba-roster-detail"></div>
+    </div>
+  </div>
+
+  <div id="player-detail-modal" class="baba-modal hidden" role="dialog" aria-modal="true" aria-labelledby="player-detail-title">
+    <div class="baba-modal__panel baba-player-detail-modal__panel">
+      <div class="baba-card__head">
+        <h2 id="player-detail-title">Jogador</h2>
+        <button id="close-player-detail-modal" class="baba-mini-btn" type="button">Fechar</button>
+      </div>
+      <div id="player-detail-content" class="baba-player-detail-content"></div>
     </div>
   </div>
 
@@ -4167,6 +4378,7 @@
           'close-present-modal': 'baba-check',
           'close-goal-modal': 'baba-x',
           'close-team-detail-modal': 'baba-x',
+          'close-player-detail-modal': 'baba-x',
           'close-game-detail-modal': 'baba-x',
           'goal-submit-btn': 'baba-plus',
           'goal-cancel-edit-btn': 'baba-x',
@@ -4179,6 +4391,10 @@
             'toggle-player': 'baba-refresh',
             'delete-player': 'baba-trash',
             'delete-visitor': 'baba-trash',
+            'add-player-to-team': 'baba-plus',
+            'move-player-from-card': 'baba-refresh',
+            'remove-player-from-team': 'baba-x',
+            'remove-player-from-baba': 'baba-exit',
             'edit-goal': 'baba-pencil',
             'delete-goal': 'baba-trash',
             'save-goal-collected': 'baba-save',

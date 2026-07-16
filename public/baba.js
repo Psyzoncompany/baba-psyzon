@@ -133,6 +133,10 @@
     teamDetailTitle: $('#team-detail-title'),
     teamDetailList: $('#team-detail-list'),
     closeTeamDetailModal: $('#close-team-detail-modal'),
+    playerDetailModal: $('#player-detail-modal'),
+    playerDetailTitle: $('#player-detail-title'),
+    playerDetailContent: $('#player-detail-content'),
+    closePlayerDetailModal: $('#close-player-detail-modal'),
     gameDetailModal: $('#game-detail-modal'),
     gameDetailTitle: $('#game-detail-title'),
     gameDetailList: $('#game-detail-list'),
@@ -147,6 +151,7 @@
   const expandedRankingKeys = new Set();
   const loadingHistoryIds = new Set();
   const renderedHTMLCache = new WeakMap();
+  const componentRenderSignatures = new Map();
   let toastTimer = null;
   let goalTeamId = null;
   let editingGoalId = null;
@@ -160,6 +165,8 @@
   let savingButtonState = null;
   let savingButtonFallbackTimer = null;
   let goalCelebrationTimer = null;
+  let selectedTeamDetail = null;
+  let selectedPlayerDetail = null;
   const babaAssistant = {
     wired: false,
     open: false,
@@ -311,7 +318,7 @@
   function stableControlSelector(element) {
     if (!element) return '';
     if (element.id) return `#${CSS.escape(element.id)}`;
-    const attributes = ['data-present-id', 'data-move-player-id', 'data-add-player-team', 'data-goal-collected-id'];
+    const attributes = ['data-present-id', 'data-move-player-id', 'data-add-player-team', 'data-team-add-select', 'data-goal-collected-id'];
     const attribute = attributes.find((name) => element.hasAttribute?.(name));
     return attribute ? `[${attribute}="${CSS.escape(element.getAttribute(attribute))}"]` : '';
   }
@@ -391,11 +398,57 @@
     return true;
   }
 
+  function renderHash(value) {
+    let hash = 2166136261;
+    const source = String(value ?? '');
+    for (let index = 0; index < source.length; index += 1) {
+      hash ^= source.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+  }
+
+  function reconcileKeyedChildren(container, items) {
+    if (!container) return;
+    renderedHTMLCache.delete(container);
+    const existing = new Map(Array.from(container.children)
+      .filter((node) => node.dataset.renderKey)
+      .map((node) => [node.dataset.renderKey, node]));
+
+    items.forEach((item, index) => {
+      const signature = renderHash(item.signature ?? item.html);
+      let node = existing.get(item.key);
+      if (!node || node.dataset.renderSignature !== signature) {
+        const template = document.createElement('template');
+        template.innerHTML = String(item.html || '').trim();
+        const replacement = template.content.firstElementChild;
+        if (!replacement) return;
+        replacement.dataset.renderKey = item.key;
+        replacement.dataset.renderSignature = signature;
+        if (node) node.replaceWith(replacement);
+        node = replacement;
+      }
+      existing.delete(item.key);
+      const currentAtIndex = container.children[index];
+      if (currentAtIndex !== node) container.insertBefore(node, currentAtIndex || null);
+    });
+
+    existing.forEach((node) => node.remove());
+  }
+
   function renderStateSignature(value = state) {
     if (!value) return '';
     const clean = JSON.parse(JSON.stringify(value));
     delete clean.updatedAt;
     return JSON.stringify(clean);
+  }
+
+  function renderComponent(key, payload, callback) {
+    const signature = renderStateSignature({ mode, payload });
+    if (componentRenderSignatures.get(key) === signature) return false;
+    componentRenderSignatures.set(key, signature);
+    callback();
+    return true;
   }
 
   function shuffle(items) {
@@ -1135,9 +1188,11 @@
     baba.jogadoresPresentes = Array.from(presentSet);
     if (baba.teams?.length) {
       if (!checked) {
+        preserveStartedMatchRosters(baba);
         (baba.teams || []).forEach((team) => {
           team.jogadores = (team.jogadores || []).filter((id) => id !== playerId);
         });
+        refreshPreparedMatchRosters(baba);
       }
       saveState('Presenca atualizada. Os times sorteados foram mantidos.');
       return;
@@ -2446,29 +2501,55 @@
   function exportBabaPdf(type) {
     const report = buildBabaPdfReport(type);
     if (!report) return showToast('Relatorio nao encontrado para exportar.');
-    const pdfWindow = window.open('', '_blank');
-    if (!pdfWindow) return showToast('Permita pop-ups para exportar o PDF.');
-    pdfWindow.document.open();
-    pdfWindow.document.write(renderPdfDocument(report));
-    pdfWindow.document.close();
+    document.getElementById('baba-pdf-print-frame')?.remove();
 
-    const printReport = () => {
-      try {
-        pdfWindow.focus();
-        pdfWindow.print();
-        showToast('PDF pronto. Escolha salvar como PDF na janela de impressao.');
-      } catch (error) {
-        showToast('PDF aberto em nova janela.');
-      }
+    const frame = document.createElement('iframe');
+    frame.id = 'baba-pdf-print-frame';
+    frame.className = 'baba-pdf-print-frame';
+    frame.title = 'Relatorio do Baba para impressao';
+    frame.setAttribute('aria-hidden', 'true');
+
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      window.setTimeout(() => frame.remove(), 500);
     };
 
-    const cover = pdfWindow.document.querySelector('[data-pdf-cover]');
-    if (cover && !cover.complete) {
-      cover.addEventListener('load', () => window.setTimeout(printReport, 250), { once: true });
-      cover.addEventListener('error', () => window.setTimeout(printReport, 250), { once: true });
-      return;
-    }
-    window.setTimeout(printReport, 350);
+    const waitForFrameAssets = async () => {
+      const frameDocument = frame.contentDocument;
+      if (!frameDocument) throw new Error('Documento de impressao indisponivel.');
+      const images = Array.from(frameDocument.images);
+      await Promise.all(images.map((image) => {
+        if (image.complete) return image.decode?.().catch(() => {}) || Promise.resolve();
+        return new Promise((resolve) => {
+          image.addEventListener('load', resolve, { once: true });
+          image.addEventListener('error', resolve, { once: true });
+        });
+      }));
+      await frameDocument.fonts?.ready?.catch?.(() => {});
+    };
+
+    frame.addEventListener('load', async () => {
+      try {
+        await waitForFrameAssets();
+        await new Promise((resolve) => window.setTimeout(resolve, 180));
+        const printWindow = frame.contentWindow;
+        if (!printWindow) throw new Error('Janela de impressao indisponivel.');
+        printWindow.addEventListener('afterprint', cleanup, { once: true });
+        printWindow.focus();
+        printWindow.print();
+        showToast('PDF pronto. Escolha salvar como PDF na janela de impressao.');
+        window.setTimeout(cleanup, 120000);
+      } catch (error) {
+        console.error('Falha ao preparar o relatorio para impressao:', error);
+        cleanup();
+        showToast('Nao foi possivel preparar o PDF agora.');
+      }
+    }, { once: true });
+
+    frame.srcdoc = renderPdfDocument(report);
+    document.body.appendChild(frame);
   }
 
   function toggleBabaPayment(playerId) {
@@ -2562,6 +2643,7 @@
     if (!targetTeam || !player) return showToast('Jogador ou time nao encontrado.');
 
     const previousTeam = getPlayerTeam(baba, playerId);
+    preserveStartedMatchRosters(baba);
     (baba.teams || []).forEach((team) => {
       team.jogadores = (team.jogadores || []).filter((id) => id !== playerId);
     });
@@ -2574,11 +2656,48 @@
     } else {
       player.foraDoBaba = false;
     }
+    refreshPreparedMatchRosters(baba);
     baba.rankingDoBaba = calculateDailyRanking(baba);
     const message = previousTeam && previousTeam.id !== targetTeam.id
       ? `${player.nome} movido de ${previousTeam.name} para ${targetTeam.name}.`
       : `${player.nome} adicionado ao ${targetTeam.name}.`;
     saveState(message);
+  }
+
+  function preserveStartedMatchRosters(baba) {
+    const match = baba?.jogoAtual;
+    if (!match?.iniciadoEm) return;
+    if (!Array.isArray(match.jogadoresTimeA)) {
+      match.jogadoresTimeA = [...(getTeam(baba, match.timeA)?.jogadores || [])];
+    }
+    if (!Array.isArray(match.jogadoresTimeB)) {
+      match.jogadoresTimeB = [...(getTeam(baba, match.timeB)?.jogadores || [])];
+    }
+  }
+
+  function refreshPreparedMatchRosters(baba) {
+    const match = baba?.jogoAtual;
+    if (!match) return;
+    match.jogadoresTimeA = [...(getTeam(baba, match.timeA)?.jogadores || [])];
+    match.jogadoresTimeB = [...(getTeam(baba, match.timeB)?.jogadores || [])];
+  }
+
+  function removePlayerFromTeam(playerId) {
+    if (!requireOrganizer()) return;
+    const baba = getActiveBaba();
+    const player = getBabaPlayer(baba, playerId);
+    const team = getPlayerTeam(baba, playerId);
+    if (!baba || baba.status === 'finalizado') return showToast('Este baba nao pode mais ser alterado.');
+    if (!player || !team) return showToast('Jogador nao encontrado em um time.');
+    if (!window.confirm(`Retirar ${player.nome} do ${team.name}? A presenca no baba sera mantida.`)) return;
+
+    preserveStartedMatchRosters(baba);
+    team.jogadores = (team.jogadores || []).filter((id) => id !== playerId);
+    refreshPreparedMatchRosters(baba);
+    baba.rankingDoBaba = calculateDailyRanking(baba);
+    selectedPlayerDetail = null;
+    els.playerDetailModal?.classList.add('hidden');
+    saveState(`${player.nome} retirado do ${team.name}. Ele continua disponivel para outro time.`);
   }
 
   function removePlayerFromCurrentBaba(playerId) {
@@ -2590,11 +2709,15 @@
     if (!player || !team) return showToast('Jogador nao encontrado em um time.');
     if (!window.confirm(`Remover ${player.nome} do ${team.name} e da presenca deste baba?`)) return;
 
+    preserveStartedMatchRosters(baba);
     team.jogadores = (team.jogadores || []).filter((id) => id !== playerId);
     baba.jogadoresPresentes = (baba.jogadoresPresentes || []).filter((id) => id !== playerId);
     if (player.visitante) player.foraDoBaba = true;
     if (baba.pagamentos) delete baba.pagamentos[playerId];
+    refreshPreparedMatchRosters(baba);
     baba.rankingDoBaba = calculateDailyRanking(baba);
+    selectedPlayerDetail = null;
+    els.playerDetailModal?.classList.add('hidden');
     saveState(`${player.nome} removido do baba. As partidas ja encerradas foram preservadas.`);
   }
 
@@ -2647,6 +2770,8 @@
       numeroJogo: (baba.jogos?.length || 0) + 1,
       timeA: teamAId,
       timeB: teamBId,
+      jogadoresTimeA: [...(getTeam(baba, teamAId)?.jogadores || [])],
+      jogadoresTimeB: [...(getTeam(baba, teamBId)?.jogadores || [])],
       status: 'preparado',
       placarA: 0,
       placarB: 0,
@@ -2913,8 +3038,8 @@
       timeB: teamB.id,
       timeANome: teamA.name,
       timeBNome: teamB.name,
-      jogadoresTimeA: [...(teamA.jogadores || [])],
-      jogadoresTimeB: [...(teamB.jogadores || [])],
+      jogadoresTimeA: [...gameTeamPlayers(baba, match, teamA.id)],
+      jogadoresTimeB: [...gameTeamPlayers(baba, match, teamB.id)],
       placarA: scoreA,
       placarB: scoreB,
       gols: goals,
@@ -3360,20 +3485,82 @@
   }
 
   function render() {
+    const scrollPosition = { x: window.scrollX, y: window.scrollY };
     const baba = getActiveBaba();
-    renderHeader(baba);
-    renderMetrics(baba);
-    renderPlayersAdmin();
-    renderPresentList(baba);
-    renderGoalsAndPayments(baba);
-    renderTeams(baba);
-    renderDashboard(baba);
-    renderStandings(baba);
-    renderDailyTopScorers(baba);
-    renderCurrentGames(baba);
-    renderRankings(baba);
-    renderHistory();
+    const activeBase = baba ? {
+      id: baba.id,
+      dataISO: baba.dataISO,
+      status: baba.status,
+      jogadoresPresentes: baba.jogadoresPresentes,
+      visitantes: baba.visitantes,
+      teams: baba.teams,
+      filaTimes: baba.filaTimes,
+      jogoAtual: baba.jogoAtual,
+      jogos: baba.jogos,
+      lastResult: baba.lastResult,
+      pendingTieBreak: baba.pendingTieBreak,
+      teamRevealIndex: baba.teamRevealIndex,
+      pagamentos: baba.pagamentos,
+    } : null;
+
+    renderComponent('header', activeBase && {
+      id: activeBase.id,
+      dataISO: activeBase.dataISO,
+      status: activeBase.status,
+      presentes: activeBase.jogadoresPresentes?.length,
+      times: activeBase.teams?.length,
+      jogos: activeBase.jogos?.length,
+      jogoAtual: activeBase.jogoAtual,
+      pendingTieBreak: activeBase.pendingTieBreak,
+    }, () => renderHeader(baba));
+    renderComponent('metrics', activeBase && {
+      status: activeBase.status,
+      presentes: activeBase.jogadoresPresentes,
+      times: activeBase.teams,
+      fila: activeBase.filaTimes,
+      jogos: activeBase.jogos?.length,
+    }, () => renderMetrics(baba));
+    renderComponent('players-admin', { players: state.players, visitors: baba?.visitantes, activeBabaId: state.activeBabaId }, renderPlayersAdmin);
+    renderComponent('present-list', { players: state.players, presentes: baba?.jogadoresPresentes, status: baba?.status }, () => renderPresentList(baba));
+    renderComponent('goals-payments', {
+      goals: state.purchaseGoals,
+      monthlyPayments: state.monthlyPayments,
+      month: currentPaymentMonthKey(),
+      players: state.players,
+      visitors: baba?.visitantes,
+      payments: baba?.pagamentos,
+    }, () => renderGoalsAndPayments(baba));
+    renderComponent('teams', {
+      teams: baba?.teams,
+      players: state.players,
+      visitors: baba?.visitantes,
+      present: baba?.jogadoresPresentes,
+      status: baba?.status,
+      reveal: baba?.teamRevealIndex,
+      currentGame: baba?.jogoAtual,
+    }, () => renderTeams(baba));
+    renderComponent('dashboard', {
+      teams: baba?.teams,
+      currentGame: baba?.jogoAtual,
+      pendingTieBreak: baba?.pendingTieBreak,
+      status: baba?.status,
+    }, () => renderDashboard(baba));
+    renderComponent('standings', { teams: baba?.teams, currentGame: baba?.jogoAtual }, () => renderStandings(baba));
+    renderComponent('daily-scorers', activeBase, () => renderDailyTopScorers(baba));
+    renderComponent('current-games', { id: baba?.id, games: baba?.jogos, teams: baba?.teams }, () => renderCurrentGames(baba));
+    renderComponent('rankings', {
+      babas: state.babas,
+      players: state.players,
+      rankingMode,
+      expanded: [...expandedRankingKeys],
+      selectedMonthlyKey,
+    }, () => renderRankings(baba));
+    renderComponent('history', { babas: state.babas, players: state.players, selectedHistoryId }, renderHistory);
+    renderOpenManagementModals();
     renderTimerOnly();
+    if (hasBooted && (window.scrollX !== scrollPosition.x || window.scrollY !== scrollPosition.y)) {
+      window.scrollTo(scrollPosition.x, scrollPosition.y);
+    }
     lastRenderedStateSignature = renderStateSignature(state);
   }
 
@@ -3705,26 +3892,30 @@
       ...state.players.filter((player) => player.ativo && !assignedIds.has(player.id)),
       ...(baba.visitantes || []).filter((player) => player.ativo && !assignedIds.has(player.id)),
     ];
-    const teamOptions = (selectedId) => (baba.teams || []).map((item) =>
-      `<option value="${item.id}" ${item.id === selectedId ? 'selected' : ''}>${escapeHTML(item.name)}</option>`
-    ).join('');
-    const playerAdminHTML = (team, playerId) => isOrganizer() ? `
-      <span class="baba-team-player-admin">
-        <span>${playerPaymentNameHTML(playerId, baba)}</span>
-        <select data-move-player-id="${playerId}" aria-label="Mover ${escapeHTML(playerName(playerId, baba))} para outro time">
-          ${teamOptions(team.id)}
-        </select>
-        <button class="baba-mini-btn danger" type="button" data-action="remove-player-from-baba" data-id="${playerId}">Remover</button>
-      </span>
-    ` : `<span class="baba-pill">${playerPaymentNameHTML(playerId, baba)}</span>`;
+    const playerCardHTML = (team, playerId) => {
+      const player = getBabaPlayer(baba, playerId);
+      const typeLabel = player?.tipo === 'goleiro' ? 'Goleiro' : (player?.visitante ? 'Visitante' : 'Jogador');
+      return `
+        <button class="baba-team-player-card" type="button" data-player-detail-id="${playerId}" data-player-detail-team-id="${team.id}" data-player-detail-baba-id="${baba.id}">
+          <span class="baba-team-player-card__identity">
+            <strong>${escapeHTML(player?.nome || playerName(playerId, baba))}</strong>
+            <small>${typeLabel}</small>
+          </span>
+          <span class="baba-team-player-card__hint">${isOrganizer() ? 'Ver e gerenciar' : 'Ver desempenho'} ›</span>
+        </button>
+      `;
+    };
     const addPlayerHTML = (team) => isOrganizer() ? `
-      <label class="baba-team-add-player">
-        <span>Adicionar jogador</span>
-        <select data-add-player-team="${team.id}" ${availablePlayers.length ? '' : 'disabled'}>
+      <div class="baba-roster-add">
+        <strong>Adicionar jogador ao time</strong>
+        <div class="baba-roster-add__controls">
+          <select data-team-add-select="${team.id}" aria-label="Jogador para adicionar ao ${escapeHTML(team.name)}" ${availablePlayers.length ? '' : 'disabled'}>
           <option value="">${availablePlayers.length ? 'Selecione...' : 'Todos ja estao em times'}</option>
           ${availablePlayers.map((player) => `<option value="${player.id}">${escapeHTML(player.nome)}</option>`).join('')}
-        </select>
-      </label>
+          </select>
+          <button class="baba-secondary" type="button" data-action="add-player-to-team" data-team-id="${team.id}" ${availablePlayers.length ? '' : 'disabled'}>Adicionar</button>
+        </div>
+      </div>
     ` : '';
 
     const renderTeamCard = (team, position, { reveal = false } = {}) => `
@@ -3740,7 +3931,7 @@
           <span><b>${team.golsPro - team.golsContra}</b>Saldo</span>
         </div>
         <div class="baba-team__players">
-          ${team.jogadores.map((id) => playerAdminHTML(team, id)).join('') || '<span class="baba-empty">Sem jogadores</span>'}
+          ${team.jogadores.map((id) => playerCardHTML(team, id)).join('') || '<span class="baba-empty">Sem jogadores</span>'}
         </div>
         ${addPlayerHTML(team)}
       </article>
@@ -3748,25 +3939,40 @@
 
     if (fullyRevealed) {
       const startHTML = isOrganizer() && !baba.jogoAtual ? '<button class="baba-primary baba-start-game-btn" type="button" data-action="start-first-live">Iniciar primeiro jogo</button>' : '';
-      setHTML(els.teamsGrid, `
-        ${baba.teams.map((team, position) => renderTeamCard(team, position)).join('')}
-        <div class="baba-team-reveal-actions baba-team-reveal-actions--all">
+      const items = baba.teams.map((team, position) => ({
+        key: `team:${team.id}`,
+        signature: JSON.stringify({ team, availablePlayers, organizer: isOrganizer(), fullyRevealed }),
+        html: renderTeamCard(team, position),
+      }));
+      items.push({
+        key: 'team-actions:all',
+        signature: `${Boolean(startHTML)}:${baba.status}`,
+        html: `<div class="baba-team-reveal-actions baba-team-reveal-actions--all">
           ${startHTML}
           <button class="baba-secondary" type="button" data-action="restart-team-reveal">Rever sorteio</button>
           <span>Todos os times foram revelados. Clique no nome de qualquer time para ver os jogadores.</span>
-        </div>
-      `);
+        </div>`,
+      });
+      reconcileKeyedChildren(els.teamsGrid, items);
       return;
     }
 
     const team = baba.teams[index];
-    setHTML(els.teamsGrid, `
-      ${renderTeamCard(team, index, { reveal: true })}
-      <div class="baba-team-reveal-actions baba-team-reveal-actions--single">
+    reconcileKeyedChildren(els.teamsGrid, [
+      {
+        key: `team:${team.id}`,
+        signature: JSON.stringify({ team, availablePlayers, organizer: isOrganizer(), reveal: true }),
+        html: renderTeamCard(team, index, { reveal: true }),
+      },
+      {
+        key: 'team-actions:single',
+        signature: `${index}:${baba.teams.length}`,
+        html: `<div class="baba-team-reveal-actions baba-team-reveal-actions--single">
         <button class="baba-primary" type="button" data-action="advance-team-reveal">Ver proximo time</button>
         <span>Avance para revelar o proximo time sorteado.</span>
-      </div>
-    `);
+        </div>`,
+      },
+    ]);
   }
 
   function renderStandings(baba) {
@@ -3941,32 +4147,155 @@
     const team = getTeam(baba, teamId);
     if (!team) return;
 
+    selectedTeamDetail = { teamId: team.id, babaId: baba.id };
+    els.teamDetailModal.classList.remove('hidden');
+    renderOpenTeamDetail();
+  }
+
+  function closeTeamDetail() {
+    selectedTeamDetail = null;
+    els.teamDetailModal.classList.add('hidden');
+  }
+
+  function renderOpenTeamDetail() {
+    if (!selectedTeamDetail || els.teamDetailModal.classList.contains('hidden')) return;
+    const baba = getBabaById(selectedTeamDetail.babaId) || getActiveBaba();
+    const team = getTeam(baba, selectedTeamDetail.teamId);
+    if (!baba || !team) return closeTeamDetail();
+
     const dailyRanking = calculateCurrentBabaRanking(baba);
     const general = getSortedGeneralRanking();
     const position = new Map(general.map((stats, index) => [stats.jogadorId, index + 1]));
     const generalById = new Map(general.map((stats) => [stats.jogadorId, stats]));
+    const canManage = isOrganizer() && baba.id === state.activeBabaId && baba.status !== 'finalizado';
+    const assignedIds = new Set((baba.teams || []).flatMap((item) => item.jogadores || []));
+    const availablePlayers = [
+      ...state.players.filter((player) => player.ativo && !assignedIds.has(player.id)),
+      ...(baba.visitantes || []).filter((player) => player.ativo && !player.foraDoBaba && !assignedIds.has(player.id)),
+    ];
 
     els.teamDetailTitle.textContent = team.name;
-    els.teamDetailList.innerHTML = team.jogadores.map((playerId) => {
+    const playersHTML = team.jogadores.map((playerId) => {
       const player = getBabaPlayer(baba, playerId);
       const dayGoals = dailyRanking[playerId]?.totalGols || 0;
       const generalGoals = generalById.get(playerId)?.totalGols || 0;
       const rank = position.get(playerId) || '-';
       return `
-        <div class="baba-row">
-          <div>
-            <strong>${playerPaymentNameHTML(playerId, baba, { name: player?.nome || playerName(playerId, baba) })}</strong>
-            ${player?.tipo === 'goleiro' ? '<small>Goleiro</small>' : ''}
-          </div>
+        <button class="baba-team-player-card" type="button" data-player-detail-id="${playerId}" data-player-detail-team-id="${team.id}" data-player-detail-baba-id="${baba.id}">
+          <span class="baba-team-player-card__identity">
+            <strong>${escapeHTML(player?.nome || playerName(playerId, baba))}</strong>
+            <small>${player?.tipo === 'goleiro' ? 'Goleiro' : (player?.visitante ? 'Visitante' : 'Jogador')}</small>
+          </span>
           <div class="baba-player-mini-stats">
             <span>${dayGoals} hoje</span>
             <span>${generalGoals} geral</span>
             <span>#${rank}</span>
           </div>
-        </div>
+        </button>
       `;
-    }).join('');
-    els.teamDetailModal.classList.remove('hidden');
+    }).join('') || '<div class="baba-empty">Este time esta sem jogadores.</div>';
+
+    setHTML(els.teamDetailList, `
+      <div class="baba-roster-summary">
+        <span><small>Jogadores</small><b>${team.jogadores.length}</b></span>
+        <span><small>Pontos</small><b>${Number(team.pontos || 0)}</b></span>
+        <span><small>Vitorias</small><b>${Number(team.vitorias || 0)}</b></span>
+        <span><small>Saldo</small><b>${Number(team.golsPro || 0) - Number(team.golsContra || 0)}</b></span>
+      </div>
+      ${canManage ? `
+        <div class="baba-roster-add">
+          <strong>Adicionar jogador ao ${escapeHTML(team.name)}</strong>
+          <small>Ideal para quem chegou atrasado ou ficou sem time no sorteio.</small>
+          <div class="baba-roster-add__controls">
+            <select data-team-add-select="${team.id}" ${availablePlayers.length ? '' : 'disabled'}>
+              <option value="">${availablePlayers.length ? 'Selecione um jogador...' : 'Nenhum jogador disponivel'}</option>
+              ${availablePlayers.map((player) => `<option value="${player.id}">${escapeHTML(player.nome)}</option>`).join('')}
+            </select>
+            <button class="baba-primary" type="button" data-action="add-player-to-team" data-team-id="${team.id}" ${availablePlayers.length ? '' : 'disabled'}>Adicionar</button>
+          </div>
+        </div>
+      ` : ''}
+      <div class="baba-roster-list">${playersHTML}</div>
+    `);
+  }
+
+  function playerInitials(name) {
+    return String(name || 'J')
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('') || 'J';
+  }
+
+  function openPlayerDetail(playerId, babaId = null) {
+    const baba = getBabaById(babaId) || getActiveBaba();
+    const player = getBabaPlayer(baba, playerId);
+    if (!baba || !player) return showToast('Jogador nao encontrado.');
+    selectedPlayerDetail = { playerId, babaId: baba.id };
+    els.playerDetailModal.classList.remove('hidden');
+    renderOpenPlayerDetail();
+  }
+
+  function closePlayerDetail() {
+    selectedPlayerDetail = null;
+    els.playerDetailModal.classList.add('hidden');
+  }
+
+  function renderOpenPlayerDetail() {
+    if (!selectedPlayerDetail || els.playerDetailModal.classList.contains('hidden')) return;
+    const baba = getBabaById(selectedPlayerDetail.babaId) || getActiveBaba();
+    const player = getBabaPlayer(baba, selectedPlayerDetail.playerId);
+    if (!baba || !player) return closePlayerDetail();
+    const team = getPlayerTeam(baba, player.id);
+    const today = calculateCurrentBabaRanking(baba)[player.id] || makeEmptyPlayerStats(player.id, player.nome);
+    const general = calculateGeneralRanking()[player.id] || makeEmptyPlayerStats(player.id, player.nome);
+    const canManage = isOrganizer() && baba.id === state.activeBabaId && baba.status !== 'finalizado';
+    const teamOptions = (baba.teams || []).filter((item) => item.id !== team?.id).map((item) => (
+      `<option value="${item.id}">${escapeHTML(item.name)}</option>`
+    )).join('');
+    const typeLabel = player.tipo === 'goleiro' ? 'Goleiro' : (player.visitante ? 'Visitante' : 'Jogador');
+
+    els.playerDetailTitle.textContent = player.nome;
+    setHTML(els.playerDetailContent, `
+      <div class="baba-player-profile">
+        <span class="baba-player-profile__avatar">${escapeHTML(playerInitials(player.nome))}</span>
+        <span class="baba-player-profile__copy">
+          <strong>${escapeHTML(player.nome)}</strong>
+          <span>${typeLabel} · ${escapeHTML(team?.name || 'Sem time')}</span>
+        </span>
+      </div>
+      <div class="baba-player-stats-grid">
+        <span class="baba-player-stat"><small>Gols hoje</small><b>${today.totalGols}</b></span>
+        <span class="baba-player-stat"><small>Vitorias hoje</small><b>${today.totalVitorias}</b></span>
+        <span class="baba-player-stat"><small>Aproveitamento hoje</small><b>${today.aproveitamento}%</b></span>
+        <span class="baba-player-stat"><small>Gols no historico</small><b>${general.totalGols}</b></span>
+        <span class="baba-player-stat"><small>Vitorias no historico</small><b>${general.totalVitorias}</b></span>
+        <span class="baba-player-stat"><small>Aproveitamento geral</small><b>${general.aproveitamento}%</b></span>
+      </div>
+      ${canManage ? `
+        <div class="baba-player-management">
+          <strong>Gerenciar neste baba</strong>
+          <small>Jogos ja encerrados e seus gols permanecem intactos.</small>
+          <div class="baba-player-management__move">
+            <select id="player-detail-team-select" ${teamOptions ? '' : 'disabled'}>
+              <option value="">${teamOptions ? 'Mover para outro time...' : 'Nao ha outro time disponivel'}</option>
+              ${teamOptions}
+            </select>
+            <button class="baba-primary" type="button" data-action="move-player-from-card" data-id="${player.id}" ${teamOptions ? '' : 'disabled'}>Mover jogador</button>
+          </div>
+          <div class="baba-player-management__actions">
+            ${team ? `<button class="baba-secondary" type="button" data-action="remove-player-from-team" data-id="${player.id}">Retirar do time</button>` : ''}
+            <button class="baba-mini-btn danger" type="button" data-action="remove-player-from-baba" data-id="${player.id}">Saiu do baba</button>
+          </div>
+        </div>
+      ` : ''}
+    `);
+  }
+
+  function renderOpenManagementModals() {
+    renderOpenTeamDetail();
+    renderOpenPlayerDetail();
   }
 
   function openCurrentGameDetail(gameNumber) {
@@ -5105,6 +5434,8 @@
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && babaAssistant.open) closeBabaAssistant();
       if (event.key === 'Escape' && !els.passwordForm.classList.contains('hidden')) closeOrganizerPassword();
+      if (event.key === 'Escape' && !els.playerDetailModal?.classList.contains('hidden')) closePlayerDetail();
+      else if (event.key === 'Escape' && !els.teamDetailModal.classList.contains('hidden')) closeTeamDetail();
     });
   }
 
@@ -5150,7 +5481,8 @@
     els.shareFab.addEventListener('click', shareBabaLink);
     els.closePresentModal.addEventListener('click', () => els.presentModal.classList.add('hidden'));
     els.closeGoalModal.addEventListener('click', closeGoalPicker);
-    els.closeTeamDetailModal.addEventListener('click', () => els.teamDetailModal.classList.add('hidden'));
+    els.closeTeamDetailModal.addEventListener('click', closeTeamDetail);
+    els.closePlayerDetailModal?.addEventListener('click', closePlayerDetail);
     els.closeGameDetailModal.addEventListener('click', () => els.gameDetailModal.classList.add('hidden'));
     els.presentModal.addEventListener('click', (event) => {
       if (event.target === els.presentModal) els.presentModal.classList.add('hidden');
@@ -5159,7 +5491,10 @@
       if (event.target === els.goalModal) closeGoalPicker();
     });
     els.teamDetailModal.addEventListener('click', (event) => {
-      if (event.target === els.teamDetailModal) els.teamDetailModal.classList.add('hidden');
+      if (event.target === els.teamDetailModal) closeTeamDetail();
+    });
+    els.playerDetailModal?.addEventListener('click', (event) => {
+      if (event.target === els.playerDetailModal) closePlayerDetail();
     });
     els.gameDetailModal.addEventListener('click', (event) => {
       if (event.target === els.gameDetailModal) els.gameDetailModal.classList.add('hidden');
@@ -5219,6 +5554,17 @@
       if (actionButton?.dataset.action === 'toggle-player') return togglePlayerActive(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-player') return deletePlayer(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-visitor') return deleteVisitor(actionButton.dataset.id);
+      if (actionButton?.dataset.action === 'add-player-to-team') {
+        const select = actionButton.closest('.baba-roster-add')?.querySelector(`[data-team-add-select="${CSS.escape(actionButton.dataset.teamId)}"]`);
+        if (!select?.value) return showToast('Selecione um jogador para adicionar.');
+        return assignPlayerToTeam(select.value, actionButton.dataset.teamId);
+      }
+      if (actionButton?.dataset.action === 'move-player-from-card') {
+        const select = document.getElementById('player-detail-team-select');
+        if (!select?.value) return showToast('Selecione o time de destino.');
+        return assignPlayerToTeam(actionButton.dataset.id, select.value);
+      }
+      if (actionButton?.dataset.action === 'remove-player-from-team') return removePlayerFromTeam(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'remove-player-from-baba') return removePlayerFromCurrentBaba(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'edit-goal') return editPurchaseGoal(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-goal') return deletePurchaseGoal(actionButton.dataset.id);
@@ -5245,6 +5591,9 @@
 
       const teamButton = event.target.closest('[data-team-detail-id]');
       if (teamButton) return openTeamDetail(teamButton.dataset.teamDetailId, teamButton.dataset.teamDetailBabaId);
+
+      const playerButton = event.target.closest('[data-player-detail-id]');
+      if (playerButton) return openPlayerDetail(playerButton.dataset.playerDetailId, playerButton.dataset.playerDetailBabaId);
 
       const currentGameButton = event.target.closest('[data-current-game]');
       if (currentGameButton) return openCurrentGameDetail(currentGameButton.dataset.currentGame);
