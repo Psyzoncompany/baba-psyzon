@@ -644,6 +644,46 @@
   gap: .42rem;
 }
 
+.baba-team-player-admin,
+.baba-team-add-player {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--baba-line);
+  border-radius: var(--baba-radius);
+  background: rgba(255, 255, 255, .035);
+}
+
+.baba-team-player-admin select,
+.baba-team-add-player select {
+  min-width: 120px;
+  padding: 8px 10px;
+  border: 1px solid var(--baba-line);
+  border-radius: var(--baba-radius);
+  color: var(--baba-text);
+  background: #0b1e17;
+}
+
+.baba-team-add-player {
+  grid-template-columns: auto minmax(150px, 1fr);
+  margin-top: 12px;
+  color: var(--baba-muted);
+  font-size: .82rem;
+}
+
+@media (max-width: 620px) {
+  .baba-team-player-admin {
+    grid-template-columns: 1fr auto;
+  }
+
+  .baba-team-player-admin > span {
+    grid-column: 1 / -1;
+  }
+}
+
 .baba-team-reveal-actions {
   display: grid;
   gap: .4rem;

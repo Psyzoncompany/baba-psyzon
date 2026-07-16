@@ -95,7 +95,7 @@ service cloud.firestore {
           && request.resource.data.id == gameId
           && request.resource.data.keys().hasOnly([
             'id', 'sequence', 'numeroJogo', 'status', 'teamAId', 'teamBId', 'timeA', 'timeB',
-            'timeANome', 'timeBNome', 'scoreA', 'scoreB', 'placarA', 'placarB', 'winnerTeamId',
+            'timeANome', 'timeBNome', 'jogadoresTimeA', 'jogadoresTimeB', 'scoreA', 'scoreB', 'placarA', 'placarB', 'winnerTeamId',
             'loserTeamId', 'vencedor', 'perdedor', 'draw', 'empate', 'resultado',
             'timeQueContinuou', 'timeQueSaiu', 'timeQueEntrou', 'motivoSaida',
             'decididoPorSorteio', 'criterioDesempate', 'pendingTieBreak', 'dataHora',

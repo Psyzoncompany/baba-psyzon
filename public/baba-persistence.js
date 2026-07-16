@@ -236,11 +236,16 @@ function computeBabaStats(baba, playerById = new Map()) {
     });
     const teams = new Map((baba?.teams || []).map((team) => [team.id, team]));
     (baba?.jogos || []).forEach((game) => {
+      const playersFor = (teamId) => {
+        if (teamId === game.timeA && Array.isArray(game.jogadoresTimeA)) return game.jogadoresTimeA;
+        if (teamId === game.timeB && Array.isArray(game.jogadoresTimeB)) return game.jogadoresTimeB;
+        return teams.get(teamId)?.jogadores || [];
+      };
       [
-        [teams.get(game.timeA), Number(game.placarB || 0)],
-        [teams.get(game.timeB), Number(game.placarA || 0)],
-      ].forEach(([team, goalsAgainst]) => {
-        (team?.jogadores || []).forEach((playerId) => {
+        [playersFor(game.timeA), Number(game.placarB || 0)],
+        [playersFor(game.timeB), Number(game.placarA || 0)],
+      ].forEach(([players, goalsAgainst]) => {
+        players.forEach((playerId) => {
           if (playerById.get(playerId)?.tipo !== 'goleiro') return;
           persisted[playerId] ||= { jogadorId: playerId, nome: playerById.get(playerId)?.nome || 'Goleiro' };
           persisted[playerId].goalkeeperGames = Number(persisted[playerId].goalkeeperGames || 0) + 1;
@@ -275,26 +280,31 @@ function computeBabaStats(baba, playerById = new Map()) {
   (baba?.jogadoresPresentes || []).forEach(ensure);
   (baba?.visitantes || []).forEach((player) => ensure(player.id));
   (baba?.jogos || []).forEach((game) => {
-    const teamA = teams.get(game.timeA);
-    const teamB = teams.get(game.timeB);
+    const playersFor = (teamId) => {
+      if (teamId === game.timeA && Array.isArray(game.jogadoresTimeA)) return game.jogadoresTimeA;
+      if (teamId === game.timeB && Array.isArray(game.jogadoresTimeB)) return game.jogadoresTimeB;
+      return teams.get(teamId)?.jogadores || [];
+    };
+    const teamAPlayers = playersFor(game.timeA);
+    const teamBPlayers = playersFor(game.timeB);
     if (game.empate) {
-      [...(teamA?.jogadores || []), ...(teamB?.jogadores || [])].forEach((id) => {
+      [...teamAPlayers, ...teamBPlayers].forEach((id) => {
         const item = ensure(id); item.totalEmpates += 1; item.totalJogos += 1;
       });
     } else {
-      (teams.get(game.vencedor)?.jogadores || []).forEach((id) => {
+      playersFor(game.vencedor).forEach((id) => {
         const item = ensure(id); item.totalVitorias += 1; item.totalJogos += 1;
       });
-      (teams.get(game.perdedor)?.jogadores || []).forEach((id) => {
+      playersFor(game.perdedor).forEach((id) => {
         const item = ensure(id); item.totalDerrotas += 1; item.totalJogos += 1;
       });
     }
     allGoalEvents(game, gameIdFor(game)).forEach((goal) => { ensure(goal.jogadorId).totalGols += 1; });
     [
-      [teamA, Number(game.placarB || 0)],
-      [teamB, Number(game.placarA || 0)],
-    ].forEach(([team, goalsAgainst]) => {
-      (team?.jogadores || []).forEach((playerId) => {
+      [teamAPlayers, Number(game.placarB || 0)],
+      [teamBPlayers, Number(game.placarA || 0)],
+    ].forEach(([players, goalsAgainst]) => {
+      players.forEach((playerId) => {
         if (playerById.get(playerId)?.tipo !== 'goleiro') return;
         const item = ensure(playerId);
         item.goalkeeperGames += 1;
@@ -514,7 +524,11 @@ async function persistBaba(state, baba, previousBaba = null) {
     })));
   });
 
-  const stats = computeBabaStats(baba, new Map((state.players || []).map((player) => [player.id, player])));
+  // Estatisticas historicas so existem depois que o baba foi finalizado.
+  // Enquanto estiver aberto, jogos e gols continuam disponiveis no placar/ranking do dia.
+  const stats = baba.status === 'finalizado'
+    ? computeBabaStats(baba, new Map((state.players || []).map((player) => [player.id, player])))
+    : {};
   const nextStatIds = new Set(Object.keys(stats));
   Object.entries(stats).forEach(([playerId, item]) => operations.push(setOperation(
     doc(db, 'babas', babaId, 'stats', safeId(playerId)), compact({
