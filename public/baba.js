@@ -182,6 +182,7 @@
   let savingButtonState = null;
   let savingButtonFallbackTimer = null;
   let goalCelebrationTimer = null;
+  let babaAudioContext = null;
   let selectedTeamDetail = null;
   let selectedPlayerDetail = null;
   const babaAssistant = {
@@ -302,6 +303,64 @@
     return `${minutes}:${rest}`;
   }
 
+  function getBabaAudioContext() {
+    if (babaAudioContext) return babaAudioContext;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+    babaAudioContext = new AudioContextClass();
+    return babaAudioContext;
+  }
+
+  function scheduleWhistleTone(context, startAt, frequency, endFrequency, duration, volume = .16) {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(frequency, startAt);
+    oscillator.frequency.exponentialRampToValueAtTime(endFrequency, startAt + duration);
+    gain.gain.setValueAtTime(.0001, startAt);
+    gain.gain.exponentialRampToValueAtTime(volume, startAt + .025);
+    gain.gain.setValueAtTime(volume, Math.max(startAt + .025, startAt + duration - .055));
+    gain.gain.exponentialRampToValueAtTime(.0001, startAt + duration);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(startAt);
+    oscillator.stop(startAt + duration + .02);
+  }
+
+  function playBabaWhistle(type = 'goal') {
+    try {
+      const context = getBabaAudioContext();
+      if (!context) return;
+      const play = () => {
+        const startAt = context.currentTime + .025;
+        if (type === 'finish') {
+          scheduleWhistleTone(context, startAt, 980, 900, .25, .18);
+          scheduleWhistleTone(context, startAt + .34, 940, 850, .23, .18);
+          scheduleWhistleTone(context, startAt + .66, 900, 760, .52, .2);
+          return;
+        }
+        scheduleWhistleTone(context, startAt, 1180, 1460, .14, .16);
+        scheduleWhistleTone(context, startAt + .19, 1480, 1840, .2, .18);
+      };
+      if (context.state === 'suspended') {
+        context.resume().then(play).catch(() => {});
+      } else {
+        play();
+      }
+    } catch (error) {
+      console.warn('Nao foi possivel reproduzir o apito:', error);
+    }
+  }
+
+  function unlockBabaAudio() {
+    try {
+      const context = getBabaAudioContext();
+      if (context?.state === 'suspended') context.resume().catch(() => {});
+    } catch (error) {
+      // O navegador pode bloquear audio ate uma interacao valida.
+    }
+  }
+
   function renderTimerOnly() {
     const baba = getActiveBaba();
     const match = baba?.jogoAtual;
@@ -309,6 +368,7 @@
     if (!timerEl || !match) return;
     const remaining = getRemainingSeconds(match);
     if (remaining === 0 && match.timerRunning) {
+      playBabaWhistle('finish');
       match.timerRunning = false;
       match.timerRemainingSeconds = 0;
       match.timerStartedAt = null;
@@ -3247,6 +3307,7 @@
       registradoEm: Date.now(),
     });
     recomputeLiveScore(match);
+    playBabaWhistle('goal');
     closeGoalPicker();
     if (!isExternalPlayer) showGoalCelebration(player.nome, team.name);
     saveState(isExternalPlayer ? 'Gol de jogador de fora registrado.' : `Gol de ${player.nome} registrado.`);
@@ -3281,6 +3342,7 @@
     if (!teamA || !teamB) return showToast('Times do jogo nao encontrados.');
     const ok = window.confirm('Tem certeza que deseja finalizar jogo?');
     if (!ok) return;
+    playBabaWhistle('finish');
 
     const goals = match.gols || aggregateGoalEvents(match.goalEvents || []);
 
@@ -5866,6 +5928,7 @@
   }
 
   function wireEvents() {
+    document.addEventListener('pointerdown', unlockBabaAudio, { passive: true });
     wireBabaAssistant();
     document.addEventListener('click', rememberActionButton, true);
     els.enterOrganizer.addEventListener('click', openOrganizerPassword);
