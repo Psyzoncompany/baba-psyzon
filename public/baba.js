@@ -4,6 +4,10 @@
   const TEAM_NAMES = ['Barcelona', 'Arsenal', 'Real Madrid', 'PSG', 'Chelsea'];
   const MODE_KEY = 'psyzon_baba_mode';
   const REMEMBER_ORGANIZER_KEY = 'psyzon_baba_organizer_remembered';
+  const REMEMBERED_ACCESS_VALUE = 'organizer_access_v2';
+  const BACKUP_SCHEMA = 'baba-amigos-backup';
+  const BACKUP_VERSION = 1;
+  const MAX_BACKUP_FILE_SIZE = 25 * 1024 * 1024;
   const VISITOR_TEAM_ID = 'team_visitante';
   const VISITOR_TEAM_NAME = 'Visitante';
   const EXTERNAL_GOAL_SCORER_ID = '__external_goal_scorer__';
@@ -129,6 +133,10 @@
     historyCountLabel: $('#history-count-label'),
     historyDetail: $('#history-detail'),
     historyDetailLabel: $('#history-detail-label'),
+    exportBackupJSON: $('#export-backup-json'),
+    importBackupJSON: $('#import-backup-json'),
+    backupJSONFile: $('#backup-json-file'),
+    organizerFab: $('#baba-organizer-fab'),
     toast: $('#baba-toast'),
     shareFab: $('#baba-share-fab'),
     presentModal: $('#present-modal'),
@@ -652,6 +660,198 @@
     toastTimer = setTimeout(() => els.toast.classList.remove('show'), 3200);
   }
 
+  function backupImageField(key) {
+    const normalized = String(key || '').toLowerCase().replace(/[^a-z]/g, '');
+    return ['foto', 'fotos', 'imagem', 'imagens', 'image', 'images', 'imagedata', 'photo', 'photos', 'avatar', 'avatars', 'logo', 'logos', 'thumbnail', 'capa'].includes(normalized);
+  }
+
+  function stripImagesFromBackup(value, report = { removed: 0 }) {
+    if (typeof value === 'string') {
+      if (/^(?:data:image\/|blob:)/i.test(value.trim())) {
+        report.removed += 1;
+        return undefined;
+      }
+      return value;
+    }
+    if (Array.isArray(value)) {
+      return value.map((item) => stripImagesFromBackup(item, report)).filter((item) => item !== undefined);
+    }
+    if (!value || typeof value !== 'object') return value;
+
+    const clean = {};
+    Object.entries(value).forEach(([key, entry]) => {
+      if (['__proto__', 'prototype', 'constructor', '__detailLoaded'].includes(key)) return;
+      if (backupImageField(key)) {
+        if (entry) report.removed += 1;
+        return;
+      }
+      const sanitized = stripImagesFromBackup(entry, report);
+      if (sanitized !== undefined) clean[key] = sanitized;
+    });
+    return clean;
+  }
+
+  function backupSummary(value) {
+    const source = value || {};
+    return {
+      jogadores: Array.isArray(source.players) ? source.players.length : 0,
+      babas: Array.isArray(source.babas) ? source.babas.length : 0,
+      historicos: Array.isArray(source.babas) ? source.babas.filter((baba) => baba?.status === 'finalizado').length : 0,
+      rankings: source.playerStats && typeof source.playerStats === 'object' ? Object.keys(source.playerStats).length : 0,
+      metas: Array.isArray(source.purchaseGoals) ? source.purchaseGoals.length : 0,
+    };
+  }
+
+  function createBackupEnvelope(source, options = {}) {
+    const imageReport = { removed: 0 };
+    const data = stripImagesFromBackup(JSON.parse(JSON.stringify(source || createEmptyState())), imageReport);
+    return {
+      schema: BACKUP_SCHEMA,
+      version: BACKUP_VERSION,
+      exportedAt: new Date().toISOString(),
+      imagesIncluded: false,
+      cloudHistoryComplete: options.cloudHistoryComplete !== false,
+      summary: backupSummary(data),
+      data,
+      imagesRemoved: imageReport.removed,
+    };
+  }
+
+  async function completeStateForBackup() {
+    const backupState = normalizeState(JSON.parse(JSON.stringify(state)));
+    const repository = window.BabaRepository;
+    let cloudHistoryComplete = true;
+    if (!repository?.loadBaba) return { backupState, cloudHistoryComplete };
+
+    try {
+      let pageCount = 0;
+      while (repository.hasMoreHistory?.() && pageCount < 200) {
+        const page = await repository.loadMoreHistory?.();
+        pageCount += 1;
+        if (!Array.isArray(page) || !page.length) break;
+      }
+      if (repository.hasMoreHistory?.()) cloudHistoryComplete = false;
+
+      const metadata = Array.isArray(window.__babaRemoteMetadata) ? window.__babaRemoteMetadata : [];
+      const byId = new Map((backupState.babas || []).map((baba) => [baba.id, baba]));
+      const idsToLoad = metadata
+        .filter((item) => item?.id && !item.deleted && !byId.get(item.id)?.__detailLoaded)
+        .map((item) => item.id);
+
+      for (let index = 0; index < idsToLoad.length; index += 4) {
+        const batch = idsToLoad.slice(index, index + 4);
+        const results = await Promise.allSettled(batch.map((id) => repository.loadBaba(id)));
+        results.forEach((result) => {
+          if (result.status === 'fulfilled' && result.value?.id) byId.set(result.value.id, result.value);
+          else if (result.status === 'rejected') cloudHistoryComplete = false;
+        });
+      }
+      backupState.babas = [...byId.values()].sort((a, b) => Number(b.criadoEm || 0) - Number(a.criadoEm || 0));
+    } catch (error) {
+      console.warn('Nao foi possivel carregar todo o historico remoto para o backup:', error);
+      cloudHistoryComplete = false;
+    }
+    return { backupState, cloudHistoryComplete };
+  }
+
+  function backupFilename() {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    return `backup-baba-${stamp}.json`;
+  }
+
+  function setBackupButtonBusy(button, busy, label) {
+    if (!button) return;
+    const text = button.querySelector('span');
+    if (text && !button.dataset.defaultLabel) button.dataset.defaultLabel = text.textContent;
+    if (text) text.textContent = busy ? label : button.dataset.defaultLabel;
+    button.disabled = busy;
+    button.setAttribute('aria-busy', String(Boolean(busy)));
+  }
+
+  async function exportBackupJSON() {
+    if (!requireOrganizer()) return;
+    setBackupButtonBusy(els.exportBackupJSON, true, 'Preparando...');
+    showToast('Preparando backup completo sem imagens...');
+    try {
+      const { backupState, cloudHistoryComplete } = await completeStateForBackup();
+      const backup = createBackupEnvelope(backupState, { cloudHistoryComplete });
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = backupFilename();
+      link.hidden = true;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const warning = cloudHistoryComplete ? '' : ' Os dados disponiveis foram salvos, mas parte do historico da nuvem nao respondeu.';
+      showToast(`Backup JSON exportado sem imagens.${warning}`);
+    } catch (error) {
+      console.error('Falha ao exportar backup JSON:', error);
+      showToast('Nao foi possivel exportar o backup agora.');
+    } finally {
+      setBackupButtonBusy(els.exportBackupJSON, false, '');
+    }
+  }
+
+  function importedBackupState(parsed) {
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Arquivo JSON invalido.');
+    if (parsed.schema === BACKUP_SCHEMA && Number(parsed.version || 0) > BACKUP_VERSION) {
+      throw new Error('Este backup foi criado por uma versao mais nova do sistema.');
+    }
+    const source = parsed.schema === BACKUP_SCHEMA ? parsed.data : (parsed.data || parsed.state || parsed.dados || parsed);
+    if (!source || typeof source !== 'object' || Array.isArray(source)) throw new Error('O arquivo nao contem dados do Baba.');
+    const recognized = ['players', 'babas', 'purchaseGoals', 'monthlyPayments', 'playerStats', 'monthlyStats']
+      .some((key) => Object.prototype.hasOwnProperty.call(source, key));
+    if (!recognized) throw new Error('O arquivo nao foi reconhecido como um backup do Baba.');
+    if (source.players != null && !Array.isArray(source.players)) throw new Error('A lista de jogadores do backup e invalida.');
+    if (source.babas != null && !Array.isArray(source.babas)) throw new Error('O historico do backup e invalido.');
+
+    const imageReport = { removed: 0 };
+    const clean = stripImagesFromBackup(source, imageReport);
+    const next = normalizeState(clean);
+    if (next.activeBabaId && !next.babas.some((baba) => baba.id === next.activeBabaId)) next.activeBabaId = null;
+    next.updatedAt = Date.now();
+    return { next, imageReport };
+  }
+
+  async function importBackupJSON(file) {
+    if (!requireOrganizer()) return;
+    if (!file) return;
+    if (file.size > MAX_BACKUP_FILE_SIZE) {
+      showToast('O arquivo ultrapassa o limite de 25 MB. Use um backup sem imagens.');
+      return;
+    }
+
+    setBackupButtonBusy(els.importBackupJSON, true, 'Validando...');
+    try {
+      const parsed = JSON.parse(await file.text());
+      const { next, imageReport } = importedBackupState(parsed);
+      const summary = backupSummary(next);
+      const playerLabel = summary.jogadores === 1 ? 'jogador' : 'jogadores';
+      const babaLabel = summary.babas === 1 ? 'baba' : 'babas';
+      const historyLabel = summary.historicos === 1 ? 'historico' : 'historicos';
+      const ok = window.confirm(
+        `Importar este backup com ${summary.jogadores} ${playerLabel}, ${summary.babas} ${babaLabel} e ${summary.historicos} ${historyLabel}?\n\nOs dados atuais deste dispositivo e da sincronizacao serao substituidos.`,
+      );
+      if (!ok) return;
+
+      state = next;
+      selectedHistoryId = null;
+      selectedMonthlyKey = null;
+      expandedRankingKeys.clear();
+      componentRenderSignatures.clear();
+      saveState(`Backup importado com sucesso${imageReport.removed ? `; ${imageReport.removed} imagem(ns) ignorada(s)` : ''}.`);
+    } catch (error) {
+      console.error('Falha ao importar backup JSON:', error);
+      showToast(error instanceof SyntaxError ? 'O arquivo selecionado nao e um JSON valido.' : (error.message || 'Nao foi possivel importar o backup.'));
+    } finally {
+      if (els.backupJSONFile) els.backupJSONFile.value = '';
+      setBackupButtonBusy(els.importBackupJSON, false, '');
+    }
+  }
+
   function applyCloudState(nextState) {
     const next = nextState
       ? normalizeState(JSON.parse(JSON.stringify(nextState)))
@@ -969,11 +1169,12 @@
   }
 
   function hasRememberedOrganizerAccess() {
-    return localStorage.getItem(REMEMBER_ORGANIZER_KEY) === ADMIN_PASSWORD;
+    const saved = localStorage.getItem(REMEMBER_ORGANIZER_KEY);
+    return saved === REMEMBERED_ACCESS_VALUE || saved === ADMIN_PASSWORD || saved === 'true';
   }
 
   function rememberOrganizerAccess(remember) {
-    if (remember) localStorage.setItem(REMEMBER_ORGANIZER_KEY, ADMIN_PASSWORD);
+    if (remember) localStorage.setItem(REMEMBER_ORGANIZER_KEY, REMEMBERED_ACCESS_VALUE);
     else localStorage.removeItem(REMEMBER_ORGANIZER_KEY);
   }
 
@@ -997,9 +1198,11 @@
     els.passwordFeedback.textContent = '';
   }
 
-  function setMode(nextMode) {
+  function setMode(nextMode, options = {}) {
     mode = nextMode;
     sessionStorage.setItem(MODE_KEY, nextMode);
+    if (options.rememberDevice === true) localStorage.setItem(MODE_KEY, nextMode);
+    else if (options.rememberDevice === false) localStorage.removeItem(MODE_KEY);
     document.body.classList.add('baba-app-mode');
     document.body.classList.toggle('baba-player-mode', nextMode === 'player');
     document.body.classList.toggle('baba-locked-viewer', isForcedViewerMode());
@@ -1013,6 +1216,7 @@
   function resetMode() {
     mode = null;
     sessionStorage.removeItem(MODE_KEY);
+    localStorage.removeItem(MODE_KEY);
     document.body.classList.remove('baba-app-mode');
     document.body.classList.remove('baba-player-mode');
     document.body.classList.remove('baba-locked-viewer');
@@ -1719,7 +1923,7 @@
       report.icon = 'table';
       report.summary = [
         ...baseSummary,
-        ['Ano', String(reportYear)],
+        ['Criterio', 'Gols'],
       ];
       report.sections = [
         {
@@ -1743,14 +1947,14 @@
           empty: 'Nenhum jogador distribuido nos times.',
         },
         {
-          title: `Ranking do ano ${reportYear}`,
+          title: 'Ranking do dia',
           note: 'Classificado por gols',
           icon: 'trophy',
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'Aprov.', 'Babas'],
-          rows: goalRankingRowsForPdf(sortRanking(calculateYearlyRanking(reportYear, { includeActive: false }), 'goals')),
-          empty: 'Sem gols registrados neste ano.',
+          rows: goalRankingRowsForPdf(getDailyRankingList(baba, 'goals')),
+          empty: 'Sem gols registrados no baba atual.',
         },
         {
           title: 'Ranking geral',
@@ -3055,7 +3259,7 @@
     const teamA = getTeam(baba, match.timeA);
     const teamB = getTeam(baba, match.timeB);
     if (!teamA || !teamB) return showToast('Times do jogo nao encontrados.');
-    const ok = window.confirm(`Tem certeza que deseja finalizar o Jogo ${match.numeroJogo}: ${teamA.name} ${scoreA} x ${scoreB} ${teamB.name}?`);
+    const ok = window.confirm('Tem certeza que deseja finalizar jogo?');
     if (!ok) return;
 
     const goals = match.gols || aggregateGoalEvents(match.goalEvents || []);
@@ -5644,7 +5848,7 @@
     wireBabaAssistant();
     document.addEventListener('click', rememberActionButton, true);
     els.enterOrganizer.addEventListener('click', openOrganizerPassword);
-    els.enterPlayer.addEventListener('click', () => setMode('player'));
+    els.enterPlayer.addEventListener('click', () => setMode('player', { rememberDevice: false }));
     els.closePassword?.addEventListener('click', closeOrganizerPassword);
     els.passwordForm.addEventListener('click', (event) => {
       if (event.target === els.passwordForm) closeOrganizerPassword();
@@ -5652,8 +5856,9 @@
     els.passwordForm.addEventListener('submit', (event) => {
       event.preventDefault();
       if (els.passwordInput.value === ADMIN_PASSWORD) {
-        rememberOrganizerAccess(Boolean(els.rememberOrganizer?.checked));
-        setMode('organizer');
+        const rememberDevice = Boolean(els.rememberOrganizer?.checked);
+        rememberOrganizerAccess(rememberDevice);
+        setMode('organizer', { rememberDevice });
       }
       else {
         els.passwordFeedback.textContent = 'Senha incorreta.';
@@ -5662,6 +5867,19 @@
     });
     els.logoutBtn.addEventListener('click', logout);
     els.modeReset.addEventListener('click', resetMode);
+    els.exportBackupJSON?.addEventListener('click', exportBackupJSON);
+    els.importBackupJSON?.addEventListener('click', () => {
+      if (!requireOrganizer()) return;
+      els.backupJSONFile?.click();
+    });
+    els.backupJSONFile?.addEventListener('change', () => importBackupJSON(els.backupJSONFile.files?.[0]));
+    els.organizerFab?.addEventListener('click', () => {
+      if (!requireOrganizer()) return;
+      setActiveTab('organizer');
+      window.requestAnimationFrame(() => {
+        document.querySelector('[data-view="organizer"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
     els.createToday.addEventListener('click', () => createBaba(todayISO()));
     els.saveHistory.addEventListener('click', () => {
       const baba = getActiveBaba();
@@ -5846,10 +6064,18 @@
     hasBooted = true;
     wireEvents();
     if (!timerTick) timerTick = setInterval(renderTimerOnly, 1000);
-    const savedMode = sessionStorage.getItem(MODE_KEY);
+    const sessionMode = sessionStorage.getItem(MODE_KEY);
+    const rememberedMode = localStorage.getItem(MODE_KEY);
+    const savedMode = sessionMode || rememberedMode;
     document.body.classList.toggle('baba-locked-viewer', isForcedViewerMode());
     if (isForcedViewerMode()) setMode('player');
-    else if (savedMode === 'organizer' || savedMode === 'player') setMode(savedMode);
+    else if (savedMode === 'organizer' && rememberedMode === 'organizer' && !hasRememberedOrganizerAccess()) {
+      localStorage.removeItem(MODE_KEY);
+      resetMode();
+    }
+    else if (savedMode === 'organizer' || savedMode === 'player') {
+      setMode(savedMode, { rememberDevice: rememberedMode === savedMode });
+    }
     else resetMode();
     render();
     wireTabsStickyState();

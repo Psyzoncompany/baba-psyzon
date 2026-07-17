@@ -1066,13 +1066,342 @@ html body.baba-page .baba-goal-player small {
   }
 }
 
+/* Reliable device access and lightweight JSON backups. */
+html body.baba-page .baba-password__remember {
+  position: relative;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: .72rem;
+  margin-top: .15rem;
+  border: 1px solid rgba(8, 127, 108, .18);
+  border-radius: 9px;
+  padding: .7rem .75rem;
+  background: rgba(236, 253, 248, .78);
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease, transform .18s ease;
+}
+
+html body.baba-page .baba-password__remember:hover {
+  border-color: rgba(8, 127, 108, .38);
+  background: rgba(224, 249, 241, .92);
+}
+
+html body.baba-page .baba-password__remember input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.baba-remember-toggle {
+  position: relative;
+  width: 2.6rem;
+  height: 1.48rem;
+  display: inline-flex;
+  flex: 0 0 2.6rem;
+  border: 1px solid rgba(15, 35, 58, .2);
+  border-radius: 999px;
+  background: #cbd5e1;
+  box-shadow: inset 0 1px 3px rgba(15, 35, 58, .12);
+  transition: border-color .2s ease, background .2s ease;
+}
+
+.baba-remember-toggle::after {
+  content: "";
+  position: absolute;
+  top: .16rem;
+  left: .17rem;
+  width: 1.03rem;
+  height: 1.03rem;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 5px rgba(15, 35, 58, .24);
+  transition: transform .2s ease;
+}
+
+.baba-password__remember input:checked + .baba-remember-toggle {
+  border-color: #087f6c;
+  background: #087f6c;
+}
+
+.baba-password__remember input:checked + .baba-remember-toggle::after {
+  transform: translateX(1.12rem);
+}
+
+.baba-password__remember input:focus-visible + .baba-remember-toggle {
+  outline: 3px solid rgba(8, 127, 108, .2);
+  outline-offset: 3px;
+}
+
+.baba-remember-copy {
+  display: grid;
+  gap: .12rem;
+  min-width: 0;
+}
+
+html body.baba-page .baba-remember-copy strong {
+  color: #17364d;
+  font-size: .76rem;
+  font-weight: 850;
+}
+
+html body.baba-page .baba-remember-copy small {
+  margin: 0;
+  color: #607086;
+  font-size: .66rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.baba-backup-card {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: .7rem;
+  border-color: rgba(8, 127, 108, .24) !important;
+  background:
+    linear-gradient(135deg, rgba(236, 253, 248, .92), rgba(255, 255, 255, .82)) !important;
+}
+
+.baba-backup-card__copy {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+
+.baba-backup-card__copy > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: .18rem;
+}
+
+.baba-backup-card__copy strong {
+  color: #17364d;
+  font-size: .88rem;
+  font-weight: 900;
+}
+
+.baba-backup-card__copy small {
+  max-width: 56rem;
+  color: #607086;
+  font-size: .7rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.baba-backup-card__icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  flex: 0 0 2.75rem;
+  border: 1px solid rgba(8, 127, 108, .18);
+  border-radius: 9px;
+  color: #087f6c;
+  background: rgba(255, 255, 255, .82);
+}
+
+.baba-backup-card__icon svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.baba-backup-card__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .45rem;
+}
+
+html body.baba-page .baba-backup-btn {
+  min-width: 9.2rem;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  border: 1px solid var(--liquid-line) !important;
+  border-radius: 8px !important;
+  padding: .55rem .72rem !important;
+  color: var(--liquid-text) !important;
+  background: rgba(255, 255, 255, .88) !important;
+  box-shadow: none !important;
+  font-size: .72rem !important;
+  font-weight: 850 !important;
+}
+
+html body.baba-page .baba-backup-btn--primary {
+  border-color: #087f6c !important;
+  color: #ffffff !important;
+  background: #087f6c !important;
+}
+
+.baba-backup-btn svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+}
+
+.baba-backup-btn:disabled {
+  cursor: wait;
+  opacity: .68;
+}
+
+@media (max-width: 760px) {
+  .baba-backup-card {
+    grid-template-columns: 1fr;
+    gap: .72rem;
+  }
+
+  .baba-backup-card__actions {
+    width: 100%;
+  }
+
+  html body.baba-page .baba-backup-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .baba-backup-card__copy {
+    align-items: flex-start;
+  }
+
+  .baba-backup-card__actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Strong team labels and an organizer shortcut below every modal layer. */
+html body.baba-page .baba-current-match-panel .baba-live-team .baba-team-link {
+  font-size: clamp(.86rem, 1.5vw, 1.08rem) !important;
+  font-weight: 950 !important;
+  line-height: 1.08;
+  white-space: nowrap !important;
+}
+
+html body.baba-page .baba-current-match-panel .baba-live-team .baba-team-link-text {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap !important;
+}
+
+html body.baba-page .baba-current-match-panel .baba-live-goal-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: .48rem;
+}
+
+html body.baba-page .baba-current-match-panel .baba-live-goal-actions .baba-goal-btn {
+  min-width: 0;
+  overflow: hidden;
+  padding-inline: .45rem !important;
+  font-size: clamp(.76rem, 2.5vw, .96rem) !important;
+  text-overflow: ellipsis;
+  white-space: nowrap !important;
+}
+
+.baba-organizer-fab {
+  position: fixed;
+  right: max(1rem, calc(env(safe-area-inset-right) + 1rem));
+  bottom: max(5.45rem, calc(env(safe-area-inset-bottom) + 5.45rem));
+  z-index: 9000;
+  width: 3.55rem;
+  height: 3.55rem;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .7);
+  border-radius: 50%;
+  padding: 0;
+  color: #ffffff;
+  background: #087f6c;
+  box-shadow: 0 16px 36px rgba(7, 31, 56, .24), inset 0 1px 0 rgba(255, 255, 255, .32);
+  cursor: pointer;
+  transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+.baba-organizer-fab:hover {
+  background: #066b5b;
+  box-shadow: 0 20px 42px rgba(7, 31, 56, .3), inset 0 1px 0 rgba(255, 255, 255, .32);
+  transform: translateY(-2px);
+}
+
+.baba-organizer-fab svg {
+  width: 1.45rem;
+  height: 1.45rem;
+}
+
+body:not(.baba-app-mode) .baba-organizer-fab,
+body.baba-player-mode .baba-organizer-fab {
+  display: none !important;
+}
+
+html body.baba-page .baba-ai-assistant {
+  right: max(1rem, calc(env(safe-area-inset-right) + 1rem));
+  bottom: max(9.85rem, calc(env(safe-area-inset-bottom) + 9.85rem)) !important;
+  z-index: 9000 !important;
+}
+
+html body.baba-page .baba-ai-toggle {
+  width: 3.55rem !important;
+  min-width: 3.55rem !important;
+  height: 3.55rem !important;
+  min-height: 3.55rem !important;
+  border-radius: 50% !important;
+  padding: 0 !important;
+}
+
+html body.baba-page .baba-ai-toggle__text {
+  display: none !important;
+}
+
+html body.baba-page .baba-share-fab {
+  z-index: 9000 !important;
+}
+
+html body.baba-page .baba-modal,
+html body.baba-page .baba-password.baba-password-modal {
+  z-index: 12000 !important;
+}
+
+@media (max-width: 760px) {
+  .baba-organizer-fab {
+    right: max(.72rem, calc(env(safe-area-inset-right) + .72rem));
+    bottom: max(.72rem, calc(env(safe-area-inset-bottom) + .72rem));
+    width: 3.25rem;
+    height: 3.25rem;
+  }
+
+  html body.baba-page .baba-ai-assistant {
+    right: max(.72rem, calc(env(safe-area-inset-right) + .72rem));
+    bottom: max(4.7rem, calc(env(safe-area-inset-bottom) + 4.7rem)) !important;
+  }
+
+  html body.baba-page .baba-ai-toggle {
+    width: 3.25rem !important;
+    min-width: 3.25rem !important;
+    height: 3.25rem !important;
+    min-height: 3.25rem !important;
+  }
+
+  html body.baba-page .baba-current-match-panel .baba-live-team .baba-team-link {
+    font-size: clamp(.78rem, 3vw, .92rem) !important;
+  }
+}
+
 /* Match controls, ranking selector and compact mobile header. */
 html body.baba-page .baba-current-match-panel .baba-live-team--home .baba-team-link {
   color: #065f46 !important;
 }
 
 html body.baba-page .baba-current-match-panel .baba-live-team--away .baba-team-link {
-  color: #991b1b !important;
+  color: #1d4ed8 !important;
 }
 
 html body.baba-page .baba-goal-btn--team-a,
@@ -1085,10 +1414,10 @@ html body.baba-page .baba-goal-btn--team-a:hover:not(:disabled) {
 
 html body.baba-page .baba-goal-btn--team-b,
 html body.baba-page .baba-goal-btn--team-b:hover:not(:disabled) {
-  border-color: #991b1b !important;
+  border-color: #1d4ed8 !important;
   color: #ffffff !important;
-  background: #991b1b !important;
-  box-shadow: 0 9px 20px rgba(153, 27, 27, .2) !important;
+  background: #1d4ed8 !important;
+  box-shadow: 0 9px 20px rgba(29, 78, 216, .2) !important;
 }
 
 #goal-modal[data-team-tone="a"] .baba-modal__panel {
@@ -1100,11 +1429,11 @@ html body.baba-page .baba-goal-btn--team-b:hover:not(:disabled) {
 }
 
 #goal-modal[data-team-tone="b"] .baba-modal__panel {
-  border-color: rgba(153, 27, 27, .32) !important;
+  border-color: rgba(29, 78, 216, .32) !important;
 }
 
 #goal-modal[data-team-tone="b"] #goal-modal-title {
-  color: #991b1b !important;
+  color: #1d4ed8 !important;
 }
 
 #goal-modal[data-team-tone="a"] .baba-goal-player:not(.baba-goal-player--external) {
@@ -1113,8 +1442,8 @@ html body.baba-page .baba-goal-btn--team-b:hover:not(:disabled) {
 }
 
 #goal-modal[data-team-tone="b"] .baba-goal-player:not(.baba-goal-player--external) {
-  border-color: #991b1b !important;
-  background: #991b1b !important;
+  border-color: #1d4ed8 !important;
+  background: #1d4ed8 !important;
 }
 
 html body.baba-page .baba-goal-player--external {

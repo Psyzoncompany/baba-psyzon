@@ -3608,6 +3608,13 @@
     <symbol id="baba-download" viewBox="0 0 24 24">
       <path d="M12 4v10m0 0 4-4m-4 4-4-4M5 18h14" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" />
     </symbol>
+    <symbol id="baba-upload" viewBox="0 0 24 24">
+      <path d="M12 16V6m0 0-4 4m4-4 4 4M5 19h14" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="baba-organizer-board" viewBox="0 0 24 24">
+      <path d="M8 5H5v16h14V5h-3M9 3h6v4H9V3Z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="m9 16 6.7-6.7 2 2L11 18H9v-2Z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
     <symbol id="baba-shield" viewBox="0 0 24 24">
       <path d="M12 3 20 6v6c0 5-3.2 8-8 9-4.8-1-8-4-8-9V6l8-3Z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" />
       <path d="m9 12 2 2 4-5" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
@@ -3725,7 +3732,11 @@
             </div>
             <label class="baba-password__remember" for="remember-organizer-password">
               <input id="remember-organizer-password" type="checkbox">
-              <span>Lembrar senha neste aparelho</span>
+              <i class="baba-remember-toggle" aria-hidden="true"></i>
+              <span class="baba-remember-copy">
+                <strong>Lembrar este acesso no dispositivo</strong>
+                <small>Abre direto como organizador nas proximas visitas.</small>
+              </span>
             </label>
             <small id="password-feedback"></small>
           </div>
@@ -4034,6 +4045,26 @@
       </section>
 
       <section class="baba-view" data-view="history">
+        <article class="baba-card baba-backup-card organizer-only">
+          <div class="baba-backup-card__copy">
+            <span class="baba-backup-card__icon"><svg aria-hidden="true" focusable="false"><use href="#baba-shield"></use></svg></span>
+            <span>
+              <strong>Backup completo dos dados</strong>
+              <small>Proteja jogadores, rankings, pagamentos, metas, babas e partidas. As imagens nao entram no JSON para manter o arquivo leve.</small>
+            </span>
+          </div>
+          <div class="baba-backup-card__actions">
+            <button id="export-backup-json" class="baba-backup-btn baba-backup-btn--primary" type="button">
+              <svg aria-hidden="true" focusable="false"><use href="#baba-download"></use></svg>
+              <span>Exportar JSON</span>
+            </button>
+            <button id="import-backup-json" class="baba-backup-btn" type="button">
+              <svg aria-hidden="true" focusable="false"><use href="#baba-upload"></use></svg>
+              <span>Importar JSON</span>
+            </button>
+            <input id="backup-json-file" class="hidden" type="file" accept="application/json,.json">
+          </div>
+        </article>
         <div class="baba-grid">
           <article class="baba-card">
             <div class="baba-card__head">
@@ -4117,6 +4148,10 @@
       <circle cx="30" cy="48" r="10" fill="currentColor" />
       <circle cx="66" cy="71" r="10" fill="currentColor" />
     </svg>
+  </button>
+
+  <button id="baba-organizer-fab" class="baba-organizer-fab organizer-only" type="button" aria-label="Abrir pagina do organizador" title="Ir para o organizador">
+    <svg aria-hidden="true" focusable="false"><use href="#baba-organizer-board"></use></svg>
   </button>
 
   <script id="baba-html-helpers">
