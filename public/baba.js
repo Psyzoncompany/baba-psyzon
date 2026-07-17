@@ -3520,7 +3520,14 @@
       fila: activeBase.filaTimes,
       jogos: activeBase.jogos?.length,
     }, () => renderMetrics(baba));
-    renderComponent('players-admin', { players: state.players, visitors: baba?.visitantes, activeBabaId: state.activeBabaId }, renderPlayersAdmin);
+    renderComponent('players-admin', {
+      players: state.players,
+      visitors: baba?.visitantes,
+      payments: baba?.pagamentos,
+      monthlyPayments: state.monthlyPayments,
+      month: currentPaymentMonthKey(),
+      activeBabaId: state.activeBabaId,
+    }, renderPlayersAdmin);
     renderComponent('present-list', { players: state.players, presentes: baba?.jogadoresPresentes, status: baba?.status }, () => renderPresentList(baba));
     renderComponent('goals-payments', {
       goals: state.purchaseGoals,
@@ -3655,48 +3662,45 @@
   function renderPlayersAdmin() {
     const baba = getActiveBaba();
     const visitors = baba?.visitantes || [];
-    const fixedHTML = state.players.length ? state.players.map((player) => {
+    const playerAdminItemHTML = (player, { visitor = false } = {}) => {
       const paid = playerPaymentState(player.id, baba, { force: true }) === 'paid';
+      const price = paymentPriceForPlayer(player);
+      const typeLabel = player.tipo === 'goleiro' ? 'Goleiro' : (visitor || player.visitante ? 'Visitante' : 'Jogador');
       const meta = [
-        player.tipo === 'goleiro' ? '<small class="baba-goalie-pill">Goleiro</small>' : '',
+        `<small>${typeLabel} - ${formatCurrency(price)}</small>`,
+        paid ? '<small class="baba-payment-status is-paid">Pago</small>' : '<small class="baba-payment-status is-unpaid">Nao pagou</small>',
         player.ativo ? '' : '<small class="baba-status-pill">Inativo</small>',
       ].filter(Boolean).join('');
+      const paymentButtonLabel = paid ? 'Pagamento pendente' : 'Pagamento pago';
+
       return `
-      <div class="baba-player-admin">
+      <div class="baba-player-admin ${paid ? 'is-paid' : 'is-unpaid'}">
         <div class="baba-player-admin__info">
           <strong>${playerPaymentNameHTML(player.id, baba, { name: player.nome, force: true })}</strong>
           ${meta ? `<div class="baba-player-admin__meta">${meta}</div>` : ''}
         </div>
         <div class="baba-player-admin__actions">
-          <button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}">${paid ? 'Pagamento pendente' : 'Pagamento pago'}</button>
-          <button class="baba-mini-btn" type="button" data-action="toggle-player" data-id="${player.id}">${player.ativo ? 'Desativar' : 'Ativar'}</button>
-          <button class="baba-mini-btn danger" type="button" data-action="delete-player" data-id="${player.id}">Excluir</button>
+          <button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}">${paymentButtonLabel}</button>
+          ${visitor
+            ? `<button class="baba-mini-btn danger" type="button" data-action="delete-visitor" data-id="${player.id}">Remover</button>`
+            : `
+              <button class="baba-mini-btn" type="button" data-action="toggle-player" data-id="${player.id}">${player.ativo ? 'Desativar' : 'Ativar'}</button>
+              <button class="baba-mini-btn danger" type="button" data-action="delete-player" data-id="${player.id}">Excluir</button>
+            `}
         </div>
       </div>
     `;
-    }).join('') : '<div class="baba-empty">Cadastre a lista fixa de jogadores do baba.</div>';
+    };
 
-    const visitorHTML = visitors.length ? visitors.map((player) => `
-      <div class="baba-player-admin">
-        <div class="baba-player-admin__info">
-          <strong>${playerPaymentNameHTML(player.id, baba, { name: player.nome, force: true })}</strong>
-          <div class="baba-player-admin__meta"><small class="baba-visitor-pill">Visitante do baba atual</small></div>
-        </div>
-        <div class="baba-player-admin__actions">
-          <button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}">${playerPaymentState(player.id, baba, { force: true }) === 'paid' ? 'Pagamento pendente' : 'Pagamento pago'}</button>
-          <button class="baba-mini-btn danger" type="button" data-action="delete-visitor" data-id="${player.id}">Remover</button>
-        </div>
-      </div>
-    `).join('') : '<div class="baba-empty">Visitantes aparecem aqui e somem no proximo baba.</div>';
+    const playersHTML = [
+      ...state.players.map((player) => playerAdminItemHTML(player)),
+      ...visitors.map((player) => playerAdminItemHTML(player, { visitor: true })),
+    ].join('');
 
     setHTML(els.playersAdminList, `
       <div class="baba-admin-section">
-        <span>Lista fixa</span>
-        ${fixedHTML}
-      </div>
-      <div class="baba-admin-section">
-        <span>Visitantes do baba</span>
-        ${visitorHTML}
+        <span>Jogadores do baba</span>
+        ${playersHTML || '<div class="baba-empty">Cadastre jogadores para controlar a lista e os pagamentos mensais.</div>'}
       </div>
     `);
   }
@@ -3830,10 +3834,9 @@
   }
 
   function renderPayments(baba) {
-    if (!els.paymentSummary || !els.paymentList) return;
+    if (!els.paymentSummary) return;
 
     const monthKey = currentPaymentMonthKey();
-    const players = getPaymentPlayers(baba);
     const stats = getPaymentStats(baba);
     const pending = Math.max(0, stats.expected - stats.paid);
     const pendingCount = Math.max(0, stats.players - stats.paidCount);
@@ -3856,26 +3859,7 @@
       </article>
     `);
 
-    if (!players.length) {
-      setHTML(els.paymentList, '<div class="baba-empty">Cadastre a lista fixa para controlar os pagamentos mensais.</div>');
-      return;
-    }
-
-    setHTML(els.paymentList, players.map((player) => {
-      const paid = isPlayerPaidThisMonth(player.id, baba);
-      const price = paymentPriceForPlayer(player);
-      const label = player.tipo === 'goleiro' ? 'Goleiro' : (player.visitante ? 'Visitante' : 'Jogador');
-      return `
-        <div class="baba-payment-item ${paid ? 'is-paid' : 'is-unpaid'}">
-          <div class="baba-payment-main">
-            <strong class="baba-payment-name ${paid ? 'is-paid' : 'is-unpaid'}">${escapeHTML(player.nome)}</strong>
-            <small>${label} - ${formatCurrency(price)}</small>
-          </div>
-          <span class="baba-payment-status ${paid ? 'is-paid' : 'is-unpaid'}">${paid ? 'Pago' : 'Nao pagou'}</span>
-          ${isOrganizer() ? `<button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}">${paid ? 'Pagamento pendente' : 'Pagamento pago'}</button>` : ''}
-        </div>
-      `;
-    }).join(''));
+    if (els.paymentList) setHTML(els.paymentList, '');
   }
 
   function renderTeams(baba) {

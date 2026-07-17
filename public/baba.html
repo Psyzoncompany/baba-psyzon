@@ -779,6 +779,16 @@
       background: rgba(255, 255, 255, .82);
     }
 
+    .baba-player-admin.is-paid {
+      border-color: rgba(20, 164, 106, .26);
+      background: rgba(240, 253, 244, .86);
+    }
+
+    .baba-player-admin.is-unpaid {
+      border-color: rgba(223, 62, 82, .22);
+      background: rgba(255, 247, 247, .88);
+    }
+
     .baba-player-admin__info {
       min-width: 0;
       display: grid;
@@ -795,6 +805,7 @@
     .baba-player-admin__meta {
       display: flex;
       flex-wrap: wrap;
+      align-items: center;
       gap: .28rem;
     }
 
@@ -807,7 +818,8 @@
     }
 
     .baba-goalie-pill,
-    .baba-status-pill {
+    .baba-status-pill,
+    .baba-player-admin__meta small {
       display: inline-flex;
       width: fit-content;
       border-radius: 999px;
@@ -816,6 +828,12 @@
       font-weight: 950;
       letter-spacing: .025em;
       text-transform: uppercase;
+    }
+
+    .baba-player-admin__meta small {
+      border: 1px solid rgba(15, 23, 42, .09);
+      color: #52647c;
+      background: rgba(255, 255, 255, .72);
     }
 
     .baba-goalie-pill {
@@ -2638,6 +2656,8 @@
 
     .baba-payment-summary {
       grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+      flex: 1 1 28rem;
+      min-width: min(100%, 28rem);
     }
 
     .baba-goals-summary article,
@@ -2653,6 +2673,12 @@
       overflow: hidden;
       background: rgba(255, 255, 255, .82);
       box-shadow: 0 12px 28px rgba(15, 23, 42, .08);
+    }
+
+    .baba-management-section--single .baba-payment-summary article {
+      min-height: 4.6rem;
+      padding: .58rem .64rem;
+      box-shadow: none;
     }
 
     .baba-goals-summary span,
@@ -2704,11 +2730,9 @@
       grid-column: 1 / -1 !important;
     }
 
-    .baba-player-payment-sections {
+    .baba-player-payment-panel {
       display: grid;
-      grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
       gap: .8rem;
-      align-items: start;
     }
 
     .baba-management-section {
@@ -2719,12 +2743,22 @@
       background: rgba(248, 250, 252, .68);
     }
 
+    .baba-management-section--single {
+      display: grid;
+      gap: .78rem;
+    }
+
     .baba-section-heading {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: .6rem;
       margin-bottom: .65rem;
+    }
+
+    .baba-management-section--single .baba-section-heading {
+      align-items: start;
+      margin-bottom: 0;
     }
 
     .baba-section-heading>div {
@@ -3355,7 +3389,8 @@
         grid-template-columns: 1fr;
       }
 
-      .baba-player-payment-sections {
+      .baba-management-section--single .baba-section-heading {
+        display: grid;
         grid-template-columns: 1fr;
       }
     }
@@ -3850,13 +3885,14 @@
                 </button>
               </div>
             </div>
-            <div class="baba-player-payment-sections">
-              <section class="baba-management-section" aria-labelledby="player-management-title">
+            <div class="baba-player-payment-panel">
+              <section class="baba-management-section baba-management-section--single" aria-labelledby="player-management-title">
                 <div class="baba-section-heading">
                   <div>
-                    <strong id="player-management-title">Cadastrar jogador</strong>
-                    <small>Lista fixa, goleiros e visitantes</small>
+                    <strong id="player-management-title">Cadastrar jogadores e pagamentos</strong>
+                    <small>Mensal dia 30 - Jogador R$ 15 / Goleiro R$ 7</small>
                   </div>
+                  <div id="payment-summary" class="baba-payment-summary"></div>
                 </div>
                 <form id="player-form" class="baba-player-form">
                   <input id="player-name" type="text" placeholder="Nome do jogador" required>
@@ -3868,16 +3904,6 @@
                   <button type="submit">Cadastrar</button>
                 </form>
                 <div id="players-admin-list" class="baba-player-list"></div>
-              </section>
-              <section class="baba-management-section" aria-labelledby="payment-management-title">
-                <div class="baba-section-heading">
-                  <div>
-                    <strong id="payment-management-title">Pagamentos do baba</strong>
-                    <small>Mensal dia 30 - Jogador R$ 15 / Goleiro R$ 7</small>
-                  </div>
-                </div>
-                <div id="payment-summary" class="baba-payment-summary"></div>
-                <div id="payment-list" class="baba-payment-list"></div>
               </section>
             </div>
           </article>
