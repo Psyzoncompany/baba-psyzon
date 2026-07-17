@@ -1446,6 +1446,15 @@ html body.baba-page .baba-goal-btn--team-b:hover:not(:disabled) {
   background: #1d4ed8 !important;
 }
 
+#goal-modal[data-team-tone="a"] .baba-goal-player.baba-goal-player--goalkeeper:not(.baba-goal-player--external),
+#goal-modal[data-team-tone="b"] .baba-goal-player.baba-goal-player--goalkeeper:not(.baba-goal-player--external),
+#goal-modal[data-team-tone="a"] .baba-goal-player.baba-goal-player--goalkeeper:hover:not(.baba-goal-player--external),
+#goal-modal[data-team-tone="b"] .baba-goal-player.baba-goal-player--goalkeeper:hover:not(.baba-goal-player--external) {
+  border-color: #5b21b6 !important;
+  background: #5b21b6 !important;
+  box-shadow: 0 9px 20px rgba(91, 33, 182, .24) !important;
+}
+
 html body.baba-page .baba-goal-player--external {
   border: 1px dashed rgba(15, 35, 58, .28) !important;
   color: var(--liquid-text) !important;

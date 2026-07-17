@@ -3199,12 +3199,16 @@
     const teamTone = teamId === match.timeA ? 'a' : 'b';
     els.goalModal.dataset.teamTone = teamTone;
     els.goalModalTitle.textContent = `Gol do ${team.name}`;
-    const playersHTML = team.jogadores.map((playerId) => `
-      <button class="baba-goal-player" type="button" data-goal-player-id="${playerId}">
-        <strong>${playerPaymentNameHTML(playerId, baba)}</strong>
-        <small>${escapeHTML(team.name)}</small>
-      </button>
-    `).join('');
+    const playersHTML = team.jogadores.map((playerId) => {
+      const player = getBabaPlayer(baba, playerId);
+      const isGoalkeeper = player?.tipo === 'goleiro';
+      const displayName = `${isGoalkeeper ? '(G) ' : ''}${player?.nome || playerName(playerId, baba)}`;
+      return `
+        <button class="baba-goal-player ${isGoalkeeper ? 'baba-goal-player--goalkeeper' : ''}" type="button" data-goal-player-id="${playerId}" aria-label="Marcar gol de ${escapeHTML(displayName)}">
+          <strong>${escapeHTML(displayName)}</strong>
+        </button>
+      `;
+    }).join('');
     const externalPlayerHTML = `
       <button class="baba-goal-player baba-goal-player--external" type="button" data-goal-player-id="${EXTERNAL_GOAL_SCORER_ID}">
         <strong>Nao marcar jogador</strong>
