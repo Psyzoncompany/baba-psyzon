@@ -1954,7 +1954,7 @@
   }
 
   function renderPdfDocument(report) {
-    const headerImage = new URL('img/baba-pdf-report-header-pro.png', window.location.href).href;
+    const headerImage = new URL('img/baba-pdf-liquid-glass-v1.png', window.location.href).href;
     const summary = report.summary.map(([label, value]) => `
       <article>
         ${pdfIcon(pdfSummaryIcon(label))}
@@ -1965,10 +1965,13 @@
       </article>
     `).join('');
     const sectionLayout = report.sections.length > 1 ? 'pdf-sections--grid' : 'pdf-sections--single';
-    const sections = report.sections.map((section) => `
+    const sections = report.sections.map((section, index) => `
       <section class="pdf-section ${section.wide ? 'pdf-section--wide' : ''}">
         <div class="pdf-section-head">
-          <h2>${pdfIcon(section.icon || report.icon)}<span>${escapeHTML(section.title)}</span></h2>
+          <div class="pdf-section-title">
+            <span class="pdf-section-index">${String(index + 1).padStart(2, '0')}</span>
+            <h2>${pdfIcon(section.icon || report.icon)}<span>${escapeHTML(section.title)}</span></h2>
+          </div>
           ${section.note ? `<p>${escapeHTML(section.note)}</p>` : ''}
         </div>
         ${renderPdfTable(section)}
@@ -1985,69 +1988,102 @@
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      color: #172033;
+      color: #13263a;
       background:
-        radial-gradient(780px 420px at 8% -8%, rgba(20, 164, 106, .14), transparent 62%),
-        radial-gradient(720px 380px at 92% 0%, rgba(250, 204, 21, .16), transparent 58%),
-        #eef5f2;
+        radial-gradient(760px 440px at 0% 0%, rgba(8, 127, 108, .18), transparent 62%),
+        radial-gradient(680px 420px at 100% 4%, rgba(214, 162, 29, .16), transparent 58%),
+        linear-gradient(145deg, #e8f0f4, #f7fafc 48%, #e9f2f1);
       font-family: Inter, Arial, sans-serif;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     .pdf-page {
       display: grid;
-      gap: 10px;
+      gap: 12px;
       width: 100%;
       max-width: 1120px;
       margin: 0 auto;
-      padding: 14px;
+      padding: 18px;
     }
     .pdf-hero {
       position: relative;
+      isolation: isolate;
       overflow: hidden;
-      min-height: 118px;
-      border: 1px solid rgba(255, 255, 255, .38);
-      border-radius: 12px;
-      padding: 18px;
+      min-height: 154px;
+      display: flex;
+      align-items: flex-end;
+      border: 1px solid rgba(255, 255, 255, .62);
+      border-radius: 22px;
+      padding: 24px;
       color: #ffffff;
       background:
-        linear-gradient(90deg, rgba(4, 15, 12, .92), rgba(4, 15, 12, .72) 48%, rgba(4, 15, 12, .16)),
+        linear-gradient(90deg, rgba(7, 31, 56, .94), rgba(7, 31, 56, .72) 54%, rgba(7, 31, 56, .08)),
         var(--pdf-hero-bg) center / cover no-repeat;
-      box-shadow: 0 12px 26px rgba(15, 23, 42, .10);
+      box-shadow: 0 22px 46px rgba(7, 31, 56, .2), inset 0 1px 0 rgba(255, 255, 255, .5);
+    }
+    .pdf-hero::before,
+    .pdf-hero::after {
+      content: "";
+      position: absolute;
+      z-index: 0;
+      border: 1px solid rgba(255, 255, 255, .24);
+      border-radius: 999px;
+      background: linear-gradient(145deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, .035));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .36);
+      transform: rotate(-14deg);
+    }
+    .pdf-hero::before {
+      width: 260px;
+      height: 64px;
+      top: -20px;
+      right: 12%;
+    }
+    .pdf-hero::after {
+      width: 190px;
+      height: 54px;
+      right: -28px;
+      bottom: 12px;
     }
     .pdf-hero__content {
       position: relative;
       z-index: 1;
       display: grid;
-      gap: 6px;
-      max-width: 72%;
+      gap: 8px;
+      max-width: 68%;
     }
     .pdf-hero__badge {
+      width: max-content;
       display: inline-flex;
       align-items: center;
       gap: 7px;
-      color: #d9f99d;
+      border: 1px solid rgba(255, 255, 255, .26);
+      border-radius: 999px;
+      padding: 4px 9px 4px 5px;
+      color: #ffffff;
+      background: rgba(255, 255, 255, .12);
       font-size: 9px;
       font-weight: 900;
       letter-spacing: .08em;
       text-transform: uppercase;
+      backdrop-filter: blur(12px) saturate(130%);
     }
     .pdf-hero .pdf-icon {
-      width: 26px;
-      height: 26px;
-      color: #facc15;
-      background: rgba(255, 255, 255, .14);
-      border-color: rgba(255, 255, 255, .22);
+      width: 25px;
+      height: 25px;
+      border: 0;
+      color: #ffe08a;
+      background: rgba(255, 255, 255, .13);
     }
     .pdf-hero h1 {
       margin: 0;
       color: #ffffff;
-      font-size: 28px;
-      line-height: .98;
+      font-size: 30px;
+      line-height: 1;
+      letter-spacing: -.035em;
     }
     .pdf-hero p {
       margin: 0;
-      color: rgba(255, 255, 255, .86);
+      color: rgba(239, 248, 255, .84);
       font-size: 11px;
       font-weight: 700;
     }
@@ -2061,17 +2097,35 @@
     .pdf-summary {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 8px;
+      gap: 10px;
     }
     .pdf-summary article {
+      position: relative;
+      overflow: hidden;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       min-width: 0;
-      border: 1px solid #dbe5ef;
-      border-radius: 8px;
-      padding: 9px 10px;
-      background: #ffffff;
+      min-height: 66px;
+      border: 1px solid rgba(255, 255, 255, .9);
+      border-radius: 16px;
+      padding: 11px 12px;
+      background: linear-gradient(145deg, rgba(255, 255, 255, .92), rgba(240, 248, 249, .68));
+      box-shadow: 0 12px 30px rgba(20, 42, 68, .1), inset 0 1px 0 #ffffff;
+      backdrop-filter: blur(18px) saturate(130%);
+    }
+    .pdf-summary article::after {
+      content: "";
+      position: absolute;
+      width: 54px;
+      height: 54px;
+      right: -22px;
+      bottom: -26px;
+      border-radius: 50%;
+      background: rgba(8, 127, 108, .08);
+    }
+    .pdf-summary article:nth-child(even)::after {
+      background: rgba(214, 162, 29, .1);
     }
     .pdf-summary article > div { min-width: 0; }
     .pdf-summary span {
@@ -2085,8 +2139,8 @@
     .pdf-summary strong {
       display: block;
       margin-top: 2px;
-      color: #172033;
-      font-size: 14px;
+      color: #071f38;
+      font-size: 15px;
       line-height: 1.1;
       overflow-wrap: anywhere;
     }
@@ -2095,12 +2149,12 @@
       flex: 0 0 auto;
       align-items: center;
       justify-content: center;
-      width: 24px;
-      height: 24px;
-      border: 1px solid #cdebd8;
-      border-radius: 7px;
-      color: #0f766e;
-      background: #ecfdf5;
+      width: 28px;
+      height: 28px;
+      border: 1px solid rgba(8, 127, 108, .14);
+      border-radius: 10px;
+      color: #087f6c;
+      background: linear-gradient(145deg, #effcf8, #dcefeb);
     }
     .pdf-icon svg {
       width: 14px;
@@ -2108,7 +2162,7 @@
     }
     .pdf-sections {
       display: grid;
-      gap: 8px;
+      gap: 10px;
     }
     .pdf-sections--grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2119,20 +2173,33 @@
     }
     .pdf-section {
       overflow: hidden;
-      border: 1px solid #dbe5ef;
-      border-radius: 8px;
-      background: #ffffff;
+      border: 1px solid rgba(255, 255, 255, .9);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, .82);
       break-inside: avoid-page;
-      box-shadow: 0 12px 26px rgba(15, 23, 42, .07);
+      box-shadow: 0 16px 34px rgba(20, 42, 68, .1), inset 0 1px 0 #ffffff;
+      backdrop-filter: blur(18px) saturate(125%);
     }
     .pdf-section-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      border-bottom: 1px solid #e7edf5;
-      padding: 9px 10px;
-      background: #f8fbff;
+      border-bottom: 1px solid rgba(15, 35, 58, .09);
+      padding: 11px 12px;
+      background: linear-gradient(110deg, rgba(231, 245, 242, .9), rgba(255, 255, 255, .76) 58%, rgba(255, 248, 223, .62));
+    }
+    .pdf-section-title {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pdf-section-index {
+      color: rgba(7, 31, 56, .42);
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: .08em;
     }
     .pdf-section h2 {
       display: flex;
@@ -2142,7 +2209,7 @@
     }
     .pdf-section h2 {
       margin: 0;
-      color: #172033;
+      color: #071f38;
       font-size: 13px;
       line-height: 1.1;
     }
@@ -2166,8 +2233,8 @@
       line-height: 1.12;
     }
     th {
-      color: #52647c;
-      background: #f3f7fb;
+      color: #31556a;
+      background: #e9f2f2;
       font-size: 7px;
       font-weight: 900;
       letter-spacing: .04em;
@@ -2175,12 +2242,13 @@
       text-transform: uppercase;
     }
     th, td {
-      border-bottom: 1px solid #edf1f6;
-      padding: 5px 6px;
+      border-bottom: 1px solid rgba(15, 35, 58, .075);
+      padding: 6px 7px;
       vertical-align: top;
       overflow-wrap: anywhere;
     }
-    tbody tr:nth-child(even) td { background: #fbfdff; }
+    tbody tr:nth-child(even) td { background: rgba(242, 247, 249, .72); }
+    tbody tr:hover td { background: #edf8f5; }
     tbody tr:last-child td { border-bottom: 0; }
     tbody tr.is-pdf-gold td {
       border-color: rgba(214, 161, 0, .22);
@@ -2226,10 +2294,11 @@
     }
     .pdf-mobile-card {
       overflow: hidden;
-      border: 1px solid #dbe5ef;
-      border-radius: 8px;
-      background: #ffffff;
+      border: 1px solid rgba(255, 255, 255, .92);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, .86);
       break-inside: avoid;
+      box-shadow: 0 12px 28px rgba(20, 42, 68, .09), inset 0 1px 0 #ffffff;
     }
     .pdf-mobile-card.is-pdf-gold {
       border-color: rgba(214, 161, 0, .38);
@@ -2245,7 +2314,7 @@
       display: grid;
       gap: 3px;
       padding: 10px 11px;
-      background: linear-gradient(135deg, #f7fbff, #eefcf6);
+      background: linear-gradient(135deg, #edf8f5, #f8fbff 68%, #fff8df);
       border-bottom: 1px solid #e7edf5;
     }
     .pdf-mobile-card-title span {
@@ -2304,10 +2373,11 @@
     .pdf-footer {
       display: flex;
       justify-content: space-between;
+      border-top: 1px solid rgba(15, 35, 58, .1);
       color: #64748b;
       font-size: 8px;
       font-weight: 800;
-      padding: 0 2px 2px;
+      padding: 8px 4px 2px;
     }
     @media screen and (max-width: 720px) {
       body { background: #ffffff; }
@@ -2397,9 +2467,11 @@
         grid-template-columns: repeat(5, minmax(0, 1fr));
       }
       .pdf-summary article {
+        min-height: 0;
         gap: 5px;
         border-radius: 6px;
         padding: 5px 6px;
+        box-shadow: none;
       }
       .pdf-summary span { font-size: 5.9px; }
       .pdf-summary strong { font-size: 9.2px; }
@@ -2429,6 +2501,12 @@
       .pdf-section-head {
         gap: 4px;
         padding: 5px 6px;
+      }
+      .pdf-section-title {
+        gap: 4px;
+      }
+      .pdf-section-index {
+        font-size: 5.5px;
       }
       .pdf-section h2 {
         gap: 4px;
@@ -2761,7 +2839,7 @@
     baba.jogoAtual = buildMatch(baba, teamAId, teamBId);
     startMatchTimer(baba.jogoAtual);
     baba.status = 'jogando';
-    saveState('Primeiro jogo iniciado.');
+    saveState(firstGame ? 'Primeiro jogo iniciado.' : 'Partida iniciada.');
     setActiveTab('dashboard');
   }
 
@@ -3594,6 +3672,8 @@
     const hasFinishedGame = Boolean((baba?.jogos || []).length);
     const canDrawTeams = hasOpenBaba && hasPresentPlayers;
     const canOpenTeams = hasOpenBaba && hasDrawnTeams;
+    const canStartGame = canOpenTeams && !baba?.jogoAtual && !baba?.pendingTieBreak;
+    const startGameLabel = hasFinishedGame ? 'Iniciar partida' : 'Iniciar primeiro jogo';
 
     if (els.dateDisplay) els.dateDisplay.textContent = formatBabaDateLong(baba?.dataISO || todayISO());
 
@@ -3606,8 +3686,9 @@
       disabled: !canDrawTeams,
     });
     setFlowButton(els.startFirstGame, {
-      variant: !canOpenTeams ? 'disabled' : 'next',
-      disabled: !canOpenTeams,
+      variant: !canStartGame ? 'disabled' : 'next',
+      disabled: !canStartGame,
+      label: startGameLabel,
     });
     setFlowButton(els.undoGame, {
       variant: 'neutral',
@@ -3922,7 +4003,8 @@
     `;
 
     if (fullyRevealed) {
-      const startHTML = isOrganizer() && !baba.jogoAtual ? '<button class="baba-primary baba-start-game-btn" type="button" data-action="start-first-live">Iniciar primeiro jogo</button>' : '';
+      const startLabel = baba.jogos?.length ? 'Iniciar partida' : 'Iniciar primeiro jogo';
+      const startHTML = isOrganizer() && !baba.jogoAtual ? `<button class="baba-primary baba-start-game-btn" type="button" data-action="start-first-live">${startLabel}</button>` : '';
       const items = baba.teams.map((team, position) => ({
         key: `team:${team.id}`,
         signature: JSON.stringify({ team, availablePlayers, organizer: isOrganizer(), fullyRevealed }),
@@ -4114,11 +4196,14 @@
       return;
     }
     setHTML(els.currentGamesList, games.slice().reverse().map((game) => `
-      <div class="baba-history-item baba-history-item--compact">
-        <span>
-          <strong>Jogo ${game.numeroJogo}: ${matchLineHTML(baba, getTeam(baba, game.timeA), game.placarA, game.placarB, getTeam(baba, game.timeB), true)}</strong>
-          <small>${formatTime(game.finalizadoEm)}</small>
-        </span>
+      <div class="baba-history-item baba-history-item--compact baba-current-history-game">
+        <div class="baba-current-history-game__main">
+          <div class="baba-current-history-game__meta">
+            <span>Jogo ${game.numeroJogo}</span>
+            <small>${formatTime(game.finalizadoEm)}</small>
+          </div>
+          <strong class="baba-current-history-game__match">${matchLineHTML(baba, getTeam(baba, game.timeA), game.placarA, game.placarB, getTeam(baba, game.timeB), true)}</strong>
+        </div>
         <button class="baba-mini-btn" type="button" data-current-game="${game.numeroJogo}">
           <svg class="baba-btn-icon" aria-hidden="true" focusable="false"><use href="#baba-ball"></use></svg>Gols
         </button>
@@ -4369,9 +4454,10 @@
     } else if (!match || !teamA || !teamB) {
       els.currentMatchPanel.className = 'baba-current-match-panel';
       const canStart = isOrganizer() && baba?.teams?.length >= 2;
+      const startLabel = baba?.jogos?.length ? 'Iniciar partida' : 'Iniciar primeiro jogo';
       setHTML(els.currentMatchPanel, `
         <div class="baba-empty">Nenhum jogo iniciado.</div>
-        ${canStart ? '<div class="baba-live-actions baba-live-actions--single"><button class="baba-primary baba-start-game-btn" type="button" data-action="start-first-live">Iniciar primeiro jogo</button></div>' : ''}
+        ${canStart ? `<div class="baba-live-actions baba-live-actions--single"><button class="baba-primary baba-start-game-btn" type="button" data-action="start-first-live">${startLabel}</button></div>` : ''}
       `);
     } else {
       els.currentMatchPanel.className = 'baba-current-match-panel';
@@ -4383,9 +4469,10 @@
       const scoreB = Number(match.placarB || 0);
       let organizerControls = '';
       if (isOrganizer()) {
+        const startLabel = match.numeroJogo === 1 && !(baba.jogos?.length) ? 'Iniciar primeiro jogo' : 'Iniciar partida';
         organizerControls = isPrepared ? `
           <div class="baba-live-actions baba-live-actions--single">
-            <button class="baba-live-main-btn baba-start-game-btn" type="button" data-action="start-prepared-match">Iniciar primeiro jogo</button>
+            <button class="baba-live-main-btn baba-start-game-btn" type="button" data-action="start-prepared-match">${startLabel}</button>
             <button class="baba-live-control-btn" type="button" data-action="edit-time">Editar tempo</button>
           </div>
         ` : isOver ? `

@@ -1531,3 +1531,271 @@ html body.baba-page::before {
     transform-origin: center;
   }
 }
+
+/* Mobile fit and current-baba history alignment. */
+.baba-current-history-game {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .7rem;
+}
+
+.baba-current-history-game__main {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: .7rem;
+}
+
+.baba-current-history-game__meta {
+  min-width: 4.4rem;
+  display: grid;
+  gap: .16rem;
+}
+
+.baba-current-history-game__meta span {
+  color: var(--liquid-teal) !important;
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+
+.baba-current-history-game__meta small {
+  color: var(--liquid-muted) !important;
+  font-size: .64rem;
+  font-weight: 750;
+}
+
+.baba-current-history-game__match,
+.baba-current-history-game__match .baba-match-line {
+  min-width: 0;
+  width: 100%;
+}
+
+.baba-current-history-game__match .baba-match-line {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: .4rem;
+}
+
+.baba-current-history-game__match .baba-team-link {
+  min-width: 0;
+  max-width: 100%;
+  color: var(--liquid-text) !important;
+  background: transparent !important;
+}
+
+.baba-current-history-game__match .baba-team-link:first-child {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.baba-current-history-game__match .baba-team-link:last-child {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.baba-current-history-game__match .baba-team-link-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  html,
+  body.baba-page {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  body.baba-page {
+    padding-inline: 0 !important;
+  }
+
+  .baba-unified-header,
+  .baba-shell {
+    width: calc(100% - .4rem) !important;
+  }
+
+  .baba-unified-header {
+    margin-top: .2rem !important;
+  }
+
+  .baba-shell {
+    margin-top: .35rem !important;
+  }
+
+  .baba-app,
+  .baba-grid,
+  .baba-grid--live,
+  .baba-organizer-layout,
+  .baba-teams-grid {
+    min-width: 0;
+    gap: .42rem !important;
+  }
+
+  .baba-view,
+  .baba-view.active,
+  .baba-card,
+  .baba-card--wide,
+  .baba-card--standings {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .baba-card {
+    padding: .55rem !important;
+  }
+
+  .baba-card__head {
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: .38rem !important;
+  }
+
+  .baba-card__head h2 {
+    min-width: 0;
+    font-size: .8rem !important;
+    line-height: 1.18;
+  }
+
+  .baba-card__actions {
+    flex: 0 0 auto;
+  }
+
+  .baba-card__head > span {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .baba-card__actions > span {
+    display: none;
+  }
+
+  .baba-grid--live > .baba-card:first-child,
+  .baba-current-match-panel .baba-match-live {
+    padding: .55rem !important;
+  }
+
+  .baba-row,
+  .baba-history-item,
+  .baba-player-admin,
+  .baba-present-item,
+  .baba-empty {
+    gap: .42rem;
+    padding: .52rem !important;
+  }
+
+  .baba-stack,
+  .baba-empty,
+  .baba-row > *,
+  .baba-history-item > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .baba-empty {
+    overflow-wrap: anywhere;
+    white-space: normal !important;
+  }
+
+  .baba-current-history-game {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .42rem;
+    padding: .58rem !important;
+    border-color: rgba(8, 127, 108, .16) !important;
+    background: rgba(255, 255, 255, .72) !important;
+  }
+
+  .baba-current-history-game__main {
+    grid-template-columns: 1fr;
+    gap: .42rem;
+  }
+
+  .baba-current-history-game__meta {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    padding-bottom: .32rem;
+    border-bottom: 1px solid rgba(15, 35, 58, .08);
+  }
+
+  .baba-current-history-game__match .baba-match-line {
+    gap: .22rem;
+  }
+
+  .baba-current-history-game__match .baba-team-link {
+    gap: .2rem;
+    font-size: clamp(.66rem, 2.8vw, .78rem);
+  }
+
+  .baba-current-history-game__match .baba-team-link-logo {
+    width: 1.2rem !important;
+    height: 1.2rem !important;
+    flex: 0 0 1.2rem;
+  }
+
+  .baba-current-history-game__match .baba-score-boxes {
+    gap: .14rem;
+  }
+
+  .baba-current-history-game__match .baba-score-box {
+    min-width: 1.55rem;
+    min-height: 1.48rem;
+    padding: .12rem .2rem;
+    font-size: .78rem;
+  }
+
+  .baba-current-history-game > .baba-mini-btn {
+    align-self: stretch;
+    min-width: 3.25rem;
+    padding-inline: .42rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .baba-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .baba-metrics article {
+    min-height: 3.65rem !important;
+  }
+
+  .baba-current-history-game {
+    grid-template-columns: 1fr;
+  }
+
+  .baba-current-history-game > .baba-mini-btn {
+    width: 100%;
+    min-height: 34px;
+  }
+}
+
+@media (max-width: 390px) {
+  .baba-unified-header,
+  .baba-shell {
+    width: calc(100% - .24rem) !important;
+  }
+
+  .baba-card,
+  .baba-grid--live > .baba-card:first-child,
+  .baba-current-match-panel .baba-match-live {
+    padding: .48rem !important;
+  }
+
+  .baba-current-history-game__match .baba-team-link-logo {
+    width: 1.05rem !important;
+    height: 1.05rem !important;
+    flex-basis: 1.05rem;
+  }
+}
