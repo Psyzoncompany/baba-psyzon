@@ -1397,7 +1397,7 @@ html body.baba-page .baba-password.baba-password-modal {
 
 /* Match controls, ranking selector and compact mobile header. */
 html body.baba-page .baba-current-match-panel .baba-live-team--home .baba-team-link {
-  color: #065f46 !important;
+  color: #a16207 !important;
 }
 
 html body.baba-page .baba-current-match-panel .baba-live-team--away .baba-team-link {
@@ -1406,10 +1406,10 @@ html body.baba-page .baba-current-match-panel .baba-live-team--away .baba-team-l
 
 html body.baba-page .baba-goal-btn--team-a,
 html body.baba-page .baba-goal-btn--team-a:hover:not(:disabled) {
-  border-color: #065f46 !important;
+  border-color: #a16207 !important;
   color: #ffffff !important;
-  background: #065f46 !important;
-  box-shadow: 0 9px 20px rgba(6, 95, 70, .22) !important;
+  background: #a16207 !important;
+  box-shadow: 0 9px 20px rgba(161, 98, 7, .24) !important;
 }
 
 html body.baba-page .baba-goal-btn--team-b,
@@ -1421,11 +1421,11 @@ html body.baba-page .baba-goal-btn--team-b:hover:not(:disabled) {
 }
 
 #goal-modal[data-team-tone="a"] .baba-modal__panel {
-  border-color: rgba(6, 95, 70, .35) !important;
+  border-color: rgba(161, 98, 7, .38) !important;
 }
 
 #goal-modal[data-team-tone="a"] #goal-modal-title {
-  color: #065f46 !important;
+  color: #a16207 !important;
 }
 
 #goal-modal[data-team-tone="b"] .baba-modal__panel {
@@ -1437,8 +1437,8 @@ html body.baba-page .baba-goal-btn--team-b:hover:not(:disabled) {
 }
 
 #goal-modal[data-team-tone="a"] .baba-goal-player:not(.baba-goal-player--external) {
-  border-color: #065f46 !important;
-  background: #065f46 !important;
+  border-color: #a16207 !important;
+  background: #a16207 !important;
 }
 
 #goal-modal[data-team-tone="b"] .baba-goal-player:not(.baba-goal-player--external) {
@@ -1726,6 +1726,13 @@ html body.baba-page::before {
   border-color: rgba(190, 24, 93, .22) !important;
   color: #ffffff !important;
   background: #be185d !important;
+}
+
+.baba-current-match-panel .baba-timer.is-paused {
+  border-color: rgba(159, 18, 57, .3) !important;
+  color: #ffffff !important;
+  background: #9f1239 !important;
+  box-shadow: 0 8px 18px rgba(159, 18, 57, .22) !important;
 }
 
 .baba-current-match-panel .baba-live-scoreboard {

@@ -321,6 +321,7 @@
     if (timerText) timerText.textContent = nextText;
     else timerEl.textContent = nextText;
     timerEl.classList.toggle('is-over', remaining === 0 && !isPrepared);
+    timerEl.classList.toggle('is-paused', !isPrepared && remaining > 0 && !match.timerRunning);
   }
 
   function escapeHTML(value) {
@@ -1775,7 +1776,6 @@
       team.vitorias,
       team.empates,
       team.derrotas,
-      team.isLive ? 'Ao vivo' : '',
     ]);
   }
 
@@ -1933,7 +1933,8 @@
           wide: true,
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.standings,
-          columns: ['Pos', 'Time', 'Pts', 'GP', 'SG', 'V', 'E', 'D', 'Status'],
+          columns: ['Pos', 'Time', 'Pts', 'GP', 'SG', 'V', 'E', 'D'],
+          nowrapColumns: [1],
           rows: standingsRowsForPdf(baba),
           empty: 'Sorteie os times para gerar a tabela.',
         },
@@ -1942,6 +1943,8 @@
           note: 'Elencos sorteados',
           icon: 'users',
           wide: true,
+          wideFirstColumn: true,
+          nowrapColumns: [0],
           columns: ['Time', 'Jogadores', 'Linha', 'Goleiros'],
           rows: teamRosterRowsForPdf(baba),
           empty: 'Nenhum jogador distribuido nos times.',
@@ -2115,6 +2118,7 @@
 
   function renderPdfTable(section) {
     const columns = section.columns || [];
+    const nowrapColumns = new Set(section.nowrapColumns || []);
     const result = limitPdfRows(section.rows, section.maxRows);
     const rows = result.rows;
     if (!rows.length) return `<div class="pdf-empty">${escapeHTML(section.empty || 'Sem dados para exibir.')}</div>`;
@@ -2148,13 +2152,13 @@
 
     return `
       <div class="pdf-table-wrap" role="region" aria-label="Tabela do relatorio">
-        <table class="pdf-table pdf-table--cols-${Math.min(columns.length, 9)}">
+        <table class="pdf-table pdf-table--cols-${Math.min(columns.length, 9)} ${section.wideFirstColumn ? 'pdf-table--wide-first' : ''}">
           <thead>
-            <tr>${columns.map((column) => `<th>${escapeHTML(column)}</th>`).join('')}</tr>
+            <tr>${columns.map((column, columnIndex) => `<th class="${nowrapColumns.has(columnIndex) ? 'pdf-cell--nowrap' : ''}">${escapeHTML(column)}</th>`).join('')}</tr>
           </thead>
           <tbody>
             ${rows.map((row, index) => `
-              <tr class="${section.highlightTop && index === 0 ? 'is-pdf-gold' : ''}">${row.map((cell) => `<td>${escapeHTML(cell ?? '-')}</td>`).join('')}</tr>
+              <tr class="${section.highlightTop && index === 0 ? 'is-pdf-gold' : ''}">${row.map((cell, cellIndex) => `<td class="${nowrapColumns.has(cellIndex) ? 'pdf-cell--nowrap' : ''}">${escapeHTML(cell ?? '-')}</td>`).join('')}</tr>
             `).join('')}
           </tbody>
           ${hiddenRow}
@@ -2460,6 +2464,13 @@
       vertical-align: top;
       overflow-wrap: anywhere;
     }
+    .pdf-cell--nowrap {
+      overflow: hidden;
+      white-space: nowrap;
+      overflow-wrap: normal;
+      word-break: normal;
+      text-overflow: ellipsis;
+    }
     tbody tr:nth-child(even) td { background: rgba(242, 247, 249, .72); }
     tbody tr:hover td { background: #edf8f5; }
     tbody tr:last-child td { border-bottom: 0; }
@@ -2481,6 +2492,11 @@
       text-align: center;
     }
     td:first-child, th:first-child { width: 28px; text-align: center; font-weight: 900; }
+    .pdf-table--wide-first td:first-child,
+    .pdf-table--wide-first th:first-child {
+      width: 74px;
+      text-align: left;
+    }
     .pdf-table--cols-8,
     .pdf-table--cols-9 {
       font-size: 7.5px;
@@ -4779,6 +4795,7 @@
       const remaining = getRemainingSeconds(match);
       const isPrepared = !match.timerRunning && !match.iniciadoEm;
       const isOver = remaining === 0 && match.iniciadoEm;
+      const isPaused = !isPrepared && !isOver && !match.timerRunning;
       const timerLabel = isPrepared ? 'Aguardando inicio' : (remaining ? formatCountdown(remaining) : 'Tempo esgotado');
       const scoreA = Number(match.placarA || 0);
       const scoreB = Number(match.placarB || 0);
@@ -4815,7 +4832,7 @@
       }
       setHTML(els.currentMatchPanel, `
         <div class="baba-match-live ${isPrepared ? 'is-prepared' : ''}">
-          <div class="baba-timer ${isOver ? 'is-over' : ''}" id="current-timer">
+          <div class="baba-timer ${isOver ? 'is-over' : ''} ${isPaused ? 'is-paused' : ''}" id="current-timer">
             <svg class="baba-live-icon" aria-hidden="true" focusable="false"><use href="#baba-clock"></use></svg>
             <span class="baba-timer__text">${timerLabel}</span>
           </div>
