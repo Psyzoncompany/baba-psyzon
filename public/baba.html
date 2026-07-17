@@ -3677,6 +3677,8 @@
           <button type="button" data-tab="teams" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-users"></use></svg><span>Times</span></button>
           <button type="button" data-tab="goals" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-target"></use></svg><span>Metas</span></button>
           <button class="organizer-only" type="button" data-tab="organizer" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-shield"></use></svg><span>Organizador</span></button>
+          <button type="button" data-action="reset-mode" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-refresh"></use></svg><span>Trocar acesso</span></button>
+          <button type="button" data-action="logout" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-exit"></use></svg><span>Sair</span></button>
         </div>
       </div>
     </nav>
@@ -3890,7 +3892,7 @@
                 <div class="baba-section-heading">
                   <div>
                     <strong id="player-management-title">Cadastrar jogadores e pagamentos</strong>
-                    <small>Mensal dia 30 - Jogador R$ 15 / Goleiro R$ 7</small>
+                    <small>Mensal dia 10 - Jogador R$ 15 / Goleiro R$ 7</small>
                   </div>
                   <div id="payment-summary" class="baba-payment-summary"></div>
                 </div>
@@ -3984,36 +3986,43 @@
           </button>
           <div id="ranking-filter-controls" class="baba-ranking-filters" role="group" aria-label="Filtros do ranking"></div>
         </div>
-        <div class="baba-grid">
-          <article class="baba-card">
+        <article class="baba-card baba-ranking-selector-card">
+          <div class="baba-card__head">
+            <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-chart"></use></svg>Selecionar ranking</h2>
+            <span>Um painel por vez</span>
+          </div>
+          <div id="ranking-scope-controls" class="baba-ranking-scope-controls" role="group" aria-label="Selecionar ranking exibido"></div>
+        </article>
+        <div class="baba-grid baba-ranking-view-grid">
+          <article class="baba-card" data-ranking-card="monthly">
             <div class="baba-card__head">
               <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-calendar"></use></svg>Ranking do mes</h2>
               <span id="monthly-ranking-label">Somente babas salvos</span>
             </div>
             <div id="monthly-ranking-list" class="baba-ranking"></div>
           </article>
-          <article class="baba-card">
+          <article class="baba-card hidden" data-ranking-card="general">
             <div class="baba-card__head">
               <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-chart"></use></svg>Ranking geral</h2>
               <span>Somente babas salvos</span>
             </div>
             <div id="ranking-list" class="baba-ranking"></div>
           </article>
-          <article class="baba-card">
+          <article class="baba-card hidden" data-ranking-card="daily">
             <div class="baba-card__head">
               <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-trophy"></use></svg>Ranking do dia</h2>
               <span>Baba atual</span>
             </div>
             <div id="daily-ranking-list" class="baba-ranking"></div>
           </article>
-          <article class="baba-card">
+          <article class="baba-card hidden" data-ranking-card="goalkeeper">
             <div class="baba-card__head">
               <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-save"></use></svg>Melhor goleiro</h2>
               <span>Babas salvos</span>
             </div>
             <div id="goalkeeper-ranking-list" class="baba-ranking"></div>
           </article>
-          <article class="baba-card baba-card--wide">
+          <article class="baba-card baba-card--wide hidden" data-ranking-card="history">
             <div class="baba-card__head">
               <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg>Historico mensal</h2>
               <span>Por mes</span>
@@ -4426,6 +4435,7 @@
             'save-goal-collected': 'baba-save',
             'toggle-payment': 'baba-wallet',
             'delete-history': 'baba-trash',
+            'delete-current-game': 'baba-trash',
             'open-goal-picker': 'baba-ball',
             'undo-goal': 'baba-undo',
             'finish-live-match': 'baba-flag',

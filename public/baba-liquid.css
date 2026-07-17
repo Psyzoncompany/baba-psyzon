@@ -1066,6 +1066,264 @@ html body.baba-page .baba-goal-player small {
   }
 }
 
+/* Match controls, ranking selector and compact mobile header. */
+html body.baba-page .baba-current-match-panel .baba-live-team--home .baba-team-link {
+  color: #065f46 !important;
+}
+
+html body.baba-page .baba-current-match-panel .baba-live-team--away .baba-team-link {
+  color: #991b1b !important;
+}
+
+html body.baba-page .baba-goal-btn--team-a,
+html body.baba-page .baba-goal-btn--team-a:hover:not(:disabled) {
+  border-color: #065f46 !important;
+  color: #ffffff !important;
+  background: #065f46 !important;
+  box-shadow: 0 9px 20px rgba(6, 95, 70, .22) !important;
+}
+
+html body.baba-page .baba-goal-btn--team-b,
+html body.baba-page .baba-goal-btn--team-b:hover:not(:disabled) {
+  border-color: #991b1b !important;
+  color: #ffffff !important;
+  background: #991b1b !important;
+  box-shadow: 0 9px 20px rgba(153, 27, 27, .2) !important;
+}
+
+#goal-modal[data-team-tone="a"] .baba-modal__panel {
+  border-color: rgba(6, 95, 70, .35) !important;
+}
+
+#goal-modal[data-team-tone="a"] #goal-modal-title {
+  color: #065f46 !important;
+}
+
+#goal-modal[data-team-tone="b"] .baba-modal__panel {
+  border-color: rgba(153, 27, 27, .32) !important;
+}
+
+#goal-modal[data-team-tone="b"] #goal-modal-title {
+  color: #991b1b !important;
+}
+
+#goal-modal[data-team-tone="a"] .baba-goal-player:not(.baba-goal-player--external) {
+  border-color: #065f46 !important;
+  background: #065f46 !important;
+}
+
+#goal-modal[data-team-tone="b"] .baba-goal-player:not(.baba-goal-player--external) {
+  border-color: #991b1b !important;
+  background: #991b1b !important;
+}
+
+html body.baba-page .baba-goal-player--external {
+  border: 1px dashed rgba(15, 35, 58, .28) !important;
+  color: var(--liquid-text) !important;
+  background: #eef3f6 !important;
+}
+
+html body.baba-page .baba-goal-player--external strong,
+html body.baba-page .baba-goal-player--external small {
+  color: var(--liquid-text) !important;
+}
+
+html body.baba-page .baba-pause-toggle.is-paused {
+  border-color: #9f1239 !important;
+  color: #ffffff !important;
+  background: #9f1239 !important;
+  box-shadow: 0 0 0 0 rgba(159, 18, 57, .42) !important;
+  animation: babaPausedPulse 1.45s ease-out infinite;
+}
+
+.baba-pause-toggle.is-paused .baba-btn-icon {
+  animation: babaPausedIcon 1.1s ease-in-out infinite;
+}
+
+@keyframes babaPausedPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(159, 18, 57, .42);
+  }
+  70% {
+    box-shadow: 0 0 0 9px rgba(159, 18, 57, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(159, 18, 57, 0);
+  }
+}
+
+@keyframes babaPausedIcon {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.16);
+  }
+}
+
+.baba-current-history-game__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, auto));
+  align-items: stretch;
+  gap: .35rem;
+}
+
+.baba-current-history-game__actions .baba-mini-btn {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.baba-ranking-selector-card {
+  margin-bottom: .7rem;
+}
+
+.baba-ranking-scope-controls {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: .5rem;
+}
+
+.baba-ranking-scope-controls button {
+  min-width: 0;
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  border: 1px solid var(--liquid-line);
+  border-radius: 8px;
+  padding: .55rem .65rem;
+  color: var(--liquid-text);
+  background: rgba(255, 255, 255, .76);
+  font: inherit;
+  font-size: .76rem;
+  font-weight: 850;
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease, color .18s ease, transform .18s ease;
+}
+
+.baba-ranking-scope-controls button:hover {
+  border-color: rgba(8, 127, 108, .32);
+  transform: translateY(-1px);
+}
+
+.baba-ranking-scope-controls button.active {
+  border-color: #087f6c;
+  color: #ffffff;
+  background: #087f6c;
+  box-shadow: inset 0 -3px 0 var(--liquid-gold);
+}
+
+.baba-ranking-scope-controls svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: 0 0 1.05rem;
+}
+
+.baba-ranking-view-grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.baba-ranking-view-grid > .baba-card {
+  grid-column: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html body.baba-page .baba-pause-toggle.is-paused,
+  .baba-pause-toggle.is-paused .baba-btn-icon {
+    animation: none;
+  }
+}
+
+@media (max-width: 760px) {
+  body.baba-app-mode .baba-unified-header {
+    top: .2rem !important;
+    min-height: 0 !important;
+    padding: .28rem !important;
+    background: rgba(7, 31, 56, .97) !important;
+  }
+
+  body.baba-app-mode .baba-header-main {
+    display: none !important;
+  }
+
+  body.baba-app-mode .baba-unified-header .baba-tabs {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    min-width: 100% !important;
+    margin: 0 !important;
+    border-top: 0 !important;
+    padding: 0 !important;
+    gap: .25rem !important;
+  }
+
+  body.baba-app-mode .baba-unified-header .baba-more-nav,
+  body.baba-app-mode .baba-unified-header #baba-more-toggle {
+    display: flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  body.baba-app-mode .baba-unified-header .baba-more-menu {
+    position: absolute !important;
+    top: calc(100% + .4rem) !important;
+    right: 0 !important;
+    bottom: auto !important;
+    width: min(260px, calc(100vw - 1.4rem));
+  }
+
+  body.baba-app-mode .baba-unified-header .baba-tabs > button,
+  body.baba-app-mode .baba-unified-header .baba-more-nav > button {
+    min-width: 0 !important;
+    min-height: 42px !important;
+    border-radius: 7px !important;
+    padding: .28rem .08rem !important;
+  }
+
+  body.baba-app-mode.baba-tabs-stuck .baba-unified-header .baba-tabs > button,
+  body.baba-app-mode.baba-tabs-stuck .baba-unified-header .baba-more-nav > button {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  .baba-current-history-game__actions {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .baba-current-history-game__actions .baba-mini-btn {
+    width: 100%;
+  }
+
+  .baba-ranking-scope-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .4rem;
+  }
+
+  .baba-ranking-scope-controls button {
+    min-height: 46px;
+    padding: .45rem .4rem;
+    font-size: .7rem;
+  }
+
+  .baba-ranking-toolbar .baba-ranking-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    overflow: visible;
+  }
+
+  .baba-ranking-toolbar .baba-ranking-filters button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .baba-ranking-toolbar .baba-ranking-filters button:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
 /* Match card: stable alignment, solid controls and a light futsal backdrop. */
 html body.baba-page button {
   background-image: none !important;

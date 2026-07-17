@@ -9,7 +9,7 @@
   const EXTERNAL_GOAL_SCORER_ID = '__external_goal_scorer__';
   const PLAYER_BABA_PRICE = 15;
   const GOALKEEPER_BABA_PRICE = 7;
-  const PAYMENT_DUE_DAY = 30;
+  const PAYMENT_DUE_DAY = 10;
   const GOAL_PRIORITIES = [
     { id: 'alta', label: 'Alta', value: 3 },
     { id: 'media', label: 'Media', value: 2 },
@@ -21,6 +21,13 @@
     { id: 'losses', label: 'Derrotas', icon: 'baba-x' },
     { id: 'titles', label: 'Titulos', icon: 'baba-trophy' },
     { id: 'efficiency', label: 'Aproveitamento', icon: 'baba-chart' },
+  ];
+  const RANKING_SCOPES = [
+    { id: 'monthly', label: 'Do mes', icon: 'baba-calendar' },
+    { id: 'general', label: 'Geral', icon: 'baba-chart' },
+    { id: 'daily', label: 'Do dia', icon: 'baba-trophy' },
+    { id: 'goalkeeper', label: 'Goleiro', icon: 'baba-save' },
+    { id: 'history', label: 'Historico', icon: 'baba-history-icon' },
   ];
   const PDF_ROW_LIMITS = {
     payments: 18,
@@ -95,6 +102,7 @@
     rankingList: $('#ranking-list'),
     dailyRankingList: $('#daily-ranking-list'),
     rankingFilterControls: $('#ranking-filter-controls'),
+    rankingScopeControls: $('#ranking-scope-controls'),
     monthlyRankingLabel: $('#monthly-ranking-label'),
     monthlyRankingList: $('#monthly-ranking-list'),
     goalkeeperRankingList: $('#goalkeeper-ranking-list'),
@@ -148,6 +156,7 @@
   let selectedHistoryId = null;
   let selectedMonthlyKey = null;
   let rankingMode = 'goals';
+  let rankingScope = 'monthly';
   const expandedRankingKeys = new Set();
   const loadingHistoryIds = new Set();
   const renderedHTMLCache = new WeakMap();
@@ -2844,8 +2853,10 @@
   }
 
   function buildMatch(baba, teamAId, teamBId) {
+    const highestSavedNumber = Math.max(0, ...(baba.jogos || []).map((game) => Number(game.numeroJogo || 0)));
+    const nextGameNumber = Math.max(highestSavedNumber, Number(baba.jogoAtual?.numeroJogo || 0)) + 1;
     return {
-      numeroJogo: (baba.jogos?.length || 0) + 1,
+      numeroJogo: nextGameNumber,
       timeA: teamAId,
       timeB: teamBId,
       jogadoresTimeA: [...(getTeam(baba, teamAId)?.jogadores || [])],
@@ -2965,6 +2976,8 @@
     if (![match.timeA, match.timeB].includes(teamId)) return showToast('Esse time nao esta em campo.');
 
     goalTeamId = teamId;
+    const teamTone = teamId === match.timeA ? 'a' : 'b';
+    els.goalModal.dataset.teamTone = teamTone;
     els.goalModalTitle.textContent = `Gol do ${team.name}`;
     const playersHTML = team.jogadores.map((playerId) => `
       <button class="baba-goal-player" type="button" data-goal-player-id="${playerId}">
@@ -2973,7 +2986,7 @@
       </button>
     `).join('');
     const externalPlayerHTML = `
-      <button class="baba-goal-player" type="button" data-goal-player-id="${EXTERNAL_GOAL_SCORER_ID}">
+      <button class="baba-goal-player baba-goal-player--external" type="button" data-goal-player-id="${EXTERNAL_GOAL_SCORER_ID}">
         <strong>Nao marcar jogador</strong>
         <small>Gol sem artilheiro no ranking</small>
       </button>
@@ -2984,6 +2997,7 @@
 
   function closeGoalPicker() {
     goalTeamId = null;
+    delete els.goalModal.dataset.teamTone;
     els.goalModal.classList.add('hidden');
   }
 
@@ -3019,9 +3033,13 @@
     const baba = getActiveBaba();
     const match = baba?.jogoAtual;
     if (!match?.goalEvents?.length) return showToast('Nenhum gol para desfazer.');
+    const lastGoal = match.goalEvents[match.goalEvents.length - 1];
+    const scorer = lastGoal?.external ? 'gol sem artilheiro' : `gol de ${lastGoal?.jogadorNome || 'jogador'}`;
+    const ok = window.confirm(`Tem certeza que deseja desfazer o ${scorer}?`);
+    if (!ok) return;
     const removed = match.goalEvents.pop();
     recomputeLiveScore(match);
-    saveState(`Gol de ${removed.jogadorNome || 'jogador'} desfeito.`);
+    saveState(removed.external ? 'Gol sem artilheiro desfeito.' : `Gol de ${removed.jogadorNome || 'jogador'} desfeito.`);
   }
 
   function finishMatch(event) {
@@ -3037,6 +3055,8 @@
     const teamA = getTeam(baba, match.timeA);
     const teamB = getTeam(baba, match.timeB);
     if (!teamA || !teamB) return showToast('Times do jogo nao encontrados.');
+    const ok = window.confirm(`Tem certeza que deseja finalizar o Jogo ${match.numeroJogo}: ${teamA.name} ${scoreA} x ${scoreB} ${teamB.name}?`);
+    if (!ok) return;
 
     const goals = match.gols || aggregateGoalEvents(match.goalEvents || []);
 
@@ -3255,6 +3275,91 @@
     saveState('Ultimo jogo desfeito.');
   }
 
+  function rebuildTeamStatsFromGames(baba) {
+    (baba?.teams || []).forEach((team) => {
+      team.pontos = 0;
+      team.golsPro = 0;
+      team.golsContra = 0;
+      team.vitorias = 0;
+      team.empates = 0;
+      team.derrotas = 0;
+    });
+
+    (baba?.jogos || []).forEach((game) => {
+      const teamA = getTeam(baba, game.timeA);
+      const teamB = getTeam(baba, game.timeB);
+      if (!teamA || !teamB) return;
+      const scoreA = Number(game.placarA || 0);
+      const scoreB = Number(game.placarB || 0);
+      teamA.golsPro += scoreA;
+      teamA.golsContra += scoreB;
+      teamB.golsPro += scoreB;
+      teamB.golsContra += scoreA;
+
+      if (scoreA === scoreB) {
+        teamA.pontos += 1;
+        teamB.pontos += 1;
+        teamA.empates += 1;
+        teamB.empates += 1;
+      } else if (scoreA > scoreB) {
+        teamA.pontos += 3;
+        teamA.vitorias += 1;
+        teamB.derrotas += 1;
+      } else {
+        teamB.pontos += 3;
+        teamB.vitorias += 1;
+        teamA.derrotas += 1;
+      }
+    });
+  }
+
+  function lastResultFromGame(baba, game) {
+    if (!game) return null;
+    const teamA = getTeam(baba, game.timeA);
+    const teamB = getTeam(baba, game.timeB);
+    const scoreA = Number(game.placarA || 0);
+    const scoreB = Number(game.placarB || 0);
+    return {
+      jogo: game.numeroJogo,
+      timeA: game.timeA,
+      timeB: game.timeB,
+      placarA: scoreA,
+      placarB: scoreB,
+      resumo: `${teamA?.name || game.timeANome || 'Time'} ${scoreA} x ${scoreB} ${teamB?.name || game.timeBNome || 'Time'}`,
+      empate: Boolean(game.empate || scoreA === scoreB),
+      resultado: game.resultado || (scoreA === scoreB ? 'empate' : 'vitoria'),
+      timeQueContinuou: game.timeQueContinuou || null,
+      timeQueSaiu: game.timeQueSaiu || null,
+      motivoSaida: game.motivoSaida || '-',
+      decididoPorSorteio: Boolean(game.decididoPorSorteio),
+      criterioDesempate: game.criterioDesempate || null,
+    };
+  }
+
+  function deleteCurrentGame(gameNumber) {
+    if (!requireOrganizer()) return;
+    const baba = getActiveBaba();
+    if (!baba || baba.status === 'finalizado') return showToast('Este baba nao pode mais ser alterado.');
+    const game = (baba.jogos || []).find((item) => String(item.numeroJogo) === String(gameNumber));
+    if (!game) return showToast('Partida nao encontrada.');
+    if (String(baba.pendingTieBreak?.gameNumber || '') === String(game.numeroJogo)) {
+      return showToast('Resolva o desempate desta partida antes de exclui-la.');
+    }
+    const teamA = getTeam(baba, game.timeA);
+    const teamB = getTeam(baba, game.timeB);
+    const ok = window.confirm(`Excluir o Jogo ${game.numeroJogo}: ${teamA?.name || 'Time'} ${game.placarA || 0} x ${game.placarB || 0} ${teamB?.name || 'Time'}?`);
+    if (!ok) return;
+
+    baba.jogos = (baba.jogos || []).filter((item) => String(item.numeroJogo) !== String(game.numeroJogo));
+    rebuildTeamStatsFromGames(baba);
+    baba.rankingDoBaba = calculateDailyRanking(baba);
+    baba.lastResult = lastResultFromGame(baba, baba.jogos[baba.jogos.length - 1]);
+    baba.campeaoDoBaba = null;
+    baba.undoStack = [];
+    els.gameDetailModal?.classList.add('hidden');
+    saveState(`Jogo ${game.numeroJogo} excluido e ranking recalculado.`);
+  }
+
   function finishBaba() {
     if (!requireOrganizer()) return;
     const baba = getActiveBaba();
@@ -3350,6 +3455,7 @@
       }
 
       (game.gols || []).forEach((goal) => {
+        if (!goal?.jogadorId || goal.external) return;
         ensureStats(ranking, goal.jogadorId, baba).totalGols += Number(goal.quantidade || 0);
       });
     });
@@ -3637,6 +3743,7 @@
       babas: state.babas,
       players: state.players,
       rankingMode,
+      rankingScope,
       expanded: [...expandedRankingKeys],
       selectedMonthlyKey,
     }, () => renderRankings(baba));
@@ -3934,7 +4041,7 @@
         <small>${stats.paidCount} confirmados</small>
       </article>
       <article>
-        <span>Vence dia 30</span>
+        <span>Vence dia ${PAYMENT_DUE_DAY}</span>
         <strong>${formatCurrency(pending)}</strong>
         <small>${pendingCount} faltando - ${paymentDueDateLabel(monthKey)}</small>
       </article>
@@ -4169,6 +4276,7 @@
     const ranking = calculateDailyRanking(baba || { jogadoresPresentes: [], jogos: [], teams: [] });
     const liveEvents = baba?.jogoAtual?.goalEvents || [];
     liveEvents.forEach((goal) => {
+      if (!goal?.jogadorId || goal.external) return;
       ensureStats(ranking, goal.jogadorId, baba).totalGols += 1;
     });
     Object.values(ranking).forEach(finalizeStats);
@@ -4204,9 +4312,12 @@
           </div>
           <strong class="baba-current-history-game__match">${matchLineHTML(baba, getTeam(baba, game.timeA), game.placarA, game.placarB, getTeam(baba, game.timeB), true)}</strong>
         </div>
-        <button class="baba-mini-btn" type="button" data-current-game="${game.numeroJogo}">
-          <svg class="baba-btn-icon" aria-hidden="true" focusable="false"><use href="#baba-ball"></use></svg>Gols
-        </button>
+        <div class="baba-current-history-game__actions">
+          <button class="baba-mini-btn" type="button" data-current-game="${game.numeroJogo}">
+            <svg class="baba-btn-icon" aria-hidden="true" focusable="false"><use href="#baba-ball"></use></svg>Gols
+          </button>
+          ${isOrganizer() ? `<button class="baba-mini-btn danger" type="button" data-action="delete-current-game" data-game-number="${game.numeroJogo}">Excluir</button>` : ''}
+        </div>
       </div>
     `).join(''));
   }
@@ -4483,11 +4594,14 @@
         ` : `
           <div class="baba-live-actions">
             <div class="baba-live-goal-actions">
-              <button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamA.id}">Gol ${escapeHTML(teamA.name)}</button>
-              <button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamB.id}">Gol ${escapeHTML(teamB.name)}</button>
+              <button class="baba-goal-btn baba-goal-btn--team-a" type="button" data-action="open-goal-picker" data-team-id="${teamA.id}">Gol ${escapeHTML(teamA.name)}</button>
+              <button class="baba-goal-btn baba-goal-btn--team-b" type="button" data-action="open-goal-picker" data-team-id="${teamB.id}">Gol ${escapeHTML(teamB.name)}</button>
             </div>
             <div class="baba-live-secondary-actions">
-              <button class="baba-live-control-btn" type="button" data-action="pause-time">${match.timerRunning ? 'Pausar' : 'Retomar'}</button>
+              <button class="baba-live-control-btn baba-pause-toggle ${match.timerRunning ? 'is-running' : 'is-paused'}" type="button" data-action="pause-time" aria-pressed="${match.timerRunning ? 'false' : 'true'}">
+                <svg class="baba-btn-icon" aria-hidden="true" focusable="false"><use href="#${match.timerRunning ? 'baba-pause' : 'baba-play'}"></use></svg>
+                <span>${match.timerRunning ? 'Pausar' : 'Retomar'}</span>
+              </button>
               <button class="baba-live-control-btn" type="button" data-action="edit-time">Editar tempo</button>
               <button class="baba-live-control-btn" type="button" data-action="undo-goal">Desfazer gol</button>
               <button class="baba-live-control-btn baba-live-control-btn--danger" type="button" data-action="finish-live-match">Finalizar jogo</button>
@@ -4566,6 +4680,7 @@
 
   function renderRankings(baba) {
     renderRankingFilters();
+    renderRankingScopeControls();
     const general = sortRanking(calculateGeneralRanking(), rankingMode);
     const daily = getDailyRankingList(baba, rankingMode);
     const currentMonth = activeMonthKey(baba);
@@ -4592,6 +4707,21 @@
       }));
     }
     renderMonthlyHistory();
+  }
+
+  function renderRankingScopeControls() {
+    if (!els.rankingScopeControls) return;
+    if (!RANKING_SCOPES.some((item) => item.id === rankingScope)) rankingScope = 'monthly';
+    setHTML(els.rankingScopeControls, RANKING_SCOPES.map((scope) => `
+      <button class="${rankingScope === scope.id ? 'active' : ''}" type="button" data-ranking-scope="${scope.id}" aria-pressed="${rankingScope === scope.id ? 'true' : 'false'}">
+        <svg aria-hidden="true" focusable="false"><use href="#${scope.icon}"></use></svg>
+        <span>${scope.label}</span>
+      </button>
+    `).join(''));
+    $$('[data-ranking-card]').forEach((card) => {
+      card.classList.toggle('hidden', card.dataset.rankingCard !== rankingScope);
+    });
+    $('.baba-ranking-toolbar')?.classList.toggle('hidden', rankingScope === 'goalkeeper');
   }
 
   function renderMonthlyHistory() {
@@ -5621,6 +5751,16 @@
         return;
       }
 
+      const rankingScopeButton = event.target.closest('[data-ranking-scope]');
+      if (rankingScopeButton) {
+        rankingScope = RANKING_SCOPES.some((item) => item.id === rankingScopeButton.dataset.rankingScope)
+          ? rankingScopeButton.dataset.rankingScope
+          : 'monthly';
+        expandedRankingKeys.clear();
+        render();
+        return;
+      }
+
       const actionButton = event.target.closest('[data-action]');
       if (actionButton?.dataset.action === 'toggle-player') return togglePlayerActive(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-player') return deletePlayer(actionButton.dataset.id);
@@ -5645,6 +5785,9 @@
       }
       if (actionButton?.dataset.action === 'toggle-payment') return toggleBabaPayment(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-history') return deleteHistoryBaba(actionButton.dataset.id);
+      if (actionButton?.dataset.action === 'delete-current-game') return deleteCurrentGame(actionButton.dataset.gameNumber);
+      if (actionButton?.dataset.action === 'reset-mode') return resetMode();
+      if (actionButton?.dataset.action === 'logout') return logout();
       if (actionButton?.dataset.action === 'open-goal-picker') return openGoalPicker(actionButton.dataset.teamId);
       if (actionButton?.dataset.action === 'undo-goal') return undoLastGoal();
       if (actionButton?.dataset.action === 'finish-live-match') return finishMatch(event);
