@@ -2454,7 +2454,7 @@ html body.baba-page .baba-team[data-team-number] {
 }
 
 html body.baba-page .baba-team[data-team-number] :is(small, span, b, strong) {
-  color: var(--baba-team-ink);
+  color: var(--baba-team-ink) !important;
 }
 
 html body.baba-page .baba-team[data-team-number]::before {
@@ -2483,19 +2483,71 @@ html body.baba-page .baba-team-link[data-team-number] .baba-team-link-logo img {
   background: #fff;
 }
 
-html body.baba-page :is(.baba-team-player-card, .baba-present-item, .baba-table__row, .baba-row)[data-team-number] {
+html body.baba-page :is(.baba-team-player-card, .baba-present-item, .baba-table__row, .baba-row, .baba-ranking-card, .baba-table-scorer)[data-team-number] {
   color: var(--baba-team-ink) !important;
   border-color: var(--baba-team-border) !important;
   box-shadow: inset 4px 0 0 rgba(255, 255, 255, .36), 0 8px 20px var(--baba-team-shadow) !important;
   background: var(--baba-team-color) !important;
 }
 
-html body.baba-page :is(.baba-team-player-card, .baba-present-item, .baba-table__row, .baba-row)[data-team-number] :is(strong, small, span, b) {
-  color: var(--baba-team-ink);
+html body.baba-page :is(.baba-team-player-card, .baba-present-item, .baba-table__row, .baba-row, .baba-ranking-card, .baba-table-scorer)[data-team-number] :is(strong, small, span, b) {
+  color: var(--baba-team-ink) !important;
 }
 
-html body.baba-page :is(.baba-team-player-card, .baba-present-item, .baba-table__row, .baba-row)[data-team-number="3"] {
+html body.baba-page :is(.baba-team-player-card, .baba-present-item, .baba-table__row, .baba-row, .baba-ranking-card, .baba-table-scorer)[data-team-number="3"] {
   box-shadow: inset 4px 0 0 #fff, inset 5px 0 0 #111827, 0 8px 20px var(--baba-team-shadow) !important;
+}
+
+html body.baba-page .baba-table__row[data-team-number] > :is(b, span) {
+  color: var(--baba-team-ink) !important;
+  font-weight: 950 !important;
+}
+
+html body.baba-page .baba-ranking-card[data-team-number] :is(.stats span, .baba-ranking-score) {
+  color: var(--baba-team-ink) !important;
+  font-weight: 950 !important;
+}
+
+html body.baba-page .baba-ranking-card[data-team-number] .stats span {
+  border-color: rgba(255, 255, 255, .38) !important;
+  background: rgba(255, 255, 255, .1) !important;
+}
+
+html body.baba-page .baba-ranking-card[data-team-number="3"] .stats span {
+  border-color: rgba(17, 24, 39, .24) !important;
+  background: rgba(17, 24, 39, .04) !important;
+}
+
+html body.baba-page .baba-ranking-card[data-team-number] :is(.stats svg, .baba-ranking-title svg) {
+  color: var(--baba-team-ink) !important;
+}
+
+html body.baba-page .baba-ranking-card[data-team-number] .baba-ranking-score strong {
+  color: var(--baba-team-ink) !important;
+  font-weight: 1000 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .18);
+}
+
+html body.baba-page .baba-ranking-card[data-team-number="3"] .baba-ranking-score strong {
+  text-shadow: none;
+}
+
+html body.baba-page .baba-ranking-card[data-team-number] .baba-ranking-position {
+  color: #fff !important;
+  background: #172033 !important;
+  font-weight: 1000 !important;
+}
+
+html body.baba-page .baba-ranking-card[data-team-number="3"] .baba-ranking-position {
+  border-color: #111827 !important;
+  color: #111827 !important;
+  background: #fff !important;
+}
+
+html body.baba-page .baba-ranking-card--top1[data-team-number] .baba-ranking-position {
+  border-color: rgba(133, 77, 14, .32) !important;
+  color: #3a2506 !important;
+  background: linear-gradient(135deg, #f8c846, #fff3a3) !important;
 }
 
 html body.baba-page .baba-team-player-card[data-team-number]:is(:hover, :focus-visible) {

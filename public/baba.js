@@ -1820,8 +1820,42 @@
     ));
   }
 
-  function rankingRowsForPdf(items = []) {
-    return items.map((stats, index) => [
+  function pdfTeamRow(cells, teamOrId) {
+    const row = cells;
+    row.teamNumber = getTeamNumber(teamOrId);
+    return row;
+  }
+
+  function pdfPlayerTeam(baba, playerId) {
+    return getPlayerTeam(baba || getActiveBaba(), playerId);
+  }
+
+  function pdfMatchCell(teamA, teamB, fallbackA = 'Time', fallbackB = 'Time') {
+    return {
+      type: 'match',
+      teams: [
+        { name: teamA?.name || fallbackA, number: getTeamNumber(teamA) },
+        { name: teamB?.name || fallbackB, number: getTeamNumber(teamB) },
+      ],
+    };
+  }
+
+  function pdfCellText(cell) {
+    if (cell?.type === 'match') return cell.teams.map((team) => team.name).join(' x ');
+    return cell ?? '-';
+  }
+
+  function renderPdfCell(cell) {
+    if (cell?.type !== 'match') return escapeHTML(pdfCellText(cell));
+    return `<span class="pdf-match-cell">${cell.teams.map((team, index) => {
+      const number = Number(team.number);
+      const teamClass = number >= 1 && number <= 4 ? ` pdf-team-${number}` : '';
+      return `${index ? '<b>x</b>' : ''}<span class="pdf-team-chip${teamClass}">${escapeHTML(team.name)}</span>`;
+    }).join('')}</span>`;
+  }
+
+  function rankingRowsForPdf(items = [], baba = getActiveBaba()) {
+    return items.map((stats, index) => pdfTeamRow([
       index + 1,
       stats.nome || playerName(stats.jogadorId),
       stats.totalGols || 0,
@@ -1830,36 +1864,36 @@
       stats.totalDerrotas || 0,
       `${stats.aproveitamento || 0}%`,
       stats.totalTitulosBaba || 0,
-    ]);
+    ], pdfPlayerTeam(baba, stats.jogadorId)));
   }
 
-  function goalkeeperRowsForPdf(items = []) {
-    return items.map((stats, index) => [
+  function goalkeeperRowsForPdf(items = [], baba = getActiveBaba()) {
+    return items.map((stats, index) => pdfTeamRow([
       index + 1,
       stats.nome || playerName(stats.jogadorId),
       stats.jogos || 0,
       stats.golsSofridos || 0,
       stats.mediaSofridos || '0.0',
       stats.totalBabas || 0,
-    ]);
+    ], pdfPlayerTeam(baba, stats.jogadorId)));
   }
 
   function scorersRowsForPdf(baba = getActiveBaba(), limit = null) {
     const rows = getDailyRankingList(baba, 'goals')
       .filter((stats) => stats.totalGols > 0)
-      .map((stats, index) => [
+      .map((stats, index) => pdfTeamRow([
         index + 1,
         stats.nome,
         stats.totalGols,
         stats.totalVitorias,
         stats.mediaGols,
         `${stats.aproveitamento}%`,
-      ]);
+      ], pdfPlayerTeam(baba, stats.jogadorId)));
     return Number.isFinite(limit) ? rows.slice(0, limit) : rows;
   }
 
   function standingsRowsForPdf(baba = getActiveBaba()) {
-    return getStandingsSnapshot(baba).map((team, index) => [
+    return getStandingsSnapshot(baba).map((team, index) => pdfTeamRow([
       index + 1,
       team.name,
       team.pontos,
@@ -1868,7 +1902,7 @@
       team.vitorias,
       team.empates,
       team.derrotas,
-    ]);
+    ], team));
   }
 
   function teamRosterRowsForPdf(baba = getActiveBaba()) {
@@ -1880,36 +1914,36 @@
         .filter(Boolean);
       const goalkeepers = players.filter((player) => player.tipo === 'goleiro').length;
       const fieldPlayers = Math.max(0, players.length - goalkeepers);
-      return [
+      return pdfTeamRow([
         team.name,
         players.map((player) => player.nome).join(', ') || '-',
         fieldPlayers,
         goalkeepers,
-      ];
+      ], team);
     });
   }
 
-  function goalRankingRowsForPdf(items = []) {
-    return items.map((stats, index) => [
+  function goalRankingRowsForPdf(items = [], baba = getActiveBaba()) {
+    return items.map((stats, index) => pdfTeamRow([
       index + 1,
       stats.nome || playerName(stats.jogadorId),
       stats.totalGols || 0,
       stats.totalVitorias || 0,
       `${stats.aproveitamento || 0}%`,
       stats.totalBabas || 0,
-    ]);
+    ], pdfPlayerTeam(baba, stats.jogadorId)));
   }
 
   function paymentRowsForPdf(baba = getActiveBaba(), paidOnly = true) {
     return getPaymentPlayers(baba)
       .filter((player) => isPlayerPaidThisMonth(player.id, baba) === paidOnly)
       .sort((a, b) => a.nome.localeCompare(b.nome))
-      .map((player, index) => [
+      .map((player, index) => pdfTeamRow([
         index + 1,
         player.nome,
         playerPaymentTypeLabel(player),
         formatCurrency(paymentPriceForPlayer(player)),
-      ]);
+      ], pdfPlayerTeam(baba, player.id)));
   }
 
   function currentGamesRowsForPdf(baba = getActiveBaba()) {
@@ -1918,17 +1952,12 @@
       const teamB = getTeam(baba, game.timeB);
       return [
         game.numeroJogo,
-        `${teamA?.name || game.timeANome || 'Time'} x ${teamB?.name || game.timeBNome || 'Time'}`,
+        pdfMatchCell(teamA, teamB, game.timeANome || 'Time', game.timeBNome || 'Time'),
         `${game.placarA} x ${game.placarB}`,
         resultStatusLabel(game),
-        `Fica: ${teamDetailName(baba, game.timeQueContinuou)} / Sai: ${teamNamesFromValue(baba, game.timeQueSaiu)}`,
         game.motivoSaida || '-',
       ];
     });
-  }
-
-  function teamDetailName(baba, teamId, fallback = '-') {
-    return getTeam(baba, teamId)?.name || fallback;
   }
 
   function activeYearForReport(baba = getActiveBaba()) {
@@ -2075,7 +2104,7 @@
           note: 'Ultimos jogos',
           icon: 'history',
           maxRows: PDF_ROW_LIMITS.currentHistory,
-          columns: ['Jogo', 'Partida', 'Placar', 'Resultado', 'Rodizio', 'Motivo'],
+          columns: ['Jogo', 'Partida', 'Placar', 'Resultado', 'Motivo'],
           rows: currentGamesRowsForPdf(baba),
           empty: 'Nenhum jogo finalizado neste baba.',
         },
@@ -2093,8 +2122,10 @@
           note: 'Ordenado por gols',
           icon: 'target',
           highlightTop: true,
+          wide: true,
           maxRows: PDF_ROW_LIMITS.dailyScorers,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'Media', 'Aprov.'],
+          nowrapColumns: [1],
           rows: scorersRowsForPdf(baba),
           empty: 'Sem gols no baba atual.',
         },
@@ -2208,6 +2239,11 @@
     return { rows: list.slice(0, maxRows), hidden: list.length - maxRows };
   }
 
+  function pdfTeamClass(row) {
+    const number = Number(row?.teamNumber);
+    return number >= 1 && number <= 4 ? `pdf-team-row pdf-team-${number}` : '';
+  }
+
   function renderPdfTable(section) {
     const columns = section.columns || [];
     const nowrapColumns = new Set(section.nowrapColumns || []);
@@ -2216,11 +2252,12 @@
     if (!rows.length) return `<div class="pdf-empty">${escapeHTML(section.empty || 'Sem dados para exibir.')}</div>`;
     const mobileCards = rows.map((row, index) => {
       const firstCell = row[0] ?? '';
-      const title = (row[1] ?? firstCell) || `Item ${index + 1}`;
+      const title = pdfCellText((row[1] ?? firstCell) || `Item ${index + 1}`);
       const eyebrow = firstCell ? `${columns[0] || 'Item'} ${firstCell}` : `Item ${index + 1}`;
       const isGold = Boolean(section.highlightTop && index === 0);
+      const teamClass = pdfTeamClass(row);
       return `
-        <article class="pdf-mobile-card ${isGold ? 'is-pdf-gold' : ''}">
+        <article class="pdf-mobile-card ${isGold ? 'is-pdf-gold' : ''} ${teamClass}">
           <div class="pdf-mobile-card-title">
             <span>${escapeHTML(eyebrow)}</span>
             <strong>${escapeHTML(title)}</strong>
@@ -2229,7 +2266,7 @@
             ${columns.map((column, columnIndex) => `
               <div>
                 <dt>${escapeHTML(column)}</dt>
-                <dd>${escapeHTML(row[columnIndex] ?? '-')}</dd>
+                <dd>${renderPdfCell(row[columnIndex])}</dd>
               </div>
             `).join('')}
           </dl>
@@ -2249,9 +2286,10 @@
             <tr>${columns.map((column, columnIndex) => `<th class="${nowrapColumns.has(columnIndex) ? 'pdf-cell--nowrap' : ''}">${escapeHTML(column)}</th>`).join('')}</tr>
           </thead>
           <tbody>
-            ${rows.map((row, index) => `
-              <tr class="${section.highlightTop && index === 0 ? 'is-pdf-gold' : ''}">${row.map((cell, cellIndex) => `<td class="${nowrapColumns.has(cellIndex) ? 'pdf-cell--nowrap' : ''}">${escapeHTML(cell ?? '-')}</td>`).join('')}</tr>
-            `).join('')}
+            ${rows.map((row, index) => {
+              const teamClass = pdfTeamClass(row);
+              return `<tr class="${section.highlightTop && index === 0 ? 'is-pdf-gold' : ''} ${teamClass}">${row.map((cell, cellIndex) => `<td class="${nowrapColumns.has(cellIndex) ? 'pdf-cell--nowrap' : ''}">${renderPdfCell(cell)}</td>`).join('')}</tr>`;
+            }).join('')}
           </tbody>
           ${hiddenRow}
         </table>
@@ -2683,6 +2721,88 @@
       line-height: 1.25;
       text-align: right;
       overflow-wrap: anywhere;
+    }
+    .pdf-team-1 {
+      --pdf-team-bg: #d71920;
+      --pdf-team-fg: #ffffff;
+      --pdf-team-border: #a80f17;
+      --pdf-team-line: rgba(255, 255, 255, .28);
+      --pdf-team-shadow: rgba(215, 25, 32, .28);
+    }
+    .pdf-team-2 {
+      --pdf-team-bg: #08783f;
+      --pdf-team-fg: #ffffff;
+      --pdf-team-border: #04562c;
+      --pdf-team-line: rgba(255, 255, 255, .28);
+      --pdf-team-shadow: rgba(8, 120, 63, .28);
+    }
+    .pdf-team-3 {
+      --pdf-team-bg: #ffffff;
+      --pdf-team-fg: #111827;
+      --pdf-team-border: #111827;
+      --pdf-team-line: rgba(17, 24, 39, .2);
+      --pdf-team-shadow: rgba(17, 24, 39, .16);
+    }
+    .pdf-team-4 {
+      --pdf-team-bg: #111318;
+      --pdf-team-fg: #ffffff;
+      --pdf-team-border: #000000;
+      --pdf-team-line: rgba(255, 255, 255, .28);
+      --pdf-team-shadow: rgba(17, 19, 24, .28);
+    }
+    tbody tr.pdf-team-row td {
+      border-color: var(--pdf-team-line) !important;
+      color: var(--pdf-team-fg) !important;
+      background: var(--pdf-team-bg) !important;
+      font-weight: 900;
+    }
+    tbody tr.pdf-team-row.is-pdf-gold td:first-child {
+      color: var(--pdf-team-fg) !important;
+      background: var(--pdf-team-bg) !important;
+      box-shadow: inset 4px 0 0 #facc15;
+    }
+    .pdf-mobile-card.pdf-team-row {
+      border-color: var(--pdf-team-border);
+      color: var(--pdf-team-fg);
+      background: var(--pdf-team-bg);
+      box-shadow: 0 12px 28px var(--pdf-team-shadow);
+    }
+    .pdf-mobile-card.pdf-team-row .pdf-mobile-card-title,
+    .pdf-mobile-card.pdf-team-row.is-pdf-gold .pdf-mobile-card-title,
+    .pdf-mobile-card.pdf-team-row dl div,
+    .pdf-mobile-card.pdf-team-row dl div:nth-child(even) {
+      border-color: var(--pdf-team-line);
+      color: var(--pdf-team-fg);
+      background: var(--pdf-team-bg);
+    }
+    .pdf-mobile-card.pdf-team-row :is(.pdf-mobile-card-title span, .pdf-mobile-card-title strong, dt, dd) {
+      color: var(--pdf-team-fg) !important;
+      font-weight: 900;
+    }
+    .pdf-mobile-card.pdf-team-row.is-pdf-gold {
+      outline: 2px solid #facc15;
+      outline-offset: -2px;
+    }
+    .pdf-match-cell {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+    }
+    .pdf-match-cell > b {
+      color: #64748b;
+      font-weight: 900;
+    }
+    .pdf-team-chip {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--pdf-team-border, #cbd5e1);
+      border-radius: 999px;
+      padding: 2px 6px;
+      color: var(--pdf-team-fg, #172033);
+      background: var(--pdf-team-bg, #f8fafc);
+      font-weight: 900;
+      white-space: nowrap;
     }
     .pdf-empty {
       padding: 14px;
@@ -4641,7 +4761,7 @@
       </div>
       <div class="baba-table-scorer-grid">
         ${top.map((stats, index) => `
-          <div class="baba-table-scorer ${index === 0 ? 'is-first baba-gold-leader' : ''}">
+          <div class="baba-table-scorer ${index === 0 ? 'is-first baba-gold-leader' : ''}"${teamNumberDataAttribute(getPlayerTeam(baba, stats.jogadorId))}>
             <span>${index + 1}º lugar</span>
             <strong>${playerPaymentNameHTML(stats.jogadorId, getActiveBaba(), { name: stats.nome, force: Boolean(getActiveBaba()) })}</strong>
             <span>${stats.totalGols} gol${stats.totalGols === 1 ? '' : 's'}</span>
@@ -5235,8 +5355,9 @@
       const topClass = position <= 3 ? ` baba-ranking-card--top${position}` : '';
       const icon = position === 1 ? 'baba-trophy' : 'baba-ball';
       const score = rankingMetricDisplay(stats, metric);
+      const playerTeam = getPlayerTeam(getActiveBaba(), stats.jogadorId);
       return `
-        <div class="baba-ranking-card${topClass}">
+        <div class="baba-ranking-card${topClass}"${teamNumberDataAttribute(playerTeam)}>
           <div class="baba-ranking-card__main">
             <span class="baba-ranking-position">${position}</span>
             <div>
@@ -5272,8 +5393,9 @@
     const cards = visibleItems.map((stats, index) => {
       const position = index + 1;
       const topClass = position <= 3 ? ` baba-ranking-card--top${position}` : '';
+      const playerTeam = getPlayerTeam(getActiveBaba(), stats.jogadorId);
       return `
-        <div class="baba-ranking-card baba-goalkeeper-card${topClass}">
+        <div class="baba-ranking-card baba-goalkeeper-card${topClass}"${teamNumberDataAttribute(playerTeam)}>
           <div class="baba-ranking-card__main">
             <span class="baba-ranking-position">${position}</span>
             <div>
@@ -5356,7 +5478,7 @@
         <div class="baba-row"><span>Presentes</span><b>${baba.jogadoresPresentes?.length || 0}</b></div>
         <div class="baba-row"><span>Finalizado</span><b>${formatTime(baba.finalizadoEm)}</b></div>
         ${(baba.teams || []).map((team) => `
-          <div class="baba-row">
+          <div class="baba-row"${teamNumberDataAttribute(team)}>
             <div>
               <strong>${teamDetailButton(baba, team)} - ${team.pontos} pts</strong>
               <small>V:${team.vitorias} E:${team.empates} D:${team.derrotas} GP:${team.golsPro} GC:${team.golsContra}</small>
@@ -5367,7 +5489,6 @@
           <div class="baba-row">
             <div>
               <strong>Jogo ${game.numeroJogo}: ${matchLineHTML(baba, getTeam(baba, game.timeA), game.placarA, game.placarB, getTeam(baba, game.timeB), true)}</strong>
-              <small>Continua: ${teamDetailButton(baba, getTeam(baba, game.timeQueContinuou), '-')} | Saiu: ${teamButtonsFromValue(baba, game.timeQueSaiu)} | ${escapeHTML(game.motivoSaida || '-')}</small>
             </div>
           </div>
         `).join('')}
