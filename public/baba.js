@@ -986,6 +986,29 @@
     return baba?.teams?.find((team) => team.id === id) || null;
   }
 
+  function isTeamInRotation(team) {
+    return Boolean(team && !team.retiradoDoBaba);
+  }
+
+  function getRotationTeams(baba) {
+    return (baba?.teams || []).filter(isTeamInRotation);
+  }
+
+  function sanitizeTeamQueue(baba, queue = baba?.filaTimes || []) {
+    const seen = new Set();
+    return (queue || []).filter((teamId) => {
+      const team = getTeam(baba, teamId);
+      if (!isTeamInRotation(team) || seen.has(teamId)) return false;
+      seen.add(teamId);
+      return true;
+    });
+  }
+
+  function teamHasActiveRoute(baba, teamId) {
+    return [baba?.jogoAtual?.timeA, baba?.jogoAtual?.timeB].includes(teamId)
+      || (baba?.pendingTieBreak?.tiedTeams || []).includes(teamId);
+  }
+
   function getTeamNumber(teamOrId) {
     const id = typeof teamOrId === 'string' ? teamOrId : teamOrId?.id;
     const match = String(id || '').match(/^team_(\d+)$/i);
@@ -1016,6 +1039,7 @@
 
   function getSequentialTeamIds(teams = []) {
     return [...teams]
+      .filter(isTeamInRotation)
       .sort((a, b) => teamOrderValue(a) - teamOrderValue(b) || String(a.name || '').localeCompare(String(b.name || '')))
       .map((team) => team.id);
   }
@@ -1069,7 +1093,7 @@
     team.tipo = 'visitante';
     team.jogadores = baba.visitantes.filter((player) => !player.foraDoBaba).map((player) => player.id);
     const inCurrentMatch = [baba.jogoAtual?.timeA, baba.jogoAtual?.timeB].includes(team.id);
-    if (!inCurrentMatch && baba.teams.length >= 2 && !(baba.filaTimes || []).includes(team.id)) {
+    if (!inCurrentMatch && isTeamInRotation(team) && getRotationTeams(baba).length >= 2 && !(baba.filaTimes || []).includes(team.id)) {
       baba.filaTimes = [...(baba.filaTimes || []), team.id];
     }
     return team;
@@ -1165,9 +1189,9 @@
   }
 
   function getPendingTieBreakRoute(baba, pending = baba?.pendingTieBreak) {
-    const tiedTeamIds = (pending?.tiedTeams || []).filter((id) => getTeam(baba, id));
+    const tiedTeamIds = (pending?.tiedTeams || []).filter((id) => isTeamInRotation(getTeam(baba, id)));
     const tiedTeams = tiedTeamIds.map((id) => getTeam(baba, id)).filter(Boolean);
-    const sourceQueue = [...(pending?.queue || baba?.filaTimes || [])].filter(Boolean);
+    const sourceQueue = sanitizeTeamQueue(baba, pending?.queue || baba?.filaTimes || []);
     const nextTeamId = sourceQueue.find((id) => !tiedTeamIds.includes(id)) || null;
     const remainingQueue = sourceQueue.filter((id) => id !== nextTeamId);
     return {
@@ -3264,6 +3288,76 @@
     saveState(`${player.nome} removido do baba. As partidas ja encerradas foram preservadas.`);
   }
 
+  function toggleTeamRotation(teamId) {
+    if (!requireOrganizer()) return;
+    const baba = getActiveBaba();
+    const team = getTeam(baba, teamId);
+    if (!baba || baba.status === 'finalizado') return showToast('Este baba nao pode mais ser alterado.');
+    if (!team || team.id === VISITOR_TEAM_ID || team.tipo === 'visitante') return showToast('Time nao encontrado.');
+    if (teamHasActiveRoute(baba, team.id)) return showToast('Este time esta em uma partida ou desempate e nao pode ser retirado agora.');
+
+    if (team.retiradoDoBaba) {
+      team.retiradoDoBaba = false;
+      team.retiradoEm = null;
+      baba.filaTimes = sanitizeTeamQueue(baba, [...(baba.filaTimes || []), team.id]);
+      if (baba.pendingTieBreak) {
+        baba.pendingTieBreak.queue = sanitizeTeamQueue(baba, [...(baba.pendingTieBreak.queue || []), team.id]);
+      }
+      saveState(`${team.name} voltou ao baba e entrou no fim da fila.`);
+      return;
+    }
+
+    const ok = window.confirm(`Retirar ${team.name} do baba? Os dados do time e dos jogadores serao mantidos, mas ele nao entrara nos proximos jogos.`);
+    if (!ok) return;
+    team.retiradoDoBaba = true;
+    team.retiradoEm = Date.now();
+    baba.filaTimes = sanitizeTeamQueue(baba);
+    if (baba.pendingTieBreak) baba.pendingTieBreak.queue = sanitizeTeamQueue(baba, baba.pendingTieBreak.queue);
+    saveState(`${team.name} retirado do baba. Os dados foram preservados.`);
+  }
+
+  function deleteTeamFromBaba(teamId) {
+    if (!requireOrganizer()) return;
+    const baba = getActiveBaba();
+    const team = getTeam(baba, teamId);
+    if (!baba || baba.status === 'finalizado') return showToast('Este baba nao pode mais ser alterado.');
+    if (!team || team.id === VISITOR_TEAM_ID || team.tipo === 'visitante') return showToast('Time nao encontrado.');
+    if (teamHasActiveRoute(baba, team.id)) return showToast('Este time esta em uma partida ou desempate e nao pode ser excluido agora.');
+
+    const ok = window.confirm(`Excluir ${team.name} deste baba? O time, seus jogadores neste baba e todas as partidas dele serao apagados. Essa acao nao pode ser desfeita.`);
+    if (!ok) return;
+
+    const playerIds = new Set(team.jogadores || []);
+    baba.teams = (baba.teams || []).filter((item) => item.id !== team.id);
+    baba.filaTimes = sanitizeTeamQueue(baba, (baba.filaTimes || []).filter((id) => id !== team.id));
+    if (baba.pendingTieBreak) {
+      baba.pendingTieBreak.queue = sanitizeTeamQueue(baba, (baba.pendingTieBreak.queue || []).filter((id) => id !== team.id));
+    }
+    baba.jogos = (baba.jogos || []).filter((game) => game.timeA !== team.id && game.timeB !== team.id);
+    baba.jogadoresPresentes = (baba.jogadoresPresentes || []).filter((id) => !playerIds.has(id));
+    baba.visitantes = (baba.visitantes || []).filter((player) => !playerIds.has(player.id));
+    playerIds.forEach((id) => {
+      if (baba.pagamentos) delete baba.pagamentos[id];
+    });
+
+    rebuildTeamStatsFromGames(baba);
+    baba.rankingDoBaba = calculateDailyRanking(baba);
+    baba.lastResult = lastResultFromGame(baba, baba.jogos[baba.jogos.length - 1]);
+    baba.campeaoDoBaba = null;
+    baba.undoStack = [];
+    baba.teamRevealIndex = Math.max(0, Math.min(Number(baba.teamRevealIndex || 0), baba.teams.length - 1));
+    if (!baba.jogoAtual && getRotationTeams(baba).length < 2) baba.status = 'times';
+    if (selectedTeamDetail?.teamId === team.id) {
+      selectedTeamDetail = null;
+      els.teamDetailModal?.classList.add('hidden');
+    }
+    if (selectedPlayerDetail && playerIds.has(selectedPlayerDetail.playerId)) {
+      selectedPlayerDetail = null;
+      els.playerDetailModal?.classList.add('hidden');
+    }
+    saveState(`${team.name} e seus dados neste baba foram excluidos.`);
+  }
+
   function advanceTeamReveal() {
     const baba = getActiveBaba();
     if (!baba?.teams?.length) return;
@@ -3281,7 +3375,7 @@
   function startFirstGame() {
     if (!requireOrganizer()) return;
     const baba = getActiveBaba();
-    if (!baba || baba.teams.length < 2) return showToast('Sorteie os times antes de iniciar.');
+    if (!baba || getRotationTeams(baba).length < 2) return showToast('Sao necessarios dois times ativos para iniciar.');
     if (baba.jogoAtual) return showToast('Ja existe um jogo em andamento.');
 
     const firstGame = !(baba.jogos?.length);
@@ -3295,7 +3389,8 @@
       teamBId = 'team_2';
       order = teamIds.filter((id) => id !== teamAId && id !== teamBId);
     } else {
-      order = baba.filaTimes.length >= 2 ? [...baba.filaTimes] : teamIds;
+      const queue = sanitizeTeamQueue(baba);
+      order = queue.length >= 2 ? queue : teamIds;
       teamAId = order.shift();
       teamBId = order.shift();
     }
@@ -3385,7 +3480,7 @@
     const baba = getActiveBaba();
     if (!baba) return showToast('Crie um baba primeiro.');
     if (baba.jogoAtual) return showToast('Finalize o jogo atual antes do proximo.');
-    if (!baba.teams || baba.teams.length < 2) return showToast('Sorteie os times primeiro.');
+    if (getRotationTeams(baba).length < 2) return showToast('Sao necessarios dois times ativos para iniciar.');
     startFirstGame();
   }
 
@@ -3524,6 +3619,8 @@
     const teamA = getTeam(baba, match.timeA);
     const teamB = getTeam(baba, match.timeB);
     if (!teamA || !teamB) return showToast('Times do jogo nao encontrados.');
+    const rotationTeamCount = getRotationTeams(baba).length;
+    baba.filaTimes = sanitizeTeamQueue(baba);
     const ok = window.confirm('Tem certeza que deseja finalizar jogo?');
     if (!ok) return;
     playBabaWhistle('finish');
@@ -3554,17 +3651,17 @@
       teamB.pontos += 1;
       teamA.empates += 1;
       teamB.empates += 1;
-      motivoSaida = baba.teams.length >= 4 ? 'empate: dois times sairam' : 'empate aguardando criterio';
+      motivoSaida = rotationTeamCount >= 4 ? 'empate: dois times sairam' : 'empate aguardando criterio';
 
-      if (baba.teams.length >= 4) {
+      if (rotationTeamCount >= 4) {
         timeQueContinuou = null;
         timeQueSaiu = `${teamA.id},${teamB.id}`;
-        const nextQueue = [...(baba.filaTimes || []), teamA.id, teamB.id];
+        const nextQueue = sanitizeTeamQueue(baba, [...(baba.filaTimes || []), teamA.id, teamB.id]);
         const nextA = nextQueue.shift();
         const nextB = nextQueue.shift();
         baba.filaTimes = nextQueue;
         nextMatchPair = nextA && nextB ? [nextA, nextB] : null;
-      } else if (baba.teams.length === 3) {
+      } else if (rotationTeamCount === 3) {
         decididoPorSorteio = true;
         motivoSaida = 'empate aguardando impar/par';
         pendingTieBreak = {
@@ -3653,7 +3750,7 @@
       baba.jogoAtual = buildMatch(baba, nextMatchPair[0], nextMatchPair[1]);
       baba.status = 'preparado';
     } else {
-      const nextQueue = [...(baba.filaTimes || []), timeQueSaiu].filter(Boolean);
+      const nextQueue = sanitizeTeamQueue(baba, [...(baba.filaTimes || []), timeQueSaiu].filter(Boolean));
       const nextTeamId = nextQueue.shift();
       baba.filaTimes = nextQueue;
       baba.pendingTieBreak = null;
@@ -3669,7 +3766,7 @@
     if (pendingTieBreak) {
       saveState('Empate salvo. Defina no impar/par quem fica em quadra.');
     } else {
-      saveState(empate && baba.teams.length >= 4 ? 'Empate salvo. Os dois times sairam e os proximos entraram.' : 'Jogo salvo. Proxima partida preparada.');
+      saveState(empate && rotationTeamCount >= 4 ? 'Empate salvo. Os dois times sairam e os proximos entraram.' : 'Jogo salvo. Proxima partida preparada.');
     }
   }
 
@@ -3687,7 +3784,7 @@
 
     const out = route.tiedTeamIds.find((id) => id !== chosen);
     const resolvedAt = Date.now();
-    baba.filaTimes = [...route.remainingQueue, out].filter(Boolean);
+    baba.filaTimes = sanitizeTeamQueue(baba, [...route.remainingQueue, out].filter(Boolean));
     baba.jogoAtual = buildMatch(baba, chosen, route.nextTeamId);
     baba.pendingTieBreak = null;
     baba.status = 'preparado';
@@ -4596,8 +4693,25 @@
       </div>
     ` : '';
 
+    const teamManagementHTML = (team) => {
+      if (!isOrganizer() || baba.status === 'finalizado' || team.id === VISITOR_TEAM_ID || team.tipo === 'visitante') return '';
+      const blocked = teamHasActiveRoute(baba, team.id);
+      const blockedTitle = blocked ? 'Aguarde a partida ou o desempate deste time terminar' : '';
+      return `
+        <div class="baba-team__management">
+          ${team.retiradoDoBaba ? '<span class="baba-team-status">Fora da fila - dados preservados</span>' : ''}
+          <div class="baba-team__management-actions">
+            <button class="baba-secondary" type="button" data-action="toggle-team-rotation" data-team-id="${team.id}" ${blocked ? 'disabled' : ''} title="${blockedTitle}">
+              ${team.retiradoDoBaba ? 'Voltar para fila' : 'Retirar do baba'}
+            </button>
+            <button class="baba-mini-btn danger" type="button" data-action="delete-team-from-baba" data-team-id="${team.id}" ${blocked ? 'disabled' : ''} title="${blockedTitle}">Excluir time</button>
+          </div>
+        </div>
+      `;
+    };
+
     const renderTeamCard = (team, position, { reveal = false } = {}) => `
-      <article class="baba-team ${reveal ? 'baba-team--reveal' : ''}"${teamNumberDataAttribute(team)}>
+      <article class="baba-team ${reveal ? 'baba-team--reveal' : ''} ${team.retiradoDoBaba ? 'is-withdrawn' : ''}"${teamNumberDataAttribute(team)}>
         <div>
           <small>${fullyRevealed ? 'Time sorteado' : `Time ${position + 1} de ${baba.teams.length}`}</small>
           <h3>${teamDetailButton(baba, team)}</h3>
@@ -4612,12 +4726,13 @@
           ${team.jogadores.map((id) => playerCardHTML(team, id)).join('') || '<span class="baba-empty">Sem jogadores</span>'}
         </div>
         ${addPlayerHTML(team)}
+        ${teamManagementHTML(team)}
       </article>
     `;
 
     if (fullyRevealed) {
       const startLabel = baba.jogos?.length ? 'Iniciar partida' : 'Iniciar primeiro jogo';
-      const startHTML = isOrganizer() && !baba.jogoAtual ? `<button class="baba-primary baba-start-game-btn" type="button" data-action="start-first-live">${startLabel}</button>` : '';
+      const startHTML = isOrganizer() && !baba.jogoAtual && getRotationTeams(baba).length >= 2 ? `<button class="baba-primary baba-start-game-btn" type="button" data-action="start-first-live">${startLabel}</button>` : '';
       const items = baba.teams.map((team, position) => ({
         key: `team:${team.id}`,
         signature: JSON.stringify({ team, availablePlayers, organizer: isOrganizer(), fullyRevealed }),
@@ -5080,7 +5195,7 @@
       `);
     } else if (!match || !teamA || !teamB) {
       els.currentMatchPanel.className = 'baba-current-match-panel';
-      const canStart = isOrganizer() && baba?.teams?.length >= 2;
+      const canStart = isOrganizer() && getRotationTeams(baba).length >= 2;
       const startLabel = baba?.jogos?.length ? 'Iniciar partida' : 'Iniciar primeiro jogo';
       setHTML(els.currentMatchPanel, `
         <div class="baba-empty">Nenhum jogo iniciado.</div>
@@ -5150,10 +5265,11 @@
       `);
     }
 
-    if (!baba?.filaTimes?.length) {
+    const visibleQueue = sanitizeTeamQueue(baba);
+    if (!visibleQueue.length) {
       setHTML(els.queueList, '<div class="baba-empty">Sem times aguardando.</div>');
     } else {
-      setHTML(els.queueList, baba.filaTimes.map((teamId, index) => {
+      setHTML(els.queueList, visibleQueue.map((teamId, index) => {
         const team = getTeam(baba, teamId);
         return `
           <div class="baba-row"${teamNumberDataAttribute(team)}>
@@ -6299,6 +6415,8 @@
       if (actionButton?.dataset.action === 'delete-player') return deletePlayer(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-visitor') return deleteVisitor(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'create-late-team') return createLateArrivalTeam();
+      if (actionButton?.dataset.action === 'toggle-team-rotation') return toggleTeamRotation(actionButton.dataset.teamId);
+      if (actionButton?.dataset.action === 'delete-team-from-baba') return deleteTeamFromBaba(actionButton.dataset.teamId);
       if (actionButton?.dataset.action === 'add-player-to-team') {
         const select = actionButton.closest('.baba-roster-add')?.querySelector(`[data-team-add-select="${CSS.escape(actionButton.dataset.teamId)}"]`);
         if (!select?.value) return showToast('Selecione um jogador para adicionar.');

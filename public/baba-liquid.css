@@ -2683,3 +2683,52 @@ html body.baba-page .baba-player-payment.is-unpaid .baba-player-payment__status 
   color: #fff !important;
   background: #be123c !important;
 }
+
+/* Gerenciamento do time dentro do baba atual. */
+html body.baba-page .baba-team.is-withdrawn {
+  outline: 3px dashed rgba(255, 255, 255, .72);
+  outline-offset: -8px;
+}
+
+html body.baba-page .baba-team[data-team-number="3"].is-withdrawn {
+  outline-color: rgba(17, 24, 39, .5);
+}
+
+html body.baba-page .baba-team__management {
+  display: grid;
+  gap: .65rem;
+  padding-top: .85rem;
+  border-top: 1px solid rgba(255, 255, 255, .3);
+}
+
+html body.baba-page .baba-team[data-team-number="3"] .baba-team__management {
+  border-top-color: rgba(17, 24, 39, .18);
+}
+
+html body.baba-page .baba-team__management-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .55rem;
+}
+
+html body.baba-page .baba-team__management-actions button {
+  min-height: 2.5rem;
+  font-weight: 900 !important;
+}
+
+html body.baba-page .baba-team-status {
+  width: fit-content;
+  padding: .35rem .65rem;
+  border: 1px solid rgba(255, 255, 255, .65);
+  border-radius: 999px;
+  color: #fff !important;
+  background: rgba(15, 23, 42, .38);
+  font-size: .74rem;
+  font-weight: 950;
+}
+
+html body.baba-page .baba-team[data-team-number="3"] .baba-team-status {
+  border-color: rgba(17, 24, 39, .28);
+  color: #111827 !important;
+  background: rgba(17, 24, 39, .08);
+}
