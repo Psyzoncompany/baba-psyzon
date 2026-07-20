@@ -1,7 +1,7 @@
 (() => {
   const STORAGE_KEY = 'psyzon_baba_state_v1';
   const ADMIN_PASSWORD = '153090';
-  const TEAM_NAMES = ['Barcelona', 'Arsenal', 'Real Madrid', 'PSG', 'Chelsea'];
+  const TEAM_NAMES = ['Time 1', 'Time 2', 'Time 3', 'Time 4', 'Time 5'];
   const MODE_KEY = 'psyzon_baba_mode';
   const REMEMBER_ORGANIZER_KEY = 'psyzon_baba_organizer_remembered';
   const REMEMBERED_ACCESS_VALUE = 'organizer_access_v2';
@@ -986,6 +986,17 @@
     return baba?.teams?.find((team) => team.id === id) || null;
   }
 
+  function getTeamNumber(teamOrId) {
+    const id = typeof teamOrId === 'string' ? teamOrId : teamOrId?.id;
+    const match = String(id || '').match(/^team_(\d+)$/i);
+    return match ? Number(match[1]) : null;
+  }
+
+  function teamNumberDataAttribute(teamOrId) {
+    const number = getTeamNumber(teamOrId);
+    return number ? ` data-team-number="${number}"` : '';
+  }
+
   function getPlayerTeam(baba, playerId) {
     return (baba?.teams || []).find((team) => (team.jogadores || []).includes(playerId)) || null;
   }
@@ -1100,7 +1111,7 @@
 
   function teamDetailButton(baba, team, fallback = 'Time') {
     if (!team) return escapeHTML(fallback);
-    return `<button class="baba-team-link" type="button" data-team-detail-id="${team.id}" data-team-detail-baba-id="${baba?.id || ''}">${escapeHTML(team.name)}</button>`;
+    return `<button class="baba-team-link" type="button" data-team-detail-id="${team.id}" data-team-detail-baba-id="${baba?.id || ''}"${teamNumberDataAttribute(team)}>${escapeHTML(team.name)}</button>`;
   }
 
   function teamButtonsFromValue(baba, value) {
@@ -1221,10 +1232,11 @@
   function playerPaymentNameHTML(playerId, baba = getActiveBaba(), options = {}) {
     const name = options.name || playerName(playerId, baba);
     const state = playerPaymentState(playerId, baba, options);
-    if (!state) return escapeHTML(name);
+    const team = getPlayerTeam(baba, playerId);
+    if (!state) return `<span class="baba-player-identity"${teamNumberDataAttribute(team)}>${escapeHTML(name)}</span>`;
     const label = state === 'paid' ? 'Pago' : 'Nao pagou';
     return `
-      <span class="baba-player-payment is-${state}">
+      <span class="baba-player-payment is-${state}"${teamNumberDataAttribute(team)}>
         <span class="baba-player-payment__name">${escapeHTML(name)}</span>
         <span class="baba-player-payment__status">${label}</span>
       </span>
@@ -3302,6 +3314,9 @@
     goalTeamId = teamId;
     const teamTone = teamId === match.timeA ? 'a' : 'b';
     els.goalModal.dataset.teamTone = teamTone;
+    const teamNumber = getTeamNumber(team);
+    if (teamNumber) els.goalModal.dataset.teamNumber = String(teamNumber);
+    else delete els.goalModal.dataset.teamNumber;
     els.goalModalTitle.textContent = `Gol do ${team.name}`;
     const goalPlayers = team.jogadores
       .map((playerId, originalIndex) => {
@@ -3312,7 +3327,7 @@
     const playersHTML = goalPlayers.map(({ playerId, player, isGoalkeeper }) => {
       const displayName = `${isGoalkeeper ? '(G) ' : ''}${player?.nome || playerName(playerId, baba)}`;
       return `
-        <button class="baba-goal-player ${isGoalkeeper ? 'baba-goal-player--goalkeeper' : ''}" type="button" data-goal-player-id="${playerId}" aria-label="Marcar gol de ${escapeHTML(displayName)}">
+        <button class="baba-goal-player ${isGoalkeeper ? 'baba-goal-player--goalkeeper' : ''}" type="button" data-goal-player-id="${playerId}"${teamNumberDataAttribute(team)} aria-label="Marcar gol de ${escapeHTML(displayName)}">
           <strong>${escapeHTML(displayName)}</strong>
         </button>
       `;
@@ -3330,6 +3345,7 @@
   function closeGoalPicker() {
     goalTeamId = null;
     delete els.goalModal.dataset.teamTone;
+    delete els.goalModal.dataset.teamNumber;
     els.goalModal.classList.add('hidden');
   }
 
@@ -4269,7 +4285,7 @@
         ? (team ? team.name : 'Sem time - pronto para o novo time')
         : '';
       return `
-        <label class="baba-present-item ${checked ? 'is-checked' : ''}">
+        <label class="baba-present-item ${checked ? 'is-checked' : ''}"${teamNumberDataAttribute(team)}>
           <input type="checkbox" data-present-id="${player.id}" ${checked ? 'checked' : ''} ${!isOrganizer() ? 'disabled' : ''}>
           <span>
             <strong>${playerPaymentNameHTML(player.id, baba, { name: player.nome, force: Boolean(baba) })}</strong>
@@ -4438,7 +4454,7 @@
       const player = getBabaPlayer(baba, playerId);
       const typeLabel = player?.tipo === 'goleiro' ? 'Goleiro' : (player?.visitante ? 'Visitante' : 'Jogador');
       return `
-        <button class="baba-team-player-card" type="button" data-player-detail-id="${playerId}" data-player-detail-team-id="${team.id}" data-player-detail-baba-id="${baba.id}">
+        <button class="baba-team-player-card" type="button" data-player-detail-id="${playerId}" data-player-detail-team-id="${team.id}" data-player-detail-baba-id="${baba.id}"${teamNumberDataAttribute(team)}>
           <span class="baba-team-player-card__identity">
             <strong>${escapeHTML(player?.nome || playerName(playerId, baba))}</strong>
             <small>${typeLabel}</small>
@@ -4461,7 +4477,7 @@
     ` : '';
 
     const renderTeamCard = (team, position, { reveal = false } = {}) => `
-      <article class="baba-team ${reveal ? 'baba-team--reveal' : ''}">
+      <article class="baba-team ${reveal ? 'baba-team--reveal' : ''}"${teamNumberDataAttribute(team)}>
         <div>
           <small>${fullyRevealed ? 'Time sorteado' : `Time ${position + 1} de ${baba.teams.length}`}</small>
           <h3>${teamDetailButton(baba, team)}</h3>
@@ -4584,7 +4600,7 @@
           <span>Pos</span><span>Time</span><span>Pts</span><span>GP</span><span>SG</span><span>V</span><span>E</span><span>D</span>
         </div>
         ${teams.map((team, index) => `
-          <div class="baba-table__row ${team.isLive ? 'is-live' : ''} ${index === 0 ? 'is-first baba-gold-leader' : ''}">
+          <div class="baba-table__row ${team.isLive ? 'is-live' : ''} ${index === 0 ? 'is-first baba-gold-leader' : ''}"${teamNumberDataAttribute(team)}>
             <span class="baba-position-label">
               <b class="baba-position-badge ${index === 0 ? 'is-first' : ''}">${index + 1}º</b>
               <small>${index + 1}º lugar</small>
@@ -4706,6 +4722,7 @@
 
   function closeTeamDetail() {
     selectedTeamDetail = null;
+    delete els.teamDetailModal.dataset.teamNumber;
     els.teamDetailModal.classList.add('hidden');
   }
 
@@ -4727,13 +4744,16 @@
     ];
 
     els.teamDetailTitle.textContent = team.name;
+    const teamNumber = getTeamNumber(team);
+    if (teamNumber) els.teamDetailModal.dataset.teamNumber = String(teamNumber);
+    else delete els.teamDetailModal.dataset.teamNumber;
     const playersHTML = team.jogadores.map((playerId) => {
       const player = getBabaPlayer(baba, playerId);
       const dayGoals = dailyRanking[playerId]?.totalGols || 0;
       const generalGoals = generalById.get(playerId)?.totalGols || 0;
       const rank = position.get(playerId) || '-';
       return `
-        <button class="baba-team-player-card" type="button" data-player-detail-id="${playerId}" data-player-detail-team-id="${team.id}" data-player-detail-baba-id="${baba.id}">
+        <button class="baba-team-player-card" type="button" data-player-detail-id="${playerId}" data-player-detail-team-id="${team.id}" data-player-detail-baba-id="${baba.id}"${teamNumberDataAttribute(team)}>
           <span class="baba-team-player-card__identity">
             <strong>${escapeHTML(player?.nome || playerName(playerId, baba))}</strong>
             <small>${player?.tipo === 'goleiro' ? 'Goleiro' : (player?.visitante ? 'Visitante' : 'Jogador')}</small>
@@ -4791,6 +4811,7 @@
 
   function closePlayerDetail() {
     selectedPlayerDetail = null;
+    delete els.playerDetailModal.dataset.teamNumber;
     els.playerDetailModal.classList.add('hidden');
   }
 
@@ -4809,6 +4830,9 @@
     const typeLabel = player.tipo === 'goleiro' ? 'Goleiro' : (player.visitante ? 'Visitante' : 'Jogador');
 
     els.playerDetailTitle.textContent = player.nome;
+    const teamNumber = getTeamNumber(team);
+    if (teamNumber) els.playerDetailModal.dataset.teamNumber = String(teamNumber);
+    else delete els.playerDetailModal.dataset.teamNumber;
     setHTML(els.playerDetailContent, `
       <div class="baba-player-profile">
         <span class="baba-player-profile__avatar">${escapeHTML(playerInitials(player.nome))}</span>
@@ -4903,7 +4927,7 @@
               <span>Sai para a fila</span>
               <b>${teamDetailButton(baba, out, '-')}</b>
             </div>
-            <button class="baba-tiebreak-confirm" type="button" data-action="choose-three-team-keep" data-team-id="${team.id}">
+            <button class="baba-tiebreak-confirm" type="button" data-action="choose-three-team-keep" data-team-id="${team.id}"${teamNumberDataAttribute(team)}>
               Confirmar ${escapeHTML(team.name)}
             </button>
           </article>
@@ -4967,8 +4991,8 @@
         ` : `
           <div class="baba-live-actions">
             <div class="baba-live-goal-actions">
-              <button class="baba-goal-btn baba-goal-btn--team-a" type="button" data-action="open-goal-picker" data-team-id="${teamA.id}">Gol ${escapeHTML(teamA.name)}</button>
-              <button class="baba-goal-btn baba-goal-btn--team-b" type="button" data-action="open-goal-picker" data-team-id="${teamB.id}">Gol ${escapeHTML(teamB.name)}</button>
+              <button class="baba-goal-btn baba-goal-btn--team-a" type="button" data-action="open-goal-picker" data-team-id="${teamA.id}"${teamNumberDataAttribute(teamA)}>Gol ${escapeHTML(teamA.name)}</button>
+              <button class="baba-goal-btn baba-goal-btn--team-b" type="button" data-action="open-goal-picker" data-team-id="${teamB.id}"${teamNumberDataAttribute(teamB)}>Gol ${escapeHTML(teamB.name)}</button>
             </div>
             <div class="baba-live-secondary-actions">
               <button class="baba-live-control-btn baba-pause-toggle ${match.timerRunning ? 'is-running' : 'is-paused'}" type="button" data-action="pause-time" aria-pressed="${match.timerRunning ? 'false' : 'true'}">
@@ -4989,13 +5013,13 @@
             <span class="baba-timer__text">${timerLabel}</span>
           </div>
           <div class="baba-live-scoreboard">
-            <strong class="baba-live-team baba-live-team--home">${teamDetailButton(baba, teamA)}</strong>
+            <strong class="baba-live-team baba-live-team--home"${teamNumberDataAttribute(teamA)}>${teamDetailButton(baba, teamA)}</strong>
             <div class="baba-live-score" aria-label="Placar ${scoreA} a ${scoreB}">
               <span>${scoreA}</span>
               <small>x</small>
               <span>${scoreB}</span>
             </div>
-            <strong class="baba-live-team baba-live-team--away">${teamDetailButton(baba, teamB)}</strong>
+            <strong class="baba-live-team baba-live-team--away"${teamNumberDataAttribute(teamB)}>${teamDetailButton(baba, teamB)}</strong>
           </div>
           ${organizerControls}
           <div class="baba-match-live__meta">
@@ -5012,7 +5036,7 @@
       setHTML(els.queueList, baba.filaTimes.map((teamId, index) => {
         const team = getTeam(baba, teamId);
         return `
-          <div class="baba-row">
+          <div class="baba-row"${teamNumberDataAttribute(team)}>
             <div>
               <strong>${teamDetailButton(baba, team)}</strong>
               <small>${index === 0 ? 'Proximo a entrar' : 'Aguardando'}</small>

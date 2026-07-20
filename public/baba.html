@@ -4158,10 +4158,10 @@
     (() => {
       const STORAGE_KEY = 'psyzon_baba_state_v1';
       const TEAM_ASSETS = [
-        { name: 'Time 1', logo: 'img/baba-time-1.png', legacy: 'Barcelona' },
-        { name: 'Time 2', logo: 'img/baba-time-2.png', legacy: 'Arsenal' },
-        { name: 'Time 3', logo: 'img/baba-time-3.png', legacy: 'Real Madrid' },
-        { name: 'Time 4', logo: 'img/baba-time-4.png', legacy: 'PSG' },
+        { name: 'Time 1', club: 'Flamengo', logo: 'img/baba-team-1-flamengo.png', legacy: 'Barcelona' },
+        { name: 'Time 2', club: 'Palmeiras', logo: 'img/baba-team-2-palmeiras.png', legacy: 'Arsenal' },
+        { name: 'Time 3', club: 'Vasco', logo: 'img/baba-team-3-vasco.png', legacy: 'Real Madrid' },
+        { name: 'Time 4', club: 'Corinthians', logo: 'img/baba-team-4-corinthians.png', legacy: 'PSG' },
         { name: 'Time 5', logo: 'img/baba-time-5.png', legacy: 'Chelsea' },
       ];
       const VISITOR_TEAM_ID = 'team_visitante';
@@ -4501,11 +4501,12 @@
         const match = String(button.dataset.teamDetailId || '').match(/team_(\d+)/i);
         const number = match ? Number(match[1]) : 1;
         const asset = assetForTeamNumber(number);
+        button.dataset.teamNumber = String(number);
         button.innerHTML = `
-          <span class="baba-team-link-logo"><img src="${asset.logo}" alt="" loading="lazy"></span>
+          <span class="baba-team-link-logo"><img src="${asset.logo}" alt="Escudo do ${asset.club || asset.name}" loading="lazy"></span>
           <span class="baba-team-link-text">Time ${number}</span>
         `;
-        button.title = `Ver jogadores do Time ${number}`;
+        button.title = `Ver jogadores do Time ${number}${asset.club ? ` · ${asset.club}` : ''}`;
         button.closest('.baba-team')?.setAttribute('data-team-number', String(number));
       }
 
