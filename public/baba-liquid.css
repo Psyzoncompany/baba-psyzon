@@ -2643,3 +2643,43 @@ html body.baba-page #goal-modal[data-team-number] .baba-goal-player[data-team-nu
 html body.baba-page #goal-modal[data-team-number="3"] .baba-goal-player[data-team-number="3"] {
   box-shadow: inset 4px 0 0 #fff, inset 5px 0 0 #111827 !important;
 }
+
+/* Mantem o resumo Hoje / Geral / Posicao no visual neutro original. */
+html body.baba-page [data-team-number] .baba-player-mini-stats span {
+  border: 1px solid var(--liquid-line) !important;
+  color: var(--liquid-navy-soft) !important;
+  background: #e8eef4 !important;
+  font-weight: 850 !important;
+}
+
+html body.baba-page [data-team-number] .baba-player-mini-stats span:first-child {
+  border-color: rgba(8, 127, 108, .18) !important;
+  color: #076d5e !important;
+  background: var(--liquid-teal-soft) !important;
+}
+
+html body.baba-page [data-team-number] .baba-player-mini-stats span:last-child {
+  border-color: rgba(214, 162, 29, .24) !important;
+  color: #6d4d00 !important;
+  background: #fff8df !important;
+}
+
+/* Os selos de pagamento mantem contraste proprio sobre qualquer time. */
+html body.baba-page .baba-player-payment .baba-player-payment__status {
+  border: 1px solid rgba(255, 255, 255, .72) !important;
+  padding: .2rem .46rem !important;
+  color: #fff !important;
+  font-size: .64rem !important;
+  font-weight: 1000 !important;
+  box-shadow: 0 3px 9px rgba(15, 23, 42, .2) !important;
+}
+
+html body.baba-page .baba-player-payment.is-paid .baba-player-payment__status {
+  color: #fff !important;
+  background: #047857 !important;
+}
+
+html body.baba-page .baba-player-payment.is-unpaid .baba-player-payment__status {
+  color: #fff !important;
+  background: #be123c !important;
+}
