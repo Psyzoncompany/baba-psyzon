@@ -1024,6 +1024,26 @@
     };
   }
 
+  function getUnassignedPresentPlayers(baba) {
+    if (!baba) return [];
+    const assignedIds = new Set((baba.teams || []).flatMap((team) => team.jogadores || []));
+    return (baba.jogadoresPresentes || [])
+      .map(getPlayer)
+      .filter((player) => player?.ativo && !assignedIds.has(player.id));
+  }
+
+  function getNextTeamIdentity(baba) {
+    const highestTeamNumber = Math.max(0, ...(baba?.teams || []).map((team) => {
+      const match = String(team.id || '').match(/^team_(\d+)$/);
+      return match ? Number(match[1]) : 0;
+    }));
+    const number = highestTeamNumber + 1;
+    return {
+      id: `team_${number}`,
+      name: TEAM_NAMES[number - 1] || `Time ${number}`,
+    };
+  }
+
   function ensureVisitorTeam(baba) {
     if (!baba) return null;
     baba.visitantes = Array.isArray(baba.visitantes) ? baba.visitantes : [];
@@ -2940,9 +2960,7 @@
     if (!baba) return showToast('Crie um baba primeiro.');
     if (baba.status === 'finalizado') return showToast('Este baba ja foi finalizado.');
     if (baba.teams?.length) {
-      setActiveTab('teams');
-      showToast('Times ja sorteados. Os jogadores novos nao alteram os times prontos.');
-      return;
+      return createLateArrivalTeam(baba);
     }
 
     baba.visitantes = Array.isArray(baba.visitantes) ? baba.visitantes : [];
@@ -2998,6 +3016,32 @@
     baba.status = 'times';
     baba.undoStack = [];
     saveState('Times sorteados: Time 1 e Time 2 com 4 jogadores de linha.');
+    setActiveTab('teams');
+  }
+
+  function createLateArrivalTeam(baba = getActiveBaba()) {
+    if (!requireOrganizer()) return;
+    if (!baba || baba.status === 'finalizado') return showToast('Este baba nao pode mais ser alterado.');
+    if (!(baba.teams || []).length) return drawTeams();
+
+    const availablePlayers = getUnassignedPresentPlayers(baba);
+    if (!availablePlayers.length) {
+      showToast('Marque como presentes os jogadores que chegaram depois e ainda estao sem time.');
+      return;
+    }
+
+    const identity = getNextTeamIdentity(baba);
+    const team = makeEmptyTeam(identity.id, identity.name, {
+      jogadores: availablePlayers.map((player) => player.id),
+    });
+    baba.teams.push(team);
+    baba.filaTimes = Array.from(new Set([...(baba.filaTimes || []), team.id]));
+    if (baba.pendingTieBreak) {
+      baba.pendingTieBreak.queue = Array.from(new Set([...(baba.pendingTieBreak.queue || baba.filaTimes || []), team.id]));
+    }
+    baba.teamRevealIndex = baba.teams.length - 1;
+    baba.rankingDoBaba = calculateDailyRanking(baba);
+    saveState(`${team.name} criado com ${availablePlayers.length} jogador${availablePlayers.length === 1 ? '' : 'es'} que ${availablePlayers.length === 1 ? 'chegou' : 'chegaram'} depois. O time entrou no fim da fila.`);
     setActiveTab('teams');
   }
 
@@ -3259,9 +3303,13 @@
     const teamTone = teamId === match.timeA ? 'a' : 'b';
     els.goalModal.dataset.teamTone = teamTone;
     els.goalModalTitle.textContent = `Gol do ${team.name}`;
-    const playersHTML = team.jogadores.map((playerId) => {
-      const player = getBabaPlayer(baba, playerId);
-      const isGoalkeeper = player?.tipo === 'goleiro';
+    const goalPlayers = team.jogadores
+      .map((playerId, originalIndex) => {
+        const player = getBabaPlayer(baba, playerId);
+        return { playerId, player, originalIndex, isGoalkeeper: player?.tipo === 'goleiro' };
+      })
+      .sort((a, b) => Number(b.isGoalkeeper) - Number(a.isGoalkeeper) || a.originalIndex - b.originalIndex);
+    const playersHTML = goalPlayers.map(({ playerId, player, isGoalkeeper }) => {
       const displayName = `${isGoalkeeper ? '(G) ' : ''}${player?.nome || playerName(playerId, baba)}`;
       return `
         <button class="baba-goal-player ${isGoalkeeper ? 'baba-goal-player--goalkeeper' : ''}" type="button" data-goal-player-id="${playerId}" aria-label="Marcar gol de ${escapeHTML(displayName)}">
@@ -3977,8 +4025,8 @@
       id: activeBase.id,
       dataISO: activeBase.dataISO,
       status: activeBase.status,
-      presentes: activeBase.jogadoresPresentes?.length,
-      times: activeBase.teams?.length,
+      presentes: activeBase.jogadoresPresentes,
+      times: activeBase.teams,
       jogos: activeBase.jogos?.length,
       jogoAtual: activeBase.jogoAtual,
       pendingTieBreak: activeBase.pendingTieBreak,
@@ -3998,7 +4046,12 @@
       month: currentPaymentMonthKey(),
       activeBabaId: state.activeBabaId,
     }, renderPlayersAdmin);
-    renderComponent('present-list', { players: state.players, presentes: baba?.jogadoresPresentes, status: baba?.status }, () => renderPresentList(baba));
+    renderComponent('present-list', {
+      players: state.players,
+      presentes: baba?.jogadoresPresentes,
+      teams: baba?.teams,
+      status: baba?.status,
+    }, () => renderPresentList(baba));
     renderComponent('goals-payments', {
       goals: state.purchaseGoals,
       monthlyPayments: state.monthlyPayments,
@@ -4063,7 +4116,9 @@
     const hasPresentPlayers = Boolean((baba?.jogadoresPresentes || []).length);
     const hasDrawnTeams = Boolean((baba?.teams || []).length);
     const hasFinishedGame = Boolean((baba?.jogos || []).length);
+    const unassignedPresentCount = hasDrawnTeams ? getUnassignedPresentPlayers(baba).length : 0;
     const canDrawTeams = hasOpenBaba && hasPresentPlayers;
+    const canCreateLateTeam = hasOpenBaba && hasDrawnTeams && unassignedPresentCount > 0;
     const canOpenTeams = hasOpenBaba && hasDrawnTeams;
     const canStartGame = canOpenTeams && !baba?.jogoAtual && !baba?.pendingTieBreak;
     const startGameLabel = hasFinishedGame ? 'Iniciar partida' : 'Iniciar primeiro jogo';
@@ -4075,9 +4130,19 @@
       disabled: !hasOpenBaba,
     });
     setFlowButton(els.drawTeams, {
-      variant: !canDrawTeams ? 'disabled' : (hasDrawnTeams ? 'complete' : 'next'),
-      disabled: !canDrawTeams,
+      variant: hasDrawnTeams
+        ? (canCreateLateTeam ? 'next' : 'disabled')
+        : (!canDrawTeams ? 'disabled' : 'next'),
+      disabled: hasDrawnTeams ? !canCreateLateTeam : !canDrawTeams,
+      label: hasDrawnTeams
+        ? `Criar novo time${unassignedPresentCount ? ` (${unassignedPresentCount})` : ''}`
+        : 'Sortear Times',
     });
+    els.drawTeams.title = hasDrawnTeams
+      ? (canCreateLateTeam
+        ? `${unassignedPresentCount} jogador${unassignedPresentCount === 1 ? '' : 'es'} presente${unassignedPresentCount === 1 ? '' : 's'} e sem time`
+        : 'Marque os jogadores que chegaram depois para criar outro time')
+      : 'Sortear os times iniciais';
     setFlowButton(els.startFirstGame, {
       variant: !canStartGame ? 'disabled' : 'next',
       disabled: !canStartGame,
@@ -4191,12 +4256,17 @@
 
     setHTML(els.presentList, activePlayers.map((player) => {
       const checked = present.has(player.id);
+      const team = getPlayerTeam(baba, player.id);
+      const arrivalStatus = checked && baba?.teams?.length
+        ? (team ? team.name : 'Sem time - pronto para o novo time')
+        : '';
       return `
         <label class="baba-present-item ${checked ? 'is-checked' : ''}">
           <input type="checkbox" data-present-id="${player.id}" ${checked ? 'checked' : ''} ${!isOrganizer() ? 'disabled' : ''}>
           <span>
             <strong>${playerPaymentNameHTML(player.id, baba, { name: player.nome, force: Boolean(baba) })}</strong>
             ${player.tipo === 'goleiro' ? '<small>Goleiro</small>' : ''}
+            ${arrivalStatus ? `<small>${escapeHTML(arrivalStatus)}</small>` : ''}
           </span>
         </label>
       `;
