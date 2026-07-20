@@ -1,6 +1,6 @@
 {
-  "name": "Baba Amigos do Henrique",
-  "short_name": "Baba Amigos",
+  "name": "Baba Psyzon",
+  "short_name": "Baba Psyzon",
   "start_url": "./baba.html",
   "display": "standalone",
   "background_color": "#f4f8fc",

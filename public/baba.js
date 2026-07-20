@@ -1953,7 +1953,7 @@
     const report = {
       type,
       generatedAt: now,
-      eyebrow: 'Baba Amigos do Henrique',
+      eyebrow: 'Baba Psyzon',
       title: '',
       subtitle: reportContextLabel(baba),
       fileName: `baba-${type}.pdf`,
@@ -2877,7 +2877,7 @@
     <section class="pdf-summary pdf-summary--count-${Math.min(report.summary.length, 5)}">${summary}</section>
     <section class="pdf-sections ${sectionLayout}">${sections}</section>
     <footer class="pdf-footer">
-      <span>Baba Amigos do Henrique</span>
+      <span>Baba Psyzon</span>
       <span>Exportacao em PDF</span>
     </footer>
   </main>
@@ -4050,6 +4050,9 @@
       players: state.players,
       presentes: baba?.jogadoresPresentes,
       teams: baba?.teams,
+      payments: baba?.pagamentos,
+      monthlyPayments: state.monthlyPayments,
+      paymentMonth: currentPaymentMonthKey(),
       status: baba?.status,
     }, () => renderPresentList(baba));
     renderComponent('goals-payments', {
@@ -4245,7 +4248,12 @@
   }
 
   function renderPresentList(baba) {
-    const activePlayers = state.players.filter((player) => player.ativo);
+    const activePlayers = state.players
+      .filter((player) => player.ativo)
+      .sort((a, b) => (
+        Number(isPlayerPaidThisMonth(b.id, baba)) - Number(isPlayerPaidThisMonth(a.id, baba))
+        || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR', { sensitivity: 'base' })
+      ));
     const present = new Set(baba?.jogadoresPresentes || []);
     els.presentCountLabel.textContent = `${present.size} marcados`;
 
@@ -4414,6 +4422,12 @@
 
     const index = Math.min(Math.max(Number(baba.teamRevealIndex || 0), 0), baba.teams.length - 1);
     const fullyRevealed = index >= baba.teams.length - 1;
+    const lateArrivalCount = getUnassignedPresentPlayers(baba).length;
+    const createLateTeamHTML = isOrganizer() ? `
+      <button class="baba-secondary" type="button" data-action="create-late-team" ${lateArrivalCount ? '' : 'disabled'} title="${lateArrivalCount ? `${lateArrivalCount} jogador${lateArrivalCount === 1 ? '' : 'es'} presente${lateArrivalCount === 1 ? '' : 's'} e sem time` : 'Marque os jogadores que chegaram depois como presentes'}">
+        Adicionar novo time${lateArrivalCount ? ` (${lateArrivalCount})` : ''}
+      </button>
+    ` : '';
 
     const assignedIds = new Set((baba.teams || []).flatMap((team) => team.jogadores || []));
     const availablePlayers = [
@@ -4475,9 +4489,10 @@
       }));
       items.push({
         key: 'team-actions:all',
-        signature: `${Boolean(startHTML)}:${baba.status}`,
+        signature: `${Boolean(startHTML)}:${baba.status}:${lateArrivalCount}:${isOrganizer()}`,
         html: `<div class="baba-team-reveal-actions baba-team-reveal-actions--all">
           ${startHTML}
+          ${createLateTeamHTML}
           <button class="baba-secondary" type="button" data-action="restart-team-reveal">Rever sorteio</button>
           <span>Todos os times foram revelados. Clique no nome de qualquer time para ver os jogadores.</span>
         </div>`,
@@ -4495,9 +4510,10 @@
       },
       {
         key: 'team-actions:single',
-        signature: `${index}:${baba.teams.length}`,
+        signature: `${index}:${baba.teams.length}:${lateArrivalCount}:${isOrganizer()}`,
         html: `<div class="baba-team-reveal-actions baba-team-reveal-actions--single">
         <button class="baba-primary" type="button" data-action="advance-team-reveal">Ver proximo time</button>
+        ${createLateTeamHTML}
         <span>Avance para revelar o proximo time sorteado.</span>
         </div>`,
       },
@@ -5390,8 +5406,8 @@
     shareUrl.searchParams.set('view', 'player');
     const url = shareUrl.href;
     const shareData = {
-      title: 'Baba Amigos de Henrique',
-      text: 'Acompanhe o Baba Amigos de Henrique ao vivo: times, placar, ranking e historico.',
+      title: 'Baba Psyzon',
+      text: 'Acompanhe o Baba Psyzon ao vivo: times, placar, ranking e historico.',
       url,
     };
 
@@ -6137,6 +6153,7 @@
       if (actionButton?.dataset.action === 'toggle-player') return togglePlayerActive(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-player') return deletePlayer(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-visitor') return deleteVisitor(actionButton.dataset.id);
+      if (actionButton?.dataset.action === 'create-late-team') return createLateArrivalTeam();
       if (actionButton?.dataset.action === 'add-player-to-team') {
         const select = actionButton.closest('.baba-roster-add')?.querySelector(`[data-team-add-select="${CSS.escape(actionButton.dataset.teamId)}"]`);
         if (!select?.value) return showToast('Selecione um jogador para adicionar.');

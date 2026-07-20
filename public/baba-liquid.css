@@ -81,6 +81,8 @@ html body.baba-page::before {
   height: 58px !important;
   flex: 0 0 58px;
   object-fit: contain;
+  border-radius: .8rem !important;
+  background: #000;
 }
 
 .baba-unified-header .baba-brand__copy {
@@ -420,7 +422,11 @@ body:not(.baba-app-mode) #mode-reset-btn {
   width: min(68%, 300px) !important;
   max-height: 300px !important;
   object-fit: contain;
+  border-radius: clamp(1rem, 3vw, 2rem);
+  mix-blend-mode: normal !important;
+  background: #000;
   filter: none !important;
+  box-shadow: 0 20px 44px rgba(7, 23, 53, .2);
 }
 
 .baba-gateway__panel {
