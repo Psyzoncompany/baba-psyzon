@@ -6201,6 +6201,7 @@
     els.moreToggle?.classList.toggle('active', isMoreTab);
     closeMoreMenu();
     $$('.baba-view').forEach((view) => view.classList.toggle('active', view.dataset.view === safeTab));
+    window.BabaRepository?.activateView?.(safeTab);
     if (safeTab === 'teams') renderDrawTeams(getActiveBaba());
   }
 
@@ -7151,6 +7152,8 @@
       if (monthButton) {
         selectedMonthlyKey = monthButton.dataset.monthKey;
         renderMonthlyHistory();
+        window.BabaRepository?.loadMonthStats?.(selectedMonthlyKey)
+          .catch((error) => showToast(error.message || 'Nao foi possivel carregar o ranking deste mes.'));
       }
     });
 
@@ -7166,6 +7169,7 @@
     if (hasBooted) return;
     hasBooted = true;
     document.body.dataset.babaView = document.querySelector('.baba-view.active')?.dataset.view || 'dashboard';
+    window.BabaRepository?.activateView?.(document.body.dataset.babaView);
     wireEvents();
     if (!timerTick) timerTick = setInterval(renderTimerOnly, 1000);
     const sessionMode = sessionStorage.getItem(MODE_KEY);

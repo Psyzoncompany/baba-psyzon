@@ -1310,6 +1310,27 @@ const applyCloudState = (uid, data, { source = 'cloud' } = {}) => {
     }
 
     memoryStore = nextStore;
+    if (isBabaPage() && nextStore.psyzon_baba_state_v1 != null) {
+        try {
+            const nativeBabaRaw = nativeLocalStorage.getItem('psyzon_baba_state_v1');
+            const nativeBabaState = nativeBabaRaw ? JSON.parse(nativeBabaRaw) : null;
+            const nativeHasUsefulState = Boolean(
+                nativeBabaState?.players?.length
+                || nativeBabaState?.babas?.length
+                || nativeBabaState?.purchaseGoals?.length
+                || Object.keys(nativeBabaState?.monthlyPayments || {}).length
+            );
+            if (!nativeHasUsefulState) {
+                const legacyValue = nextStore.psyzon_baba_state_v1;
+                nativeLocalStorage.setItem(
+                    'psyzon_baba_state_v1',
+                    typeof legacyValue === 'string' ? legacyValue : JSON.stringify(legacyValue)
+                );
+            }
+        } catch (error) {
+            console.warn('Nao foi possivel migrar a copia local do Baba:', error);
+        }
+    }
     saveUserCache(uid, memoryStore, { dirty: false });
     initialSnapshot = nextSnapshot;
     hasUnsavedChanges = false;
@@ -1400,7 +1421,9 @@ const isFirebaseStorageKey = (key) => typeof key === 'string' && (
     key.startsWith('firebaseLocalStorageDb') ||
     key.includes('firebase')
 );
-const isGuestNativeStorageKey = (key) => isBabaPage() && !auth.currentUser && key === 'psyzon_baba_state_v1';
+// O Baba possui persistencia propria em colecoes pequenas. Manter esta chave no
+// storage nativo evita duplicar cada alteracao dentro de users/{uid}.
+const isBabaNativeStorageKey = (key) => isBabaPage() && key === 'psyzon_baba_state_v1';
 
 window.isLocalMode = nativeLocalStorage.getItem('forceLocalMode') === 'true';
 window.__nativeLS = nativeLocalStorage;
@@ -1410,7 +1433,7 @@ if (!window.isLocalMode) {
         value: {
             getItem: (key) => {
                 if (isFirebaseStorageKey(key)) return nativeLocalStorage.getItem(key);
-                if (isGuestNativeStorageKey(key)) return nativeLocalStorage.getItem(key);
+                if (isBabaNativeStorageKey(key)) return nativeLocalStorage.getItem(key);
                 const val = memoryStore[key];
                 if (val === undefined) return null;
                 // Se for objeto, retorna string JSON (comportamento padrão do localStorage)
@@ -1421,7 +1444,7 @@ if (!window.isLocalMode) {
                     nativeLocalStorage.setItem(key, value);
                     return;
                 }
-                if (isGuestNativeStorageKey(key)) {
+                if (isBabaNativeStorageKey(key)) {
                     nativeLocalStorage.setItem(key, value);
                     return;
                 }
@@ -1449,7 +1472,7 @@ if (!window.isLocalMode) {
                     nativeLocalStorage.removeItem(key);
                     return;
                 }
-                if (isGuestNativeStorageKey(key)) {
+                if (isBabaNativeStorageKey(key)) {
                     nativeLocalStorage.removeItem(key);
                     return;
                 }

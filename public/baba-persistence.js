@@ -22,30 +22,56 @@ const POINTER_PATH = ['orders_public', 'baba_live_state'];
 const RECENT_BABA_LIMIT = 24;
 const BACKUP_CHUNK_SIZE = 160_000;
 const BATCH_LIMIT = 400;
+const QUERY_LIMITS = Object.freeze({
+  participants: 200,
+  teams: 32,
+  games: 500,
+  goals: 1_000,
+  payments: 250,
+  stats: 250,
+  players: 250,
+  purchaseGoals: 100,
+  months: 60,
+});
+const SAVE_DEBOUNCE_MS = 1_500;
+const SAVE_BACKOFF_DELAYS_MS = [2_000, 4_000, 8_000, 16_000];
+const MAX_SAVE_ATTEMPTS = 4;
+const PENDING_SYNC_KEY = 'psyzon_baba_pending_sync_v2';
 const USE_BABA_SCHEMA_V2 = window.BABA_USE_SCHEMA_V2 !== false;
 const OFFLINE_TEST_MODE = new URLSearchParams(window.location.search).has('babaOffline');
 
 const tools = window.BabaHtmlTools;
 const pointerRef = doc(db, ...POINTER_PATH);
 const unsubscribers = new Set();
+const subscriptionsByKey = new Map();
 const activeSubscriptions = new Map();
-const activeRefreshTimers = new Map();
+const activeSnapshotParts = new Map();
 const loadedBabas = new Map();
 const monthStatsCache = new Map();
+const monthPaymentsCache = new Map();
 const finishedBabaStatsCache = new Map();
-const loadingFinishedBabaStats = new Map();
 let saveTimer = null;
+let backoffTimer = null;
 let flushTimer = null;
 let lastLocalState = null;
+let lastPersistedSignature = '';
 let activeBabaId = null;
 let applyingRemote = false;
 let migrationRunning = false;
 let repositoryStarted = false;
+let v2SubscriptionsStarted = false;
+let pointerListenerStarted = false;
 let historyCursor = null;
 let hasMoreHistory = true;
 let lastRemoteViewSignature = '';
+let remoteFlushDeferred = false;
 let localWritePending = false;
 let saveGeneration = 0;
+let queuedSave = null;
+let saveInFlight = false;
+let backoffUntil = 0;
+let latestPointerData = null;
+let lastPointerSignature = '';
 
 function now() {
   return Date.now();
@@ -74,6 +100,45 @@ function safeId(value, fallback = 'item') {
 
 function clone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+
+function stableValue(value) {
+  if (Array.isArray(value)) return value.map(stableValue);
+  if (!value || typeof value !== 'object') return value;
+  return Object.keys(value).sort().reduce((result, key) => {
+    result[key] = stableValue(value[key]);
+    return result;
+  }, {});
+}
+
+function stableSignature(value) {
+  return JSON.stringify(stableValue(value));
+}
+
+function persistenceSignature(state) {
+  const copy = clone(state) || {};
+  delete copy.updatedAt;
+  (copy.babas || []).forEach((baba) => {
+    delete baba.undoStack;
+    delete baba.rankingDoBaba;
+    delete baba.__detailLoaded;
+  });
+  return stableSignature(copy);
+}
+
+function documentSignature(value) {
+  const copy = clone(value) || {};
+  delete copy.updatedAtMs;
+  return stableSignature(copy);
+}
+
+function isQuotaError(error) {
+  const text = `${error?.code || ''} ${error?.message || ''}`.toLowerCase();
+  return text.includes('resource-exhausted') || text.includes('quota exceeded') || text.includes('429');
+}
+
+function getNativeStore() {
+  return window.__nativeLS || window.localStorage;
 }
 
 function compact(value) {
@@ -194,7 +259,7 @@ function gameIdFor(game) {
   return `game_${String(sequence).padStart(4, '0')}`;
 }
 
-function allGoalEvents(game, gameId) {
+function allGoalEvents(game, gameId, timestamp = now()) {
   if (Array.isArray(game?.goalEvents) && game.goalEvents.length) {
     return game.goalEvents.map((goal, index) => ({
       ...goal,
@@ -214,7 +279,7 @@ function allGoalEvents(game, gameId) {
         time: goal.time || null,
         timeNome: goal.timeNome || '',
         minuto: null,
-        registradoEm: Number(game.finalizadoEm || game.dataHora || now()),
+        registradoEm: Number(game.finalizadoEm || game.dataHora || timestamp),
       });
     }
   });
@@ -372,7 +437,7 @@ function computeAggregateStats(state) {
   return { general, monthly };
 }
 
-function babaMetadata(baba, currentGameId = null) {
+function babaMetadata(baba, currentGameId = null, timestamp = now()) {
   return compact({
     id: baba.id,
     dateKey: baba.dataISO,
@@ -389,15 +454,15 @@ function babaMetadata(baba, currentGameId = null) {
     lastResult: baba.lastResult || null,
     pendingTieBreak: baba.pendingTieBreak || null,
     teamRevealIndex: Number(baba.teamRevealIndex || 0),
-    criadoEm: Number(baba.criadoEm || now()),
+    criadoEm: Number(baba.criadoEm || timestamp),
     finalizadoEm: baba.finalizadoEm || null,
     schemaVersion: SCHEMA_VERSION,
     deleted: false,
-    updatedAtMs: now(),
+    updatedAtMs: timestamp,
   });
 }
 
-function participantDocuments(state, baba) {
+function participantDocuments(state, baba, timestamp = now()) {
   const fixed = new Map((state.players || []).map((player) => [player.id, player]));
   const visitors = new Map((baba.visitantes || []).map((player) => [player.id, player]));
   const teamByPlayer = new Map();
@@ -419,15 +484,15 @@ function participantDocuments(state, baba) {
       visitor: visitors.has(playerId),
       active: player.ativo !== false,
       teamId: teamByPlayer.get(playerId) || null,
-      joinedAt: Number(player.criadoEm || baba.criadoEm || now()),
+      joinedAt: Number(player.criadoEm || baba.criadoEm || timestamp),
       schemaVersion: SCHEMA_VERSION,
       deleted: false,
-      updatedAtMs: now(),
+      updatedAtMs: timestamp,
     });
   });
 }
 
-function teamDocument(team, index) {
+function teamDocument(team, index, timestamp = now()) {
   const { jogadores, ...rest } = team;
   return compact({
     ...rest,
@@ -436,11 +501,11 @@ function teamDocument(team, index) {
     order: index + 1,
     schemaVersion: SCHEMA_VERSION,
     deleted: false,
-    updatedAtMs: now(),
+    updatedAtMs: timestamp,
   });
 }
 
-function gameDocument(game, status) {
+function gameDocument(game, status, timestamp = now()) {
   const { gols, goalEvents, ...rest } = game;
   return compact({
     ...rest,
@@ -456,11 +521,11 @@ function gameDocument(game, status) {
     draw: Boolean(game.empate),
     schemaVersion: SCHEMA_VERSION,
     deleted: false,
-    updatedAtMs: now(),
+    updatedAtMs: timestamp,
   });
 }
 
-function goalDocument(goal, babaId) {
+function goalDocument(goal, babaId, timestamp = now()) {
   return compact({
     id: goal.id,
     gameId: goal.gameId,
@@ -470,7 +535,7 @@ function goalDocument(goal, babaId) {
     teamId: goal.time || null,
     teamNameSnapshot: goal.timeNome || '',
     minute: goal.minuto ?? null,
-    createdAtMs: Number(goal.registradoEm || now()),
+    createdAtMs: Number(goal.registradoEm || timestamp),
     babaId,
     schemaVersion: SCHEMA_VERSION,
     deleted: false,
@@ -492,48 +557,119 @@ function setOperation(refValue, data, options = { merge: true }) {
   return { type: 'set', ref: refValue, data, options };
 }
 
-async function persistBaba(state, baba, previousBaba = null) {
+function pushChangedOperation(operations, refValue, nextData, previousData = null) {
+  if (previousData && documentSignature(previousData) === documentSignature(nextData)) return false;
+  operations.push(setOperation(refValue, nextData));
+  return true;
+}
+
+function paymentDocument(state, baba, playerId, paid, timestamp) {
+  const player = (state.players || []).find((item) => item.id === playerId)
+    || (baba.visitantes || []).find((item) => item.id === playerId);
+  return compact({
+    playerId,
+    paid: Boolean(paid),
+    amount: player?.tipo === 'goleiro' ? 7 : 15,
+    method: null,
+    paidAt: paid ? timestamp : null,
+    updatedAtMs: timestamp,
+    schemaVersion: SCHEMA_VERSION,
+    deleted: false,
+  });
+}
+
+async function persistBaba(state, baba, previousBaba = null, previousState = null) {
   const babaId = safeId(baba.id);
+  const timestamp = now();
   const currentGameId = baba.jogoAtual ? gameIdFor(baba.jogoAtual) : null;
-  const operations = [setOperation(doc(db, 'babas', babaId), babaMetadata(baba, currentGameId))];
-  const participants = participantDocuments(state, baba);
+  const previousGameId = previousBaba?.jogoAtual ? gameIdFor(previousBaba.jogoAtual) : null;
+  const operations = [];
+  pushChangedOperation(
+    operations,
+    doc(db, 'babas', babaId),
+    babaMetadata(baba, currentGameId, timestamp),
+    previousBaba ? babaMetadata(previousBaba, previousGameId, timestamp) : null,
+  );
+
+  const participants = participantDocuments(state, baba, timestamp);
+  const previousParticipants = previousBaba
+    ? participantDocuments(previousState || state, previousBaba, timestamp)
+    : [];
+  const previousParticipantById = new Map(previousParticipants.map((item) => [item.playerId, item]));
   const nextParticipantIds = new Set(participants.map((item) => item.playerId));
-  participants.forEach((item) => operations.push(setOperation(
-    doc(db, 'babas', babaId, 'participants', safeId(item.playerId)), item,
-  )));
+  participants.forEach((item) => pushChangedOperation(
+    operations,
+    doc(db, 'babas', babaId, 'participants', safeId(item.playerId)),
+    item,
+    previousParticipantById.get(item.playerId),
+  ));
+
+  const previousTeamById = new Map((previousBaba?.teams || []).map((team, index) => [
+    team.id,
+    teamDocument(team, index, timestamp),
+  ]));
   const nextTeamIds = new Set((baba.teams || []).map((team) => team.id));
-  (baba.teams || []).forEach((team, index) => operations.push(setOperation(
-    doc(db, 'babas', babaId, 'teams', safeId(team.id)), teamDocument(team, index),
-  )));
+  (baba.teams || []).forEach((team, index) => pushChangedOperation(
+    operations,
+    doc(db, 'babas', babaId, 'teams', safeId(team.id)),
+    teamDocument(team, index, timestamp),
+    previousTeamById.get(team.id),
+  ));
 
   const games = [...(baba.jogos || []).map((game) => ({ game, status: 'finished' }))];
   if (baba.jogoAtual) games.push({ game: baba.jogoAtual, status: baba.jogoAtual.status || 'active' });
+  const previousGames = previousBaba
+    ? [...(previousBaba.jogos || []).map((game) => ({ game, status: 'finished' }))]
+    : [];
+  if (previousBaba?.jogoAtual) previousGames.push({
+    game: previousBaba.jogoAtual,
+    status: previousBaba.jogoAtual.status || 'active',
+  });
+  const previousGameById = new Map(previousGames.map(({ game, status }) => [
+    gameIdFor(game),
+    gameDocument(game, status, timestamp),
+  ]));
+  const previousGoalById = new Map();
+  previousGames.forEach(({ game }) => {
+    const gameId = gameIdFor(game);
+    allGoalEvents(game, gameId, timestamp).forEach((goal) => {
+      previousGoalById.set(goal.id, goalDocument(goal, babaId, timestamp));
+    });
+  });
   const nextGameIds = new Set();
   const nextGoalIds = new Set();
   games.forEach(({ game, status }) => {
     const gameId = gameIdFor(game);
     nextGameIds.add(gameId);
-    operations.push(setOperation(doc(db, 'babas', babaId, 'games', gameId), gameDocument(game, status)));
-    allGoalEvents(game, gameId).forEach((goal) => {
+    pushChangedOperation(
+      operations,
+      doc(db, 'babas', babaId, 'games', gameId),
+      gameDocument(game, status, timestamp),
+      previousGameById.get(gameId),
+    );
+    allGoalEvents(game, gameId, timestamp).forEach((goal) => {
       nextGoalIds.add(goal.id);
-      operations.push(setOperation(doc(db, 'babas', babaId, 'goals', goal.id), goalDocument(goal, babaId)));
+      pushChangedOperation(
+        operations,
+        doc(db, 'babas', babaId, 'goals', goal.id),
+        goalDocument(goal, babaId, timestamp),
+        previousGoalById.get(goal.id),
+      );
     });
   });
 
   const nextPaymentIds = new Set(Object.keys(baba.pagamentos || {}));
+  const previousPaymentById = new Map(Object.entries(previousBaba?.pagamentos || {}).map(([playerId, paid]) => [
+    playerId,
+    paymentDocument(previousState || state, previousBaba, playerId, paid, timestamp),
+  ]));
   Object.entries(baba.pagamentos || {}).forEach(([playerId, paid]) => {
-    const player = (state.players || []).find((item) => item.id === playerId)
-      || (baba.visitantes || []).find((item) => item.id === playerId);
-    operations.push(setOperation(doc(db, 'babas', babaId, 'payments', safeId(playerId)), compact({
-      playerId,
-      paid: Boolean(paid),
-      amount: player?.tipo === 'goleiro' ? 7 : 15,
-      method: null,
-      paidAt: paid ? now() : null,
-      updatedAtMs: now(),
-      schemaVersion: SCHEMA_VERSION,
-      deleted: false,
-    })));
+    pushChangedOperation(
+      operations,
+      doc(db, 'babas', babaId, 'payments', safeId(playerId)),
+      paymentDocument(state, baba, playerId, paid, timestamp),
+      previousPaymentById.get(playerId),
+    );
   });
 
   // Estatisticas historicas so existem depois que o baba foi finalizado.
@@ -541,47 +677,51 @@ async function persistBaba(state, baba, previousBaba = null) {
   const stats = baba.status === 'finalizado'
     ? computeBabaStats(baba, new Map((state.players || []).map((player) => [player.id, player])))
     : {};
+  const previousStats = previousBaba?.status === 'finalizado'
+    ? computeBabaStats(previousBaba, new Map(((previousState || state).players || []).map((player) => [player.id, player])))
+    : {};
   const nextStatIds = new Set(Object.keys(stats));
-  Object.entries(stats).forEach(([playerId, item]) => operations.push(setOperation(
-    doc(db, 'babas', babaId, 'stats', safeId(playerId)), compact({
-      ...item, playerId, schemaVersion: SCHEMA_VERSION, deleted: false, updatedAtMs: now(),
-    }),
-  )));
+  Object.entries(stats).forEach(([playerId, item]) => pushChangedOperation(
+    operations,
+    doc(db, 'babas', babaId, 'stats', safeId(playerId)),
+    compact({ ...item, playerId, schemaVersion: SCHEMA_VERSION, deleted: false, updatedAtMs: timestamp }),
+    previousStats[playerId]
+      ? compact({ ...previousStats[playerId], playerId, schemaVersion: SCHEMA_VERSION, deleted: false, updatedAtMs: timestamp })
+      : null,
+  ));
 
   if (previousBaba) {
-    participantDocuments(state, previousBaba).forEach((item) => {
+    previousParticipants.forEach((item) => {
       if (!nextParticipantIds.has(item.playerId)) operations.push(setOperation(
         doc(db, 'babas', babaId, 'participants', safeId(item.playerId)),
-        { playerId: item.playerId, schemaVersion: SCHEMA_VERSION, deleted: true, updatedAtMs: now() },
+        { playerId: item.playerId, schemaVersion: SCHEMA_VERSION, deleted: true, updatedAtMs: timestamp },
       ));
     });
     (previousBaba.teams || []).forEach((team) => {
       if (!nextTeamIds.has(team.id)) operations.push(setOperation(
         doc(db, 'babas', babaId, 'teams', safeId(team.id)),
-        { id: team.id, schemaVersion: SCHEMA_VERSION, deleted: true, updatedAtMs: now() },
+        { id: team.id, schemaVersion: SCHEMA_VERSION, deleted: true, updatedAtMs: timestamp },
       ));
     });
     Object.keys(previousBaba.pagamentos || {}).forEach((playerId) => {
       if (!nextPaymentIds.has(playerId)) operations.push(setOperation(
         doc(db, 'babas', babaId, 'payments', safeId(playerId)),
-        { playerId, schemaVersion: SCHEMA_VERSION, deleted: true, updatedAtMs: now() },
+        { playerId, schemaVersion: SCHEMA_VERSION, deleted: true, updatedAtMs: timestamp },
       ));
     });
-    Object.keys(previousBaba.rankingDoBaba || {}).forEach((playerId) => {
+    new Set([...Object.keys(previousStats), ...Object.keys(previousBaba.rankingDoBaba || {})]).forEach((playerId) => {
       if (!nextStatIds.has(playerId)) operations.push(setOperation(
         doc(db, 'babas', babaId, 'stats', safeId(playerId)),
-        { playerId, schemaVersion: SCHEMA_VERSION, deleted: true, updatedAtMs: now() },
+        { playerId, schemaVersion: SCHEMA_VERSION, deleted: true, updatedAtMs: timestamp },
       ));
     });
-    const previousGames = [...(previousBaba.jogos || [])];
-    if (previousBaba.jogoAtual) previousGames.push(previousBaba.jogoAtual);
-    previousGames.forEach((game) => {
+    previousGames.forEach(({ game }) => {
       const gameId = gameIdFor(game);
       if (!nextGameIds.has(gameId)) operations.push(setOperation(
         doc(db, 'babas', babaId, 'games', gameId),
-        { id: gameId, schemaVersion: SCHEMA_VERSION, deleted: true, updatedAtMs: now() },
+        { id: gameId, schemaVersion: SCHEMA_VERSION, deleted: true, updatedAtMs: timestamp },
       ));
-      allGoalEvents(game, gameId).forEach((goal) => {
+      allGoalEvents(game, gameId, timestamp).forEach((goal) => {
         if (!nextGoalIds.has(goal.id)) operations.push(setOperation(
           doc(db, 'babas', babaId, 'goals', goal.id),
           { id: goal.id, babaId, schemaVersion: SCHEMA_VERSION, deleted: true },
@@ -593,63 +733,93 @@ async function persistBaba(state, baba, previousBaba = null) {
   await commitOperations(operations);
 }
 
+function playerDocument(player, timestamp) {
+  return compact({
+    ...player,
+    playerId: player.id,
+    name: player.nome,
+    schemaVersion: SCHEMA_VERSION,
+    deleted: false,
+    updatedAtMs: timestamp,
+  });
+}
+
+function purchaseGoalDocument(goal, previousGoal, timestamp) {
+  let imageUrl = goal.foto || '';
+  let imageUploadPending = false;
+  if (String(imageUrl).startsWith('data:image/')) {
+    const imageBytes = estimateJsonSize(imageUrl);
+    if (imageBytes > 650_000) {
+      imageUploadPending = true;
+      imageUrl = previousGoal?.foto || '';
+      if (String(imageUrl).startsWith('data:image/') && estimateJsonSize(imageUrl) > 650_000) imageUrl = '';
+    }
+  }
+  return compact({
+    ...goal,
+    foto: imageUrl,
+    imagePath: null,
+    imageStoredInline: Boolean(String(imageUrl).startsWith('data:image/')),
+    imageUploadPending,
+    schemaVersion: SCHEMA_VERSION,
+    deleted: false,
+    updatedAtMs: timestamp,
+  });
+}
+
 async function persistGlobalData(state, previousState = null) {
+  const timestamp = now();
   const operations = [];
+  const previousPlayers = new Map((previousState?.players || []).map((player) => [player.id, player]));
   const nextPlayers = new Set();
   (state.players || []).forEach((player) => {
     nextPlayers.add(player.id);
-    operations.push(setOperation(doc(db, 'baba_players', safeId(player.id)), compact({
-      ...player,
-      playerId: player.id,
-      name: player.nome,
-      schemaVersion: SCHEMA_VERSION,
-      deleted: false,
-      updatedAtMs: now(),
-    })));
+    const previousPlayer = previousPlayers.get(player.id);
+    pushChangedOperation(
+      operations,
+      doc(db, 'baba_players', safeId(player.id)),
+      playerDocument(player, timestamp),
+      previousPlayer ? playerDocument(previousPlayer, timestamp) : null,
+    );
   });
   (previousState?.players || []).forEach((player) => {
     if (!nextPlayers.has(player.id)) operations.push(setOperation(doc(db, 'baba_players', safeId(player.id)), {
-      playerId: player.id, deleted: true, schemaVersion: SCHEMA_VERSION, updatedAtMs: now(),
+      playerId: player.id, deleted: true, schemaVersion: SCHEMA_VERSION, updatedAtMs: timestamp,
     }));
   });
 
+  const previousGoals = new Map((previousState?.purchaseGoals || []).map((goal) => [goal.id, goal]));
   const nextGoals = new Set();
   for (const goal of state.purchaseGoals || []) {
     nextGoals.add(goal.id);
-    let imageUrl = goal.foto || '';
-    let imageUploadPending = false;
-    if (String(imageUrl).startsWith('data:image/')) {
-      const imageBytes = estimateJsonSize(imageUrl);
-      if (imageBytes > 650_000) {
-        imageUploadPending = true;
-        imageUrl = previousState?.purchaseGoals?.find((item) => item.id === goal.id)?.foto || '';
-        if (String(imageUrl).startsWith('data:image/') && estimateJsonSize(imageUrl) > 650_000) imageUrl = '';
-      }
-    }
-    operations.push(setOperation(doc(db, 'baba_purchase_goals', safeId(goal.id)), compact({
-      ...goal,
-      foto: imageUrl,
-      imagePath: null,
-      imageStoredInline: Boolean(String(imageUrl).startsWith('data:image/')),
-      imageUploadPending,
-      schemaVersion: SCHEMA_VERSION,
-      deleted: false,
-      updatedAtMs: now(),
-    })));
+    const previousGoal = previousGoals.get(goal.id);
+    pushChangedOperation(
+      operations,
+      doc(db, 'baba_purchase_goals', safeId(goal.id)),
+      purchaseGoalDocument(goal, previousGoal, timestamp),
+      previousGoal ? purchaseGoalDocument(previousGoal, previousGoal, timestamp) : null,
+    );
   }
   (previousState?.purchaseGoals || []).forEach((goal) => {
     if (!nextGoals.has(goal.id)) operations.push(setOperation(doc(db, 'baba_purchase_goals', safeId(goal.id)), {
-      id: goal.id, deleted: true, schemaVersion: SCHEMA_VERSION, updatedAtMs: now(),
+      id: goal.id, deleted: true, schemaVersion: SCHEMA_VERSION, updatedAtMs: timestamp,
     }));
   });
 
   Object.entries(state.monthlyPayments || {}).forEach(([monthKey, record]) => {
-    operations.push(setOperation(doc(db, 'baba_months', safeId(monthKey)), {
-      id: monthKey, monthKey, schemaVersion: SCHEMA_VERSION, updatedAtMs: now(), deleted: false,
-    }));
+    const previousRecord = previousState?.monthlyPayments?.[monthKey];
+    const paymentsChanged = stableSignature(record?.pagamentos || {}) !== stableSignature(previousRecord?.pagamentos || {});
+    if (!previousRecord || paymentsChanged) {
+      operations.push(setOperation(doc(db, 'baba_months', safeId(monthKey)), {
+        id: monthKey, monthKey, schemaVersion: SCHEMA_VERSION, updatedAtMs: timestamp, deleted: false,
+      }));
+    }
     Object.entries(record.pagamentos || {}).forEach(([playerId, paid]) => {
+      const previousPaid = previousRecord?.pagamentos?.[playerId];
+      if (previousRecord && Object.prototype.hasOwnProperty.call(previousRecord.pagamentos || {}, playerId)
+        && Boolean(previousPaid) === Boolean(paid)) return;
       operations.push(setOperation(doc(db, 'baba_months', safeId(monthKey), 'payments', safeId(playerId)), {
-        playerId, paid: Boolean(paid), updatedAtMs: Number(record.atualizadoEm || now()), schemaVersion: SCHEMA_VERSION,
+        playerId, paid: Boolean(paid), updatedAtMs: Number(record.atualizadoEm || timestamp), schemaVersion: SCHEMA_VERSION,
       }));
     });
   });
@@ -741,7 +911,18 @@ function signature(value) {
   const copy = clone(value) || {};
   delete copy.undoStack;
   delete copy.rankingDoBaba;
-  return JSON.stringify(copy);
+  delete copy.__detailLoaded;
+  return stableSignature(copy);
+}
+
+function pointerStateData(state) {
+  const active = state.babas?.find((baba) => baba.id === state.activeBabaId);
+  return {
+    activeBabaId: state.activeBabaId || null,
+    status: active?.status || 'idle',
+    currentGameId: active?.jogoAtual ? gameIdFor(active.jogoAtual) : null,
+    schemaVersion: SCHEMA_VERSION,
+  };
 }
 
 async function persistState(nextState, previousState = lastLocalState, { migration = false, skipPointer = false } = {}) {
@@ -750,7 +931,7 @@ async function persistState(nextState, previousState = lastLocalState, { migrati
   for (const baba of nextState.babas || []) {
     const previousBaba = previousById.get(baba.id);
     if (migration || !previousBaba || signature(previousBaba) !== signature(baba)) {
-      await persistBaba(nextState, baba, previousBaba);
+      await persistBaba(nextState, baba, previousBaba, previousState);
     }
     if (!migration && baba.status === 'finalizado' && previousBaba?.status !== 'finalizado') {
       await applyBabaStatsDelta(nextState, baba, 1);
@@ -759,27 +940,23 @@ async function persistState(nextState, previousState = lastLocalState, { migrati
   await markRemovedBabas(nextState, previousState);
   if (migration) await persistAggregateStats(nextState);
   if (skipPointer) return;
+  const pointerState = pointerStateData(nextState);
+  const nextPointerSignature = stableSignature(pointerState);
+  if (nextPointerSignature === lastPointerSignature) return;
+  if (latestPointerData?.schemaVersion === SCHEMA_VERSION
+    && latestPointerData.sourceId !== deviceId
+    && Number(latestPointerData.updatedAtMs || 0) > Number(nextState.updatedAt || 0) + SAVE_DEBOUNCE_MS) {
+    throw new Error('A copia remota e mais recente. As alteracoes locais ficaram na fila para sincronizar depois.');
+  }
   const pointerData = compact({
-    activeBabaId: nextState.activeBabaId || null,
-    status: nextState.babas?.find((baba) => baba.id === nextState.activeBabaId)?.status || 'idle',
-    currentGameId: nextState.babas?.find((baba) => baba.id === nextState.activeBabaId)?.jogoAtual
-      ? gameIdFor(nextState.babas.find((baba) => baba.id === nextState.activeBabaId).jogoAtual)
-      : null,
-    schemaVersion: SCHEMA_VERSION,
+    ...pointerState,
     sourceId: deviceId,
     updatedAt: serverTimestamp(),
     updatedAtMs: now(),
   });
-  await runTransaction(db, async (transaction) => {
-    const snapshot = await transaction.get(pointerRef);
-    const remote = snapshot.data() || {};
-    if (remote.schemaVersion === SCHEMA_VERSION
-      && remote.sourceId !== deviceId
-      && Number(remote.updatedAtMs || 0) > Number(nextState.updatedAt || 0) + 1500) {
-      throw new Error('A copia remota e mais recente. Recarregue antes de salvar novamente.');
-    }
-    transaction.set(pointerRef, pointerData, { merge: true });
-  });
+  await setDoc(pointerRef, pointerData, { merge: true });
+  latestPointerData = { ...pointerState, sourceId: deviceId, updatedAtMs: pointerData.updatedAtMs };
+  lastPointerSignature = nextPointerSignature;
 }
 
 async function backupLegacyState(state, migrationId) {
@@ -827,7 +1004,10 @@ async function validateMigration(state) {
       stats: Object.keys(computeBabaStats(baba, new Map((state.players || []).map((player) => [player.id, player])))).length,
     };
     for (const name of ['participants', 'teams', 'games', 'goals', 'payments', 'stats']) {
-      const snapshot = await getDocs(collection(db, 'babas', babaId, name));
+      const snapshot = await getDocs(query(
+        collection(db, 'babas', babaId, name),
+        limit(QUERY_LIMITS[name] || 250),
+      ));
       const activeCount = snapshot.docs.filter((item) => !item.data().deleted).length;
       if (activeCount !== expected[name]) {
         throw new Error(`Contagem divergente em ${babaId}/${name}: esperado ${expected[name]}, encontrado ${activeCount}.`);
@@ -933,17 +1113,17 @@ function restoreGameShape(game, goals) {
   return restored;
 }
 
-async function fetchBaba(babaId) {
+function restoreBabaFromSnapshots(babaId, snapshots) {
   const id = safeId(babaId);
-  const [metaSnapshot, participantsSnapshot, teamsSnapshot, gamesSnapshot, goalsSnapshot, paymentsSnapshot, statsSnapshot] = await Promise.all([
-    getDoc(doc(db, 'babas', id)),
-    getDocs(collection(db, 'babas', id, 'participants')),
-    getDocs(collection(db, 'babas', id, 'teams')),
-    getDocs(collection(db, 'babas', id, 'games')),
-    getDocs(collection(db, 'babas', id, 'goals')),
-    getDocs(collection(db, 'babas', id, 'payments')),
-    getDocs(collection(db, 'babas', id, 'stats')),
-  ]);
+  const {
+    meta: metaSnapshot,
+    participants: participantsSnapshot,
+    teams: teamsSnapshot,
+    games: gamesSnapshot,
+    goals: goalsSnapshot,
+    payments: paymentsSnapshot,
+    stats: statsSnapshot,
+  } = snapshots;
   if (!metaSnapshot.exists() || metaSnapshot.data().deleted) return null;
   const meta = metaSnapshot.data();
   const participants = participantsSnapshot.docs.map((item) => item.data()).filter((item) => !item.deleted);
@@ -970,10 +1150,10 @@ async function fetchBaba(babaId) {
     visitante: true,
     criadoEm: item.joinedAt,
   }));
-  const localUndo = readLocalState()?.babas?.find((item) => item.id === babaId)?.undoStack || [];
+  const localUndo = readLocalState()?.babas?.find((item) => item.id === id)?.undoStack || [];
   return compact({
     __detailLoaded: true,
-    id: meta.id || babaId,
+    id: meta.id || id,
     dataISO: meta.dataISO || meta.dateKey,
     dataCompleta: meta.dataCompleta,
     dia: meta.dia,
@@ -998,16 +1178,36 @@ async function fetchBaba(babaId) {
   });
 }
 
+async function fetchBaba(babaId) {
+  const id = safeId(babaId);
+  const [meta, participants, teams, games, goals, payments, stats] = await Promise.all([
+    getDoc(doc(db, 'babas', id)),
+    getDocs(query(collection(db, 'babas', id, 'participants'), limit(QUERY_LIMITS.participants))),
+    getDocs(query(collection(db, 'babas', id, 'teams'), limit(QUERY_LIMITS.teams))),
+    getDocs(query(collection(db, 'babas', id, 'games'), limit(QUERY_LIMITS.games))),
+    getDocs(query(collection(db, 'babas', id, 'goals'), limit(QUERY_LIMITS.goals))),
+    getDocs(query(collection(db, 'babas', id, 'payments'), limit(QUERY_LIMITS.payments))),
+    getDocs(query(collection(db, 'babas', id, 'stats'), limit(QUERY_LIMITS.stats))),
+  ]);
+  return restoreBabaFromSnapshots(id, { meta, participants, teams, games, goals, payments, stats });
+}
+
 function mergeRemoteIntoLocal() {
   if (localWritePending) {
-    scheduleRemoteFlush();
+    remoteFlushDeferred = true;
     return;
   }
+  remoteFlushDeferred = false;
   const current = readLocalState() || emptyState();
   const next = { ...current };
   if (window.__babaRemotePlayers) next.players = clone(window.__babaRemotePlayers);
   if (window.__babaRemotePurchaseGoals) next.purchaseGoals = clone(window.__babaRemotePurchaseGoals);
-  if (window.__babaRemoteMonthlyPayments) next.monthlyPayments = clone(window.__babaRemoteMonthlyPayments);
+  if (window.__babaRemoteMonthlyPayments) {
+    next.monthlyPayments = {
+      ...(clone(current.monthlyPayments) || {}),
+      ...(clone(window.__babaRemoteMonthlyPayments) || {}),
+    };
+  }
   if (window.__babaRemotePlayerStats) next.playerStats = clone(window.__babaRemotePlayerStats);
   next.monthlyStats = Object.fromEntries(monthStatsCache.entries());
   const metadata = window.__babaRemoteMetadata || [];
@@ -1060,6 +1260,7 @@ function mergeRemoteIntoLocal() {
     const raw = stateRaw(next);
     tools?.writeCurrentBabaRaw?.(raw, { remote: true });
     lastLocalState = clone(next);
+    lastPersistedSignature = persistenceSignature(next);
     window.dispatchEvent(new CustomEvent('baba-remote-state-ready', {
       detail: { source: 'baba-schema-v2', state: next, raw },
     }));
@@ -1073,21 +1274,6 @@ function scheduleRemoteFlush() {
   flushTimer = setTimeout(mergeRemoteIntoLocal, 80);
 }
 
-function scheduleBabaRefresh(id) {
-  clearTimeout(activeRefreshTimers.get(id));
-  activeRefreshTimers.set(id, setTimeout(async () => {
-    activeRefreshTimers.delete(id);
-    try {
-      const refreshed = await fetchBaba(id);
-      loadedBabas.set(id, refreshed);
-      if (refreshed?.status === 'finalizado') finishedBabaStatsCache.set(id, clone(refreshed.rankingDoBaba || {}));
-      scheduleRemoteFlush();
-    } catch (error) {
-      console.error(`Falha ao atualizar o Baba ${id}:`, error);
-    }
-  }, 90));
-}
-
 function syncMonthStatsCacheFromState(state) {
   if (!state?.monthlyStats || typeof state.monthlyStats !== 'object' || Array.isArray(state.monthlyStats)) return;
   monthStatsCache.clear();
@@ -1096,65 +1282,75 @@ function syncMonthStatsCacheFromState(state) {
   });
 }
 
-function subscribe(refOrQuery, handler, errorLabel) {
-  const unsubscribe = onSnapshot(refOrQuery, handler, (error) => {
+function subscribe(key, refOrQuery, handler, errorLabel) {
+  if (subscriptionsByKey.has(key)) return subscriptionsByKey.get(key);
+  const stopSnapshot = onSnapshot(refOrQuery, handler, (error) => {
     console.error(`Falha no listener ${errorLabel}:`, error);
     updateStatus('offline', 'Offline', 'A sincronizacao foi interrompida; os dados locais foram preservados.');
   });
+  const unsubscribe = () => {
+    stopSnapshot();
+    subscriptionsByKey.delete(key);
+    unsubscribers.delete(unsubscribe);
+  };
+  subscriptionsByKey.set(key, unsubscribe);
   unsubscribers.add(unsubscribe);
   return unsubscribe;
-}
-
-async function loadFinishedBabaStats(babaId) {
-  const id = safeId(babaId);
-  if (finishedBabaStatsCache.has(id)) return finishedBabaStatsCache.get(id);
-  if (loadingFinishedBabaStats.has(id)) return loadingFinishedBabaStats.get(id);
-  const request = getDocs(collection(db, 'babas', id, 'stats'))
-    .then((snapshot) => {
-      const ranking = {};
-      snapshot.docs.forEach((item) => {
-        if (!item.data().deleted) ranking[item.id] = item.data();
-      });
-      finishedBabaStatsCache.set(id, ranking);
-      return ranking;
-    })
-    .finally(() => loadingFinishedBabaStats.delete(id));
-  loadingFinishedBabaStats.set(id, request);
-  return request;
 }
 
 async function loadBaba(babaId, { realtime = false } = {}) {
   if (!babaId) return null;
   const id = safeId(babaId);
+  if (realtime) {
+    if (!activeSubscriptions.has(id)) {
+      const targets = [
+        ['meta', doc(db, 'babas', id)],
+        ['participants', query(collection(db, 'babas', id, 'participants'), limit(QUERY_LIMITS.participants))],
+        ['teams', query(collection(db, 'babas', id, 'teams'), limit(QUERY_LIMITS.teams))],
+        ['games', query(collection(db, 'babas', id, 'games'), limit(QUERY_LIMITS.games))],
+        ['goals', query(collection(db, 'babas', id, 'goals'), limit(QUERY_LIMITS.goals))],
+        ['payments', query(collection(db, 'babas', id, 'payments'), limit(QUERY_LIMITS.payments))],
+        ['stats', query(collection(db, 'babas', id, 'stats'), limit(QUERY_LIMITS.stats))],
+      ];
+      const parts = {};
+      activeSnapshotParts.set(id, parts);
+      const localUnsubscribers = targets.map(([partName, target]) => subscribe(
+        `active:${id}:${partName}`,
+        target,
+        (snapshot) => {
+          parts[partName] = snapshot;
+          if (!targets.every(([requiredPart]) => parts[requiredPart])) return;
+          const refreshed = restoreBabaFromSnapshots(id, parts);
+          loadedBabas.set(id, refreshed);
+          if (refreshed?.status === 'finalizado') {
+            finishedBabaStatsCache.set(id, clone(refreshed.rankingDoBaba || {}));
+          }
+          scheduleRemoteFlush();
+        },
+        `do Baba ${id}`,
+      ));
+      activeSubscriptions.set(id, () => {
+        localUnsubscribers.forEach((unsubscribe) => unsubscribe());
+        activeSnapshotParts.delete(id);
+      });
+    }
+    return loadedBabas.get(id)
+      || readLocalState()?.babas?.find((item) => item.id === id)
+      || null;
+  }
   const baba = await fetchBaba(id);
   loadedBabas.set(id, baba);
   if (baba?.status === 'finalizado') finishedBabaStatsCache.set(id, clone(baba.rankingDoBaba || {}));
   scheduleRemoteFlush();
-  if (realtime && !activeSubscriptions.has(id)) {
-    const refs = [
-      doc(db, 'babas', id),
-      collection(db, 'babas', id, 'participants'),
-      collection(db, 'babas', id, 'teams'),
-      collection(db, 'babas', id, 'games'),
-      collection(db, 'babas', id, 'goals'),
-      collection(db, 'babas', id, 'payments'),
-      collection(db, 'babas', id, 'stats'),
-    ];
-    const localUnsubscribers = refs.map((target) => subscribe(target, () => {
-      scheduleBabaRefresh(id);
-    }, `do Baba ${id}`));
-    activeSubscriptions.set(id, () => {
-      localUnsubscribers.forEach((unsubscribe) => unsubscribe());
-      clearTimeout(activeRefreshTimers.get(id));
-      activeRefreshTimers.delete(id);
-    });
-  }
   return baba;
 }
 
 async function loadMonthStats(monthKey) {
   if (!monthKey || monthStatsCache.has(monthKey)) return monthStatsCache.get(monthKey) || {};
-  const snapshot = await getDocs(collection(db, 'baba_months', safeId(monthKey), 'stats'));
+  const snapshot = await getDocs(query(
+    collection(db, 'baba_months', safeId(monthKey), 'stats'),
+    limit(QUERY_LIMITS.stats),
+  ));
   const ranking = {};
   snapshot.docs.forEach((item) => { if (!item.data().deleted) ranking[item.id] = item.data(); });
   monthStatsCache.set(monthKey, ranking);
@@ -1162,8 +1358,29 @@ async function loadMonthStats(monthKey) {
   return ranking;
 }
 
-function startV2Subscriptions() {
-  subscribe(collection(db, 'baba_players'), (snapshot) => {
+async function loadMonthPayments(monthKey) {
+  const id = safeId(monthKey);
+  if (!id) return {};
+  if (monthPaymentsCache.has(id)) return monthPaymentsCache.get(id);
+  const snapshot = await getDocs(query(
+    collection(db, 'baba_months', id, 'payments'),
+    limit(QUERY_LIMITS.payments),
+  ));
+  const record = {
+    pagamentos: Object.fromEntries(snapshot.docs.map((item) => [item.id, Boolean(item.data().paid)])),
+    atualizadoEm: Math.max(0, ...snapshot.docs.map((item) => Number(item.data().updatedAtMs || 0))),
+  };
+  monthPaymentsCache.set(id, record);
+  window.__babaRemoteMonthlyPayments = {
+    ...(window.__babaRemoteMonthlyPayments || {}),
+    [id]: record,
+  };
+  scheduleRemoteFlush();
+  return record;
+}
+
+function startPlayersSubscription() {
+  subscribe('global:players', query(collection(db, 'baba_players'), limit(QUERY_LIMITS.players)), (snapshot) => {
     window.__babaRemotePlayers = snapshot.docs.map((item) => item.data()).filter((item) => !item.deleted).map((item) => ({
       id: item.playerId || item.id,
       nome: item.nome || item.name,
@@ -1173,42 +1390,63 @@ function startV2Subscriptions() {
     }));
     scheduleRemoteFlush();
   }, 'de jogadores');
-  subscribe(collection(db, 'baba_purchase_goals'), (snapshot) => {
+}
+
+function startPurchaseGoalsSubscription() {
+  subscribe('global:purchase-goals', query(collection(db, 'baba_purchase_goals'), limit(QUERY_LIMITS.purchaseGoals)), (snapshot) => {
     window.__babaRemotePurchaseGoals = snapshot.docs.map((item) => item.data()).filter((item) => !item.deleted);
     scheduleRemoteFlush();
   }, 'de metas');
-  subscribe(collection(db, 'player_stats'), (snapshot) => {
+}
+
+function startPlayerStatsSubscription() {
+  subscribe('global:player-stats', query(collection(db, 'player_stats'), limit(QUERY_LIMITS.players)), (snapshot) => {
     window.__babaRemotePlayerStats = Object.fromEntries(snapshot.docs.map((item) => [item.id, item.data()]));
     scheduleRemoteFlush();
   }, 'do ranking geral');
-  subscribe(query(collection(db, 'babas'), orderBy('criadoEm', 'desc'), limit(RECENT_BABA_LIMIT)), (snapshot) => {
+}
+
+function startHistorySubscription() {
+  subscribe('global:recent-babas', query(collection(db, 'babas'), orderBy('criadoEm', 'desc'), limit(RECENT_BABA_LIMIT)), (snapshot) => {
     window.__babaRemoteMetadata = snapshot.docs.map((item) => item.data());
     historyCursor = snapshot.docs[snapshot.docs.length - 1] || null;
     hasMoreHistory = snapshot.size === RECENT_BABA_LIMIT;
     scheduleRemoteFlush();
-    const finishedIds = window.__babaRemoteMetadata
-      .filter((item) => item.status === 'finalizado' && !item.deleted)
-      .map((item) => item.id);
-    Promise.all(finishedIds.map((id) => loadFinishedBabaStats(id)))
-      .then(() => scheduleRemoteFlush())
-      .catch((error) => console.warn('Falha ao carregar estatisticas dos babas finalizados:', error));
   }, 'do historico');
-  subscribe(collection(db, 'baba_months'), (snapshot) => {
+}
+
+function startMonthsSubscription() {
+  subscribe('global:months', query(
+    collection(db, 'baba_months'),
+    orderBy('monthKey', 'desc'),
+    limit(QUERY_LIMITS.months),
+  ), (snapshot) => {
     const months = snapshot.docs.map((item) => item.id);
     const currentMonth = new Date().toISOString().slice(0, 7);
-    const requested = new Set([currentMonth, ...months.slice(-2)]);
-    requested.forEach((monthKey) => loadMonthStats(monthKey).catch(() => {}));
-    Promise.all(months.map(async (monthKey) => {
-      const payments = await getDocs(collection(db, 'baba_months', monthKey, 'payments'));
-      return [monthKey, {
-        pagamentos: Object.fromEntries(payments.docs.map((item) => [item.id, Boolean(item.data().paid)])),
-        atualizadoEm: Math.max(0, ...payments.docs.map((item) => Number(item.data().updatedAtMs || 0))),
-      }];
-    })).then((records) => {
-      window.__babaRemoteMonthlyPayments = Object.fromEntries(records);
-      scheduleRemoteFlush();
-    }).catch((error) => console.warn('Falha ao carregar pagamentos mensais:', error));
+    window.__babaRemoteMonthKeys = months;
+    if (months.includes(currentMonth)) {
+      loadMonthStats(currentMonth).catch((error) => console.warn('Falha ao carregar ranking do mes atual:', error));
+      loadMonthPayments(currentMonth).catch((error) => console.warn('Falha ao carregar pagamentos do mes atual:', error));
+    }
   }, 'dos meses');
+}
+
+function startV2Subscriptions() {
+  if (v2SubscriptionsStarted) return;
+  v2SubscriptionsStarted = true;
+  startPlayersSubscription();
+}
+
+function activateView(viewName) {
+  const view = String(viewName || 'dashboard');
+  if (view === 'goals') startPurchaseGoalsSubscription();
+  if (view === 'ranking') {
+    startPlayerStatsSubscription();
+    startMonthsSubscription();
+    startHistorySubscription();
+  }
+  if (view === 'organizer') startMonthsSubscription();
+  if (view === 'history') startHistorySubscription();
 }
 
 async function loadMoreHistory() {
@@ -1233,9 +1471,18 @@ async function loadMoreHistory() {
 }
 
 async function startPointerListener() {
-  subscribe(pointerRef, async (snapshot) => {
+  if (pointerListenerStarted) return;
+  pointerListenerStarted = true;
+  subscribe('pointer:active-baba', pointerRef, async (snapshot) => {
     const data = snapshot.data() || {};
     if (Number(data.schemaVersion || 0) < SCHEMA_VERSION) return;
+    latestPointerData = data;
+    lastPointerSignature = stableSignature({
+      activeBabaId: data.activeBabaId || null,
+      status: data.status || 'idle',
+      currentGameId: data.currentGameId || null,
+      schemaVersion: SCHEMA_VERSION,
+    });
     const nextActiveId = data.activeBabaId || null;
     if (activeBabaId !== nextActiveId) {
       if (activeBabaId && activeSubscriptions.has(activeBabaId)) {
@@ -1243,42 +1490,176 @@ async function startPointerListener() {
         activeSubscriptions.delete(activeBabaId);
       }
       activeBabaId = nextActiveId;
-      if (activeBabaId) await loadBaba(activeBabaId, { realtime: true });
-      else scheduleRemoteFlush();
     }
+    if (activeBabaId && !activeSubscriptions.has(activeBabaId)) {
+      await loadBaba(activeBabaId, { realtime: true });
+    } else if (!activeBabaId) scheduleRemoteFlush();
     updateStatus('online', 'Online', 'Baba sincronizado no armazenamento v2.');
   }, 'do ponteiro ativo');
 }
 
-async function scheduleSave(raw, reason = 'local-change') {
+function writePendingSave(job) {
+  if (!job) return;
+  try {
+    getNativeStore().setItem(PENDING_SYNC_KEY, JSON.stringify({
+      raw: stateRaw(job.state),
+      baseRaw: stateRaw(lastLocalState || emptyState()),
+      signature: job.signature,
+      reason: job.reason,
+      generation: job.generation,
+      attempts: Number(job.attempts || 0),
+      queuedAt: Number(job.queuedAt || now()),
+    }));
+  } catch (error) {
+    console.warn('Nao foi possivel registrar a fila local do Baba:', error);
+  }
+}
+
+function clearPendingSave() {
+  try {
+    getNativeStore().removeItem(PENDING_SYNC_KEY);
+  } catch (error) {
+    console.warn('Nao foi possivel limpar a fila local do Baba:', error);
+  }
+}
+
+function readPendingSave() {
+  try {
+    const record = JSON.parse(getNativeStore().getItem(PENDING_SYNC_KEY) || 'null');
+    const state = parseState(record?.raw);
+    const baseState = parseState(record?.baseRaw);
+    if (!hasUsefulState(state)) return null;
+    return {
+      state,
+      baseState,
+      signature: record.signature || persistenceSignature(state),
+      reason: record.reason || 'restored-local-queue',
+      generation: Number(record.generation || 0),
+      attempts: Math.min(MAX_SAVE_ATTEMPTS, Math.max(0, Number(record.attempts || 0))),
+      queuedAt: Number(record.queuedAt || now()),
+    };
+  } catch (error) {
+    console.warn('A fila local do Baba estava invalida e foi ignorada:', error);
+    return null;
+  }
+}
+
+function updateLocalWriteState() {
+  localWritePending = Boolean(saveInFlight || queuedSave);
+  window.dispatchEvent(new CustomEvent('baba-save-progress', {
+    detail: {
+      saving: saveInFlight,
+      queued: Boolean(queuedSave),
+      backoff: backoffUntil > now(),
+    },
+  }));
+  if (!localWritePending && remoteFlushDeferred) scheduleRemoteFlush();
+}
+
+function scheduleQueuedSave(delay = SAVE_DEBOUNCE_MS) {
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  if (!queuedSave || saveInFlight) return;
+  const remainingBackoff = Math.max(0, backoffUntil - now());
+  saveTimer = setTimeout(processSaveQueue, Math.max(delay, remainingBackoff));
+}
+
+function enterSaveBackoff(delay, failedGeneration, canRetry) {
+  backoffUntil = now() + delay;
+  clearTimeout(backoffTimer);
+  backoffTimer = setTimeout(() => {
+    backoffTimer = null;
+    backoffUntil = 0;
+    if (!queuedSave) return;
+    const isNewerChange = queuedSave.generation !== failedGeneration;
+    if (canRetry || isNewerChange) scheduleQueuedSave(0);
+    else {
+      updateStatus('offline', 'Sincronizacao pendente',
+        'Os dados estao salvos neste dispositivo e serao sincronizados quando a conexao ou a cota estiver disponivel.');
+      updateLocalWriteState();
+    }
+  }, delay);
+}
+
+async function processSaveQueue() {
+  if (saveInFlight || !queuedSave) return;
+  if (backoffUntil > now()) {
+    scheduleQueuedSave(backoffUntil - now());
+    return;
+  }
+
+  const job = queuedSave;
+  queuedSave = null;
+  saveInFlight = true;
+  updateLocalWriteState();
+  updateStatus('online', 'Salvando', 'Sincronizando as alteracoes em segundo plano...');
+  try {
+    diagnoseBabaStateSize(job.state);
+    await persistState(job.state, lastLocalState);
+    lastLocalState = clone(job.state);
+    lastPersistedSignature = job.signature;
+    if (queuedSave?.signature === lastPersistedSignature) queuedSave = null;
+    if (queuedSave) writePendingSave(queuedSave);
+    else clearPendingSave();
+    updateStatus('online', queuedSave ? 'Alteracoes na fila' : 'Online',
+      queuedSave
+        ? 'A alteracao mais recente sera sincronizada em instantes.'
+        : 'Alteracoes salvas e sincronizadas em tempo real.');
+  } catch (error) {
+    console.error(`Falha ao salvar Baba (${job.reason}):`, error);
+    const failedJob = { ...job, attempts: Number(job.attempts || 0) + 1 };
+    if (!queuedSave) queuedSave = failedJob;
+    writePendingSave(queuedSave);
+
+    if (isQuotaError(error)) {
+      const delay = SAVE_BACKOFF_DELAYS_MS[Math.min(failedJob.attempts - 1, SAVE_BACKOFF_DELAYS_MS.length - 1)];
+      const canRetry = failedJob.attempts < MAX_SAVE_ATTEMPTS;
+      enterSaveBackoff(delay, failedJob.generation, canRetry);
+      updateStatus('offline', canRetry ? 'Firebase ocupado' : 'Sincronizacao pendente',
+        canRetry
+          ? `O Firebase atingiu o limite temporario. Nova tentativa em ${delay / 1000}s; os dados continuam salvos neste dispositivo.`
+          : 'O limite de tentativas foi atingido. Os dados estao salvos neste dispositivo e serao sincronizados depois.');
+    } else {
+      if (isPermissionError(error) && queuedSave?.generation === failedJob.generation) {
+        queuedSave.attempts = MAX_SAVE_ATTEMPTS;
+        writePendingSave(queuedSave);
+      }
+      updateStatus('offline', isPermissionError(error) ? 'Acesso bloqueado' : 'Sincronizacao pendente',
+        isPermissionError(error)
+          ? 'A gravacao nao foi autorizada. Os dados continuam salvos neste dispositivo.'
+          : 'Nao foi possivel sincronizar agora. Os dados estao salvos neste dispositivo e serao enviados depois.');
+    }
+  } finally {
+    saveInFlight = false;
+    updateLocalWriteState();
+    if (queuedSave && backoffUntil <= now() && Number(queuedSave.attempts || 0) < MAX_SAVE_ATTEMPTS) {
+      scheduleQueuedSave(SAVE_DEBOUNCE_MS);
+    }
+  }
+}
+
+function scheduleSave(raw, reason = 'local-change') {
   if (applyingRemote || migrationRunning) return;
   const state = parseState(raw);
   if (!hasUsefulState(state)) return;
+  const nextSignature = persistenceSignature(state);
+  if (nextSignature === queuedSave?.signature) return;
+  if (!saveInFlight && !queuedSave && nextSignature === lastPersistedSignature) return;
+
   const generation = ++saveGeneration;
-  localWritePending = true;
-  updateStatus('online', 'Salvando', 'Salvando alteracoes em segundo plano...');
+  queuedSave = {
+    state: clone(state),
+    signature: nextSignature,
+    reason,
+    generation,
+    attempts: 0,
+    queuedAt: now(),
+  };
   syncMonthStatsCacheFromState(state);
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    try {
-      diagnoseBabaStateSize(state);
-      await persistState(state, lastLocalState);
-      lastLocalState = clone(state);
-      updateStatus('online', 'Online', 'Alteracoes salvas em documentos pequenos e sincronizados.');
-    } catch (error) {
-      console.error(`Falha ao salvar Baba (${reason}):`, error);
-      updateStatus('offline', isPermissionError(error) ? 'Atualize as regras' : 'Falha ao salvar',
-        isPermissionError(error)
-          ? 'Publique as regras do schema v2 para liberar a nova estrutura.'
-          : 'Nao foi possivel salvar agora; a copia deste aparelho foi mantida.');
-    } finally {
-      if (generation === saveGeneration) {
-        localWritePending = false;
-        window.dispatchEvent(new CustomEvent('baba-save-progress', { detail: { saving: false } }));
-        scheduleRemoteFlush();
-      }
-    }
-  }, 420);
+  writePendingSave(queuedSave);
+  updateLocalWriteState();
+  updateStatus('online', 'Alteracoes na fila', 'Os dados foram salvos neste dispositivo e serao sincronizados em instantes.');
+  scheduleQueuedSave(SAVE_DEBOUNCE_MS);
 }
 
 async function restoreLegacyBackup(migrationId) {
@@ -1297,19 +1678,36 @@ async function restoreLegacyBackup(migrationId) {
 }
 
 async function startRepository() {
-  if (repositoryStarted || !USE_BABA_SCHEMA_V2 || OFFLINE_TEST_MODE) return;
+  if (repositoryStarted || window.__babaPersistenceV2Started || !USE_BABA_SCHEMA_V2 || OFFLINE_TEST_MODE) return;
   repositoryStarted = true;
-  lastLocalState = readLocalState() || emptyState();
+  window.__babaPersistenceV2Started = true;
+  const restoredQueue = readPendingSave();
+  lastLocalState = restoredQueue?.baseState || readLocalState() || emptyState();
+  lastPersistedSignature = persistenceSignature(lastLocalState);
+  if (restoredQueue) {
+    saveGeneration = Math.max(saveGeneration, restoredQueue.generation);
+    queuedSave = { ...restoredQueue, attempts: 0 };
+    writePendingSave(queuedSave);
+    updateLocalWriteState();
+  }
   diagnoseBabaStateSize(lastLocalState);
   updateStatus('online', 'Conectando', 'Verificando a versao dos dados do Baba.');
   try {
     const pointerSnapshot = await getDoc(pointerRef);
     const pointer = pointerSnapshot.data() || {};
+    latestPointerData = pointer;
+    if (Number(pointer.schemaVersion || 0) >= SCHEMA_VERSION) {
+      lastPointerSignature = stableSignature({
+        activeBabaId: pointer.activeBabaId || null,
+        status: pointer.status || 'idle',
+        currentGameId: pointer.currentGameId || null,
+        schemaVersion: SCHEMA_VERSION,
+      });
+    }
     if (Number(pointer.schemaVersion || 0) >= SCHEMA_VERSION) {
       activeBabaId = pointer.activeBabaId || null;
       startV2Subscriptions();
       await startPointerListener();
-      if (activeBabaId) await loadBaba(activeBabaId, { realtime: true });
     } else {
       const remoteLegacyState = parseState(pointer.state);
       const legacyState = hasUsefulState(lastLocalState)
@@ -1329,7 +1727,6 @@ async function startRepository() {
         activeBabaId = legacyState.activeBabaId || null;
         startV2Subscriptions();
         await startPointerListener();
-        if (activeBabaId) await loadBaba(activeBabaId, { realtime: true });
       } else {
         await setDoc(pointerRef, {
           activeBabaId: null,
@@ -1344,6 +1741,10 @@ async function startRepository() {
         await startPointerListener();
       }
     }
+    if (queuedSave) {
+      updateStatus('online', 'Sincronizacao pendente', 'Alteracoes locais encontradas e colocadas na fila de sincronizacao.');
+      scheduleQueuedSave(SAVE_DEBOUNCE_MS);
+    }
   } catch (error) {
     console.error('Falha ao iniciar repositorio v2 do Baba:', error);
     updateStatus('offline', isPermissionError(error) ? 'Atualize as regras' : 'Offline',
@@ -1353,12 +1754,13 @@ async function startRepository() {
   }
 }
 
-window.BabaPublicSync = { scheduleSave };
 window.BabaRepository = {
   schemaVersion: SCHEMA_VERSION,
   loadBaba,
   loadMonthStats,
+  loadMonthPayments,
   loadMoreHistory,
+  activateView,
   migrateLegacyState,
   restoreLegacyBackup,
   diagnoseStateSize: diagnoseBabaStateSize,
@@ -1367,13 +1769,38 @@ window.BabaRepository = {
   hasMoreHistory: () => hasMoreHistory,
 };
 
-tools?.attachStorageBridge?.();
-window.addEventListener('backend-ready', () => tools?.attachStorageBridge?.());
-window.addEventListener('beforeunload', () => {
-  clearTimeout(saveTimer);
-  clearTimeout(flushTimer);
-  unsubscribers.forEach((unsubscribe) => unsubscribe());
-  activeSubscriptions.forEach((unsubscribe) => unsubscribe());
-}, { once: true });
+function resumePendingSave() {
+  if (!queuedSave) {
+    const restored = readPendingSave();
+    if (restored) queuedSave = { ...restored, attempts: 0, generation: ++saveGeneration };
+  } else {
+    queuedSave.attempts = 0;
+  }
+  if (!queuedSave) return;
+  clearTimeout(backoffTimer);
+  backoffTimer = null;
+  backoffUntil = 0;
+  writePendingSave(queuedSave);
+  updateLocalWriteState();
+  scheduleQueuedSave(SAVE_DEBOUNCE_MS);
+}
+
+window.BabaPublicSync = { scheduleSave, retryPending: resumePendingSave };
+
+if (!window.__babaPersistenceEventsReady) {
+  window.__babaPersistenceEventsReady = true;
+  tools?.attachStorageBridge?.();
+  window.addEventListener('online', resumePendingSave);
+  window.addEventListener('beforeunload', () => {
+    clearTimeout(saveTimer);
+    clearTimeout(backoffTimer);
+    clearTimeout(flushTimer);
+    activeSubscriptions.forEach((unsubscribe) => unsubscribe());
+    [...unsubscribers].forEach((unsubscribe) => unsubscribe());
+    subscriptionsByKey.clear();
+    activeSubscriptions.clear();
+    activeSnapshotParts.clear();
+  }, { once: true });
+}
 
 startRepository();
