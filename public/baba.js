@@ -3417,10 +3417,14 @@
     beginDrawExperience(baba, { review: true });
   }
 
-  function startFirstGame() {
+  function startFirstGame(event) {
+    event?.preventDefault?.();
     if (!requireOrganizer()) return;
     const baba = getActiveBaba();
-    if (!baba || getRotationTeams(baba).length < 2) return showToast('Sao necessarios dois times ativos para iniciar.');
+    if (!baba) return showToast('Crie um baba primeiro.');
+    if (baba.status === 'finalizado') return showToast('Este baba ja foi finalizado.');
+    if (baba.pendingTieBreak) return showToast('Resolva o impar/par antes de iniciar outra partida.');
+    if (getRotationTeams(baba).length < 2) return showToast('Sao necessarios dois times ativos para iniciar.');
     if (baba.jogoAtual) return showToast('Ja existe um jogo em andamento.');
 
     const firstGame = !(baba.jogos?.length);
@@ -3440,7 +3444,11 @@
       teamBId = order.shift();
     }
 
-    baba.filaTimes = order;
+    if (!getTeam(baba, teamAId) || !getTeam(baba, teamBId)) {
+      return showToast('Nao foi possivel definir os dois times da partida.');
+    }
+
+    baba.filaTimes = order.filter((teamId) => teamId !== teamAId && teamId !== teamBId);
     baba.jogoAtual = buildMatch(baba, teamAId, teamBId);
     startMatchTimer(baba.jogoAtual);
     baba.status = 'jogando';
@@ -4401,7 +4409,7 @@
     const canDrawTeams = hasOpenBaba && hasPresentPlayers;
     const canCreateLateTeam = hasOpenBaba && hasDrawnTeams && unassignedPresentCount > 0;
     const canOpenTeams = hasOpenBaba && hasDrawnTeams;
-    const canStartGame = canOpenTeams && !baba?.jogoAtual && !baba?.pendingTieBreak;
+    const canStartGame = canOpenTeams && getRotationTeams(baba).length >= 2 && !baba?.jogoAtual && !baba?.pendingTieBreak;
     const startGameLabel = hasFinishedGame ? 'Iniciar partida' : 'Iniciar primeiro jogo';
 
     if (els.dateDisplay) els.dateDisplay.textContent = formatBabaDateLong(baba?.dataISO || todayISO());
@@ -5709,47 +5717,26 @@
       els.currentMatchPanel.className = 'baba-current-match-panel';
       const route = getPendingTieBreakRoute(baba, baba.pendingTieBreak);
       const tied = route.tiedTeams.map((team) => team.name).filter(Boolean).join(' x ');
-      const choiceCards = route.tiedTeams.map((team) => {
-        const out = route.tiedTeams.find((item) => item.id !== team.id);
-        return `
-          <article class="baba-tiebreak-option">
-            <div class="baba-tiebreak-option__main">
-              <span>Continua em quadra</span>
-              <strong>${teamDetailButton(baba, team)}</strong>
-            </div>
-            <div class="baba-tiebreak-option__route">
-              <span>Sai para a fila</span>
-              <b>${teamDetailButton(baba, out, '-')}</b>
-            </div>
-            <button class="baba-tiebreak-confirm" type="button" data-action="choose-three-team-keep" data-team-id="${team.id}"${teamNumberDataAttribute(team)}>
-              Confirmar ${escapeHTML(team.name)}
-            </button>
-          </article>
-        `;
-      }).join('');
+      const choiceCards = route.tiedTeams.map((team) => `
+        <button class="baba-tiebreak-choice" type="button" data-action="choose-three-team-keep" data-team-id="${team.id}"${teamNumberDataAttribute(team)} aria-label="${escapeHTML(team.name)} venceu o impar ou par">
+          <span>Vencedor</span>
+          <strong>${escapeHTML(team.name)}</strong>
+          <small>Continua em quadra</small>
+        </button>
+      `).join('');
       setHTML(els.currentMatchPanel, `
-        <div class="baba-tiebreak-panel">
-          <div class="baba-tiebreak-hero">
-            <img src="img/baba-impar-par-tiebreak.png" alt="">
+        <div class="baba-tiebreak-panel baba-tiebreak-panel--compact">
+          <div class="baba-tiebreak-compact-head">
+            <span class="baba-tiebreak-compact-head__icon" aria-hidden="true"><svg><use href="#baba-whistle"></use></svg></span>
             <div>
-              <span class="baba-kicker"><svg aria-hidden="true" focusable="false"><use href="#baba-whistle"></use></svg>Empate com 3 times</span>
-              <h3>Defina no impar/par quem fica.</h3>
-              <p>${escapeHTML(tied)} empataram. O vencedor do impar/par continua em quadra; o outro vai para a fila.</p>
-            </div>
-          </div>
-          <div class="baba-tiebreak-route">
-            <div>
-              <span>Proximo adversario</span>
-              <strong>${teamDetailButton(baba, route.nextTeam, 'Aguardando')}</strong>
-            </div>
-            <div>
-              <span>Decisao</span>
-              <strong>Impar/par entre os times empatados</strong>
+              <span class="baba-kicker">Desempate</span>
+              <h3>Definir impar/par</h3>
+              <p>${escapeHTML(tied)} empataram. Toque no time que venceu.</p>
             </div>
           </div>
           ${isOrganizer()
             ? `<div class="baba-tiebreak-options">${choiceCards}</div>`
-            : '<div class="baba-empty">O organizador vai selecionar aqui o time que venceu no impar/par.</div>'}
+            : '<div class="baba-empty">Aguardando o organizador definir o vencedor.</div>'}
         </div>
       `);
     } else if (!match || !teamA || !teamB) {
@@ -6169,6 +6156,21 @@
         `).join('')}
       </div>
     `);
+  }
+
+  function positionMoreMenu() {
+    if (!els.moreMenu || !els.moreToggle || els.moreMenu.classList.contains('hidden')) return;
+    if (!window.matchMedia('(max-width: 760px)').matches) return;
+    const toggleRect = els.moreToggle.getBoundingClientRect();
+    const viewportWidth = document.documentElement.clientWidth;
+    const margin = 8;
+    const menuWidth = Math.min(260, viewportWidth - (margin * 2));
+    const left = Math.min(
+      viewportWidth - menuWidth - margin,
+      Math.max(margin, toggleRect.right - menuWidth),
+    );
+    els.moreMenu.style.setProperty('--baba-more-menu-top', `${Math.max(margin, toggleRect.bottom + 8)}px`);
+    els.moreMenu.style.setProperty('--baba-more-menu-left', `${left}px`);
   }
 
   function setActiveTab(tab) {
@@ -6978,6 +6980,18 @@
       const willOpen = els.moreMenu?.classList.contains('hidden');
       els.moreMenu?.classList.toggle('hidden', !willOpen);
       els.moreToggle?.setAttribute('aria-expanded', String(Boolean(willOpen)));
+      if (willOpen) {
+        positionMoreMenu();
+        window.requestAnimationFrame(positionMoreMenu);
+      }
+    });
+
+    els.drawActionBar?.addEventListener('click', (event) => {
+      const startButton = event.target.closest('[data-action="start-first-live"]');
+      if (!startButton || startButton.disabled) return;
+      event.preventDefault();
+      event.stopPropagation();
+      startFirstGame(event);
     });
 
     els.headerManage?.addEventListener('click', () => setActiveTab('organizer'));
@@ -6988,6 +7002,9 @@
         els.moreToggle?.setAttribute('aria-expanded', 'false');
       }
     });
+
+    window.addEventListener('resize', positionMoreMenu);
+    window.addEventListener('scroll', positionMoreMenu, { passive: true });
 
     document.addEventListener('change', (event) => {
       const input = event.target.closest('[data-present-id]');

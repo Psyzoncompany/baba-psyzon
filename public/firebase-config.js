@@ -17,12 +17,9 @@ googleProvider.addScope('profile');
 // Persistência padrão: sessão (morre ao fechar o navegador)
 // Só usa persistência local se o usuário marcar "Lembrar dispositivo"
 const setAuthPersistence = async (remember = false) => {
-    try {
-        const mode = remember ? browserLocalPersistence : browserSessionPersistence;
-        await setPersistence(auth, mode);
-    } catch (error) {
-        console.warn('Não foi possível definir persistência de auth:', error);
-    }
+    const mode = remember ? browserLocalPersistence : browserSessionPersistence;
+    await setPersistence(auth, mode);
+    return mode;
 };
 
 // Som de sucesso sutil (Web Audio API)
@@ -1494,6 +1491,7 @@ if (window.isLocalMode) {
     window.firebaseAuth = {
         login: async () => { },
         loginWithGoogle: async () => { },
+        waitUntilReady: async () => ({ uid: 'local_user' }),
         logout: () => {
             nativeLocalStorage.removeItem('forceLocalMode');
             window.location.href = '/login.html';
@@ -1505,7 +1503,17 @@ if (window.isLocalMode) {
         window.location.href = '/index.html';
     }
 } else {
+    let initialAuthStateResolved = false;
+    let resolveInitialAuthState;
+    const initialAuthStateReady = new Promise((resolve) => {
+        resolveInitialAuthState = resolve;
+    });
+
     onAuthStateChanged(auth, async (user) => {
+        if (!initialAuthStateResolved) {
+            initialAuthStateResolved = true;
+            resolveInitialAuthState(user || null);
+        }
         if (user) {
             ensureFloatingSaveButton();
             // Se estivermos na página de login, redireciona para index
@@ -1582,7 +1590,8 @@ if (!window.isLocalMode) {
             await setAuthPersistence(remember);
             return createUserWithEmailAndPassword(auth, email, password);
         },
-        loginWithGoogle: async () => {
+        loginWithGoogle: async (remember = false) => {
+            await setAuthPersistence(remember);
             try {
                 return await signInWithPopup(auth, googleProvider);
             } catch (error) {
@@ -1601,6 +1610,7 @@ if (!window.isLocalMode) {
             nativeLocalStorage.removeItem('psyzon_remember_device');
             return signOut(auth);
         },
+        waitUntilReady: () => initialAuthStateReady,
         currentUser: () => auth.currentUser,
     };
 }
