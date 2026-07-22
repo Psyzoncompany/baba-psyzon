@@ -222,6 +222,7 @@
   let teamDetailOpener = null;
   let playerDetailOpener = null;
   let drawSoundEnabled = localStorage.getItem(DRAW_SOUND_KEY) === 'true';
+  let pdfExportInProgress = false;
   const babaAssistant = {
     wired: false,
     open: false,
@@ -2067,7 +2068,8 @@
       eyebrow: 'Baba Psyzon',
       title: '',
       subtitle: reportContextLabel(baba),
-      fileName: `baba-${type}.pdf`,
+      fileName: `baba-${type}-${baba?.dataISO || todayISO()}.pdf`,
+      brand: 'Baba Psyzon',
       summary: baseSummary,
       icon: 'report',
       sections: [],
@@ -2214,7 +2216,7 @@
       report.sections = [
         {
           title: `Mes - ${monthLabel(currentMonth)}`,
-          note: `Top ${PDF_ROW_LIMITS.rankings}`,
+          note: 'Tabela completa',
           icon: 'calendar',
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
@@ -2224,7 +2226,7 @@
         },
         {
           title: 'Ranking geral',
-          note: `Top ${PDF_ROW_LIMITS.rankings}`,
+          note: 'Tabela completa',
           icon: 'chart',
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
@@ -2234,7 +2236,7 @@
         },
         {
           title: 'Ranking do dia',
-          note: `Top ${PDF_ROW_LIMITS.rankings}`,
+          note: 'Tabela completa',
           icon: 'target',
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
@@ -2244,7 +2246,7 @@
         },
         {
           title: 'Melhor goleiro',
-          note: `Top ${PDF_ROW_LIMITS.goalkeeper}`,
+          note: 'Tabela completa',
           icon: 'shield',
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.goalkeeper,
@@ -2254,7 +2256,7 @@
         },
         {
           title: `Historico - ${monthLabel(monthlyHistoryKey)}`,
-          note: `Top ${PDF_ROW_LIMITS.rankings}`,
+          note: 'Tabela completa',
           icon: 'history',
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
@@ -3087,58 +3089,54 @@
 </html>`;
   }
 
-  function exportBabaPdf(type) {
+  function normalizeBabaPdfReport(report) {
+    return {
+      ...report,
+      footer: 'Baba Psyzon - relatório atualizado no momento da exportação',
+      sections: report.sections.map((section) => ({
+        ...section,
+        rows: (section.rows || []).map((sourceRow) => {
+          const row = sourceRow.map((cell) => pdfCellText(cell));
+          row.teamNumber = sourceRow.teamNumber;
+          return row;
+        }),
+      })),
+    };
+  }
+
+  async function exportBabaPdf(type, triggerButton = null) {
+    if (pdfExportInProgress) {
+      showToast('Aguarde o PDF atual terminar de ser gerado.');
+      return;
+    }
     const report = buildBabaPdfReport(type);
     if (!report) return showToast('Relatorio nao encontrado para exportar.');
-    document.getElementById('baba-pdf-print-frame')?.remove();
+    if (!window.PsyzonPdf?.exportReport) {
+      showToast('O gerador de PDF nao carregou. Atualize a pagina e tente novamente.');
+      return;
+    }
 
-    const frame = document.createElement('iframe');
-    frame.id = 'baba-pdf-print-frame';
-    frame.className = 'baba-pdf-print-frame';
-    frame.title = 'Relatorio do Baba para impressao';
-    frame.setAttribute('aria-hidden', 'true');
+    pdfExportInProgress = true;
+    const exportButtons = $$('[data-export-pdf]');
+    const previousStates = exportButtons.map((button) => ({ button, disabled: button.disabled }));
+    exportButtons.forEach((button) => { button.disabled = true; });
+    triggerButton?.classList.add('is-exporting');
+    triggerButton?.setAttribute('aria-busy', 'true');
 
-    let cleaned = false;
-    const cleanup = () => {
-      if (cleaned) return;
-      cleaned = true;
-      window.setTimeout(() => frame.remove(), 500);
-    };
-
-    const waitForFrameAssets = async () => {
-      const frameDocument = frame.contentDocument;
-      if (!frameDocument) throw new Error('Documento de impressao indisponivel.');
-      const images = Array.from(frameDocument.images);
-      await Promise.all(images.map((image) => {
-        if (image.complete) return image.decode?.().catch(() => {}) || Promise.resolve();
-        return new Promise((resolve) => {
-          image.addEventListener('load', resolve, { once: true });
-          image.addEventListener('error', resolve, { once: true });
-        });
-      }));
-      await frameDocument.fonts?.ready?.catch?.(() => {});
-    };
-
-    frame.addEventListener('load', async () => {
-      try {
-        await waitForFrameAssets();
-        await new Promise((resolve) => window.setTimeout(resolve, 180));
-        const printWindow = frame.contentWindow;
-        if (!printWindow) throw new Error('Janela de impressao indisponivel.');
-        printWindow.addEventListener('afterprint', cleanup, { once: true });
-        printWindow.focus();
-        printWindow.print();
-        showToast('PDF pronto. Escolha salvar como PDF na janela de impressao.');
-        window.setTimeout(cleanup, 120000);
-      } catch (error) {
-        console.error('Falha ao preparar o relatorio para impressao:', error);
-        cleanup();
-        showToast('Nao foi possivel preparar o PDF agora.');
-      }
-    }, { once: true });
-
-    frame.srcdoc = renderPdfDocument(report);
-    document.body.appendChild(frame);
+    try {
+      const result = await window.PsyzonPdf.exportReport(normalizeBabaPdfReport(report));
+      showToast(`PDF exportado com ${result.pages} pagina${result.pages === 1 ? '' : 's'}.`);
+    } catch (error) {
+      console.error('Falha ao gerar o PDF do Baba:', error);
+      showToast(error.message || 'Nao foi possivel gerar o PDF agora.');
+    } finally {
+      pdfExportInProgress = false;
+      previousStates.forEach(({ button, disabled }) => {
+        if (button.isConnected) button.disabled = disabled;
+      });
+      triggerButton?.classList.remove('is-exporting');
+      triggerButton?.removeAttribute('aria-busy');
+    }
   }
 
   function toggleBabaPayment(playerId) {
@@ -5344,26 +5342,49 @@
     ));
 
     setHTML(els.standingsList, `
-      <div class="baba-table">
-        <div class="baba-table__row baba-table__head">
-          <span>Pos</span><span>Time</span><span>Pts</span><span>GP</span><span>SG</span><span>V</span><span>E</span><span>D</span>
+      <div class="baba-table baba-standings-table" role="table" aria-label="Classificacao dos times" aria-rowcount="${teams.length + 1}">
+        <div class="baba-table__row baba-table__head" role="row">
+          <span role="columnheader" title="Posicao">Pos</span>
+          <span role="columnheader">Time</span>
+          <span role="columnheader" title="Pontos">Pts</span>
+          <span role="columnheader" title="Gols pro">GP</span>
+          <span role="columnheader" title="Saldo de gols">SG</span>
+          <span role="columnheader" title="Vitorias">V</span>
+          <span role="columnheader" title="Empates">E</span>
+          <span role="columnheader" title="Derrotas">D</span>
         </div>
         ${teams.map((team, index) => `
-          <div class="baba-table__row ${team.isLive ? 'is-live' : ''} ${index === 0 ? 'is-first baba-gold-leader' : ''}"${teamNumberDataAttribute(team)}>
-            <span class="baba-position-label">
+          <div class="baba-table__row ${team.isLive ? 'is-live' : ''} ${index === 0 ? 'is-first baba-gold-leader' : ''}"${teamNumberDataAttribute(team)} role="row" aria-label="${escapeHTML(team.name)}, ${index + 1}º lugar, ${team.pontos} pontos">
+            <span class="baba-position-label" role="cell">
               <b class="baba-position-badge ${index === 0 ? 'is-first' : ''}">${index + 1}º</b>
               <small>${index + 1}º lugar</small>
             </span>
-            ${teamDetailButton(baba, team)}
-            <b>${team.pontos}</b>
-            <span>${team.golsPro}</span>
-            <span>${team.saldo}</span>
-            <span>${team.vitorias}</span>
-            <span>${team.empates}</span>
-            <span>${team.derrotas}</span>
+            <span class="baba-standings-team" role="cell">
+              ${teamDetailButton(baba, team)}
+              ${team.isLive ? '<small class="baba-standings-live">Em jogo</small>' : ''}
+            </span>
+            <span class="baba-standings-stat baba-standings-stat--points" role="cell" aria-label="Pontos">
+              <small aria-hidden="true">Pts</small><strong>${team.pontos}</strong>
+            </span>
+            <span class="baba-standings-stat baba-standings-stat--goals" role="cell" aria-label="Gols pro">
+              <small aria-hidden="true">GP</small><strong>${team.golsPro}</strong>
+            </span>
+            <span class="baba-standings-stat baba-standings-stat--balance" role="cell" aria-label="Saldo de gols">
+              <small aria-hidden="true">SG</small><strong>${team.saldo > 0 ? '+' : ''}${team.saldo}</strong>
+            </span>
+            <span class="baba-standings-stat baba-standings-stat--wins" role="cell" aria-label="Vitorias">
+              <small aria-hidden="true">V</small><strong>${team.vitorias}</strong>
+            </span>
+            <span class="baba-standings-stat baba-standings-stat--draws" role="cell" aria-label="Empates">
+              <small aria-hidden="true">E</small><strong>${team.empates}</strong>
+            </span>
+            <span class="baba-standings-stat baba-standings-stat--losses" role="cell" aria-label="Derrotas">
+              <small aria-hidden="true">D</small><strong>${team.derrotas}</strong>
+            </span>
           </div>
         `).join('')}
       </div>
+      <p class="baba-standings-legend"><b>Pts</b> pontos <span>•</span> <b>GP</b> gols pro <span>•</span> <b>SG</b> saldo <span>•</span> <b>V</b> vitorias <span>•</span> <b>E</b> empates <span>•</span> <b>D</b> derrotas</p>
     `);
     renderTableTopScorers(baba);
   }
@@ -6979,7 +7000,7 @@
 
     document.addEventListener('click', (event) => {
       const exportButton = event.target.closest('[data-export-pdf]');
-      if (exportButton) return exportBabaPdf(exportButton.dataset.exportPdf);
+      if (exportButton) return exportBabaPdf(exportButton.dataset.exportPdf, exportButton);
 
       const rankingToggle = event.target.closest('[data-rank-toggle]');
       if (rankingToggle) {

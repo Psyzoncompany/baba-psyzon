@@ -37,9 +37,6 @@ const DEFAULT_INCOME_CATEGORIES = [
 ];
 
 const ITEMS_PER_PAGE = 15;
-const PDF_PAGE_BOTTOM = 275;
-const PDF_TOP_MARGIN = 20;
-const PDF_DESC_MAX_LEN = 35;
 const CHART_COLORS = {
   grid: 'rgba(148,163,184,0.08)',
   text: '#94a3b8',
@@ -1385,13 +1382,14 @@ function renderCashFlowTable() {
 // ─── 11. Reports Section ───────────────────────────────────
 
 let activeReport = 'monthly';
+let personalPdfExportInProgress = false;
 
 function renderReports(container) {
   container.innerHTML = `
     <div class="section-header">
       <h2 class="section-title"><i class="fa-solid fa-file-lines" style="color:var(--accent-purple)"></i> Relatórios</h2>
       <div class="export-btns">
-        <button class="btn btn-danger btn-sm" onclick="exportPDF()"><i class="fa-solid fa-file-pdf"></i> Exportar PDF</button>
+        <button class="btn btn-danger btn-sm" onclick="exportPDF(this)"><i class="fa-solid fa-file-pdf"></i> Exportar PDF</button>
         <button class="btn btn-success btn-sm" onclick="exportExcel()"><i class="fa-solid fa-file-excel"></i> Exportar Excel</button>
       </div>
     </div>
@@ -1908,61 +1906,208 @@ function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
-function exportPDF() {
+function personalPdfMonthSnapshot(date, transactions = loadTransactions()) {
+  const range = getMonthRange(date);
+  const items = transactions.filter(tx => tx.date >= range.start && tx.date <= range.end);
+  const income = items.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0);
+  const expense = items.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + tx.amount, 0);
+  return {
+    range,
+    items,
+    income,
+    expense,
+    balance: income - expense,
+    label: date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+  };
+}
+
+function personalPdfCategoryRows(items, expenseTotal) {
+  const totals = {};
+  items.filter(tx => tx.type === 'expense').forEach(tx => {
+    totals[tx.category] = (totals[tx.category] || 0) + tx.amount;
+  });
+  return Object.entries(totals)
+    .sort((a, b) => b[1] - a[1])
+    .map(([categoryId, total], index) => [
+      index + 1,
+      getCategory('expense', categoryId).name,
+      formatCurrency(total),
+      `${expenseTotal > 0 ? ((total / expenseTotal) * 100).toFixed(1) : '0.0'}%`,
+    ]);
+}
+
+function personalPdfTransactionRows(items) {
+  return sortByDate(items, true).map(tx => [
+    formatDate(tx.date),
+    tx.description,
+    getCategory(tx.type, tx.category).name,
+    tx.type === 'income' ? 'Receita' : 'Despesa',
+    `${tx.type === 'income' ? '' : '- '}${formatCurrency(tx.amount)}`,
+  ]);
+}
+
+function buildPersonalPdfReport() {
+  const now = new Date();
+  const all = loadTransactions();
+  const current = personalPdfMonthSnapshot(now, all);
+  const base = {
+    brand: 'Psyzon Finanças',
+    eyebrow: 'Controle financeiro pessoal',
+    generatedAt: now.toLocaleString('pt-BR'),
+    fileName: `financas-pessoais-${activeReport}-${getToday()}.pdf`,
+    footer: 'Psyzon Finanças - dados atualizados no momento da exportação',
+    title: '',
+    subtitle: '',
+    summary: [],
+    sections: [],
+  };
+
+  if (activeReport === 'category') {
+    const categoryRows = personalPdfCategoryRows(current.items, current.expense);
+    return {
+      ...base,
+      title: 'Gastos por categoria',
+      subtitle: `Distribuição das despesas de ${current.label}`,
+      summary: [
+        ['Despesas', formatCurrency(current.expense)],
+        ['Categorias', String(categoryRows.length)],
+        ['Lançamentos', String(current.items.filter(tx => tx.type === 'expense').length)],
+        ['Maior categoria', categoryRows[0]?.[1] || '-'],
+      ],
+      sections: [{
+        title: 'Detalhamento por categoria',
+        note: 'Ordenado do maior para o menor gasto',
+        columns: ['Pos', 'Categoria', 'Valor', '%'],
+        rows: categoryRows,
+        empty: 'Nenhuma despesa registrada neste mês.',
+        highlightTop: true,
+      }],
+    };
+  }
+
+  if (activeReport === 'comparison') {
+    const months = [];
+    for (let index = 5; index >= 0; index -= 1) {
+      months.push(personalPdfMonthSnapshot(new Date(now.getFullYear(), now.getMonth() - index, 1), all));
+    }
+    const totalIncome = months.reduce((sum, month) => sum + month.income, 0);
+    const totalExpense = months.reduce((sum, month) => sum + month.expense, 0);
+    return {
+      ...base,
+      title: 'Comparação entre meses',
+      subtitle: 'Receitas, despesas e saldo dos últimos 6 meses',
+      summary: [
+        ['Receitas', formatCurrency(totalIncome)],
+        ['Despesas', formatCurrency(totalExpense)],
+        ['Saldo', formatCurrency(totalIncome - totalExpense)],
+        ['Período', '6 meses'],
+      ],
+      sections: [{
+        title: 'Comparativo mensal',
+        note: 'Valores consolidados por mês',
+        columns: ['Mês', 'Receitas', 'Despesas', 'Saldo'],
+        rows: months.map(month => [month.label, formatCurrency(month.income), formatCurrency(month.expense), formatCurrency(month.balance)]),
+        empty: 'Não há dados no período comparado.',
+      }],
+    };
+  }
+
+  if (activeReport === 'evolution') {
+    const months = [];
+    let accumulated = 0;
+    for (let index = 11; index >= 0; index -= 1) {
+      const month = personalPdfMonthSnapshot(new Date(now.getFullYear(), now.getMonth() - index, 1), all);
+      accumulated += month.balance;
+      months.push({ ...month, accumulated });
+    }
+    return {
+      ...base,
+      title: 'Evolução financeira',
+      subtitle: 'Movimentação e saldo acumulado dos últimos 12 meses',
+      summary: [
+        ['Saldo acumulado', formatCurrency(accumulated)],
+        ['Receitas', formatCurrency(months.reduce((sum, month) => sum + month.income, 0))],
+        ['Despesas', formatCurrency(months.reduce((sum, month) => sum + month.expense, 0))],
+        ['Período', '12 meses'],
+      ],
+      sections: [{
+        title: 'Evolução mês a mês',
+        note: 'Saldo acumulado dentro do período',
+        columns: ['Mês', 'Receitas', 'Despesas', 'Saldo', 'Acumulado'],
+        rows: months.map(month => [
+          month.label,
+          formatCurrency(month.income),
+          formatCurrency(month.expense),
+          formatCurrency(month.balance),
+          formatCurrency(month.accumulated),
+        ]),
+        empty: 'Não há dados para mostrar a evolução.',
+      }],
+    };
+  }
+
+  const categoryRows = personalPdfCategoryRows(current.items, current.expense);
+  return {
+    ...base,
+    title: 'Relatório financeiro pessoal',
+    subtitle: `Resumo mensal de ${current.label}`,
+    summary: [
+      ['Receitas', formatCurrency(current.income)],
+      ['Despesas', formatCurrency(current.expense)],
+      ['Saldo', formatCurrency(current.balance)],
+      ['Lançamentos', String(current.items.length)],
+    ],
+    sections: [
+      {
+        title: 'Despesas por categoria',
+        note: 'Distribuição do mês',
+        columns: ['Pos', 'Categoria', 'Valor', '%'],
+        rows: categoryRows,
+        empty: 'Nenhuma despesa registrada neste mês.',
+        highlightTop: true,
+      },
+      {
+        title: 'Transações do período',
+        note: 'Lista completa, sem cortar descrições',
+        columns: ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor'],
+        rows: personalPdfTransactionRows(current.items),
+        empty: 'Nenhuma transação registrada neste mês.',
+      },
+    ],
+  };
+}
+
+async function exportPDF(triggerButton = null) {
+  if (personalPdfExportInProgress) {
+    showToast('Aguarde o PDF atual terminar de ser gerado.', 'warning');
+    return;
+  }
+  if (!window.PsyzonPdf?.exportReport) {
+    showToast('O gerador de PDF não carregou. Atualize a página.', 'error');
+    return;
+  }
+
+  personalPdfExportInProgress = true;
+  const originalContent = triggerButton?.innerHTML;
+  if (triggerButton) {
+    triggerButton.disabled = true;
+    triggerButton.setAttribute('aria-busy', 'true');
+    triggerButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gerando PDF';
+  }
+
   try {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const all = loadTransactions();
-    const now = new Date();
-    const range = getMonthRange(now);
-    const month = all.filter(t => t.date >= range.start && t.date <= range.end);
-    const income = month.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const expense = month.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-
-    doc.setFontSize(18);
-    doc.text('Relatório Financeiro Pessoal', 14, 22);
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 30);
-    doc.text(`Período: ${now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`, 14, 36);
-
-    doc.setFontSize(12);
-    doc.setTextColor(0);
-    doc.text('Resumo do Mês', 14, 48);
-    doc.setFontSize(10);
-    doc.text(`Receitas: ${formatCurrency(income)}`, 14, 56);
-    doc.text(`Despesas: ${formatCurrency(expense)}`, 14, 62);
-    doc.text(`Economia: ${formatCurrency(income - expense)}`, 14, 68);
-
-    // Transaction table
-    let y = 80;
-    doc.setFontSize(12);
-    doc.text('Transações', 14, y);
-    y += 8;
-    doc.setFontSize(8);
-    doc.setTextColor(100);
-    doc.text('DATA', 14, y);
-    doc.text('DESCRIÇÃO', 40, y);
-    doc.text('TIPO', 110, y);
-    doc.text('VALOR', 140, y);
-    y += 6;
-    doc.setTextColor(0);
-
-    const sorted = sortByDate(month);
-    sorted.forEach(tx => {
-      if (y > PDF_PAGE_BOTTOM) { doc.addPage(); y = PDF_TOP_MARGIN; }
-      doc.text(formatDate(tx.date), 14, y);
-      doc.text(tx.description.substring(0, PDF_DESC_MAX_LEN), 40, y);
-      doc.text(tx.type === 'income' ? 'Receita' : 'Despesa', 110, y);
-      doc.text(formatCurrency(tx.amount), 140, y);
-      y += 6;
-    });
-
-    doc.save(`relatorio-pessoal-${getToday()}.pdf`);
-    showToast('PDF exportado!', 'success');
+    const result = await window.PsyzonPdf.exportReport(buildPersonalPdfReport());
+    showToast(`PDF atualizado exportado com ${result.pages} página${result.pages === 1 ? '' : 's'}!`, 'success');
   } catch (err) {
-    showToast('Erro ao gerar PDF', 'error');
-    console.error(err);
+    showToast(err.message || 'Erro ao gerar PDF', 'error');
+    console.error('Erro ao gerar PDF pessoal:', err);
+  } finally {
+    personalPdfExportInProgress = false;
+    if (triggerButton?.isConnected) {
+      triggerButton.disabled = false;
+      triggerButton.removeAttribute('aria-busy');
+      triggerButton.innerHTML = originalContent;
+    }
   }
 }
 

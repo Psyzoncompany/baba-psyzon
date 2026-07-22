@@ -2950,17 +2950,6 @@
       flex: 1 1 0;
     }
 
-    .baba-pdf-print-frame {
-      position: fixed;
-      top: 0;
-      left: -12000px;
-      width: 1120px;
-      height: 800px;
-      border: 0;
-      opacity: 0;
-      pointer-events: none;
-    }
-
     body.baba-player-mode .baba-goals-layout {
       grid-template-columns: 1fr;
     }
@@ -4641,6 +4630,8 @@
 
 
   <script type="module" src="baba-persistence.js"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="pdf-report.js"></script>
   <script src="baba.js" defer></script>
 </body>
 
