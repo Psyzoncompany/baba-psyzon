@@ -195,52 +195,45 @@
         // --- LEMBRAR DISPOSITIVO ---
         const getNativeStorage = () => window.__nativeLS || window.localStorage;
 
-        const loadSavedCredentials = () => {
+        const loadRememberPreference = () => {
             try {
                 const raw = getNativeStorage().getItem(REMEMBER_KEY);
-                if (!raw) return null;
-                return JSON.parse(raw);
-            } catch (_) { return null; }
-        };
+                if (!raw) return false;
 
-        const saveCredentials = (email, password) => {
-            getNativeStorage().setItem(REMEMBER_KEY, JSON.stringify({ email, password }));
-        };
-
-        const clearSavedCredentials = () => {
-            getNativeStorage().removeItem(REMEMBER_KEY);
-        };
-
-        // Se há credenciais salvas, preencher e tentar auto-login
-        const saved = loadSavedCredentials();
-        if (saved && saved.email && saved.password) {
-            emailInput.value = saved.email;
-            passwordInput.value = saved.password;
-            rememberCheckbox.checked = true;
-
-            (async () => {
-                try {
-                    setLoading({ email: true });
-                    const firebaseAuth = await waitForFirebaseAuth();
-                    await firebaseAuth.login(saved.email, saved.password, true);
-                } catch (error) {
-                    console.error('Auto-login falhou:', error);
-                    clearSavedCredentials();
-                    setLoading();
+                // Migra a versão antiga sem manter a senha no navegador.
+                if (raw.startsWith('{')) {
+                    const legacy = JSON.parse(raw);
+                    if (legacy?.email) emailInput.value = legacy.email;
+                    getNativeStorage().setItem(REMEMBER_KEY, 'local');
+                    return true;
                 }
-            })();
-        }
+
+                return raw === 'local' || raw === 'true' || raw === '1';
+            } catch (_) {
+                return false;
+            }
+        };
+
+        const saveRememberPreference = (remember) => {
+            if (remember) getNativeStorage().setItem(REMEMBER_KEY, 'local');
+            else getNativeStorage().removeItem(REMEMBER_KEY);
+        };
+
+        // O Firebase restaura o token. Esta chave guarda apenas a preferência visual.
+        rememberCheckbox.checked = loadRememberPreference();
 
         // --- FIREBASE ---
-        function waitForFirebaseAuth(timeoutMs = 12000) {
-            return new Promise(async (resolve, reject) => {
-                const start = Date.now();
-                while (!window.firebaseAuth) {
-                    if (Date.now() - start > timeoutMs) return reject(new Error('Firebase não inicializou. Recarregue a página.'));
-                    await new Promise((r) => setTimeout(r, 60));
-                }
-                resolve(window.firebaseAuth);
-            });
+        async function waitForFirebaseAuth(timeoutMs = 12000) {
+            const start = Date.now();
+            while (!window.firebaseAuth) {
+                if (Date.now() - start > timeoutMs) throw new Error('Firebase não inicializou. Recarregue a página.');
+                await new Promise((resolve) => setTimeout(resolve, 60));
+            }
+            const firebaseAuth = window.firebaseAuth;
+            if (typeof firebaseAuth.waitUntilReady === 'function') {
+                await firebaseAuth.waitUntilReady();
+            }
+            return firebaseAuth;
         }
 
         function setLoading({ email = false, google = false } = {}) {
@@ -287,9 +280,11 @@
             errorMsg.classList.add('hidden');
             successMsg.classList.add('hidden');
             setLoading({ google: true });
+            const remember = rememberCheckbox.checked;
+            saveRememberPreference(remember);
             try {
                 const firebaseAuth = await waitForFirebaseAuth();
-                await firebaseAuth.loginWithGoogle();
+                await firebaseAuth.loginWithGoogle(remember);
             } catch (error) {
                 console.error(error);
                 showError(friendlyError(error));
@@ -320,8 +315,8 @@
                 setLoading({ email: true });
                 try {
                     const firebaseAuth = await waitForFirebaseAuth();
+                    saveRememberPreference(remember);
                     await firebaseAuth.signup(email, password, remember);
-                    if (remember) saveCredentials(email, password);
                     showSuccess('Conta criada com sucesso! Entrando...');
                 } catch (error) {
                     console.error(error);
@@ -333,12 +328,8 @@
                 setLoading({ email: true });
                 try {
                     const firebaseAuth = await waitForFirebaseAuth();
+                    saveRememberPreference(remember);
                     await firebaseAuth.login(email, password, remember);
-                    if (remember) {
-                        saveCredentials(email, password);
-                    } else {
-                        clearSavedCredentials();
-                    }
                 } catch (error) {
                     console.error(error);
                     showError(friendlyError(error));

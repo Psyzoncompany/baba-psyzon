@@ -1662,6 +1662,161 @@ body.baba-page .baba-management-drawer .baba-team-player-card[data-team-number]:
   }
 }
 
+/* Ajustes pontuais da tabela, menu compacto e desempate. */
+html body.baba-page .baba-standings-table .baba-table__row[data-team-number]:not(.is-first) .baba-position-badge,
+html body.baba-page .baba-standings-table .baba-table__row[data-team-number]:not(.is-first) .baba-position-label small {
+  color: #050b14 !important;
+}
+
+.baba-tiebreak-panel--compact {
+  gap: .55rem;
+}
+
+.baba-tiebreak-compact-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: .65rem;
+  align-items: center;
+  padding: .65rem .75rem;
+  border: 1px solid rgba(15, 45, 70, .1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .8);
+}
+
+.baba-tiebreak-compact-head__icon {
+  display: grid;
+  width: 2.55rem;
+  height: 2.55rem;
+  place-items: center;
+  border-radius: 12px;
+  color: #087762;
+  background: rgba(16, 185, 129, .12);
+}
+
+.baba-tiebreak-compact-head__icon svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  fill: none;
+  stroke: currentColor;
+}
+
+.baba-tiebreak-compact-head .baba-kicker {
+  margin: 0 0 .08rem;
+  font-size: .59rem;
+}
+
+.baba-tiebreak-compact-head h3 {
+  margin: 0;
+  color: #0b1f33;
+  font-size: clamp(.98rem, 2vw, 1.12rem);
+  line-height: 1.15;
+}
+
+.baba-tiebreak-compact-head p {
+  margin: .16rem 0 0;
+  color: #617187;
+  font-size: .72rem;
+  line-height: 1.3;
+}
+
+.baba-tiebreak-panel--compact .baba-tiebreak-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .5rem;
+}
+
+.baba-tiebreak-choice {
+  --tie-accent: #0f766e;
+  display: grid;
+  min-width: 0;
+  min-height: 60px;
+  padding: .55rem .65rem;
+  border: 1px solid rgba(15, 45, 70, .14);
+  border-left: 4px solid var(--tie-accent);
+  border-radius: 12px;
+  color: #0b1f33;
+  text-align: left;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(7, 31, 56, .06);
+  cursor: pointer;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.baba-tiebreak-choice[data-team-number="1"] { --tie-accent: #d51f35; }
+.baba-tiebreak-choice[data-team-number="2"] { --tie-accent: #087b4b; }
+.baba-tiebreak-choice[data-team-number="3"] { --tie-accent: #7a8797; }
+
+.baba-tiebreak-choice:hover {
+  transform: translateY(-1px);
+  border-color: var(--tie-accent);
+  box-shadow: 0 9px 20px rgba(7, 31, 56, .1);
+}
+
+.baba-tiebreak-choice:focus-visible {
+  outline: 3px solid rgba(16, 185, 129, .28);
+  outline-offset: 2px;
+}
+
+.baba-tiebreak-choice span,
+.baba-tiebreak-choice small {
+  overflow: hidden;
+  color: #64748b;
+  font-size: .61rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.baba-tiebreak-choice strong {
+  overflow: hidden;
+  margin: .08rem 0;
+  color: #0b1f33;
+  font-size: .86rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  body.baba-page .baba-unified-header .baba-more-menu {
+    position: fixed !important;
+    top: var(--baba-more-menu-top, 6rem) !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: var(--baba-more-menu-left, .5rem) !important;
+    z-index: 200 !important;
+    width: min(260px, calc(100vw - 1rem)) !important;
+    max-height: calc(100dvh - var(--baba-more-menu-top, 6rem) - .75rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .baba-tiebreak-panel--compact .baba-tiebreak-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 390px) {
+  .baba-tiebreak-compact-head {
+    padding: .55rem .6rem;
+  }
+
+  .baba-tiebreak-compact-head p {
+    font-size: .66rem;
+  }
+
+  .baba-tiebreak-choice {
+    min-height: 56px;
+    padding: .48rem .5rem;
+  }
+
+  .baba-tiebreak-choice strong {
+    font-size: .78rem;
+  }
+}
+
 @keyframes baba-sheet-in { from { opacity: .75; transform: translateY(100%); } }
 
 @media (prefers-reduced-motion: reduce) {

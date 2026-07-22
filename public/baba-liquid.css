@@ -2732,3 +2732,319 @@ html body.baba-page .baba-team[data-team-number="3"] .baba-team-status {
   color: #111827 !important;
   background: rgba(17, 24, 39, .08);
 }
+
+/* Classificacao: numeros legiveis e identidade dos times usada apenas como destaque. */
+html body.baba-page .baba-card--standings {
+  overflow: hidden;
+  border-color: rgba(15, 35, 58, .12) !important;
+  background: rgba(255, 255, 255, .94) !important;
+  box-shadow: 0 18px 42px rgba(15, 35, 58, .12) !important;
+}
+
+html body.baba-page .baba-standings-table {
+  gap: .48rem;
+}
+
+html body.baba-page .baba-standings-table .baba-table__row {
+  grid-template-columns: 4.6rem minmax(9.5rem, 1.65fr) repeat(6, minmax(2.7rem, .42fr));
+  gap: .5rem;
+  min-height: 3.55rem;
+  border: 1px solid #dbe4ed !important;
+  border-radius: 12px !important;
+  padding: .52rem .65rem;
+  color: #14253a !important;
+  background: #fff !important;
+  box-shadow: 0 7px 18px rgba(15, 35, 58, .055) !important;
+}
+
+html body.baba-page .baba-standings-table .baba-table__head {
+  min-height: 2.65rem;
+  border-color: #d8e2ec !important;
+  color: #53657b !important;
+  background: #eef3f8 !important;
+  box-shadow: none !important;
+  font-size: .68rem;
+  letter-spacing: .055em;
+}
+
+html body.baba-page .baba-standings-table .baba-table__head > span:not(:nth-child(2)) {
+  text-align: center;
+}
+
+html body.baba-page .baba-standings-table .baba-table__row[data-team-number="1"] { --standings-accent: #d53445; --standings-soft: #fff1f3; }
+html body.baba-page .baba-standings-table .baba-table__row[data-team-number="2"] { --standings-accent: #148552; --standings-soft: #edf9f2; }
+html body.baba-page .baba-standings-table .baba-table__row[data-team-number="3"] { --standings-accent: #334155; --standings-soft: #f1f5f9; }
+html body.baba-page .baba-standings-table .baba-table__row[data-team-number="4"] { --standings-accent: #111827; --standings-soft: #f3f4f6; }
+html body.baba-page .baba-standings-table .baba-table__row[data-team-number="5"] { --standings-accent: #2563a8; --standings-soft: #edf5fd; }
+
+html body.baba-page .baba-standings-table .baba-table__row[data-team-number] {
+  position: relative;
+  overflow: hidden;
+  border-color: #dbe4ed !important;
+  color: #14253a !important;
+  background: #fff !important;
+  box-shadow: 0 7px 18px rgba(15, 35, 58, .055) !important;
+  animation: none !important;
+}
+
+html body.baba-page .baba-standings-table .baba-table__row[data-team-number]::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--standings-accent, #0d9471);
+}
+
+html body.baba-page .baba-standings-table .baba-table__row[data-team-number]:hover {
+  border-color: color-mix(in srgb, var(--standings-accent) 34%, #dbe4ed) !important;
+  box-shadow: 0 12px 26px rgba(15, 35, 58, .1) !important;
+  transform: translateY(-1px);
+}
+
+html body.baba-page .baba-standings-table .baba-table__row[data-team-number].is-first {
+  border-color: rgba(201, 146, 28, .34) !important;
+  background: linear-gradient(90deg, #fffbeb, #fff 42%) !important;
+}
+
+html body.baba-page .baba-standings-table .baba-table__row[data-team-number].is-live {
+  outline: 2px solid rgba(13, 148, 113, .2);
+  outline-offset: -2px;
+}
+
+html body.baba-page .baba-standings-table .baba-table__row[data-team-number] :is(strong, small, span, b) {
+  color: #14253a !important;
+}
+
+html body.baba-page .baba-standings-table .baba-position-label {
+  align-items: center;
+  justify-items: center;
+  gap: .18rem;
+}
+
+html body.baba-page .baba-standings-table .baba-position-badge {
+  width: 2.25rem;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid #d5e0ea;
+  color: #17304d !important;
+  background: #edf3f8 !important;
+  box-shadow: none;
+  font-size: .78rem;
+}
+
+html body.baba-page .baba-standings-table .baba-position-badge.is-first {
+  border-color: #b98012;
+  color: #fff !important;
+  background: #c9921c !important;
+  box-shadow: 0 6px 14px rgba(201, 146, 28, .22);
+}
+
+html body.baba-page .baba-standings-table .baba-position-label small {
+  color: #697b91 !important;
+  font-size: .57rem;
+  letter-spacing: .05em;
+}
+
+html body.baba-page .baba-standings-team {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+}
+
+html body.baba-page .baba-standings-table .baba-team-link[data-team-number] {
+  min-width: 0;
+  max-width: 100%;
+  border: 0 !important;
+  padding: .2rem 0;
+  color: var(--standings-accent, #14253a) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: .82rem;
+}
+
+html body.baba-page .baba-standings-table .baba-team-link[data-team-number]:is(:hover, :focus-visible) {
+  color: #071c34 !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+html body.baba-page .baba-standings-table .baba-team-link[data-team-number] .baba-team-link-logo {
+  width: 1.55rem;
+  height: 1.55rem;
+  flex-basis: 1.55rem;
+  border-color: color-mix(in srgb, var(--standings-accent) 26%, #dbe4ed) !important;
+  box-shadow: none !important;
+}
+
+html body.baba-page .baba-standings-live {
+  flex: 0 0 auto;
+  border: 1px solid rgba(13, 148, 113, .22);
+  border-radius: 999px;
+  padding: .2rem .42rem;
+  color: #08735a !important;
+  background: #e9f8f2;
+  font-size: .55rem;
+  font-weight: 900;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+html body.baba-page .baba-standings-stat {
+  min-width: 2.45rem;
+  min-height: 2.25rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid #e0e7ef;
+  border-radius: 9px;
+  color: #14253a !important;
+  background: #f6f8fb;
+  font-variant-numeric: tabular-nums;
+}
+
+html body.baba-page .baba-standings-stat small {
+  display: none;
+  color: #718198 !important;
+  font-size: .52rem;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+html body.baba-page .baba-standings-stat strong {
+  color: #14253a !important;
+  font-size: .92rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+html body.baba-page .baba-standings-stat--points {
+  border-color: rgba(13, 148, 113, .2);
+  background: #eaf8f3;
+}
+
+html body.baba-page .baba-standings-stat--points strong {
+  color: #08735a !important;
+  font-size: 1.05rem;
+}
+
+html body.baba-page .baba-standings-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .22rem .42rem;
+  margin: .65rem 0 0;
+  color: #697b91;
+  font-size: .62rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+html body.baba-page .baba-standings-legend b {
+  color: #17304d;
+}
+
+html body.baba-page .baba-export-btn.is-exporting::after {
+  content: "";
+  width: .8rem;
+  height: .8rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: baba-pdf-spin .7s linear infinite;
+}
+
+@keyframes baba-pdf-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  html body.baba-page .baba-card--standings {
+    padding: .7rem !important;
+  }
+
+  html body.baba-page .baba-standings-table .baba-table__head {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  html body.baba-page .baba-standings-table .baba-table__row[data-team-number] {
+    grid-template-columns: 2.85rem repeat(7, minmax(0, 1fr));
+    grid-template-areas:
+      "pos team team team team team pts pts"
+      "pos gp gp sg sg wins draws losses";
+    gap: .42rem .35rem;
+    min-height: 6.2rem;
+    padding: .62rem .58rem .62rem .72rem;
+  }
+
+  html body.baba-page .baba-standings-table .baba-position-label { grid-area: pos; }
+  html body.baba-page .baba-standings-team { grid-area: team; }
+  html body.baba-page .baba-standings-stat--points { grid-area: pts; }
+  html body.baba-page .baba-standings-stat--goals { grid-area: gp; }
+  html body.baba-page .baba-standings-stat--balance { grid-area: sg; }
+  html body.baba-page .baba-standings-stat--wins { grid-area: wins; }
+  html body.baba-page .baba-standings-stat--draws { grid-area: draws; }
+  html body.baba-page .baba-standings-stat--losses { grid-area: losses; }
+
+  html body.baba-page .baba-standings-table .baba-position-label small {
+    display: block;
+    white-space: normal;
+    text-align: center;
+  }
+
+  html body.baba-page .baba-standings-table .baba-team-link[data-team-number] {
+    font-size: .86rem;
+  }
+
+  html body.baba-page .baba-standings-stat {
+    min-width: 0;
+    min-height: 2.45rem;
+    align-content: center;
+    gap: .18rem;
+    padding: .28rem .2rem;
+  }
+
+  html body.baba-page .baba-standings-stat small {
+    display: block;
+  }
+
+  html body.baba-page .baba-standings-stat strong,
+  html body.baba-page .baba-standings-stat--points strong {
+    font-size: .92rem;
+  }
+
+  html body.baba-page .baba-standings-live {
+    display: none;
+  }
+}
+
+@media (max-width: 390px) {
+  html body.baba-page .baba-standings-table .baba-table__row[data-team-number] {
+    grid-template-columns: 2.5rem repeat(7, minmax(0, 1fr));
+    gap: .36rem .28rem;
+    padding-right: .45rem;
+  }
+
+  html body.baba-page .baba-standings-table .baba-team-link[data-team-number] .baba-team-link-logo {
+    width: 1.35rem;
+    height: 1.35rem;
+    flex-basis: 1.35rem;
+  }
+
+  html body.baba-page .baba-standings-legend {
+    font-size: .57rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html body.baba-page .baba-export-btn.is-exporting::after {
+    animation-duration: 1.4s;
+  }
+}
