@@ -3463,6 +3463,7 @@
     }
   </script>
   <link href="baba-liquid.css" rel="stylesheet">
+  <link href="baba-draw.css" rel="stylesheet">
 </head>
 
 <body class="baba-page">
@@ -3860,7 +3861,50 @@
       </section>
 
       <section class="baba-view" data-view="teams">
-        <div id="teams-grid" class="baba-teams-grid"></div>
+        <div class="baba-draw-page" aria-labelledby="draw-page-title">
+          <section id="draw-status-bar" class="baba-draw-status-bar" aria-label="Status do sorteio">
+            <div class="baba-draw-status-bar__copy">
+              <span class="baba-draw-status-bar__icon" aria-hidden="true">
+                <svg><use href="#baba-users-check"></use></svg>
+              </span>
+              <div>
+                <span class="baba-draw-eyebrow">Organizacao dos times</span>
+                <h1 id="draw-page-title">Times sorteados</h1>
+                <p id="draw-status-description">Confira os jogadores antes de iniciar o primeiro jogo.</p>
+              </div>
+            </div>
+            <div class="baba-draw-status-bar__actions organizer-only">
+              <span id="draw-save-state" class="baba-save-state" role="status" aria-live="polite"></span>
+              <button id="draw-review-button" class="baba-draw-button baba-draw-button--secondary hidden" type="button" data-action="restart-team-reveal">
+                <svg class="baba-btn-icon" aria-hidden="true" focusable="false"><use href="#baba-refresh"></use></svg>
+                <span>Rever sorteio</span>
+              </button>
+              <button id="draw-save-button" class="baba-draw-button baba-draw-button--primary" type="button" data-action="finish-and-save-draw" disabled>
+                <svg aria-hidden="true" focusable="false"><use href="#baba-save"></use></svg>
+                <span>Finalizar e salvar</span>
+              </button>
+            </div>
+          </section>
+
+          <section id="draw-progress" class="baba-draw-progress" aria-label="Etapas do processo"></section>
+
+          <section id="draw-ready-panel" class="baba-draw-ready" aria-live="polite"></section>
+
+          <section id="draw-results-section" class="baba-draw-results" aria-labelledby="draw-results-title">
+            <div class="baba-draw-section-heading">
+              <div>
+                <span class="baba-draw-eyebrow">Resultado do sorteio</span>
+                <h2 id="draw-results-title">Formacao dos times</h2>
+              </div>
+              <span id="draw-teams-progress" class="baba-draw-count">0 de 0 times sorteados</span>
+            </div>
+            <div id="teams-grid" class="baba-teams-grid"></div>
+          </section>
+
+          <section id="draw-action-bar" class="baba-draw-action-bar organizer-only" aria-label="Acoes do sorteio"></section>
+          <section id="draw-secondary-controls" class="baba-draw-secondary" aria-label="Controles secundarios"></section>
+          <div id="draw-announcer" class="baba-visually-hidden" aria-live="polite" aria-atomic="true"></div>
+        </div>
       </section>
 
       <section class="baba-view" data-view="organizer">
@@ -4087,6 +4131,31 @@
 
   <div id="baba-toast" class="baba-toast" role="status" aria-live="polite"></div>
 
+  <div id="team-draw-overlay" class="baba-draw-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="draw-overlay-title" aria-describedby="draw-overlay-description">
+    <section class="baba-draw-overlay__panel" tabindex="-1">
+      <header class="baba-draw-overlay__header">
+        <div class="baba-draw-overlay__heading">
+          <span id="draw-overlay-step">Sorteando time 1 de 3</span>
+          <h2 id="draw-overlay-title">Preparando o sorteio</h2>
+          <p id="draw-overlay-description">Os jogadores serao revelados em instantes.</p>
+        </div>
+        <div class="baba-draw-overlay__tools">
+          <button id="draw-sound-toggle" class="baba-icon-button" type="button" aria-label="Ativar sons do sorteio" aria-pressed="false" title="Ativar sons">
+            <svg aria-hidden="true" focusable="false"><use href="#baba-ball"></use></svg>
+          </button>
+          <button id="draw-skip-button" class="baba-draw-skip" type="button">Pular animacao</button>
+          <button id="draw-close-button" class="baba-icon-button hidden" type="button" aria-label="Fechar revelacao do sorteio" title="Fechar">
+            <svg aria-hidden="true" focusable="false"><use href="#baba-x"></use></svg>
+          </button>
+        </div>
+      </header>
+      <div class="baba-draw-overlay__progress" aria-hidden="true"><span id="draw-overlay-progress-bar"></span></div>
+      <div id="draw-overlay-content" class="baba-draw-overlay__content"></div>
+      <footer id="draw-overlay-actions" class="baba-draw-overlay__actions"></footer>
+      <div id="draw-overlay-announcer" class="baba-visually-hidden" aria-live="polite" aria-atomic="true"></div>
+    </section>
+  </div>
+
   <div id="present-modal" class="baba-modal hidden" role="dialog" aria-modal="true" aria-labelledby="present-modal-title">
     <div class="baba-modal__panel">
       <div class="baba-card__head">
@@ -4108,11 +4177,13 @@
     </div>
   </div>
 
-  <div id="team-detail-modal" class="baba-modal hidden" role="dialog" aria-modal="true" aria-labelledby="team-detail-title">
-    <div class="baba-modal__panel baba-roster-modal__panel">
+  <div id="team-detail-modal" class="baba-modal baba-management-drawer hidden" role="dialog" aria-modal="true" aria-labelledby="team-detail-title">
+    <div class="baba-modal__panel baba-roster-modal__panel" tabindex="-1">
       <div class="baba-card__head">
-        <h2 id="team-detail-title">Time</h2>
-        <button id="close-team-detail-modal" class="baba-mini-btn" type="button">Fechar</button>
+        <div><span class="baba-draw-eyebrow">Editar elenco</span><h2 id="team-detail-title">Time</h2></div>
+        <button id="close-team-detail-modal" class="baba-icon-button" type="button" aria-label="Fechar edicao do elenco" title="Fechar">
+          <svg class="baba-btn-icon" aria-hidden="true" focusable="false"><use href="#baba-x"></use></svg>
+        </button>
       </div>
       <div id="team-detail-list" class="baba-roster-detail"></div>
     </div>

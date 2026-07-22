@@ -14,6 +14,14 @@
   const PLAYER_BABA_PRICE = 15;
   const GOALKEEPER_BABA_PRICE = 7;
   const PAYMENT_DUE_DAY = 10;
+  const DRAW_SOUND_KEY = 'psyzon_baba_draw_sound';
+  const TEAM_VISUALS = [
+    { logo: 'img/baba-team-1-flamengo.png', accent: '#d53445' },
+    { logo: 'img/baba-team-2-palmeiras.png', accent: '#148552' },
+    { logo: 'img/baba-team-3-vasco.png', accent: '#334155' },
+    { logo: 'img/baba-team-4-corinthians.png', accent: '#111827' },
+    { logo: 'img/baba-time-5.png', accent: '#2563a8' },
+  ];
   const GOAL_PRIORITIES = [
     { id: 'alta', label: 'Alta', value: 3 },
     { id: 'media', label: 'Media', value: 2 },
@@ -103,6 +111,29 @@
     lastResultPill: $('#last-result-pill'),
     lastResultPanel: $('#last-result-panel'),
     teamsGrid: $('#teams-grid'),
+    drawStatusDescription: $('#draw-status-description'),
+    drawSaveState: $('#draw-save-state'),
+    drawReviewButton: $('#draw-review-button'),
+    drawSaveButton: $('#draw-save-button'),
+    drawProgress: $('#draw-progress'),
+    drawReadyPanel: $('#draw-ready-panel'),
+    drawResultsSection: $('#draw-results-section'),
+    drawTeamsProgress: $('#draw-teams-progress'),
+    drawActionBar: $('#draw-action-bar'),
+    drawSecondaryControls: $('#draw-secondary-controls'),
+    drawAnnouncer: $('#draw-announcer'),
+    drawOverlay: $('#team-draw-overlay'),
+    drawOverlayPanel: $('#team-draw-overlay .baba-draw-overlay__panel'),
+    drawOverlayStep: $('#draw-overlay-step'),
+    drawOverlayTitle: $('#draw-overlay-title'),
+    drawOverlayDescription: $('#draw-overlay-description'),
+    drawOverlayProgressBar: $('#draw-overlay-progress-bar'),
+    drawOverlayContent: $('#draw-overlay-content'),
+    drawOverlayActions: $('#draw-overlay-actions'),
+    drawOverlayAnnouncer: $('#draw-overlay-announcer'),
+    drawSkipButton: $('#draw-skip-button'),
+    drawCloseButton: $('#draw-close-button'),
+    drawSoundToggle: $('#draw-sound-toggle'),
     rankingList: $('#ranking-list'),
     dailyRankingList: $('#daily-ranking-list'),
     rankingFilterControls: $('#ranking-filter-controls'),
@@ -185,6 +216,12 @@
   let babaAudioContext = null;
   let selectedTeamDetail = null;
   let selectedPlayerDetail = null;
+  let drawExperience = null;
+  let drawSequenceToken = 0;
+  let recentlyRevealedTeamId = null;
+  let teamDetailOpener = null;
+  let playerDetailOpener = null;
+  let drawSoundEnabled = localStorage.getItem(DRAW_SOUND_KEY) === 'true';
   const babaAssistant = {
     wired: false,
     open: false,
@@ -425,6 +462,7 @@
   function clearSavingButton() {
     clearTimeout(savingButtonFallbackTimer);
     if (!savingButtonState) return;
+    const wasDrawSave = savingButtonState.selector === '#draw-save-button';
     const button = document.querySelector(savingButtonState.selector);
     if (button) {
       button.innerHTML = savingButtonState.html;
@@ -432,6 +470,10 @@
       button.removeAttribute('aria-busy');
     }
     savingButtonState = null;
+    if (wasDrawSave && els.drawSaveState) {
+      els.drawSaveState.textContent = 'Salvo com sucesso';
+      els.drawSaveState.className = 'baba-save-state is-success';
+    }
   }
 
   function markActionButtonSaving() {
@@ -445,6 +487,10 @@
     button.textContent = 'Salvando...';
     button.disabled = true;
     button.setAttribute('aria-busy', 'true');
+    if (selector === '#draw-save-button' && els.drawSaveState) {
+      els.drawSaveState.textContent = 'Salvando...';
+      els.drawSaveState.className = 'baba-save-state is-saving';
+    }
     savingButtonFallbackTimer = setTimeout(clearSavingButton, 2500);
   }
 
@@ -3171,8 +3217,9 @@
     baba.teamRevealIndex = 0;
     baba.status = 'times';
     baba.undoStack = [];
-    saveState('Times sorteados: Time 1 e Time 2 com 4 jogadores de linha.');
     setActiveTab('teams');
+    beginDrawExperience(baba);
+    saveState('Times sorteados: Time 1 e Time 2 com 4 jogadores de linha.');
   }
 
   function createLateArrivalTeam(baba = getActiveBaba()) {
@@ -3361,15 +3408,15 @@
   function advanceTeamReveal() {
     const baba = getActiveBaba();
     if (!baba?.teams?.length) return;
-    baba.teamRevealIndex = Math.min((baba.teamRevealIndex || 0) + 1, baba.teams.length - 1);
-    saveState();
+    if (drawExperience) return advanceDrawExperience();
+    beginDrawExperience(baba, { review: true });
   }
 
   function restartTeamReveal() {
     const baba = getActiveBaba();
     if (!baba?.teams?.length) return;
-    baba.teamRevealIndex = 0;
-    saveState();
+    setActiveTab('teams');
+    beginDrawExperience(baba, { review: true });
   }
 
   function startFirstGame() {
@@ -4304,7 +4351,7 @@
       status: baba?.status,
       reveal: baba?.teamRevealIndex,
       currentGame: baba?.jogoAtual,
-    }, () => renderTeams(baba));
+    }, () => renderDrawTeams(baba));
     renderComponent('dashboard', {
       teams: baba?.teams,
       currentGame: baba?.jogoAtual,
@@ -4771,6 +4818,473 @@
     ]);
   }
 
+  function teamVisualMeta(team) {
+    if (team?.id === VISITOR_TEAM_ID || team?.tipo === 'visitante') {
+      return { number: 'visitor', logo: '', accent: '#0a8f76', visitor: true };
+    }
+    const number = getTeamNumber(team) || 1;
+    const visual = TEAM_VISUALS[(number - 1) % TEAM_VISUALS.length];
+    return { number, logo: team?.logo || visual.logo, accent: visual.accent, visitor: false };
+  }
+
+  function teamShieldHTML(team, className = 'baba-team-result__shield') {
+    const visual = teamVisualMeta(team);
+    return visual.visitor
+      ? `<span class="${className}"><svg aria-hidden="true" focusable="false"><use href="#baba-users"></use></svg></span>`
+      : `<span class="${className}"><img src="${escapeHTML(visual.logo)}" alt="" loading="lazy"></span>`;
+  }
+
+  function drawCurrentStep(baba) {
+    if (!baba || !(baba.jogadoresPresentes || []).length) return 1;
+    if (!(baba.teams || []).length || drawExperience) return 2;
+    if (!baba.jogoAtual && baba.status !== 'jogando' && baba.status !== 'finalizado') return 3;
+    return 4;
+  }
+
+  function renderDrawProgress(baba) {
+    if (!els.drawProgress) return;
+    const steps = ['Jogadores presentes', 'Sorteio dos times', 'Conferencia', 'Iniciar jogos'];
+    const current = drawCurrentStep(baba);
+    setHTML(els.drawProgress, `
+      <ol class="baba-draw-steps">
+        ${steps.map((label, index) => {
+          const step = index + 1;
+          const complete = step < current || (baba?.status === 'finalizado' && step === current);
+          return `<li class="baba-draw-step ${complete ? 'is-complete' : ''} ${step === current ? 'is-current' : ''}" ${step === current ? 'aria-current="step"' : ''}>
+            <span class="baba-draw-step__marker">${complete ? '<svg aria-hidden="true"><use href="#baba-check"></use></svg>' : step}</span>
+            <span>${label}</span>
+          </li>`;
+        }).join('')}
+      </ol>
+      <div class="baba-draw-progress__mobile">
+        <div class="baba-draw-progress__mobile-copy"><span>${steps[current - 1]}</span><span>Etapa ${current} de 4</span></div>
+        <div class="baba-draw-progress__mobile-bar" aria-label="Progresso: etapa ${current} de 4"><span style="width:${current * 25}%"></span></div>
+      </div>
+    `);
+  }
+
+  function renderDrawReadyPanel(baba) {
+    if (!els.drawReadyPanel) return;
+    const presentPlayers = (baba?.jogadoresPresentes || []).map(getPlayer).filter((player) => player?.ativo);
+    const fieldPlayers = presentPlayers.filter((player) => player.tipo !== 'goleiro');
+    const goalkeepers = presentPlayers.filter((player) => player.tipo === 'goleiro');
+    const estimatedTeams = Math.min(TEAM_NAMES.length, Math.max(2, Math.ceil(fieldPlayers.length / 4)));
+    const canDraw = Boolean(baba && baba.status !== 'finalizado' && presentPlayers.length >= 2 && fieldPlayers.length >= 8);
+    let warning = '';
+    if (!baba) warning = 'Crie o baba de hoje antes de montar os times.';
+    else if (presentPlayers.length < 2) warning = 'Marque pelo menos 2 jogadores presentes para continuar.';
+    else if (fieldPlayers.length < 8) warning = `Faltam ${8 - fieldPlayers.length} jogador${8 - fieldPlayers.length === 1 ? '' : 'es'} de linha para completar os dois primeiros times.`;
+    else if (!goalkeepers.length) warning = 'Nenhum goleiro esta marcado. O sorteio pode continuar sem alterar as regras atuais.';
+
+    setHTML(els.drawReadyPanel, `
+      <div class="baba-draw-ready__content">
+        <span class="baba-draw-ready__icon"><svg aria-hidden="true"><use href="#baba-shuffle"></use></svg></span>
+        <h2>Tudo pronto para o sorteio</h2>
+        <p>Revise os numeros abaixo. A distribuicao dos jogadores e dos goleiros segue exatamente as regras atuais do baba.</p>
+        <div class="baba-draw-ready__metrics">
+          <span class="baba-draw-ready__metric"><strong>${presentPlayers.length}</strong>Presentes</span>
+          <span class="baba-draw-ready__metric"><strong>${estimatedTeams}</strong>Times</span>
+          <span class="baba-draw-ready__metric"><strong>${goalkeepers.length}</strong>Goleiros</span>
+        </div>
+        ${warning ? `<div class="baba-draw-ready__notice" role="note">${escapeHTML(warning)}</div>` : ''}
+        ${isOrganizer() ? `<button class="baba-draw-ready__button" type="button" data-action="begin-team-draw" ${canDraw ? '' : 'disabled'}>
+          <svg aria-hidden="true"><use href="#baba-shuffle"></use></svg><span>Sortear times</span>
+        </button>` : '<div class="baba-draw-ready__notice" role="note">Aguardando o organizador iniciar o sorteio.</div>'}
+      </div>
+    `);
+  }
+
+  function playerResultRowHTML(baba, team, playerId) {
+    const player = getBabaPlayer(baba, playerId);
+    const name = player?.nome || playerName(playerId, baba);
+    const goalkeeper = player?.tipo === 'goleiro';
+    const position = goalkeeper ? 'Goleiro' : (player?.visitante ? 'Visitante' : 'Jogador de linha');
+    return `
+      <button class="baba-team-player-card" type="button" data-player-detail-id="${playerId}" data-player-detail-team-id="${team.id}" data-player-detail-baba-id="${baba.id}"${teamNumberDataAttribute(team)} aria-label="Abrir detalhes de ${escapeHTML(name)}">
+        <span class="baba-player-row__avatar" aria-hidden="true">${escapeHTML(playerInitials(name))}</span>
+        <span class="baba-player-row__copy"><strong>${escapeHTML(name)}</strong><small>${position}</small></span>
+        ${goalkeeper
+          ? '<span class="baba-goalkeeper-badge"><svg aria-hidden="true"><use href="#baba-shield"></use></svg>GOLEIRO</span>'
+          : '<span class="baba-player-row__chevron" aria-hidden="true">›</span>'}
+      </button>
+    `;
+  }
+
+  function teamResultCardHTML(baba, team) {
+    const playerCount = (team.jogadores || []).length;
+    const canManage = isOrganizer() && baba.status !== 'finalizado';
+    return `
+      <article class="baba-team ${team.retiradoDoBaba ? 'is-withdrawn' : ''} ${team.id === recentlyRevealedTeamId ? 'is-recently-revealed' : ''}" tabindex="0"${teamNumberDataAttribute(team)} aria-label="${escapeHTML(team.name)}, ${playerCount} jogadores">
+        <header class="baba-team-result__header">
+          ${teamShieldHTML(team)}
+          <span class="baba-team-result__identity">
+            <small>Time sorteado</small>
+            <strong>${escapeHTML(team.name)}</strong>
+            <span>${playerCount} jogador${playerCount === 1 ? '' : 'es'}${team.retiradoDoBaba ? ' · fora da fila' : ''}</span>
+          </span>
+          ${canManage ? `<button class="baba-team-menu-button" type="button" data-action="open-team-management" data-team-id="${team.id}" aria-label="Editar elenco do ${escapeHTML(team.name)}" title="Editar elenco">
+            <svg aria-hidden="true" focusable="false"><use href="#baba-dots"></use></svg>
+          </button>` : `<span class="baba-goalkeeper-badge" aria-label="${playerCount} jogadores">${playerCount}</span>`}
+        </header>
+        <div class="baba-team__stats" aria-label="Estatisticas do ${escapeHTML(team.name)}">
+          <span><b>${Number(team.pontos || 0)}</b>Pontos</span>
+          <span><b>${Number(team.vitorias || 0)}</b>Vitorias</span>
+          <span><b>${Number(team.empates || 0)}</b>Empates</span>
+          <span><b>${Number(team.golsPro || 0) - Number(team.golsContra || 0)}</b>Saldo</span>
+        </div>
+        <div class="baba-team__players">
+          ${(team.jogadores || []).map((id) => playerResultRowHTML(baba, team, id)).join('') || '<span class="baba-empty">Sem jogadores neste time.</span>'}
+        </div>
+      </article>
+    `;
+  }
+
+  function emptyTeamPlaceholderHTML(position) {
+    return `
+      <article class="baba-team-placeholder" aria-label="Time ${position + 1} aguardando sorteio">
+        <span class="baba-team-placeholder__shield"><svg aria-hidden="true"><use href="#baba-shuffle"></use></svg></span>
+        <strong>Time ${position + 1}</strong>
+        <small>Aguardando sorteio</small>
+        <span class="baba-team-placeholder__skeleton" aria-hidden="true"><i></i><i></i><i></i></span>
+      </article>
+    `;
+  }
+
+  function renderDrawActionBars(baba) {
+    if (!els.drawActionBar || !els.drawSecondaryControls) return;
+    const hasTeams = Boolean((baba?.teams || []).length);
+    els.drawActionBar.classList.toggle('hidden', !hasTeams);
+    els.drawSecondaryControls.classList.toggle('hidden', !hasTeams);
+    if (!hasTeams) {
+      setHTML(els.drawActionBar, '');
+      setHTML(els.drawSecondaryControls, '');
+      return;
+    }
+
+    const lateArrivalCount = getUnassignedPresentPlayers(baba).length;
+    const canStart = isOrganizer() && baba.status !== 'finalizado' && !baba.jogoAtual && !baba.pendingTieBreak && getRotationTeams(baba).length >= 2 && !drawExperience;
+    const startLabel = baba.jogos?.length ? 'Iniciar partida' : 'Iniciar primeiro jogo';
+    setHTML(els.drawActionBar, `
+      <div class="baba-draw-action-bar__secondary">
+        <button type="button" data-action="open-present-editor"><svg aria-hidden="true"><use href="#baba-users"></use></svg>Editar jogadores</button>
+        <button type="button" data-action="create-late-team" ${lateArrivalCount && !drawExperience ? '' : 'disabled'} title="${lateArrivalCount ? `${lateArrivalCount} jogador(es) presente(s) e sem time` : 'Nenhum jogador presente esta sem time'}"><svg aria-hidden="true"><use href="#baba-plus"></use></svg>Adicionar novo time${lateArrivalCount ? ` (${lateArrivalCount})` : ''}</button>
+      </div>
+      <div class="baba-draw-action-bar__primary">
+        <button class="baba-draw-action-bar__start ${canStart ? 'is-available' : ''}" type="button" data-action="start-first-live" ${canStart ? '' : 'disabled'}><svg class="baba-btn-icon" aria-hidden="true"><use href="#baba-play"></use></svg>${baba.jogoAtual ? 'Jogo em andamento' : startLabel}</button>
+      </div>
+    `);
+    setHTML(els.drawSecondaryControls, `
+      <span class="baba-draw-secondary__status"><i aria-hidden="true"></i><span>${baba.status === 'finalizado' ? 'Baba salvo no historico.' : 'Resultado atual preservado e sincronizado automaticamente.'}</span></span>
+      <span>${lateArrivalCount ? `${lateArrivalCount} jogador${lateArrivalCount === 1 ? '' : 'es'} ainda ${lateArrivalCount === 1 ? 'esta' : 'estao'} sem time.` : 'Todos os presentes estao distribuidos.'}</span>
+    `);
+  }
+
+  function renderDrawOverlay(baba) {
+    const experience = drawExperience;
+    if (!els.drawOverlay || !experience || experience.babaId !== baba?.id) {
+      els.drawOverlay?.classList.add('hidden');
+      document.body.classList.remove('baba-draw-modal-open');
+      return;
+    }
+
+    const team = baba.teams[experience.currentIndex];
+    if (!team) return finalizeDrawExperience();
+    const visual = teamVisualMeta(team);
+    const total = baba.teams.length;
+    const playerIds = team.jogadores || [];
+    const shownPlayerIds = playerIds.slice(0, experience.visiblePlayers);
+    const teamProgress = experience.phase === 'complete'
+      ? 1
+      : experience.phase === 'reveal' && playerIds.length ? experience.visiblePlayers / playerIds.length : experience.phase === 'shuffle' ? .35 : .08;
+    const overallProgress = ((experience.currentIndex + teamProgress) / total) * 100;
+
+    els.drawOverlay.classList.remove('hidden');
+    document.body.classList.add('baba-draw-modal-open');
+    els.drawOverlay.style.setProperty('--overlay-accent', visual.accent);
+    els.drawOverlayStep.textContent = `Sorteando time ${experience.currentIndex + 1} de ${total}`;
+    els.drawOverlayProgressBar.style.width = `${Math.max(2, overallProgress)}%`;
+    els.drawSkipButton.classList.toggle('hidden', experience.phase === 'complete');
+    els.drawCloseButton.classList.toggle('hidden', experience.phase !== 'complete');
+    els.drawSoundToggle.setAttribute('aria-pressed', String(drawSoundEnabled));
+    els.drawSoundToggle.setAttribute('aria-label', drawSoundEnabled ? 'Desativar sons do sorteio' : 'Ativar sons do sorteio');
+    els.drawSoundToggle.title = drawSoundEnabled ? 'Desativar sons' : 'Ativar sons';
+
+    if (experience.phase === 'countdown') {
+      els.drawOverlayTitle.textContent = 'Preparando o sorteio';
+      els.drawOverlayDescription.textContent = 'A distribuicao ja foi concluida com seguranca. Agora vamos revelar o resultado.';
+      setHTML(els.drawOverlayContent, `<div class="baba-draw-countdown"><strong>${experience.countdown}</strong></div>`);
+      setHTML(els.drawOverlayActions, '');
+      return;
+    }
+
+    if (experience.phase === 'shuffle') {
+      const chips = shuffle(playerIds.map((id) => playerName(id, baba))).slice(0, 8);
+      els.drawOverlayTitle.textContent = 'Embaralhando jogadores';
+      els.drawOverlayDescription.textContent = `Definindo a apresentacao do ${team.name}.`;
+      setHTML(els.drawOverlayContent, `
+        <div class="baba-draw-shuffle">
+          <span class="baba-draw-shuffle__ball"><svg aria-hidden="true"><use href="#baba-ball"></use></svg></span>
+          <div class="baba-draw-shuffle__chips">${chips.map((name) => `<span>${escapeHTML(name)}</span>`).join('')}</div>
+        </div>
+      `);
+      setHTML(els.drawOverlayActions, '');
+      return;
+    }
+
+    els.drawOverlayTitle.textContent = experience.phase === 'complete' ? `${team.name} confirmado` : `${team.name} sorteado`;
+    els.drawOverlayDescription.textContent = `${shownPlayerIds.length} de ${playerIds.length} jogadores revelados.`;
+    setHTML(els.drawOverlayContent, `
+      <div class="baba-draw-reveal" style="--overlay-accent:${visual.accent}">
+        <div class="baba-draw-reveal__team">
+          ${teamShieldHTML(team, 'baba-draw-reveal__shield')}
+          <small>Time sorteado</small>
+          <strong>${escapeHTML(team.name)}</strong>
+        </div>
+        <div class="baba-draw-reveal__players">
+          ${shownPlayerIds.map((playerId) => {
+            const player = getBabaPlayer(baba, playerId);
+            const name = player?.nome || playerName(playerId, baba);
+            const goalkeeper = player?.tipo === 'goleiro';
+            return `<div class="baba-draw-reveal-player ${goalkeeper ? 'is-goalkeeper' : ''}">
+              <span class="baba-draw-reveal-player__avatar">${escapeHTML(playerInitials(name))}</span>
+              <span class="baba-draw-reveal-player__copy"><strong>${escapeHTML(name)}</strong><small>${goalkeeper ? 'Goleiro' : (player?.visitante ? 'Visitante' : 'Jogador de linha')}</small></span>
+              ${goalkeeper ? '<span class="baba-goalkeeper-badge"><svg aria-hidden="true"><use href="#baba-shield"></use></svg>GOLEIRO</span>' : '<svg width="16" height="16" aria-hidden="true"><use href="#baba-check"></use></svg>'}
+            </div>`;
+          }).join('')}
+        </div>
+        ${experience.phase === 'complete' ? '<div class="baba-draw-reveal__celebration"><svg aria-hidden="true"><use href="#baba-check"></use></svg>Time confirmado</div>' : ''}
+      </div>
+    `);
+    setHTML(els.drawOverlayActions, experience.phase === 'complete' ? `
+      <button class="is-primary" type="button" data-action="${experience.currentIndex === total - 1 ? 'finish-draw-experience' : 'advance-draw-experience'}">
+        <svg class="baba-btn-icon" aria-hidden="true"><use href="#${experience.currentIndex === total - 1 ? 'baba-check' : 'baba-next'}"></use></svg>
+        ${experience.currentIndex === total - 1 ? 'Conferir resultado' : 'Ver proximo time'}
+      </button>
+    ` : '');
+  }
+
+  function renderDrawTeams(baba) {
+    const hasTeams = Boolean((baba?.teams || []).length);
+    const isDrawing = Boolean(drawExperience && drawExperience.babaId === baba?.id);
+    const revealedIds = isDrawing ? drawExperience.revealedTeamIds : new Set((baba?.teams || []).map((team) => team.id));
+    const revealedCount = revealedIds.size;
+
+    renderDrawProgress(baba);
+    els.drawReadyPanel?.classList.toggle('hidden', hasTeams);
+    els.drawResultsSection?.classList.toggle('hidden', !hasTeams);
+    if (!hasTeams) renderDrawReadyPanel(baba);
+
+    if (els.drawStatusDescription) {
+      els.drawStatusDescription.textContent = !hasTeams
+        ? 'Marque os presentes e prepare o sorteio dos times.'
+        : isDrawing
+          ? `Revelando o time ${drawExperience.currentIndex + 1} de ${baba.teams.length}.`
+          : baba.status === 'finalizado'
+            ? 'Resultado salvo no historico do baba.'
+            : 'Confira os jogadores antes de iniciar o primeiro jogo.';
+    }
+    if (els.drawTeamsProgress) els.drawTeamsProgress.textContent = `${revealedCount} de ${baba?.teams?.length || 0} times sorteados`;
+    if (els.drawReviewButton) els.drawReviewButton.classList.toggle('hidden', !hasTeams || isDrawing);
+    if (els.drawSaveButton) {
+      const canSave = isOrganizer() && hasTeams && baba.status !== 'finalizado' && !isDrawing;
+      els.drawSaveButton.disabled = !canSave;
+      els.drawSaveButton.setAttribute('aria-disabled', String(!canSave));
+    }
+    if (els.drawSaveState && baba?.status === 'finalizado') {
+      els.drawSaveState.textContent = 'Salvo com sucesso';
+      els.drawSaveState.className = 'baba-save-state is-success';
+    } else if (els.drawSaveState && !els.drawSaveState.classList.contains('is-saving')) {
+      els.drawSaveState.textContent = '';
+      els.drawSaveState.className = 'baba-save-state';
+    }
+
+    if (hasTeams) {
+      const items = baba.teams.map((team, position) => {
+        const revealed = revealedIds.has(team.id);
+        return {
+          key: `draw-team:${team.id}`,
+          signature: JSON.stringify({ team, revealed, organizer: isOrganizer(), recent: team.id === recentlyRevealedTeamId }),
+          html: revealed ? teamResultCardHTML(baba, team) : emptyTeamPlaceholderHTML(position),
+        };
+      });
+      reconcileKeyedChildren(els.teamsGrid, items);
+    } else {
+      reconcileKeyedChildren(els.teamsGrid, []);
+    }
+
+    renderDrawActionBars(baba);
+    renderDrawOverlay(baba);
+  }
+
+  function waitForDrawStep(milliseconds, token) {
+    return new Promise((resolve) => window.setTimeout(() => resolve(token === drawSequenceToken), milliseconds));
+  }
+
+  function refreshDrawExperience() {
+    const baba = getActiveBaba();
+    if (baba) renderDrawTeams(baba);
+  }
+
+  function playDrawTone(frequency = 480, duration = .05) {
+    if (!drawSoundEnabled) return;
+    try {
+      babaAudioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = babaAudioContext.createOscillator();
+      const gain = babaAudioContext.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(.0001, babaAudioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(.035, babaAudioContext.currentTime + .008);
+      gain.gain.exponentialRampToValueAtTime(.0001, babaAudioContext.currentTime + duration);
+      oscillator.connect(gain).connect(babaAudioContext.destination);
+      oscillator.start();
+      oscillator.stop(babaAudioContext.currentTime + duration + .01);
+    } catch (error) {
+      drawSoundEnabled = false;
+      localStorage.setItem(DRAW_SOUND_KEY, 'false');
+    }
+  }
+
+  async function runDrawExperience(token = drawSequenceToken) {
+    const experience = drawExperience;
+    const baba = getActiveBaba();
+    if (!experience || !baba || experience.babaId !== baba.id || token !== drawSequenceToken) return;
+    const team = baba.teams[experience.currentIndex];
+    if (!team) return finalizeDrawExperience();
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    try {
+      if (!reducedMotion) {
+        for (let count = 3; count >= 1; count -= 1) {
+          if (!drawExperience || token !== drawSequenceToken) return;
+          experience.phase = 'countdown';
+          experience.countdown = count;
+          refreshDrawExperience();
+          playDrawTone(320 + (3 - count) * 70, .045);
+          if (!(await waitForDrawStep(520, token))) return;
+        }
+        experience.phase = 'shuffle';
+        refreshDrawExperience();
+        if (!(await waitForDrawStep(1650, token))) return;
+      }
+
+      experience.phase = 'reveal';
+      experience.visiblePlayers = 0;
+      refreshDrawExperience();
+      const playerIds = team.jogadores || [];
+      for (let index = 0; index < playerIds.length; index += 1) {
+        if (!drawExperience || token !== drawSequenceToken) return;
+        experience.visiblePlayers = index + 1;
+        const player = getBabaPlayer(baba, playerIds[index]);
+        if (els.drawOverlayAnnouncer) els.drawOverlayAnnouncer.textContent = `${player?.nome || playerName(playerIds[index], baba)} sorteado para ${team.name}.`;
+        playDrawTone(player?.tipo === 'goleiro' ? 660 : 520, .055);
+        refreshDrawExperience();
+        if (!reducedMotion && !(await waitForDrawStep(190, token))) return;
+      }
+
+      experience.phase = 'complete';
+      experience.revealedTeamIds.add(team.id);
+      recentlyRevealedTeamId = team.id;
+      if (els.drawAnnouncer) els.drawAnnouncer.textContent = `${team.name} revelado com ${playerIds.length} jogadores.`;
+      playDrawTone(760, .11);
+      refreshDrawExperience();
+    } catch (error) {
+      console.error('Falha apenas na apresentacao do sorteio:', error);
+      experience.visiblePlayers = (team.jogadores || []).length;
+      experience.phase = 'complete';
+      experience.revealedTeamIds.add(team.id);
+      refreshDrawExperience();
+      showToast('A animacao foi abreviada. O resultado do sorteio foi preservado.');
+    }
+  }
+
+  function beginDrawExperience(baba = getActiveBaba(), { review = false } = {}) {
+    if (!baba?.teams?.length) return;
+    drawSequenceToken += 1;
+    drawExperience = {
+      babaId: baba.id,
+      currentIndex: 0,
+      phase: 'countdown',
+      countdown: 3,
+      visiblePlayers: 0,
+      revealedTeamIds: new Set(),
+      opener: document.activeElement,
+      review,
+    };
+    recentlyRevealedTeamId = null;
+    renderDrawTeams(baba);
+    const token = drawSequenceToken;
+    window.requestAnimationFrame(() => {
+      els.drawOverlayPanel?.focus({ preventScroll: true });
+      runDrawExperience(token);
+    });
+  }
+
+  function skipDrawAnimation() {
+    const baba = getActiveBaba();
+    if (!drawExperience || !baba) return;
+    const team = baba.teams[drawExperience.currentIndex];
+    if (!team) return;
+    drawSequenceToken += 1;
+    drawExperience.visiblePlayers = (team.jogadores || []).length;
+    drawExperience.phase = 'complete';
+    drawExperience.revealedTeamIds.add(team.id);
+    recentlyRevealedTeamId = team.id;
+    if (els.drawOverlayAnnouncer) els.drawOverlayAnnouncer.textContent = `Animacao pulada. ${team.name} revelado.`;
+    refreshDrawExperience();
+  }
+
+  function advanceDrawExperience() {
+    const baba = getActiveBaba();
+    if (!drawExperience || !baba || drawExperience.phase !== 'complete') return;
+    if (drawExperience.currentIndex >= baba.teams.length - 1) return finalizeDrawExperience();
+    drawSequenceToken += 1;
+    drawExperience.currentIndex += 1;
+    drawExperience.phase = 'countdown';
+    drawExperience.countdown = 3;
+    drawExperience.visiblePlayers = 0;
+    refreshDrawExperience();
+    const token = drawSequenceToken;
+    window.requestAnimationFrame(() => runDrawExperience(token));
+  }
+
+  function finalizeDrawExperience() {
+    const experience = drawExperience;
+    if (!experience) return;
+    const opener = experience.opener;
+    const baba = getActiveBaba();
+    drawSequenceToken += 1;
+    drawExperience = null;
+    recentlyRevealedTeamId = baba?.teams?.[baba.teams.length - 1]?.id || recentlyRevealedTeamId;
+    els.drawOverlay?.classList.add('hidden');
+    document.body.classList.remove('baba-draw-modal-open');
+    if (baba) renderDrawTeams(baba);
+    if (els.drawAnnouncer) els.drawAnnouncer.textContent = 'Sorteio concluido. Todos os times estao disponiveis para conferencia.';
+    window.requestAnimationFrame(() => {
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+      else els.drawReviewButton?.focus({ preventScroll: true });
+    });
+  }
+
+  function closeDrawExperience() {
+    if (!drawExperience) return;
+    if (drawExperience.phase !== 'complete') {
+      if (els.drawOverlayAnnouncer) els.drawOverlayAnnouncer.textContent = 'Aguarde a revelacao terminar ou use Pular animacao.';
+      return;
+    }
+    finalizeDrawExperience();
+  }
+
+  function toggleDrawSound() {
+    drawSoundEnabled = !drawSoundEnabled;
+    localStorage.setItem(DRAW_SOUND_KEY, String(drawSoundEnabled));
+    if (drawSoundEnabled) {
+      playDrawTone(540, .08);
+      babaAudioContext?.resume?.().catch?.(() => {});
+    }
+    refreshDrawExperience();
+  }
+
   function renderStandings(baba) {
     if (!baba?.teams?.length) {
       setHTML(els.standingsList, '<div class="baba-empty">Sorteie os times para ver a tabela.</div>');
@@ -4950,15 +5464,20 @@
     const team = getTeam(baba, teamId);
     if (!team) return;
 
+    teamDetailOpener = document.activeElement;
     selectedTeamDetail = { teamId: team.id, babaId: baba.id };
     els.teamDetailModal.classList.remove('hidden');
     renderOpenTeamDetail();
+    window.requestAnimationFrame(() => els.teamDetailModal.querySelector('.baba-modal__panel')?.focus({ preventScroll: true }));
   }
 
   function closeTeamDetail() {
+    const opener = teamDetailOpener;
+    teamDetailOpener = null;
     selectedTeamDetail = null;
     delete els.teamDetailModal.dataset.teamNumber;
     els.teamDetailModal.classList.add('hidden');
+    window.requestAnimationFrame(() => opener?.isConnected && opener.focus({ preventScroll: true }));
   }
 
   function renderOpenTeamDetail() {
@@ -4972,6 +5491,8 @@
     const position = new Map(general.map((stats, index) => [stats.jogadorId, index + 1]));
     const generalById = new Map(general.map((stats) => [stats.jogadorId, stats]));
     const canManage = isOrganizer() && baba.id === state.activeBabaId && baba.status !== 'finalizado';
+    const canManageTeam = canManage && team.id !== VISITOR_TEAM_ID && team.tipo !== 'visitante';
+    const teamManagementBlocked = teamHasActiveRoute(baba, team.id);
     const assignedIds = new Set((baba.teams || []).flatMap((item) => item.jogadores || []));
     const availablePlayers = [
       ...state.players.filter((player) => player.ativo && !assignedIds.has(player.id)),
@@ -5022,6 +5543,18 @@
           </div>
         </div>
       ` : ''}
+      ${canManageTeam ? `
+        <div class="baba-drawer-management">
+          <div class="baba-drawer-management__heading">
+            <strong>Gerenciar time</strong>
+            <small>Abra um jogador abaixo para trocar de time ou remove-lo. Partidas encerradas continuam preservadas.</small>
+          </div>
+          <div class="baba-drawer-management__actions">
+            <button type="button" data-action="toggle-team-rotation" data-team-id="${team.id}" ${teamManagementBlocked ? 'disabled' : ''} title="${teamManagementBlocked ? 'Aguarde a partida ou o desempate terminar' : ''}">${team.retiradoDoBaba ? 'Voltar para fila' : 'Retirar time do baba'}</button>
+            <button class="danger" type="button" data-action="delete-team-from-baba" data-team-id="${team.id}" ${teamManagementBlocked ? 'disabled' : ''} title="${teamManagementBlocked ? 'Aguarde a partida ou o desempate terminar' : ''}">Excluir time</button>
+          </div>
+        </div>
+      ` : ''}
       <div class="baba-roster-list">${playersHTML}</div>
     `);
   }
@@ -5039,15 +5572,20 @@
     const baba = getBabaById(babaId) || getActiveBaba();
     const player = getBabaPlayer(baba, playerId);
     if (!baba || !player) return showToast('Jogador nao encontrado.');
+    playerDetailOpener = document.activeElement;
     selectedPlayerDetail = { playerId, babaId: baba.id };
     els.playerDetailModal.classList.remove('hidden');
     renderOpenPlayerDetail();
+    window.requestAnimationFrame(() => els.playerDetailModal.querySelector('button, [tabindex]')?.focus({ preventScroll: true }));
   }
 
   function closePlayerDetail() {
+    const opener = playerDetailOpener;
+    playerDetailOpener = null;
     selectedPlayerDetail = null;
     delete els.playerDetailModal.dataset.teamNumber;
     els.playerDetailModal.classList.add('hidden');
+    window.requestAnimationFrame(() => opener?.isConnected && opener.focus({ preventScroll: true }));
   }
 
   function renderOpenPlayerDetail() {
@@ -5614,12 +6152,68 @@
 
   function setActiveTab(tab) {
     const safeTab = !isOrganizer() && tab === 'organizer' ? 'dashboard' : tab;
+    document.body.dataset.babaView = safeTab;
     $$('.baba-tabs [data-tab]').forEach((button) => button.classList.toggle('active', button.dataset.tab === safeTab));
     const isMoreTab = ['teams', 'goals', 'organizer'].includes(safeTab);
     els.moreToggle?.classList.toggle('active', isMoreTab);
     els.moreToggle?.setAttribute('aria-expanded', 'false');
     els.moreMenu?.classList.add('hidden');
     $$('.baba-view').forEach((view) => view.classList.toggle('active', view.dataset.view === safeTab));
+    if (safeTab === 'teams') renderDrawTeams(getActiveBaba());
+  }
+
+  function focusableElements(container) {
+    if (!container) return [];
+    return Array.from(container.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+      .filter((element) => !element.hidden && !element.closest('.hidden'));
+  }
+
+  function trapDialogFocus(event, container) {
+    if (event.key !== 'Tab') return;
+    const focusable = focusableElements(container);
+    if (!focusable.length) {
+      event.preventDefault();
+      container.querySelector('[tabindex="-1"]')?.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  function handleDialogKeydown(event) {
+    if (!els.drawOverlay?.classList.contains('hidden')) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeDrawExperience();
+        return;
+      }
+      trapDialogFocus(event, els.drawOverlay);
+      return;
+    }
+    if (!els.playerDetailModal?.classList.contains('hidden')) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closePlayerDetail();
+        return;
+      }
+      trapDialogFocus(event, els.playerDetailModal);
+      return;
+    }
+    if (!els.teamDetailModal?.classList.contains('hidden')) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeTeamDetail();
+        return;
+      }
+      trapDialogFocus(event, els.teamDetailModal);
+    }
   }
 
   function getTabsStickyTop(tabs) {
@@ -6334,6 +6928,10 @@
     els.closeTeamDetailModal.addEventListener('click', closeTeamDetail);
     els.closePlayerDetailModal?.addEventListener('click', closePlayerDetail);
     els.closeGameDetailModal.addEventListener('click', () => els.gameDetailModal.classList.add('hidden'));
+    els.drawSkipButton?.addEventListener('click', skipDrawAnimation);
+    els.drawCloseButton?.addEventListener('click', closeDrawExperience);
+    els.drawSoundToggle?.addEventListener('click', toggleDrawSound);
+    document.addEventListener('keydown', handleDialogKeydown);
     els.presentModal.addEventListener('click', (event) => {
       if (event.target === els.presentModal) els.presentModal.classList.add('hidden');
     });
@@ -6411,6 +7009,16 @@
       }
 
       const actionButton = event.target.closest('[data-action]');
+      if (actionButton?.dataset.action === 'begin-team-draw') return drawTeams();
+      if (actionButton?.dataset.action === 'finish-and-save-draw') return finishBaba();
+      if (actionButton?.dataset.action === 'open-present-editor') {
+        if (!requireOrganizer()) return;
+        els.presentModal.classList.remove('hidden');
+        return window.requestAnimationFrame(() => els.presentModal.querySelector('input, button')?.focus({ preventScroll: true }));
+      }
+      if (actionButton?.dataset.action === 'open-team-management') return openTeamDetail(actionButton.dataset.teamId);
+      if (actionButton?.dataset.action === 'advance-draw-experience') return advanceDrawExperience();
+      if (actionButton?.dataset.action === 'finish-draw-experience') return finalizeDrawExperience();
       if (actionButton?.dataset.action === 'toggle-player') return togglePlayerActive(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-player') return deletePlayer(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-visitor') return deleteVisitor(actionButton.dataset.id);
@@ -6496,6 +7104,7 @@
   function boot() {
     if (hasBooted) return;
     hasBooted = true;
+    document.body.dataset.babaView = document.querySelector('.baba-view.active')?.dataset.view || 'dashboard';
     wireEvents();
     if (!timerTick) timerTick = setInterval(renderTimerOnly, 1000);
     const sessionMode = sessionStorage.getItem(MODE_KEY);

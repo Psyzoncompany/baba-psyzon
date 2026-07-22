@@ -1,0 +1,1676 @@
+/* Baba Psyzon - professional draw and team organization experience */
+:root {
+  --draw-navy: #071f38;
+  --draw-navy-soft: #12344f;
+  --draw-emerald: #0a8f76;
+  --draw-emerald-dark: #08705e;
+  --draw-surface: rgba(255, 255, 255, .94);
+  --draw-surface-soft: rgba(248, 251, 253, .9);
+  --draw-line: rgba(15, 35, 58, .12);
+  --draw-muted: #64758a;
+  --draw-danger: #c52f49;
+  --draw-radius: 14px;
+  --draw-shadow: 0 16px 42px rgba(7, 31, 56, .11);
+}
+
+html,
+body.baba-page {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+body.baba-page .baba-unified-header,
+body.baba-page .baba-shell {
+  width: min(1340px, calc(100% - 2rem)) !important;
+}
+
+body.baba-page .baba-unified-header {
+  top: .4rem !important;
+  margin-top: .4rem !important;
+  gap: 0 !important;
+  border-radius: 14px !important;
+}
+
+body.baba-page .baba-header-main {
+  box-sizing: border-box;
+  grid-template-columns: minmax(16rem, 1fr) minmax(13rem, .65fr) auto;
+  min-height: 68px;
+  gap: .75rem;
+  padding: .55rem .75rem;
+}
+
+body.baba-page .baba-unified-header .baba-brand {
+  gap: .65rem;
+}
+
+body.baba-page .baba-unified-header .baba-brand img {
+  width: 46px !important;
+  height: 46px !important;
+  flex-basis: 46px;
+  border-radius: 12px !important;
+}
+
+body.baba-page .baba-unified-header .baba-brand__copy strong {
+  font-size: 1.08rem;
+  letter-spacing: -.02em;
+}
+
+body.baba-page .baba-unified-header .baba-brand__copy small {
+  font-size: .68rem;
+}
+
+body.baba-page .baba-unified-header .baba-tabs {
+  gap: .45rem !important;
+  margin: 0 .75rem .65rem !important;
+  padding-top: .5rem !important;
+}
+
+body.baba-page .baba-unified-header .baba-tabs > button,
+body.baba-page .baba-unified-header .baba-more-nav > button {
+  min-height: 44px !important;
+  border-radius: 10px !important;
+  padding: .45rem .65rem !important;
+}
+
+body.baba-page[data-baba-view="teams"] .baba-hero {
+  display: none !important;
+}
+
+body.baba-page[data-baba-view="teams"] .baba-shell {
+  margin-top: .75rem !important;
+}
+
+body.baba-draw-modal-open {
+  overflow: hidden !important;
+}
+
+.baba-draw-page {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .75);
+  border-radius: 16px;
+  padding: clamp(.75rem, 2vw, 1.25rem);
+  background:
+    linear-gradient(135deg, rgba(244, 248, 252, .95), rgba(236, 245, 246, .9)),
+    url("img/baba-futsal-court-light-v1.jpg") center / cover fixed;
+  box-shadow: 0 20px 56px rgba(7, 31, 56, .1);
+  backdrop-filter: blur(5px);
+}
+
+.baba-draw-status-bar,
+.baba-draw-progress,
+.baba-draw-ready,
+.baba-draw-results,
+.baba-draw-action-bar,
+.baba-draw-secondary {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, .86);
+  border-radius: var(--draw-radius);
+  background: var(--draw-surface);
+  box-shadow: var(--draw-shadow);
+  backdrop-filter: blur(18px) saturate(120%);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+}
+
+.baba-draw-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .85rem 1rem;
+}
+
+.baba-draw-status-bar__copy {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+}
+
+.baba-draw-status-bar__icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 2.75rem;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--draw-emerald);
+  background: #e4f6f1;
+}
+
+.baba-draw-status-bar__icon svg {
+  width: 1.45rem;
+  height: 1.45rem;
+}
+
+.baba-draw-eyebrow {
+  display: block;
+  margin-bottom: .16rem;
+  color: var(--draw-emerald) !important;
+  font-size: .65rem;
+  line-height: 1.2;
+  font-weight: 900;
+  letter-spacing: .095em;
+  text-transform: uppercase;
+}
+
+.baba-draw-status-bar h1,
+.baba-draw-section-heading h2 {
+  margin: 0;
+  color: var(--draw-navy);
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  line-height: 1.15;
+  font-weight: 900;
+  letter-spacing: -.025em;
+}
+
+.baba-draw-status-bar p {
+  margin: .2rem 0 0;
+  overflow: hidden;
+  color: var(--draw-muted);
+  font-size: .78rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+}
+
+.baba-draw-status-bar__actions,
+.baba-draw-action-bar__secondary,
+.baba-draw-action-bar__primary {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+}
+
+.baba-draw-button,
+.baba-draw-ready__button,
+.baba-draw-action-bar button,
+.baba-draw-overlay__actions button,
+.baba-draw-skip,
+.baba-team-menu-button,
+.baba-player-row__menu {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  padding: .65rem .85rem;
+  font: inherit;
+  font-size: .76rem;
+  font-weight: 850;
+  cursor: pointer;
+  transition: transform .16s ease, background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.baba-draw-button svg,
+.baba-draw-ready__button svg,
+.baba-draw-action-bar button svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+}
+
+.baba-draw-button--primary,
+.baba-draw-ready__button,
+.baba-draw-action-bar__start,
+.baba-draw-overlay__actions .is-primary {
+  border-color: var(--draw-emerald) !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--draw-emerald), var(--draw-emerald-dark)) !important;
+  background-color: var(--draw-emerald) !important;
+  box-shadow: 0 9px 20px rgba(10, 143, 118, .2) !important;
+}
+
+.baba-draw-button--secondary,
+.baba-draw-action-bar__secondary button,
+.baba-draw-overlay__actions .is-secondary {
+  border-color: var(--draw-line) !important;
+  color: var(--draw-navy-soft) !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+.baba-draw-button:hover:not(:disabled),
+.baba-draw-ready__button:hover:not(:disabled),
+.baba-draw-action-bar button:hover:not(:disabled),
+.baba-draw-overlay__actions button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.baba-draw-button:active:not(:disabled),
+.baba-draw-ready__button:active:not(:disabled),
+.baba-draw-action-bar button:active:not(:disabled) {
+  transform: translateY(0) scale(.98);
+}
+
+.baba-draw-button:disabled,
+.baba-draw-ready__button:disabled,
+.baba-draw-action-bar button:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+  box-shadow: none !important;
+}
+
+.baba-save-state {
+  min-width: 0;
+  color: var(--draw-muted);
+  font-size: .7rem;
+  font-weight: 750;
+}
+
+.baba-save-state.is-saving::before,
+.baba-draw-button[aria-busy="true"]::before {
+  content: "";
+  width: .85rem;
+  height: .85rem;
+  display: inline-block;
+  margin-right: .32rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  vertical-align: -.12rem;
+  animation: baba-draw-spin .7s linear infinite;
+}
+
+.baba-save-state.is-success {
+  color: var(--draw-emerald);
+}
+
+.baba-save-state.is-error {
+  color: var(--draw-danger);
+}
+
+.baba-draw-progress {
+  padding: .8rem 1rem;
+}
+
+.baba-draw-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.baba-draw-step {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: .4rem;
+  color: #8290a0;
+  text-align: center;
+  font-size: .68rem;
+  font-weight: 800;
+}
+
+.baba-draw-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 1rem;
+  left: calc(50% + 1.25rem);
+  right: calc(-50% + 1.25rem);
+  height: 2px;
+  border-radius: 99px;
+  background: #dce3e9 !important;
+}
+
+.baba-draw-step.is-complete:not(:last-child)::after {
+  background: var(--draw-emerald) !important;
+}
+
+.baba-draw-step__marker {
+  position: relative;
+  z-index: 1;
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border: 2px solid #dce3e9;
+  border-radius: 50%;
+  color: #778699;
+  background: #fff !important;
+  font-size: .72rem;
+}
+
+.baba-draw-step__marker svg {
+  width: .9rem;
+  height: .9rem;
+}
+
+.baba-draw-step.is-complete,
+.baba-draw-step.is-current {
+  color: var(--draw-navy);
+}
+
+.baba-draw-step.is-complete .baba-draw-step__marker {
+  border-color: var(--draw-emerald);
+  color: #fff;
+  background: var(--draw-emerald) !important;
+}
+
+.baba-draw-step.is-current .baba-draw-step__marker {
+  border-color: var(--draw-navy);
+  color: var(--draw-navy);
+  box-shadow: 0 0 0 4px rgba(7, 31, 56, .08);
+}
+
+.baba-draw-progress__mobile {
+  display: none;
+}
+
+.baba-draw-ready {
+  min-height: 18rem;
+  display: grid;
+  place-items: center;
+  padding: clamp(1.5rem, 5vw, 3rem);
+  text-align: center;
+}
+
+.baba-draw-ready.hidden,
+.baba-draw-results.hidden,
+.baba-draw-action-bar.hidden,
+.baba-draw-secondary.hidden {
+  display: none !important;
+}
+
+.baba-draw-ready__content {
+  width: min(100%, 43rem);
+  display: grid;
+  justify-items: center;
+  gap: .85rem;
+}
+
+.baba-draw-ready__icon {
+  width: 4.25rem;
+  height: 4.25rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(10, 143, 118, .16);
+  border-radius: 16px;
+  color: var(--draw-emerald);
+  background: #e8f7f3;
+}
+
+.baba-draw-ready__icon svg {
+  width: 2rem;
+  height: 2rem;
+}
+
+.baba-draw-ready h2 {
+  margin: 0;
+  color: var(--draw-navy);
+  font-size: clamp(1.3rem, 3vw, 1.75rem);
+  font-weight: 900;
+  letter-spacing: -.035em;
+}
+
+.baba-draw-ready p {
+  max-width: 48ch;
+  margin: -.35rem 0 0;
+  color: var(--draw-muted);
+  font-size: .86rem;
+  line-height: 1.5;
+}
+
+.baba-draw-ready__metrics {
+  width: min(100%, 29rem);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .55rem;
+}
+
+.baba-draw-ready__metric {
+  display: grid;
+  gap: .2rem;
+  border: 1px solid var(--draw-line);
+  border-radius: 12px;
+  padding: .7rem;
+  color: var(--draw-muted);
+  background: #f8fafc;
+  font-size: .68rem;
+  font-weight: 750;
+}
+
+.baba-draw-ready__metric strong {
+  color: var(--draw-navy);
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.baba-draw-ready__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  border: 1px solid rgba(197, 47, 73, .18);
+  border-radius: 11px;
+  padding: .65rem .8rem;
+  color: #9c293d;
+  background: #fff2f4;
+  font-size: .74rem;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.baba-draw-results {
+  display: grid;
+  gap: .9rem;
+  padding: 1rem;
+}
+
+.baba-draw-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.baba-draw-count {
+  flex: 0 0 auto;
+  border: 1px solid rgba(10, 143, 118, .16);
+  border-radius: 999px;
+  padding: .38rem .62rem;
+  color: var(--draw-emerald);
+  background: #e9f8f4;
+  font-size: .68rem;
+  font-weight: 850;
+}
+
+body.baba-page .baba-draw-page .baba-teams-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: .8rem !important;
+}
+
+body.baba-page .baba-draw-page .baba-team[data-team-number],
+body.baba-page .baba-draw-page .baba-team-placeholder {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  overflow: hidden;
+  border: 1px solid var(--draw-line) !important;
+  border-radius: var(--draw-radius) !important;
+  padding: .85rem !important;
+  color: var(--draw-navy) !important;
+  background: #fff !important;
+  box-shadow: 0 10px 28px rgba(7, 31, 56, .08) !important;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+body.baba-page .baba-draw-page .baba-team[data-team-number]::before,
+body.baba-page .baba-draw-page .baba-team-placeholder::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: auto;
+  height: 4px;
+  border: 0;
+  border-radius: 0;
+  background: var(--team-accent, var(--draw-emerald)) !important;
+  box-shadow: none !important;
+}
+
+body.baba-page .baba-draw-page .baba-team[data-team-number="1"] { --team-accent: #d53445; --team-soft: #fff0f2; }
+body.baba-page .baba-draw-page .baba-team[data-team-number="2"] { --team-accent: #148552; --team-soft: #eaf7ef; }
+body.baba-page .baba-draw-page .baba-team[data-team-number="3"] { --team-accent: #334155; --team-soft: #f1f5f9; }
+body.baba-page .baba-draw-page .baba-team[data-team-number="4"] { --team-accent: #111827; --team-soft: #f0f1f3; }
+body.baba-page .baba-draw-page .baba-team[data-team-number="5"] { --team-accent: #2563a8; --team-soft: #edf5fd; }
+
+body.baba-page .baba-draw-page .baba-team[data-team-number]:hover,
+body.baba-page .baba-draw-page .baba-team[data-team-number]:focus-within {
+  border-color: color-mix(in srgb, var(--team-accent) 42%, transparent) !important;
+  box-shadow: 0 16px 34px rgba(7, 31, 56, .12) !important;
+  transform: translateY(-2px);
+}
+
+body.baba-page .baba-draw-page .baba-team.is-recently-revealed {
+  animation: baba-team-arrive .5s cubic-bezier(.2, .75, .25, 1) both;
+}
+
+body.baba-page .baba-draw-page .baba-team.is-withdrawn {
+  outline: 2px dashed rgba(197, 47, 73, .42);
+  outline-offset: -7px;
+  opacity: .76;
+}
+
+.baba-team-result__header {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .65rem;
+}
+
+.baba-team-result__shield {
+  width: 2.85rem;
+  height: 2.85rem;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--team-accent) 28%, transparent);
+  border-radius: 12px;
+  background: var(--team-soft, #f1f5f9) !important;
+}
+
+.baba-team-result__shield img {
+  width: 84%;
+  height: 84%;
+  object-fit: contain;
+}
+
+.baba-team-result__shield svg {
+  width: 1.45rem;
+  height: 1.45rem;
+  color: var(--team-accent);
+}
+
+.baba-team-result__identity {
+  min-width: 0;
+  display: grid;
+  gap: .12rem;
+}
+
+body.baba-page .baba-draw-page .baba-team[data-team-number] .baba-team-result__identity small,
+body.baba-page .baba-draw-page .baba-team[data-team-number] .baba-team-result__identity span {
+  overflow: hidden;
+  color: var(--draw-muted) !important;
+  font-size: .65rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.baba-page .baba-draw-page .baba-team[data-team-number] .baba-team-result__identity strong {
+  overflow: hidden;
+  color: var(--team-accent) !important;
+  font-size: 1rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.baba-team-menu-button,
+.baba-player-row__menu {
+  width: 44px;
+  min-width: 44px;
+  padding: 0;
+  border-color: var(--draw-line);
+  color: var(--draw-navy-soft);
+  background: #f8fafc;
+}
+
+.baba-team-menu-button svg,
+.baba-player-row__menu svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+body.baba-page .baba-draw-page .baba-team__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .38rem;
+}
+
+body.baba-page .baba-draw-page .baba-team[data-team-number] .baba-team__stats span {
+  min-width: 0;
+  display: grid;
+  gap: .12rem;
+  border: 1px solid var(--draw-line) !important;
+  border-radius: 10px !important;
+  padding: .46rem .3rem;
+  color: var(--draw-muted) !important;
+  background: #f7f9fb !important;
+  box-shadow: none !important;
+  font-size: .58rem;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+body.baba-page .baba-draw-page .baba-team[data-team-number] .baba-team__stats b {
+  color: var(--draw-navy) !important;
+  font-size: .9rem;
+  font-weight: 900;
+}
+
+body.baba-page .baba-draw-page .baba-team__players {
+  min-height: 0;
+  max-height: 20.5rem;
+  display: grid;
+  align-content: start;
+  gap: .36rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: .12rem;
+  scrollbar-width: thin;
+  scrollbar-color: #b7c4ce transparent;
+}
+
+body.baba-page .baba-draw-page .baba-team-player-card {
+  width: 100%;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .58rem;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  padding: .42rem .48rem;
+  color: var(--draw-navy) !important;
+  background: #f8fafc !important;
+  box-shadow: none !important;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color .16s ease, border-color .16s ease, transform .16s ease;
+}
+
+html body.baba-page .baba-draw-page .baba-team[data-team-number] .baba-team-player-card[data-team-number] {
+  border-color: transparent !important;
+  color: var(--draw-navy) !important;
+  background: #f8fafc !important;
+  background-color: #f8fafc !important;
+  box-shadow: none !important;
+}
+
+html body.baba-page .baba-draw-page .baba-team[data-team-number] .baba-team-player-card[data-team-number] :is(strong, small, span, b) {
+  color: inherit !important;
+}
+
+html body.baba-page .baba-draw-page .baba-team[data-team-number] .baba-team-player-card[data-team-number] .baba-player-row__copy strong {
+  color: var(--draw-navy) !important;
+}
+
+html body.baba-page .baba-draw-page .baba-team[data-team-number] .baba-team-player-card[data-team-number] .baba-player-row__copy small {
+  color: var(--draw-muted) !important;
+}
+
+html body.baba-page .baba-draw-page .baba-team[data-team-number] .baba-team-player-card[data-team-number] .baba-player-row__avatar {
+  color: var(--team-accent) !important;
+  background: var(--team-soft, #edf4f5) !important;
+}
+
+html body.baba-page .baba-draw-page .baba-team[data-team-number] .baba-team-player-card[data-team-number] .baba-goalkeeper-badge {
+  color: var(--draw-emerald) !important;
+  background: #e9f8f4 !important;
+}
+
+body.baba-page .baba-draw-page .baba-team-player-card:hover,
+body.baba-page .baba-draw-page .baba-team-player-card:focus-visible {
+  border-color: color-mix(in srgb, var(--team-accent) 25%, transparent) !important;
+  background: var(--team-soft, #eef5f5) !important;
+  transform: translateX(2px);
+}
+
+html body.baba-page .baba-draw-page .baba-team[data-team-number] .baba-team-player-card[data-team-number]:is(:hover, :focus-visible) {
+  border-color: color-mix(in srgb, var(--team-accent) 25%, transparent) !important;
+  background: var(--team-soft, #eef5f5) !important;
+}
+
+.baba-player-row__avatar {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--team-accent);
+  background: var(--team-soft, #edf4f5) !important;
+  font-size: .66rem;
+  font-weight: 900;
+}
+
+.baba-player-row__copy {
+  min-width: 0;
+  display: grid;
+  gap: .06rem;
+}
+
+body.baba-page .baba-draw-page .baba-team-player-card .baba-player-row__copy strong {
+  overflow: hidden;
+  color: var(--draw-navy) !important;
+  font-size: .77rem;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.baba-page .baba-draw-page .baba-team-player-card .baba-player-row__copy small {
+  color: var(--draw-muted) !important;
+  font-size: .61rem;
+  font-weight: 700;
+}
+
+.baba-goalkeeper-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .22rem;
+  border: 1px solid rgba(10, 143, 118, .16);
+  border-radius: 999px;
+  padding: .22rem .38rem;
+  color: var(--draw-emerald) !important;
+  background: #e9f8f4 !important;
+  font-size: .52rem;
+  font-weight: 900;
+  letter-spacing: .05em;
+}
+
+.baba-goalkeeper-badge svg {
+  width: .7rem;
+  height: .7rem;
+}
+
+.baba-player-row__chevron {
+  color: #9aa7b4 !important;
+  font-size: 1rem;
+}
+
+.baba-team-placeholder {
+  min-height: 18rem;
+  justify-content: center;
+  align-items: center;
+  color: var(--draw-muted);
+  text-align: center;
+}
+
+.baba-team-placeholder__shield {
+  width: 3.5rem;
+  height: 3.5rem;
+  display: grid;
+  place-items: center;
+  border: 1px dashed #c9d2da;
+  border-radius: 14px;
+  color: #9aa7b4;
+  background: #f7f9fb;
+}
+
+.baba-team-placeholder__shield svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.baba-team-placeholder strong {
+  color: var(--draw-navy);
+  font-size: .86rem;
+}
+
+.baba-team-placeholder small {
+  color: var(--draw-muted);
+  font-size: .7rem;
+}
+
+.baba-team-placeholder__skeleton {
+  width: min(100%, 12rem);
+  display: grid;
+  gap: .4rem;
+}
+
+.baba-team-placeholder__skeleton i {
+  height: .45rem;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #e7ecf0 25%, #f4f6f8 50%, #e7ecf0 75%);
+  background-size: 200% 100%;
+  animation: baba-draw-shimmer 1.3s linear infinite;
+}
+
+.baba-draw-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .75rem;
+}
+
+.baba-draw-action-bar__start {
+  min-width: min(100%, 13rem);
+  font-size: .82rem !important;
+}
+
+.baba-draw-action-bar__start.is-available {
+  animation: baba-draw-ready 1.2s ease-out 1 both;
+}
+
+.baba-draw-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .65rem .8rem;
+  color: var(--draw-muted);
+  font-size: .7rem;
+  line-height: 1.4;
+}
+
+.baba-draw-secondary__status {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+}
+
+.baba-draw-secondary__status i {
+  width: .45rem;
+  height: .45rem;
+  flex: 0 0 .45rem;
+  border-radius: 50%;
+  background: var(--draw-emerald);
+}
+
+.baba-draw-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: clamp(.6rem, 2vw, 1.25rem);
+  background: rgba(3, 18, 32, .72) !important;
+  backdrop-filter: blur(10px) saturate(90%);
+  -webkit-backdrop-filter: blur(10px) saturate(90%);
+}
+
+.baba-draw-overlay.hidden {
+  display: none !important;
+}
+
+.baba-draw-overlay__panel {
+  width: min(100%, 640px);
+  max-height: min(90dvh, 760px);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .86);
+  border-radius: 16px;
+  color: var(--draw-navy);
+  background: #fff !important;
+  box-shadow: 0 34px 90px rgba(0, 9, 20, .42);
+  animation: baba-draw-modal-in .28s cubic-bezier(.2, .75, .25, 1) both;
+}
+
+.baba-draw-overlay__header {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: 1rem 1rem .8rem;
+}
+
+.baba-draw-overlay__heading {
+  min-width: 0;
+}
+
+.baba-draw-overlay__heading > span {
+  display: block;
+  margin-bottom: .18rem;
+  color: var(--draw-emerald);
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.baba-draw-overlay__heading h2 {
+  margin: 0;
+  color: var(--draw-navy);
+  font-size: clamp(1.12rem, 3vw, 1.42rem);
+  font-weight: 900;
+  letter-spacing: -.03em;
+}
+
+.baba-draw-overlay__heading p {
+  margin: .28rem 0 0;
+  color: var(--draw-muted);
+  font-size: .75rem;
+  line-height: 1.4;
+}
+
+.baba-draw-overlay__tools {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.baba-draw-overlay__tools .baba-icon-button {
+  min-height: 44px;
+  border: 1px solid var(--draw-line) !important;
+  border-radius: 11px !important;
+  color: var(--draw-navy-soft) !important;
+  background: #f7f9fb !important;
+}
+
+.baba-draw-skip {
+  border-color: var(--draw-line);
+  color: var(--draw-navy-soft);
+  background: #fff;
+}
+
+.baba-draw-overlay__progress {
+  height: 4px;
+  overflow: hidden;
+  background: #e8edf1;
+}
+
+.baba-draw-overlay__progress span {
+  width: 0;
+  height: 100%;
+  display: block;
+  border-radius: 0 99px 99px 0;
+  background: var(--overlay-accent, var(--draw-emerald));
+  transition: width .35s ease;
+}
+
+.baba-draw-overlay__content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: .9rem 1rem;
+}
+
+.baba-draw-countdown {
+  min-height: 18rem;
+  display: grid;
+  place-items: center;
+}
+
+.baba-draw-countdown strong {
+  width: 7rem;
+  height: 7rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(10, 143, 118, .18);
+  border-radius: 50%;
+  color: var(--draw-navy);
+  background: #eaf8f4;
+  box-shadow: 0 0 0 14px rgba(10, 143, 118, .06);
+  font-size: 3.8rem;
+  font-weight: 900;
+  animation: baba-draw-count .52s ease-out both;
+}
+
+.baba-draw-shuffle {
+  min-height: 18rem;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1.15rem;
+}
+
+.baba-draw-shuffle__ball {
+  width: 4.6rem;
+  height: 4.6rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--draw-navy);
+  box-shadow: 0 14px 30px rgba(7, 31, 56, .22);
+  animation: baba-draw-ball 1.05s ease-in-out infinite;
+}
+
+.baba-draw-shuffle__ball svg {
+  width: 2.35rem;
+  height: 2.35rem;
+}
+
+.baba-draw-shuffle__chips {
+  width: min(100%, 25rem);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .42rem;
+}
+
+.baba-draw-shuffle__chips span {
+  max-width: 9rem;
+  overflow: hidden;
+  border: 1px solid var(--draw-line);
+  border-radius: 999px;
+  padding: .4rem .62rem;
+  color: var(--draw-navy-soft);
+  background: #f7f9fb;
+  font-size: .7rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  animation: baba-draw-chip .8s ease-in-out infinite alternate;
+}
+
+.baba-draw-shuffle__chips span:nth-child(2n) { animation-delay: -.3s; }
+.baba-draw-shuffle__chips span:nth-child(3n) { animation-delay: -.55s; }
+
+.baba-draw-reveal {
+  --overlay-accent: var(--draw-emerald);
+  display: grid;
+  gap: .85rem;
+}
+
+.baba-draw-reveal__team {
+  display: grid;
+  justify-items: center;
+  gap: .42rem;
+  text-align: center;
+}
+
+.baba-draw-reveal__shield {
+  width: 5.8rem;
+  height: 5.8rem;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid var(--overlay-accent);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 13px 30px color-mix(in srgb, var(--overlay-accent) 22%, transparent);
+  animation: baba-draw-shield .42s cubic-bezier(.2, .8, .25, 1) both;
+}
+
+.baba-draw-reveal__shield img {
+  width: 86%;
+  height: 86%;
+  object-fit: contain;
+}
+
+.baba-draw-reveal__shield svg {
+  width: 2.7rem;
+  height: 2.7rem;
+  color: var(--overlay-accent);
+}
+
+.baba-draw-reveal__team small {
+  color: var(--draw-muted);
+  font-size: .68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.baba-draw-reveal__team strong {
+  color: var(--overlay-accent);
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+
+.baba-draw-reveal__players {
+  display: grid;
+  gap: .4rem;
+}
+
+.baba-draw-reveal-player {
+  min-height: 50px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .6rem;
+  border: 1px solid var(--draw-line);
+  border-radius: 11px;
+  padding: .45rem .55rem;
+  background: #f8fafc;
+  animation: baba-player-reveal .32s cubic-bezier(.2, .75, .25, 1) both;
+}
+
+.baba-draw-reveal-player.is-goalkeeper {
+  border-color: rgba(10, 143, 118, .28);
+  background: #edf9f6;
+}
+
+.baba-draw-reveal-player__avatar {
+  width: 2.1rem;
+  height: 2.1rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--overlay-accent);
+  background: #fff;
+  font-size: .67rem;
+  font-weight: 900;
+}
+
+.baba-draw-reveal-player__copy {
+  min-width: 0;
+  display: grid;
+  gap: .08rem;
+}
+
+.baba-draw-reveal-player__copy strong {
+  overflow: hidden;
+  color: var(--draw-navy);
+  font-size: .78rem;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.baba-draw-reveal-player__copy small {
+  color: var(--draw-muted);
+  font-size: .62rem;
+  font-weight: 700;
+}
+
+.baba-draw-reveal__celebration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .38rem;
+  color: var(--draw-emerald);
+  font-size: .72rem;
+  font-weight: 850;
+}
+
+.baba-draw-reveal__celebration svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.baba-draw-overlay__actions {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .55rem;
+  border-top: 1px solid var(--draw-line);
+  padding: .65rem 1rem;
+  background: #fbfcfd;
+}
+
+.baba-management-drawer {
+  z-index: 240 !important;
+  justify-content: flex-end !important;
+  padding: 0 !important;
+  background: rgba(3, 18, 32, .5) !important;
+  backdrop-filter: blur(7px);
+}
+
+body.baba-page .baba-management-drawer .baba-roster-modal__panel {
+  width: min(100%, 470px) !important;
+  max-width: 470px !important;
+  height: 100dvh;
+  max-height: 100dvh !important;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  margin: 0 0 0 auto;
+  overflow: hidden;
+  border: 0 !important;
+  border-left: 1px solid var(--draw-line) !important;
+  border-radius: 16px 0 0 16px !important;
+  padding: 0 !important;
+  background: #fff !important;
+  box-shadow: -24px 0 60px rgba(3, 18, 32, .2) !important;
+  animation: baba-drawer-in .28s cubic-bezier(.2, .75, .25, 1) both;
+}
+
+body.baba-page .baba-management-drawer .baba-card__head {
+  flex-wrap: nowrap;
+  margin: 0;
+  padding: 1rem;
+  border-bottom: 1px solid var(--draw-line);
+}
+
+body.baba-page .baba-management-drawer .baba-card__head h2 {
+  margin: 0;
+  border: 0 !important;
+  padding: 0 !important;
+  color: var(--draw-navy) !important;
+  background: transparent !important;
+  font-size: 1.15rem !important;
+}
+
+html body.baba-page #team-detail-modal.baba-management-drawer[data-team-number] .baba-roster-modal__panel {
+  border: 0 !important;
+  border-left: 1px solid var(--draw-line) !important;
+  box-shadow: -24px 0 60px rgba(3, 18, 32, .2) !important;
+}
+
+html body.baba-page #team-detail-modal.baba-management-drawer[data-team-number] .baba-card__head h2 {
+  border: 0 !important;
+  padding: 0 !important;
+  color: var(--draw-navy) !important;
+  background: transparent !important;
+}
+
+body.baba-page .baba-management-drawer .baba-roster-detail {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: .8rem;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+body.baba-page .baba-management-drawer .baba-roster-list {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+body.baba-page .baba-management-drawer .baba-team-player-card[data-team-number] {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid var(--draw-line) !important;
+  border-radius: 11px !important;
+  color: var(--draw-navy) !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+body.baba-page .baba-management-drawer .baba-team-player-card[data-team-number] :is(strong, small, span, b) {
+  color: var(--draw-navy) !important;
+}
+
+body.baba-page .baba-management-drawer .baba-team-player-card[data-team-number] small {
+  color: var(--draw-muted) !important;
+}
+
+body.baba-page .baba-management-drawer .baba-team-player-card[data-team-number]:is(:hover, :focus-visible) {
+  border-color: rgba(10, 143, 118, .3) !important;
+  background: #eef8f5 !important;
+  transform: translateY(-1px);
+}
+
+.baba-drawer-management {
+  display: grid;
+  gap: .7rem;
+  border: 1px solid var(--draw-line);
+  border-radius: 12px;
+  padding: .75rem;
+  background: #f8fafc;
+}
+
+.baba-drawer-management__heading {
+  display: grid;
+  gap: .15rem;
+}
+
+.baba-drawer-management__heading strong {
+  color: var(--draw-navy);
+  font-size: .8rem;
+}
+
+.baba-drawer-management__heading small {
+  color: var(--draw-muted);
+  font-size: .67rem;
+  line-height: 1.35;
+}
+
+.baba-drawer-management__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .5rem;
+}
+
+.baba-drawer-management__actions button {
+  min-height: 44px;
+  border: 1px solid var(--draw-line) !important;
+  border-radius: 10px;
+  color: var(--draw-navy-soft) !important;
+  background: #fff !important;
+  font-size: .7rem;
+  font-weight: 850;
+}
+
+.baba-drawer-management__actions button.danger {
+  border-color: rgba(197, 47, 73, .2) !important;
+  color: var(--draw-danger) !important;
+  background: #fff5f6 !important;
+}
+
+.baba-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}
+
+.baba-draw-page :is(button, [href], select, input):focus-visible,
+.baba-draw-overlay :is(button, [href]):focus-visible,
+.baba-management-drawer :is(button, select, input):focus-visible {
+  outline: 3px solid rgba(10, 143, 118, .38) !important;
+  outline-offset: 2px !important;
+}
+
+@keyframes baba-draw-spin { to { transform: rotate(360deg); } }
+@keyframes baba-draw-modal-in { from { opacity: 0; transform: translateY(14px) scale(.975); } }
+@keyframes baba-drawer-in { from { opacity: .7; transform: translateX(100%); } }
+@keyframes baba-team-arrive { from { opacity: 0; transform: translateY(12px) scale(.985); } }
+@keyframes baba-player-reveal { from { opacity: 0; transform: translateY(8px); } }
+@keyframes baba-draw-count { from { opacity: .3; transform: scale(.78); } to { opacity: 1; transform: scale(1); } }
+@keyframes baba-draw-ball { 50% { transform: translateY(-7px) rotate(180deg); } 100% { transform: rotate(360deg); } }
+@keyframes baba-draw-chip { from { transform: translateY(-3px); } to { transform: translateY(3px); } }
+@keyframes baba-draw-shield { from { opacity: 0; transform: scale(.75); } }
+@keyframes baba-draw-shimmer { to { background-position: -200% 0; } }
+@keyframes baba-draw-ready { 0% { box-shadow: 0 0 0 0 rgba(10, 143, 118, .28); } 100% { box-shadow: 0 0 0 10px transparent; } }
+
+@media (max-width: 1120px) {
+  body.baba-page .baba-header-main {
+    grid-template-columns: minmax(14rem, 1fr) auto;
+  }
+
+  body.baba-page .baba-header-status {
+    display: none;
+  }
+
+  body.baba-page .baba-draw-page .baba-teams-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  body.baba-page .baba-unified-header,
+  body.baba-page .baba-shell {
+    width: calc(100% - .75rem) !important;
+  }
+
+  body.baba-page .baba-unified-header {
+    position: relative !important;
+    top: auto !important;
+    margin-top: .35rem !important;
+    padding: 0 !important;
+  }
+
+  body.baba-page .baba-header-main {
+    display: grid !important;
+    min-height: 52px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: .3rem .5rem;
+  }
+
+  body.baba-page .baba-unified-header .baba-brand img {
+    width: 36px !important;
+    height: 36px !important;
+    flex-basis: 36px;
+  }
+
+  body.baba-page .baba-unified-header .baba-brand__copy small,
+  body.baba-page .baba-manage-button span {
+    display: none !important;
+  }
+
+  body.baba-page .baba-manage-button {
+    width: 42px;
+    min-width: 42px;
+    padding: 0 !important;
+  }
+
+  body.baba-page .baba-unified-header .baba-tabs {
+    display: flex !important;
+    min-width: 0 !important;
+    margin: 0 .5rem .4rem !important;
+    padding-top: .25rem !important;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  body.baba-page .baba-unified-header .baba-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  body.baba-page .baba-unified-header .baba-tabs > button,
+  body.baba-page .baba-unified-header .baba-more-nav {
+    width: auto !important;
+    min-width: 6.6rem !important;
+    flex: 0 0 6.6rem;
+    scroll-snap-align: start;
+  }
+
+  .baba-draw-page {
+    gap: .65rem;
+    border-radius: 14px;
+    padding: .5rem;
+    background-attachment: scroll;
+  }
+
+  .baba-draw-status-bar {
+    align-items: stretch;
+    flex-direction: column;
+    padding: .75rem;
+  }
+
+  .baba-draw-status-bar__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  }
+
+  .baba-save-state {
+    grid-column: 1 / -1;
+  }
+
+  .baba-draw-status-bar__actions button {
+    width: 100%;
+  }
+
+  .baba-draw-steps {
+    display: none;
+  }
+
+  .baba-draw-progress__mobile {
+    display: grid;
+    gap: .5rem;
+  }
+
+  .baba-draw-progress__mobile-copy {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    color: var(--draw-navy);
+    font-size: .72rem;
+    font-weight: 850;
+  }
+
+  .baba-draw-progress__mobile-copy span:last-child {
+    color: var(--draw-muted);
+    font-size: .66rem;
+  }
+
+  .baba-draw-progress__mobile-bar {
+    height: 5px;
+    overflow: hidden;
+    border-radius: 99px;
+    background: #e3e8ed;
+  }
+
+  .baba-draw-progress__mobile-bar span {
+    height: 100%;
+    display: block;
+    border-radius: inherit;
+    background: var(--draw-emerald);
+  }
+
+  .baba-draw-ready {
+    min-height: 15rem;
+    padding: 1.25rem .75rem;
+  }
+
+  .baba-draw-results {
+    padding: .7rem;
+  }
+
+  .baba-draw-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: .5rem;
+  }
+
+  body.baba-page .baba-draw-page .baba-teams-grid {
+    grid-template-columns: 1fr;
+    gap: .65rem !important;
+  }
+
+  body.baba-page .baba-draw-page .baba-team[data-team-number],
+  body.baba-page .baba-draw-page .baba-team-placeholder {
+    width: 100%;
+    padding: .75rem !important;
+  }
+
+  body.baba-page .baba-draw-page .baba-team__players {
+    max-height: none;
+  }
+
+  .baba-team-placeholder {
+    min-height: 10rem;
+  }
+
+  .baba-draw-action-bar {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .baba-draw-action-bar__secondary,
+  .baba-draw-action-bar__primary,
+  .baba-draw-action-bar button {
+    width: 100%;
+  }
+
+  .baba-draw-action-bar__secondary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .baba-draw-action-bar {
+    position: sticky;
+    bottom: .4rem;
+    z-index: 30;
+    box-shadow: 0 18px 48px rgba(7, 31, 56, .22);
+  }
+
+  .baba-draw-secondary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .baba-draw-overlay {
+    align-items: end;
+    padding: .45rem;
+  }
+
+  .baba-draw-overlay__panel {
+    width: 100%;
+    max-height: calc(100dvh - .9rem);
+    border-radius: 16px;
+  }
+
+  .baba-draw-overlay__header {
+    padding: .8rem;
+  }
+
+  .baba-draw-overlay__tools {
+    align-items: flex-end;
+    flex-direction: column-reverse;
+  }
+
+  .baba-draw-skip {
+    min-height: 36px;
+    padding: .4rem .55rem;
+    font-size: .64rem;
+  }
+
+  .baba-draw-overlay__content {
+    padding: .7rem .8rem;
+  }
+
+  .baba-draw-overlay__actions {
+    padding: .55rem .8rem;
+  }
+
+  .baba-draw-overlay__actions button {
+    width: 100%;
+  }
+
+  body.baba-page .baba-management-drawer {
+    align-items: flex-end !important;
+  }
+
+  body.baba-page .baba-management-drawer .baba-roster-modal__panel {
+    width: 100% !important;
+    max-width: none !important;
+    height: min(88dvh, 760px);
+    max-height: 88dvh !important;
+    margin: auto 0 0;
+    border-left: 0 !important;
+    border-top: 1px solid var(--draw-line) !important;
+    border-radius: 16px 16px 0 0 !important;
+    animation-name: baba-sheet-in;
+  }
+
+  html body.baba-page #team-detail-modal.baba-management-drawer[data-team-number] .baba-roster-modal__panel {
+    border: 0 !important;
+    border-top: 1px solid var(--draw-line) !important;
+    box-shadow: 0 -20px 50px rgba(3, 18, 32, .18) !important;
+  }
+}
+
+@media (max-width: 420px) {
+  body.baba-page .baba-unified-header,
+  body.baba-page .baba-shell {
+    width: calc(100% - .4rem) !important;
+  }
+
+  .baba-draw-status-bar__icon {
+    width: 2.4rem;
+    height: 2.4rem;
+    flex-basis: 2.4rem;
+  }
+
+  .baba-draw-status-bar p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .baba-draw-ready__metrics {
+    gap: .35rem;
+  }
+
+  .baba-draw-ready__metric {
+    padding: .55rem .3rem;
+    font-size: .6rem;
+  }
+
+  .baba-draw-action-bar__secondary {
+    grid-template-columns: 1fr;
+  }
+
+  .baba-draw-overlay__heading p {
+    display: none;
+  }
+
+  .baba-draw-reveal__shield {
+    width: 4.8rem;
+    height: 4.8rem;
+  }
+
+  .baba-draw-reveal-player {
+    min-height: 46px;
+  }
+
+  .baba-drawer-management__actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@keyframes baba-sheet-in { from { opacity: .75; transform: translateY(100%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .baba-draw-page *,
+  .baba-draw-overlay *,
+  .baba-management-drawer * {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
