@@ -77,6 +77,7 @@
     moreMenu: $('#baba-more-menu'),
     headerManage: $('[data-header-tab="organizer"]'),
     createToday: $('#create-today-btn'),
+    organizerCreateToday: $('#organizer-create-today-btn'),
     saveHistory: $('#save-history-btn'),
     dateInput: $('#baba-date-input'),
     dateDisplay: $('#baba-date-display'),
@@ -980,7 +981,7 @@
     cloudApplyTimer = setTimeout(() => applyCloudState(nextState), 60);
   }
 
-  function showGoalCelebration(playerName, teamName) {
+  function showGoalCelebration(playerName, team) {
     const player = String(playerName || '').trim();
     if (!player) return;
     let celebration = document.getElementById('baba-goal-celebration');
@@ -991,6 +992,9 @@
       celebration.setAttribute('aria-live', 'polite');
       document.body.appendChild(celebration);
     }
+    const teamNumber = getTeamNumber(team);
+    if (teamNumber) celebration.dataset.teamNumber = String(teamNumber);
+    else delete celebration.dataset.teamNumber;
     celebration.innerHTML = `
       <div class="baba-goal-fireworks" aria-hidden="true">
         <span></span><span></span><span></span><span></span><span></span>
@@ -998,7 +1002,7 @@
       <div class="baba-goal-celebration__card">
         <small>Gol confirmado</small>
         <strong>${escapeHTML(player)}</strong>
-        <span>${escapeHTML(teamName || 'Time')}</span>
+        <span>${escapeHTML(team?.name || 'Time')}</span>
       </div>
     `;
     clearTimeout(goalCelebrationTimer);
@@ -1007,7 +1011,7 @@
     celebration.classList.add('is-showing');
     goalCelebrationTimer = setTimeout(() => {
       celebration.classList.remove('is-showing');
-    }, 3000);
+    }, 2500);
   }
 
   function getActiveBaba() {
@@ -3650,7 +3654,7 @@
     recomputeLiveScore(match);
     playBabaWhistle('goal');
     closeGoalPicker();
-    if (!isExternalPlayer) showGoalCelebration(player.nome, team.name);
+    if (!isExternalPlayer) showGoalCelebration(player.nome, team);
     saveState(isExternalPlayer ? 'Gol de jogador de fora registrado.' : `Gol de ${player.nome} registrado.`);
   }
 
@@ -4426,6 +4430,12 @@
     const startGameLabel = hasFinishedGame ? 'Iniciar partida' : 'Iniciar primeiro jogo';
 
     if (els.dateDisplay) els.dateDisplay.textContent = formatBabaDateLong(baba?.dataISO || todayISO());
+    setFlowButton(els.organizerCreateToday, {
+      variant: 'primary',
+      hidden: hasOpenBaba,
+      disabled: hasOpenBaba,
+      label: 'Iniciar Baba',
+    });
 
     setFlowButton(els.markPresent, {
       variant: !hasOpenBaba ? 'disabled' : (hasPresentPlayers ? 'complete' : 'primary'),
@@ -4774,18 +4784,19 @@
       `;
     };
 
+    const hasStartedMatch = Boolean((baba.jogos || []).length || baba.jogoAtual?.iniciadoEm);
     const renderTeamCard = (team, position, { reveal = false } = {}) => `
       <article class="baba-team ${reveal ? 'baba-team--reveal' : ''} ${team.retiradoDoBaba ? 'is-withdrawn' : ''}"${teamNumberDataAttribute(team)}>
         <div>
           <small>${fullyRevealed ? 'Time sorteado' : `Time ${position + 1} de ${baba.teams.length}`}</small>
           <h3>${teamDetailButton(baba, team)}</h3>
         </div>
-        <div class="baba-team__stats">
+        ${hasStartedMatch ? `<div class="baba-team__stats">
           <span><b>${team.pontos}</b>Pts</span>
           <span><b>${team.vitorias}</b>Vit</span>
           <span><b>${team.empates}</b>Emp</span>
           <span><b>${team.golsPro - team.golsContra}</b>Saldo</span>
-        </div>
+        </div>` : ''}
         <div class="baba-team__players">
           ${team.jogadores.map((id) => playerCardHTML(team, id)).join('') || '<span class="baba-empty">Sem jogadores</span>'}
         </div>
@@ -5781,10 +5792,6 @@
           </div>
         ` : `
           <div class="baba-live-actions">
-            <div class="baba-live-goal-actions">
-              <button class="baba-goal-btn baba-goal-btn--team-a" type="button" data-action="open-goal-picker" data-team-id="${teamA.id}"${teamNumberDataAttribute(teamA)}>Gol ${escapeHTML(teamA.name)}</button>
-              <button class="baba-goal-btn baba-goal-btn--team-b" type="button" data-action="open-goal-picker" data-team-id="${teamB.id}"${teamNumberDataAttribute(teamB)}>Gol ${escapeHTML(teamB.name)}</button>
-            </div>
             <div class="baba-live-secondary-actions">
               <button class="baba-live-control-btn baba-pause-toggle ${match.timerRunning ? 'is-running' : 'is-paused'}" type="button" data-action="pause-time" aria-pressed="${match.timerRunning ? 'false' : 'true'}">
                 <svg class="baba-btn-icon" aria-hidden="true" focusable="false"><use href="#${match.timerRunning ? 'baba-pause' : 'baba-play'}"></use></svg>
@@ -5804,18 +5811,23 @@
             <span class="baba-timer__text">${timerLabel}</span>
           </div>
           <div class="baba-live-scoreboard scoreboard">
-            <strong class="baba-live-team baba-live-team--home scoreboard__team"${teamNumberDataAttribute(teamA)}>${teamDetailButton(baba, teamA)}</strong>
+            <div class="baba-live-team-column"${teamNumberDataAttribute(teamA)}>
+              <strong class="baba-live-team baba-live-team--home scoreboard__team">${teamDetailButton(baba, teamA)}</strong>
+              ${isOrganizer() && !isPrepared && !isOver ? `<button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamA.id}"${teamNumberDataAttribute(teamA)}>Marcar gol</button>` : ''}
+            </div>
             <div class="baba-live-score scoreboard__score" aria-label="Placar ${scoreA} a ${scoreB}">
               <span class="score-number">${scoreA}</span>
               <small>x</small>
               <span class="score-number">${scoreB}</span>
             </div>
-            <strong class="baba-live-team baba-live-team--away scoreboard__team"${teamNumberDataAttribute(teamB)}>${teamDetailButton(baba, teamB)}</strong>
+            <div class="baba-live-team-column"${teamNumberDataAttribute(teamB)}>
+              <strong class="baba-live-team baba-live-team--away scoreboard__team">${teamDetailButton(baba, teamB)}</strong>
+              ${isOrganizer() && !isPrepared && !isOver ? `<button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamB.id}"${teamNumberDataAttribute(teamB)}>Marcar gol</button>` : ''}
+            </div>
           </div>
           ${organizerControls}
           <div class="baba-match-live__meta">
             <span class="baba-pill">Inicio: ${match.iniciadoEm ? formatTime(match.iniciadoEm) : 'pendente'}</span>
-            <span class="baba-pill">${teamA.jogadores.length} x ${teamB.jogadores.length} jogadores</span>
           </div>
         </div>
       `);
@@ -6965,6 +6977,7 @@
       });
     });
     els.createToday.addEventListener('click', () => createBaba(todayISO()));
+    els.organizerCreateToday?.addEventListener('click', () => createBaba(todayISO()));
     els.saveHistory.addEventListener('click', () => {
       const baba = getActiveBaba();
       if (!baba) return showToast('Crie um baba primeiro.');
