@@ -1183,7 +1183,7 @@
 
   function teamDetailButton(baba, team, fallback = 'Time') {
     if (!team) return escapeHTML(fallback);
-    return `<button class="baba-team-link" type="button" data-team-detail-id="${team.id}" data-team-detail-baba-id="${baba?.id || ''}"${teamNumberDataAttribute(team)}>${escapeHTML(team.name)}</button>`;
+    return `<button class="baba-team-link team-pill" type="button" data-team-detail-id="${team.id}" data-team-detail-baba-id="${baba?.id || ''}"${teamNumberDataAttribute(team)}>${escapeHTML(team.name)}</button>`;
   }
 
   function teamButtonsFromValue(baba, value) {
@@ -1209,17 +1209,17 @@
   function scoreBadgeHTML(scoreA, scoreB, compact = false) {
     const [stateA, stateB] = scoreState(scoreA, scoreB);
     return `
-      <span class="baba-score-boxes ${compact ? 'baba-score-boxes--compact' : ''}" aria-label="Placar ${Number(scoreA || 0)} a ${Number(scoreB || 0)}">
-        <b class="baba-score-box baba-score-box--${stateA}">${Number(scoreA || 0)}</b>
+      <span class="baba-score-boxes scoreboard__score ${compact ? 'baba-score-boxes--compact' : ''}" aria-label="Placar ${Number(scoreA || 0)} a ${Number(scoreB || 0)}">
+        <b class="baba-score-box score-number baba-score-box--${stateA}">${Number(scoreA || 0)}</b>
         <span>x</span>
-        <b class="baba-score-box baba-score-box--${stateB}">${Number(scoreB || 0)}</b>
+        <b class="baba-score-box score-number baba-score-box--${stateB}">${Number(scoreB || 0)}</b>
       </span>
     `;
   }
 
   function matchLineHTML(baba, teamA, scoreA, scoreB, teamB, compact = false) {
     return `
-      <span class="baba-match-line ${compact ? 'baba-match-line--compact' : ''}">
+      <span class="baba-match-line match-row__teams ${compact ? 'baba-match-line--compact' : ''}">
         ${teamDetailButton(baba, teamA, teamA?.name || 'Time')}
         ${scoreBadgeHTML(scoreA, scoreB, compact)}
         ${teamDetailButton(baba, teamB, teamB?.name || 'Time')}
@@ -2375,6 +2375,7 @@
 
   function renderPdfDocument(report) {
     const headerImage = new URL('img/baba-pdf-liquid-glass-v1.png', window.location.href).href;
+    const appFont = new URL('fonts/InterVariable.woff2?v=4.1', window.location.href).href;
     const summary = report.summary.map(([label, value]) => `
       <article>
         ${pdfIcon(pdfSummaryIcon(label))}
@@ -2405,6 +2406,13 @@
   <title>${escapeHTML(report.fileName)}</title>
   <style>
     @page { size: A4 portrait; margin: 7mm; }
+    @font-face {
+      font-family: "Baba Apple UI";
+      src: url("${appFont}") format("woff2");
+      font-style: normal;
+      font-weight: 400 600;
+      font-display: swap;
+    }
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -2413,7 +2421,7 @@
         radial-gradient(760px 440px at 0% 0%, rgba(8, 127, 108, .18), transparent 62%),
         radial-gradient(680px 420px at 100% 4%, rgba(214, 162, 29, .16), transparent 58%),
         linear-gradient(145deg, #e8f0f4, #f7fafc 48%, #e9f2f1);
-      font-family: Inter, Arial, sans-serif;
+      font-family: "Baba Apple UI", sans-serif;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -4390,6 +4398,10 @@
     const classes = ['is-flow-primary', 'is-flow-complete', 'is-flow-next', 'is-flow-disabled', 'is-flow-neutral', 'is-flow-danger'];
     button.classList.remove(...classes);
     button.classList.add(`is-flow-${state.variant || 'neutral'}`);
+    button.classList.remove('btn--primary', 'btn--success', 'btn--danger');
+    if (state.variant === 'primary' || state.variant === 'next') button.classList.add('btn--primary');
+    if (state.variant === 'complete') button.classList.add('btn--success');
+    if (state.variant === 'danger') button.classList.add('btn--danger');
     button.disabled = Boolean(state.disabled);
     button.classList.toggle('hidden', Boolean(state.hidden));
     if (state.label) {
@@ -4647,9 +4659,7 @@
               </div>
             </div>
             ${goal.descricao ? `<p>${escapeHTML(goal.descricao)}</p>` : ''}
-            <div class="baba-goal-progress" aria-label="Progresso da meta ${progress}%">
-              <span style="width: ${progress}%"></span>
-            </div>
+            <progress class="baba-goal-progress" max="100" value="${progress}" aria-label="Progresso da meta ${progress}%"></progress>
             <div class="baba-goal-money">
               <span><small>Valor</small><b>${formatCurrency(target)}</b></span>
               <span><small>Arrecadado</small><b>${formatCurrency(collected)}</b></span>
@@ -4865,7 +4875,7 @@
       </ol>
       <div class="baba-draw-progress__mobile">
         <div class="baba-draw-progress__mobile-copy"><span>${steps[current - 1]}</span><span>Etapa ${current} de 4</span></div>
-        <div class="baba-draw-progress__mobile-bar" aria-label="Progresso: etapa ${current} de 4"><span style="width:${current * 25}%"></span></div>
+        <progress class="baba-draw-progress__mobile-bar" max="4" value="${current}" aria-label="Progresso: etapa ${current} de 4"></progress>
       </div>
     `);
   }
@@ -5007,9 +5017,9 @@
 
     els.drawOverlay.classList.remove('hidden');
     document.body.classList.add('baba-draw-modal-open');
-    els.drawOverlay.style.setProperty('--overlay-accent', visual.accent);
+    els.drawOverlay.dataset.teamNumber = String(visual.number);
     els.drawOverlayStep.textContent = `Sorteando time ${experience.currentIndex + 1} de ${total}`;
-    els.drawOverlayProgressBar.style.width = `${Math.max(2, overallProgress)}%`;
+    els.drawOverlayProgressBar.value = Math.max(2, overallProgress);
     els.drawSkipButton.classList.toggle('hidden', experience.phase === 'complete');
     els.drawCloseButton.classList.toggle('hidden', experience.phase !== 'complete');
     els.drawSoundToggle.setAttribute('aria-pressed', String(drawSoundEnabled));
@@ -5041,7 +5051,7 @@
     els.drawOverlayTitle.textContent = experience.phase === 'complete' ? `${team.name} confirmado` : `${team.name} sorteado`;
     els.drawOverlayDescription.textContent = `${shownPlayerIds.length} de ${playerIds.length} jogadores revelados.`;
     setHTML(els.drawOverlayContent, `
-      <div class="baba-draw-reveal" style="--overlay-accent:${visual.accent}">
+      <div class="baba-draw-reveal">
         <div class="baba-draw-reveal__team">
           ${teamShieldHTML(team, 'baba-draw-reveal__shield')}
           <small>Time sorteado</small>
@@ -5470,15 +5480,15 @@
       return;
     }
     setHTML(els.currentGamesList, games.slice().reverse().map((game) => `
-      <div class="baba-history-item baba-history-item--compact baba-current-history-game">
-        <div class="baba-current-history-game__main">
-          <div class="baba-current-history-game__meta">
+      <div class="baba-history-item baba-history-item--compact baba-current-history-game match-row">
+        <div class="baba-current-history-game__main match-row__teams">
+          <div class="baba-current-history-game__meta match-row__meta">
             <span>Jogo ${game.numeroJogo}</span>
             <small>${formatTime(game.finalizadoEm)}</small>
           </div>
           <strong class="baba-current-history-game__match">${matchLineHTML(baba, getTeam(baba, game.timeA), game.placarA, game.placarB, getTeam(baba, game.timeB), true)}</strong>
         </div>
-        <div class="baba-current-history-game__actions">
+        <div class="baba-current-history-game__actions match-row__actions">
           <button class="baba-mini-btn" type="button" data-current-game="${game.numeroJogo}">
             <svg class="baba-btn-icon" aria-hidden="true" focusable="false"><use href="#baba-ball"></use></svg>Gols
           </button>
@@ -5544,8 +5554,8 @@
             <small>${player?.tipo === 'goleiro' ? 'Goleiro' : (player?.visitante ? 'Visitante' : 'Jogador')}</small>
           </span>
           <div class="baba-player-mini-stats">
-            <span>${dayGoals} hoje</span>
-            <span>${generalGoals} geral</span>
+            <span>${dayGoals} gols hoje</span>
+            <span>${generalGoals} gols geral</span>
             <span>#${rank}</span>
           </div>
         </button>
@@ -5793,14 +5803,14 @@
             <svg class="baba-live-icon" aria-hidden="true" focusable="false"><use href="#baba-clock"></use></svg>
             <span class="baba-timer__text">${timerLabel}</span>
           </div>
-          <div class="baba-live-scoreboard">
-            <strong class="baba-live-team baba-live-team--home"${teamNumberDataAttribute(teamA)}>${teamDetailButton(baba, teamA)}</strong>
-            <div class="baba-live-score" aria-label="Placar ${scoreA} a ${scoreB}">
-              <span>${scoreA}</span>
+          <div class="baba-live-scoreboard scoreboard">
+            <strong class="baba-live-team baba-live-team--home scoreboard__team"${teamNumberDataAttribute(teamA)}>${teamDetailButton(baba, teamA)}</strong>
+            <div class="baba-live-score scoreboard__score" aria-label="Placar ${scoreA} a ${scoreB}">
+              <span class="score-number">${scoreA}</span>
               <small>x</small>
-              <span>${scoreB}</span>
+              <span class="score-number">${scoreB}</span>
             </div>
-            <strong class="baba-live-team baba-live-team--away"${teamNumberDataAttribute(teamB)}>${teamDetailButton(baba, teamB)}</strong>
+            <strong class="baba-live-team baba-live-team--away scoreboard__team"${teamNumberDataAttribute(teamB)}>${teamDetailButton(baba, teamB)}</strong>
           </div>
           ${organizerControls}
           <div class="baba-match-live__meta">
@@ -5818,12 +5828,12 @@
       setHTML(els.queueList, visibleQueue.map((teamId, index) => {
         const team = getTeam(baba, teamId);
         return `
-          <div class="baba-row"${teamNumberDataAttribute(team)}>
-            <div>
+          <div class="baba-row queue-item"${teamNumberDataAttribute(team)}>
+            <div class="queue-item__team">
               <strong>${teamDetailButton(baba, team)}</strong>
-              <small>${index === 0 ? 'Proximo a entrar' : 'Aguardando'}</small>
+              <small class="queue-item__status">${index === 0 ? 'Proximo a entrar' : 'Aguardando'}</small>
             </div>
-            <b>#${index + 1}</b>
+            <b class="queue-item__position">#${index + 1}</b>
           </div>
         `;
       }).join(''));
@@ -6895,7 +6905,12 @@
     if (babaAssistant.wired) return;
     babaAssistant.wired = true;
     babaAssistant.els.toggle?.addEventListener('click', () => (babaAssistant.open ? closeBabaAssistant() : openBabaAssistant()));
-    babaAssistant.els.close?.addEventListener('click', closeBabaAssistant);
+    babaAssistant.els.close?.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeBabaAssistant();
+      babaAssistant.els.toggle?.focus({ preventScroll: true });
+    });
     babaAssistant.els.form?.addEventListener('submit', (event) => {
       event.preventDefault();
       submitBabaAssistantQuestion(babaAssistant.els.input?.value);
