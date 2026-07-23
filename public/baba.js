@@ -6175,10 +6175,6 @@
 
   function positionMoreMenu() {
     if (!els.moreMenu || !els.moreToggle) return;
-    if (!window.matchMedia('(max-width: 760px)').matches) {
-      restoreMoreMenuHome();
-      return;
-    }
     if (els.moreMenu.classList.contains('hidden')) return;
 
     if (els.moreMenu.parentElement !== document.body) document.body.appendChild(els.moreMenu);
@@ -6186,8 +6182,13 @@
     const headerRect = document.querySelector('.baba-unified-header')?.getBoundingClientRect();
     const viewportWidth = document.documentElement.clientWidth;
     const margin = 8;
-    const menuWidth = Math.min(260, viewportWidth - (margin * 2));
-    const left = Math.max(margin, (viewportWidth - menuWidth) / 2);
+    const menuWidth = Math.min(240, viewportWidth - (margin * 2));
+    const toggleRect = els.moreToggle.getBoundingClientRect();
+    const preferredLeft = toggleRect.right - menuWidth;
+    const left = Math.min(
+      viewportWidth - menuWidth - margin,
+      Math.max(margin, preferredLeft),
+    );
     const top = Math.max(margin, (headerRect?.bottom || els.moreToggle.getBoundingClientRect().bottom) + 8);
     els.moreMenu.style.setProperty('--baba-more-menu-top', `${top}px`);
     els.moreMenu.style.setProperty('--baba-more-menu-left', `${left}px`);

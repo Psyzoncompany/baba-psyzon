@@ -1950,6 +1950,204 @@ html body.baba-page .baba-standings-table .baba-team-link[data-team-number]:is(:
   }
 }
 
+/* Cabecalho responsivo final: navegacao compacta sem rolagem e menu fora do header. */
+body.baba-page .baba-unified-header {
+  isolation: isolate;
+  overflow: visible !important;
+}
+
+body.baba-page .baba-header-main {
+  min-height: 56px;
+  gap: .55rem;
+  padding: .38rem .6rem;
+}
+
+body.baba-page .baba-unified-header .baba-brand {
+  gap: .48rem;
+}
+
+body.baba-page .baba-unified-header .baba-brand img {
+  width: 38px !important;
+  height: 38px !important;
+  flex-basis: 38px;
+  border-radius: 9px !important;
+}
+
+body.baba-page .baba-unified-header .baba-brand__copy strong {
+  font-size: .92rem;
+}
+
+body.baba-page .baba-unified-header .baba-brand__copy small {
+  font-size: .61rem;
+}
+
+body.baba-page .baba-header-actions {
+  gap: .28rem !important;
+}
+
+body.baba-page .baba-unified-header .baba-nav button {
+  min-height: 32px;
+  gap: .32rem;
+  border-radius: 7px !important;
+  padding: .32rem .48rem !important;
+  font-size: .68rem;
+}
+
+body.baba-page .baba-manage-button {
+  min-width: 0;
+}
+
+body.baba-page .baba-manage-button svg,
+body.baba-page .baba-icon-button svg {
+  width: .9rem;
+  height: .9rem;
+  flex-basis: .9rem;
+}
+
+body.baba-page .baba-icon-button {
+  width: 32px;
+  min-width: 32px;
+}
+
+body.baba-page .baba-unified-header .baba-tabs,
+body.baba-page.baba-tabs-stuck .baba-unified-header .baba-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: .24rem !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  margin: 0 .6rem .42rem !important;
+  padding: .28rem 0 0 !important;
+  overflow: visible !important;
+  overscroll-behavior-x: auto;
+  scroll-snap-type: none;
+  scrollbar-width: none;
+}
+
+body.baba-page .baba-unified-header .baba-tabs > button,
+body.baba-page .baba-unified-header .baba-more-nav,
+body.baba-page.baba-tabs-stuck .baba-unified-header .baba-tabs > button,
+body.baba-page.baba-tabs-stuck .baba-unified-header .baba-more-nav {
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: initial !important;
+}
+
+body.baba-page .baba-unified-header .baba-tabs > button,
+body.baba-page .baba-unified-header .baba-more-nav > button {
+  min-height: 34px !important;
+  gap: .25rem !important;
+  padding: .27rem .3rem !important;
+  font-size: .66rem !important;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+body.baba-page .baba-unified-header .baba-tab-icon {
+  width: .84rem !important;
+  height: .84rem !important;
+  flex-basis: .84rem;
+}
+
+body.baba-page .baba-unified-header .baba-tab-chevron {
+  width: .7rem !important;
+  height: .7rem !important;
+  flex-basis: .7rem;
+}
+
+body.baba-page .baba-more-menu.is-floating {
+  position: fixed !important;
+  top: var(--baba-more-menu-top, 5rem) !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: var(--baba-more-menu-left, .5rem) !important;
+  z-index: 2147483000 !important;
+  width: min(240px, calc(100vw - 1rem)) !important;
+  max-height: calc(100dvh - var(--baba-more-menu-top, 5rem) - .75rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(126, 148, 169, .34) !important;
+  background: rgba(255, 255, 255, .99) !important;
+  box-shadow: 0 22px 55px rgba(3, 18, 32, .3) !important;
+}
+
+body.baba-page .baba-more-menu.is-floating button {
+  min-height: 36px;
+  gap: .48rem;
+  padding: .42rem .55rem;
+  font-size: .72rem;
+}
+
+@media (max-width: 760px) {
+  body.baba-page .baba-unified-header {
+    overflow: visible !important;
+  }
+
+  body.baba-page .baba-header-main {
+    min-height: 46px;
+    gap: .3rem;
+    padding: .24rem .38rem;
+  }
+
+  body.baba-page .baba-unified-header .baba-brand img {
+    width: 30px !important;
+    height: 30px !important;
+    flex-basis: 30px;
+  }
+
+  body.baba-page .baba-unified-header .baba-brand__copy strong {
+    font-size: .76rem;
+  }
+
+  body.baba-page .baba-manage-button {
+    width: 30px;
+    min-width: 30px;
+  }
+
+  body.baba-page .baba-unified-header .baba-nav button,
+  body.baba-page .baba-icon-button {
+    width: 30px;
+    min-width: 30px;
+    min-height: 30px;
+    padding: 0 !important;
+  }
+
+  body.baba-page .baba-unified-header .baba-tabs,
+  body.baba-page.baba-tabs-stuck .baba-unified-header .baba-tabs {
+    gap: .16rem !important;
+    margin: 0 .3rem .28rem !important;
+    padding-top: .16rem !important;
+  }
+
+  body.baba-page .baba-unified-header .baba-tabs > button,
+  body.baba-page .baba-unified-header .baba-more-nav > button {
+    min-height: 32px !important;
+    flex-direction: row;
+    gap: .14rem !important;
+    padding: .18rem .12rem !important;
+    font-size: .54rem !important;
+  }
+
+  body.baba-page .baba-unified-header .baba-tab-icon {
+    width: .74rem !important;
+    height: .74rem !important;
+    flex-basis: .74rem;
+  }
+
+  body.baba-page .baba-unified-header .baba-tab-chevron {
+    display: none;
+  }
+}
+
+@media (max-width: 390px) {
+  body.baba-page .baba-unified-header .baba-tabs > button,
+  body.baba-page .baba-unified-header .baba-more-nav > button {
+    gap: .1rem !important;
+    font-size: .5rem !important;
+  }
+}
+
 @keyframes baba-sheet-in { from { opacity: .75; transform: translateY(100%); } }
 
 @media (prefers-reduced-motion: reduce) {
