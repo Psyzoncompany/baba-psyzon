@@ -3441,7 +3441,7 @@
 
       const firebaseScript = document.createElement('script');
       firebaseScript.type = 'module';
-      firebaseScript.src = 'firebase-config.js';
+      firebaseScript.src = 'firebase-config.js?v=20260723-permissions-fix-1';
       document.head.appendChild(firebaseScript);
     } else {
       window.BackendInitialized = true;
@@ -3452,7 +3452,7 @@
     }
   </script>
   <link href="baba-liquid.css" rel="stylesheet">
-  <link href="baba-draw.css" rel="stylesheet">
+  <link href="baba-draw.css?v=20260723-responsive-header-1" rel="stylesheet">
 </head>
 
 <body class="baba-page">
@@ -3666,7 +3666,7 @@
       <button type="button" data-tab="ranking"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-chart"></use></svg><span>Ranking</span></button>
       <button type="button" data-tab="history"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg><span>Historico</span></button>
       <div class="baba-more-nav">
-        <button id="baba-more-toggle" type="button" aria-haspopup="true" aria-expanded="false">
+        <button id="baba-more-toggle" type="button" aria-haspopup="true" aria-controls="baba-more-menu" aria-expanded="false">
           <svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-dots"></use></svg><span>Mais</span>
           <svg class="baba-tab-chevron" aria-hidden="true" focusable="false"><use href="#baba-chevron"></use></svg>
         </button>
@@ -4624,15 +4624,14 @@
         });
         observer.observe(document.body, { childList: true, subtree: true });
       });
-      window.setInterval(attachStorageBridge, 700);
     })();
   </script>
 
 
-  <script type="module" src="baba-persistence.js"></script>
+  <script type="module" src="baba-persistence.js?v=20260723-permissions-fix-1"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
-  <script src="pdf-report.js"></script>
-  <script src="baba.js" defer></script>
+  <script src="pdf-report.js?v=20260723-payment-layout-1"></script>
+  <script src="baba.js?v=20260723-responsive-header-1" defer></script>
 </body>
 
 </html>

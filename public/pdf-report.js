@@ -110,10 +110,231 @@
     return widths.map((width) => width * scale);
   }
 
+  function drawPaymentIcon(doc, x, y, kind = 'check') {
+    setColor(doc, 'setFillColor', COLORS.emeraldSoft);
+    setColor(doc, 'setDrawColor', [177, 224, 207]);
+    doc.setLineWidth(.35);
+    doc.roundedRect(x, y, 8.5, 8.5, 2, 2, 'FD');
+    setColor(doc, 'setDrawColor', kind === 'pending' ? COLORS.emeraldDark : COLORS.emerald);
+    doc.setLineWidth(.55);
+    doc.circle(x + 4.25, y + 4.25, 2.25, 'S');
+    if (kind === 'pending') {
+      doc.line(x + 4.25, y + 2.7, x + 4.25, y + 4.8);
+      doc.circle(x + 4.25, y + 6.05, .18, 'F');
+    } else if (kind === 'wallet') {
+      doc.roundedRect(x + 2.05, y + 2.45, 4.4, 3.5, .6, .6, 'S');
+      doc.line(x + 2.7, y + 3.15, x + 5.7, y + 3.15);
+    } else {
+      doc.line(x + 2.75, y + 4.2, x + 3.85, y + 5.25);
+      doc.line(x + 3.85, y + 5.25, x + 5.85, y + 3.1);
+    }
+  }
+
+  function createPaymentReport(report, JsPdf) {
+    const doc = new JsPdf({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+      putOnlyUsedFonts: true,
+    });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 14;
+    const contentWidth = pageWidth - (margin * 2);
+    const heroY = 11;
+    const heroHeight = 49;
+
+    doc.setProperties({
+      title: cleanText(report.title),
+      subject: cleanText(report.subtitle),
+      author: cleanText(report.brand || report.eyebrow || 'Baba Psyzon'),
+      creator: 'Psyzon PDF',
+      keywords: 'pagamentos, baba, relatorio',
+    });
+    doc.setLanguage?.('pt-BR');
+
+    setColor(doc, 'setFillColor', [3, 19, 29]);
+    doc.roundedRect(margin, heroY, contentWidth, heroHeight, 3.5, 3.5, 'F');
+    if (report.headerImageData) {
+      doc.addImage(
+        report.headerImageData,
+        'PNG',
+        margin + contentWidth - 132,
+        heroY,
+        132,
+        heroHeight,
+        'payment-report-hero',
+        'FAST',
+      );
+    } else {
+      setColor(doc, 'setFillColor', [8, 42, 62]);
+      doc.rect(margin + contentWidth * .57, heroY, contentWidth * .43, heroHeight, 'F');
+    }
+    setColor(doc, 'setDrawColor', [78, 99, 106]);
+    doc.setLineWidth(.65);
+    doc.roundedRect(margin, heroY, contentWidth, heroHeight, 3.5, 3.5, 'S');
+
+    setColor(doc, 'setFillColor', [17, 35, 40]);
+    setColor(doc, 'setDrawColor', [74, 91, 92]);
+    doc.roundedRect(margin + 5, heroY + 4.5, 9, 9, 2.2, 2.2, 'FD');
+    setColor(doc, 'setDrawColor', [222, 193, 25]);
+    doc.setLineWidth(.65);
+    doc.roundedRect(margin + 7.6, heroY + 7.1, 4.4, 3.7, .6, .6, 'S');
+    doc.line(margin + 8.2, heroY + 7.8, margin + 11.25, heroY + 7.8);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.2);
+    setColor(doc, 'setTextColor', [205, 230, 88]);
+    doc.text(cleanText(report.eyebrow || report.brand || 'Baba Psyzon').toUpperCase(), margin + 17, heroY + 10);
+    doc.setFontSize(20);
+    setColor(doc, 'setTextColor', COLORS.white);
+    doc.text(cleanText(report.title), margin + 5, heroY + 23);
+    doc.setFontSize(8.3);
+    doc.setFont('helvetica', 'bold');
+    setColor(doc, 'setTextColor', [218, 226, 232]);
+    doc.text(
+      `${cleanText(report.subtitle)} - gerado em ${cleanText(report.generatedAt || new Date().toLocaleString('pt-BR'))}`,
+      margin + 5,
+      heroY + 31,
+    );
+
+    const summaryY = heroY + heroHeight + 2.5;
+    const summaryGap = 2.6;
+    const cardWidth = (contentWidth - (summaryGap * 3)) / 4;
+    const cardHeight = 15.5;
+    (report.summary || []).slice(0, 4).forEach((item, index) => {
+      const x = margin + (index * (cardWidth + summaryGap));
+      setColor(doc, 'setFillColor', [251, 253, 255]);
+      setColor(doc, 'setDrawColor', [211, 224, 238]);
+      doc.setLineWidth(.5);
+      doc.roundedRect(x, summaryY, cardWidth, cardHeight, 2.5, 2.5, 'FD');
+      const label = cleanText(item?.[0]);
+      drawPaymentIcon(
+        doc,
+        x + 3.2,
+        summaryY + 3.5,
+        /pend/i.test(label) ? 'pending' : (/esper/i.test(label) ? 'wallet' : 'check'),
+      );
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.2);
+      setColor(doc, 'setTextColor', [91, 109, 137]);
+      doc.text(label.toUpperCase(), x + 14.2, summaryY + 6.1);
+      doc.setFontSize(9.8);
+      setColor(doc, 'setTextColor', [25, 38, 60]);
+      doc.text(cleanText(item?.[1]), x + 14.2, summaryY + 11.7);
+    });
+
+    const sections = (report.sections || []).slice(0, 2);
+    const sectionTop = summaryY + cardHeight + 2.4;
+    const sectionGap = 2.6;
+    const sectionWidth = (contentWidth - sectionGap) / 2;
+    const footerY = pageHeight - 10.5;
+    const tableBottom = footerY - 4;
+
+    sections.forEach((section, sectionIndex) => {
+      const x = margin + (sectionIndex * (sectionWidth + sectionGap));
+      const rows = Array.isArray(section.rows) ? section.rows : [];
+      const headerHeight = 13.2;
+      const columnHeight = 6;
+      const availableRowsHeight = tableBottom - (sectionTop + headerHeight + columnHeight);
+      const rowHeight = rows.length
+        ? Math.min(6.2, Math.max(4.45, availableRowsHeight / rows.length))
+        : 8;
+      const tableHeight = headerHeight + columnHeight + Math.max(rowHeight, rows.length * rowHeight);
+
+      setColor(doc, 'setFillColor', COLORS.white);
+      setColor(doc, 'setDrawColor', [210, 225, 238]);
+      doc.setLineWidth(.5);
+      doc.roundedRect(x, sectionTop, sectionWidth, tableHeight, 2.8, 2.8, 'FD');
+
+      setColor(doc, 'setFillColor', [247, 250, 253]);
+      doc.roundedRect(x + .3, sectionTop + .3, sectionWidth - .6, headerHeight, 2.5, 2.5, 'F');
+      drawPaymentIcon(
+        doc,
+        x + 3.2,
+        sectionTop + 2.3,
+        sectionIndex === 0 ? 'check' : 'pending',
+      );
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.7);
+      setColor(doc, 'setTextColor', [26, 37, 57]);
+      doc.text(cleanText(section.title), x + 13.5, sectionTop + 8.4);
+      if (section.note) {
+        doc.setFontSize(6.2);
+        setColor(doc, 'setTextColor', [91, 109, 137]);
+        doc.text(cleanText(section.note), x + sectionWidth - 3.5, sectionTop + 8.1, { align: 'right' });
+      }
+
+      const columns = Array.isArray(section.columns) ? section.columns.map(cleanText) : [];
+      const widths = [9, sectionWidth * .43, sectionWidth * .28, sectionWidth * .22];
+      const widthsTotal = widths.reduce((sum, width) => sum + width, 0);
+      widths[1] += sectionWidth - widthsTotal;
+      let currentY = sectionTop + headerHeight;
+      setColor(doc, 'setFillColor', [235, 242, 249]);
+      doc.rect(x + .3, currentY, sectionWidth - .6, columnHeight, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(5.8);
+      setColor(doc, 'setTextColor', [75, 96, 125]);
+      let columnX = x;
+      columns.forEach((column, columnIndex) => {
+        const rightAligned = columnIndex === 3;
+        doc.text(
+          column.toUpperCase(),
+          rightAligned ? columnX + widths[columnIndex] - 3 : columnX + 3,
+          currentY + 4,
+          { align: rightAligned ? 'right' : 'left' },
+        );
+        columnX += widths[columnIndex];
+      });
+      currentY += columnHeight;
+
+      if (!rows.length) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.2);
+        setColor(doc, 'setTextColor', COLORS.muted);
+        doc.text(cleanText(section.empty || 'Nenhum registro.'), x + 4, currentY + 5.3);
+      } else {
+        rows.forEach((sourceRow, rowIndex) => {
+          const row = Array.isArray(sourceRow) ? sourceRow : [];
+          setColor(doc, 'setFillColor', rowIndex % 2 ? [249, 251, 253] : COLORS.white);
+          doc.rect(x + .3, currentY, sectionWidth - .6, rowHeight, 'F');
+          setColor(doc, 'setDrawColor', [222, 230, 239]);
+          doc.setLineWidth(.2);
+          doc.line(x + .3, currentY + rowHeight, x + sectionWidth - .3, currentY + rowHeight);
+          let cellX = x;
+          row.slice(0, 4).forEach((cell, cellIndex) => {
+            const rightAligned = cellIndex === 3;
+            doc.setFont('helvetica', cellIndex === 0 ? 'bold' : 'normal');
+            doc.setFontSize(rowHeight < 5 ? 5.7 : 6.5);
+            setColor(doc, 'setTextColor', [20, 37, 58]);
+            const value = doc.splitTextToSize(cleanText(cell), widths[cellIndex] - 5)[0] || '-';
+            doc.text(
+              value,
+              rightAligned ? cellX + widths[cellIndex] - 3 : cellX + 3,
+              currentY + (rowHeight * .67),
+              { align: rightAligned ? 'right' : 'left' },
+            );
+            cellX += widths[cellIndex];
+          });
+          currentY += rowHeight;
+        });
+      }
+    });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.2);
+    setColor(doc, 'setTextColor', [75, 96, 125]);
+    doc.text(cleanText(report.brand || report.eyebrow || 'Baba Psyzon'), margin + .5, footerY);
+    doc.text('Exportacao em PDF', pageWidth - margin - .5, footerY, { align: 'right' });
+    return doc;
+  }
+
   function createReport(report) {
     const JsPdf = window.jspdf?.jsPDF;
     if (!JsPdf) throw new Error('O gerador de PDF não foi carregado. Atualize a página e tente novamente.');
     if (!report || !Array.isArray(report.sections)) throw new Error('Os dados do relatório estão incompletos.');
+    if (report.type === 'payments') return createPaymentReport(report, JsPdf);
 
     const doc = new JsPdf({
       orientation: 'portrait',
@@ -366,7 +587,25 @@
 
   async function exportReport(report) {
     await document.fonts?.ready?.catch?.(() => {});
-    const doc = createReport(report);
+    let preparedReport = report;
+    if (report?.type === 'payments' && !report.headerImageData) {
+      try {
+        const imageUrl = new URL('img/baba-payment-report-hero-v1.png', document.baseURI).href;
+        const response = await fetch(imageUrl);
+        if (!response.ok) throw new Error(`Falha ao carregar banner (${response.status}).`);
+        const blob = await response.blob();
+        const headerImageData = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(reader.error || new Error('Falha ao ler banner.'));
+          reader.readAsDataURL(blob);
+        });
+        preparedReport = { ...report, headerImageData };
+      } catch (error) {
+        console.warn('Banner do PDF de pagamentos indisponivel; usando fundo vetorial.', error);
+      }
+    }
+    const doc = createReport(preparedReport);
     doc.save(cleanFileName(report.fileName || report.title));
     return { pages: doc.getNumberOfPages(), fileName: cleanFileName(report.fileName || report.title) };
   }

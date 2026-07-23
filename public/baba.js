@@ -189,6 +189,7 @@
     gameDetailList: $('#game-detail-list'),
     closeGameDetailModal: $('#close-game-detail-modal'),
   };
+  const moreMenuHome = els.moreMenu?.parentElement || null;
 
   let state = readState();
   let mode = null;
@@ -5365,7 +5366,6 @@
           <div class="baba-table__row ${team.isLive ? 'is-live' : ''} ${index === 0 ? 'is-first baba-gold-leader' : ''}"${teamNumberDataAttribute(team)} role="row" aria-label="${escapeHTML(team.name)}, ${index + 1}º lugar, ${team.pontos} pontos">
             <span class="baba-position-label" role="cell">
               <b class="baba-position-badge ${index === 0 ? 'is-first' : ''}">${index + 1}º</b>
-              <small>${index + 1}º lugar</small>
             </span>
             <span class="baba-standings-team" role="cell">
               ${teamDetailButton(baba, team)}
@@ -6158,30 +6158,51 @@
     `);
   }
 
+  function restoreMoreMenuHome() {
+    if (!els.moreMenu) return;
+    els.moreMenu.classList.remove('is-floating');
+    els.moreMenu.style.removeProperty('--baba-more-menu-top');
+    els.moreMenu.style.removeProperty('--baba-more-menu-left');
+    if (moreMenuHome && els.moreMenu.parentElement !== moreMenuHome) moreMenuHome.appendChild(els.moreMenu);
+  }
+
+  function closeMoreMenu({ restoreFocus = false } = {}) {
+    els.moreMenu?.classList.add('hidden');
+    els.moreToggle?.setAttribute('aria-expanded', 'false');
+    restoreMoreMenuHome();
+    if (restoreFocus) els.moreToggle?.focus({ preventScroll: true });
+  }
+
   function positionMoreMenu() {
-    if (!els.moreMenu || !els.moreToggle || els.moreMenu.classList.contains('hidden')) return;
-    if (!window.matchMedia('(max-width: 760px)').matches) return;
-    const toggleRect = els.moreToggle.getBoundingClientRect();
+    if (!els.moreMenu || !els.moreToggle) return;
+    if (els.moreMenu.classList.contains('hidden')) return;
+
+    if (els.moreMenu.parentElement !== document.body) document.body.appendChild(els.moreMenu);
+    els.moreMenu.classList.add('is-floating');
+    const headerRect = document.querySelector('.baba-unified-header')?.getBoundingClientRect();
     const viewportWidth = document.documentElement.clientWidth;
     const margin = 8;
-    const menuWidth = Math.min(260, viewportWidth - (margin * 2));
+    const menuWidth = Math.min(240, viewportWidth - (margin * 2));
+    const toggleRect = els.moreToggle.getBoundingClientRect();
+    const preferredLeft = toggleRect.right - menuWidth;
     const left = Math.min(
       viewportWidth - menuWidth - margin,
-      Math.max(margin, toggleRect.right - menuWidth),
+      Math.max(margin, preferredLeft),
     );
-    els.moreMenu.style.setProperty('--baba-more-menu-top', `${Math.max(margin, toggleRect.bottom + 8)}px`);
+    const top = Math.max(margin, (headerRect?.bottom || els.moreToggle.getBoundingClientRect().bottom) + 8);
+    els.moreMenu.style.setProperty('--baba-more-menu-top', `${top}px`);
     els.moreMenu.style.setProperty('--baba-more-menu-left', `${left}px`);
   }
 
   function setActiveTab(tab) {
     const safeTab = !isOrganizer() && tab === 'organizer' ? 'dashboard' : tab;
     document.body.dataset.babaView = safeTab;
-    $$('.baba-tabs [data-tab]').forEach((button) => button.classList.toggle('active', button.dataset.tab === safeTab));
+    $$('.baba-tabs [data-tab], #baba-more-menu [data-tab]').forEach((button) => button.classList.toggle('active', button.dataset.tab === safeTab));
     const isMoreTab = ['teams', 'goals', 'organizer'].includes(safeTab);
     els.moreToggle?.classList.toggle('active', isMoreTab);
-    els.moreToggle?.setAttribute('aria-expanded', 'false');
-    els.moreMenu?.classList.add('hidden');
+    closeMoreMenu();
     $$('.baba-view').forEach((view) => view.classList.toggle('active', view.dataset.view === safeTab));
+    window.BabaRepository?.activateView?.(safeTab);
     if (safeTab === 'teams') renderDrawTeams(getActiveBaba());
   }
 
@@ -6978,11 +6999,13 @@
     els.moreToggle?.addEventListener('click', (event) => {
       event.stopPropagation();
       const willOpen = els.moreMenu?.classList.contains('hidden');
-      els.moreMenu?.classList.toggle('hidden', !willOpen);
-      els.moreToggle?.setAttribute('aria-expanded', String(Boolean(willOpen)));
       if (willOpen) {
+        els.moreMenu?.classList.remove('hidden');
+        els.moreToggle?.setAttribute('aria-expanded', 'true');
         positionMoreMenu();
         window.requestAnimationFrame(positionMoreMenu);
+      } else {
+        closeMoreMenu();
       }
     });
 
@@ -6997,10 +7020,12 @@
     els.headerManage?.addEventListener('click', () => setActiveTab('organizer'));
 
     document.addEventListener('click', (event) => {
-      if (!event.target.closest('.baba-more-nav')) {
-        els.moreMenu?.classList.add('hidden');
-        els.moreToggle?.setAttribute('aria-expanded', 'false');
-      }
+      if (event.target.closest('#baba-more-menu [role="menuitem"]')) return closeMoreMenu();
+      if (!event.target.closest('.baba-more-nav, #baba-more-menu')) closeMoreMenu();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !els.moreMenu?.classList.contains('hidden')) closeMoreMenu({ restoreFocus: true });
     });
 
     window.addEventListener('resize', positionMoreMenu);
@@ -7128,6 +7153,8 @@
       if (monthButton) {
         selectedMonthlyKey = monthButton.dataset.monthKey;
         renderMonthlyHistory();
+        window.BabaRepository?.loadMonthStats?.(selectedMonthlyKey)
+          .catch((error) => showToast(error.message || 'Nao foi possivel carregar o ranking deste mes.'));
       }
     });
 
@@ -7143,6 +7170,7 @@
     if (hasBooted) return;
     hasBooted = true;
     document.body.dataset.babaView = document.querySelector('.baba-view.active')?.dataset.view || 'dashboard';
+    window.BabaRepository?.activateView?.(document.body.dataset.babaView);
     wireEvents();
     if (!timerTick) timerTick = setInterval(renderTimerOnly, 1000);
     const sessionMode = sessionStorage.getItem(MODE_KEY);
