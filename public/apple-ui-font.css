@@ -1,0 +1,27 @@
+/* Tipografia unica do site: Inter Variable local, sem dependencia externa. */
+@font-face {
+  font-family: "Baba Apple UI";
+  src: url("fonts/InterVariable.woff2?v=4.1") format("woff2");
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+}
+
+:root {
+  --font-site: "Baba Apple UI", sans-serif;
+  --font-app: var(--font-site);
+}
+
+html,
+body,
+button,
+input,
+select,
+textarea,
+optgroup,
+option,
+table {
+  font-family: var(--font-site);
+  font-optical-sizing: auto;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+}

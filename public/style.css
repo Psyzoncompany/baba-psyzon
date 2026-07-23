@@ -35,7 +35,7 @@ body {
 
 body {
   color: #e0e0e0;
-  font-family: 'Inter', 'Roboto', 'Segoe UI', sans-serif;
+  font-family: var(--font-site, "Baba Apple UI", sans-serif);
   margin: 0;
   line-height: 1.6;
   background-color: #0b1220;
@@ -322,7 +322,7 @@ body {
 
 /* --- ESTILOS PARA O BLOCO DE NOTAS --- */
 .notepad-font {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--font-site, "Baba Apple UI", sans-serif);
   font-size: 1rem;
 }
 
@@ -345,7 +345,7 @@ body {
 /* --- ESTILOS PARA O BLOCO DE NOTAS --- */
 .notepad-font,
 #line-numbers {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-family: var(--font-site, "Baba Apple UI", sans-serif);
   font-size: 1rem;
   line-height: 1.5rem;
 }
@@ -450,7 +450,7 @@ body {
   margin: 0;
   min-height: 100vh;
   color: #e6eef6;
-  font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  font-family: var(--font-site, "Baba Apple UI", sans-serif);
   background:
     radial-gradient(1200px 600px at 10% 10%, rgba(59, 130, 246, 0.06), transparent 12%),
     radial-gradient(1000px 500px at 90% 90%, rgba(34, 197, 94, 0.03), transparent 12%),
@@ -601,7 +601,7 @@ select:focus {
 
 /* Notepad area */
 .notepad-font {
-  font-family: 'SFMono-Regular', 'Courier New', monospace;
+  font-family: var(--font-site, "Baba Apple UI", sans-serif);
   font-size: 0.95rem;
   color: #e8eef6;
 }
@@ -2785,7 +2785,7 @@ body.is-dragging-kanban {
 
 /* --- iPhone-like typography + full-width mobile layout --- */
 :root {
-  --font-app: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Inter", "Segoe UI", sans-serif;
+  --font-app: var(--font-site, "Baba Apple UI", sans-serif);
   --mobile-gutter: clamp(6px, 2.2vw, 14px);
 }
 

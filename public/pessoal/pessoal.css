@@ -30,7 +30,7 @@
   --sidebar-width: 260px;
   --topbar-height: 64px;
   --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  --font: 'Inter', system-ui, -apple-system, sans-serif;
+  --font: var(--font-site, "Baba Apple UI", sans-serif);
 }
 
 /* ---------- Reset / Base ---------- */

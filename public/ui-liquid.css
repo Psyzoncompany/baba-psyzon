@@ -28,8 +28,7 @@ body{
               radial-gradient(900px 650px at 80% 20%, #7a2bbf 0%, transparent 52%),
               radial-gradient(900px 650px at 30% 85%, #0fb3b3 0%, transparent 54%),
               linear-gradient(180deg, var(--bg0), var(--bg1));
-  font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Display", "SF Pro Text",
-               "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  font-family: var(--font-site, "Baba Apple UI", sans-serif);
   overflow-x:hidden;
 }
 
