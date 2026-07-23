@@ -5544,8 +5544,8 @@
             <small>${player?.tipo === 'goleiro' ? 'Goleiro' : (player?.visitante ? 'Visitante' : 'Jogador')}</small>
           </span>
           <div class="baba-player-mini-stats">
-            <span>${dayGoals} hoje</span>
-            <span>${generalGoals} geral</span>
+            <span>${dayGoals} gols hoje</span>
+            <span>${generalGoals} gols geral</span>
             <span>#${rank}</span>
           </div>
         </button>
