@@ -38,7 +38,7 @@ service cloud.firestore {
 
     match /orders_public/baba_live_state {
       allow read: if true;
-      allow create, update: if signedIn() && validPointer();
+      allow create, update: if validPointer();
       allow delete: if false;
     }
 
@@ -63,15 +63,13 @@ service cloud.firestore {
     }
 
     match /babas/{babaId} {
-      allow get: if true;
-      allow list: if request.query.limit != null && request.query.limit <= 24;
-      allow create, update: if signedIn() && validBaba() && request.resource.data.id == babaId;
+      allow read: if true;
+      allow create, update: if validBaba() && request.resource.data.id == babaId;
       allow delete: if false;
 
       match /participants/{participantId} {
-        allow get: if true;
-        allow list: if request.query.limit != null && request.query.limit <= 200;
-        allow create, update: if signedIn() && isSchemaV2()
+        allow read: if true;
+        allow create, update: if isSchemaV2()
           && request.resource.data.playerId == participantId
           && request.resource.data.keys().hasOnly([
             'playerId', 'name', 'nameSnapshot', 'type', 'present', 'visitor', 'active',
@@ -81,9 +79,8 @@ service cloud.firestore {
       }
 
       match /teams/{teamId} {
-        allow get: if true;
-        allow list: if request.query.limit != null && request.query.limit <= 32;
-        allow create, update: if signedIn() && isSchemaV2()
+        allow read: if true;
+        allow create, update: if isSchemaV2()
           && request.resource.data.id == teamId
           && request.resource.data.keys().hasOnly([
             'id', 'name', 'tipo', 'order', 'status', 'pontos', 'golsPro', 'golsContra',
@@ -93,9 +90,8 @@ service cloud.firestore {
       }
 
       match /games/{gameId} {
-        allow get: if true;
-        allow list: if request.query.limit != null && request.query.limit <= 500;
-        allow create, update: if signedIn() && isSchemaV2()
+        allow read: if true;
+        allow create, update: if isSchemaV2()
           && request.resource.data.id == gameId
           && request.resource.data.keys().hasOnly([
             'id', 'sequence', 'numeroJogo', 'status', 'teamAId', 'teamBId', 'timeA', 'timeB',
@@ -111,9 +107,8 @@ service cloud.firestore {
       }
 
       match /goals/{goalId} {
-        allow get: if true;
-        allow list: if request.query.limit != null && request.query.limit <= 1000;
-        allow create, update: if signedIn() && isSchemaV2()
+        allow read: if true;
+        allow create, update: if isSchemaV2()
           && request.resource.data.id == goalId
           && request.resource.data.babaId == babaId
           && request.resource.data.keys().hasOnly([
@@ -124,9 +119,8 @@ service cloud.firestore {
       }
 
       match /payments/{playerId} {
-        allow get: if true;
-        allow list: if request.query.limit != null && request.query.limit <= 250;
-        allow create, update: if signedIn() && isSchemaV2()
+        allow read: if true;
+        allow create, update: if isSchemaV2()
           && request.resource.data.playerId == playerId
           && request.resource.data.keys().hasOnly([
             'playerId', 'paid', 'amount', 'method', 'paidAt', 'updatedAtMs',
@@ -136,9 +130,8 @@ service cloud.firestore {
       }
 
       match /stats/{playerId} {
-        allow get: if true;
-        allow list: if request.query.limit != null && request.query.limit <= 250;
-        allow create, update: if signedIn() && isSchemaV2()
+        allow read: if true;
+        allow create, update: if isSchemaV2()
           && request.resource.data.playerId == playerId
           && request.resource.data.keys().hasOnly([
             'jogadorId', 'playerId', 'nome', 'totalGols', 'totalVitorias', 'totalEmpates',
@@ -151,9 +144,8 @@ service cloud.firestore {
     }
 
     match /baba_players/{playerId} {
-      allow get: if true;
-      allow list: if request.query.limit != null && request.query.limit <= 250;
-      allow create, update: if signedIn() && isSchemaV2()
+      allow read: if true;
+      allow create, update: if isSchemaV2()
         && request.resource.data.playerId == playerId
         && request.resource.data.keys().hasOnly([
           'id', 'playerId', 'nome', 'name', 'tipo', 'type', 'ativo', 'active', 'criadoEm',
@@ -163,9 +155,8 @@ service cloud.firestore {
     }
 
     match /baba_purchase_goals/{goalId} {
-      allow get: if true;
-      allow list: if request.query.limit != null && request.query.limit <= 100;
-      allow create, update: if signedIn() && isSchemaV2()
+      allow read: if true;
+      allow create, update: if isSchemaV2()
         && request.resource.data.id == goalId
         && request.resource.data.keys().hasOnly([
           'id', 'nome', 'descricao', 'prioridade', 'valor', 'arrecadado', 'foto', 'imagePath',
@@ -176,9 +167,8 @@ service cloud.firestore {
     }
 
     match /baba_months/{monthKey} {
-      allow get: if true;
-      allow list: if request.query.limit != null && request.query.limit <= 60;
-      allow create, update: if signedIn() && isSchemaV2()
+      allow read: if true;
+      allow create, update: if isSchemaV2()
         && request.resource.data.monthKey == monthKey
         && request.resource.data.keys().hasOnly([
           'id', 'monthKey', 'schemaVersion', 'updatedAtMs', 'deleted'
@@ -186,9 +176,8 @@ service cloud.firestore {
       allow delete: if false;
 
       match /payments/{playerId} {
-        allow get: if true;
-        allow list: if request.query.limit != null && request.query.limit <= 250;
-        allow create, update: if signedIn() && isSchemaV2()
+        allow read: if true;
+        allow create, update: if isSchemaV2()
           && request.resource.data.playerId == playerId
           && request.resource.data.keys().hasOnly([
             'playerId', 'paid', 'updatedAtMs', 'schemaVersion'
@@ -197,9 +186,8 @@ service cloud.firestore {
       }
 
       match /stats/{playerId} {
-        allow get: if true;
-        allow list: if request.query.limit != null && request.query.limit <= 250;
-        allow create, update: if signedIn() && isSchemaV2()
+        allow read: if true;
+        allow create, update: if isSchemaV2()
           && request.resource.data.playerId == playerId
           && request.resource.data.keys().hasOnly([
             'jogadorId', 'playerId', 'nome', 'totalGols', 'totalVitorias', 'totalEmpates',
@@ -212,9 +200,8 @@ service cloud.firestore {
     }
 
     match /player_stats/{playerId} {
-      allow get: if true;
-      allow list: if request.query.limit != null && request.query.limit <= 250;
-      allow create, update: if signedIn() && isSchemaV2()
+      allow read: if true;
+      allow create, update: if isSchemaV2()
         && request.resource.data.playerId == playerId
         && request.resource.data.keys().hasOnly([
           'jogadorId', 'playerId', 'nome', 'totalGols', 'totalVitorias', 'totalEmpates',
@@ -226,12 +213,10 @@ service cloud.firestore {
     }
 
     match /migrations/{migrationId} {
-      allow read: if signedIn();
-      allow create: if signedIn()
-        && request.resource.data.schemaTo == 2
+      allow read: if true;
+      allow create: if request.resource.data.schemaTo == 2
         && request.resource.data.sourcePath == 'orders_public/baba_live_state';
-      allow update: if signedIn()
-        && (request.resource.data.schemaTo == 2 || existingSchemaV2() || resource.data.schemaTo == 2)
+      allow update: if (request.resource.data.schemaTo == 2 || existingSchemaV2() || resource.data.schemaTo == 2)
         && request.resource.data.sourcePath == 'orders_public/baba_live_state'
         && request.resource.data.keys().hasOnly([
           'status', 'sourcePath', 'targetBabaId', 'schemaFrom', 'schemaTo', 'chunkCount',
@@ -241,8 +226,8 @@ service cloud.firestore {
       allow delete: if false;
 
       match /legacy_chunks/{chunkId} {
-        allow read: if signedIn();
-        allow create, update: if signedIn() && isSchemaV2()
+        allow read: if true;
+        allow create, update: if isSchemaV2()
           && request.resource.data.index is int
           && request.resource.data.data is string
           && request.resource.data.data.size() <= 180000;
