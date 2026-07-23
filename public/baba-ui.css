@@ -104,6 +104,43 @@
   --z-toast: 2400;
 }
 
+body.baba-dark-theme {
+  color-scheme: dark;
+  --color-text: #edf7ff;
+  --color-text-soft: #c5d6e7;
+  --color-text-muted: #91a8bf;
+  --color-primary-soft: rgba(7, 140, 105, .2);
+  --color-danger-soft: rgba(217, 45, 63, .18);
+  --color-success-soft: rgba(7, 148, 85, .18);
+  --color-warning-soft: rgba(182, 106, 0, .2);
+  --color-info-soft: rgba(37, 99, 168, .2);
+  --surface-page: #08131f;
+  --surface-glass: rgba(14, 31, 47, .76);
+  --surface-glass-strong: rgba(17, 37, 55, .94);
+  --surface-glass-solid: #12283b;
+  --surface-subtle: rgba(24, 48, 69, .82);
+  --surface-muted: rgba(31, 57, 79, .78);
+  --surface-overlay: rgba(2, 10, 18, .72);
+  --border-glass: rgba(167, 196, 218, .16);
+  --border-soft: rgba(151, 181, 205, .18);
+  --border-medium: rgba(151, 181, 205, .3);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+
+body.baba-dark-theme.baba-page {
+  background-image:
+    linear-gradient(115deg, rgba(3, 12, 21, .78), rgba(8, 25, 39, .82)),
+    url("img/baba-futsal-court-light-v2.png");
+}
+
+body.baba-dark-theme :is(.baba-topbar, .baba-online-pill, .baba-sync-strip) {
+  background-color: rgba(14, 31, 47, .9);
+}
+
+.baba-theme-icon-sun { display: none; }
+body.baba-dark-theme .baba-theme-icon-moon { display: none; }
+body.baba-dark-theme .baba-theme-icon-sun { display: block; }
+
 /* 2. Reset and base -------------------------------------------------------- */
 
 *,

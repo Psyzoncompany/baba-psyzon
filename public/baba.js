@@ -5,6 +5,7 @@
   const MODE_KEY = 'psyzon_baba_mode';
   const REMEMBER_ORGANIZER_KEY = 'psyzon_baba_organizer_remembered';
   const REMEMBERED_ACCESS_VALUE = 'organizer_access_v2';
+  const BABA_THEME_KEY = 'psyzon_baba_theme';
   const BACKUP_SCHEMA = 'baba-amigos-backup';
   const BACKUP_VERSION = 1;
   const MAX_BACKUP_FILE_SIZE = 25 * 1024 * 1024;
@@ -72,6 +73,7 @@
     rememberOrganizer: $('#remember-organizer-password'),
     closePassword: $('#close-organizer-password'),
     modeReset: $('#mode-reset-btn'),
+    themeToggle: $('#baba-theme-toggle'),
     logoutBtn: $('#baba-logout-btn'),
     moreToggle: $('#baba-more-toggle'),
     moreMenu: $('#baba-more-menu'),
@@ -1016,6 +1018,25 @@
 
   function getActiveBaba() {
     return state.babas.find((baba) => baba.id === state.activeBabaId) || null;
+  }
+
+  function hasBabaStartedMatch(baba) {
+    return Boolean((baba?.jogos || []).length || baba?.jogoAtual?.iniciadoEm);
+  }
+
+  function applyBabaTheme(theme) {
+    const isDark = theme === 'dark';
+    document.body.classList.toggle('baba-dark-theme', isDark);
+    if (!els.themeToggle) return;
+    els.themeToggle.setAttribute('aria-pressed', String(isDark));
+    els.themeToggle.setAttribute('aria-label', isDark ? 'Ativar tema claro' : 'Ativar tema escuro');
+    els.themeToggle.title = isDark ? 'Ativar tema claro' : 'Ativar tema escuro';
+  }
+
+  function toggleBabaTheme() {
+    const nextTheme = document.body.classList.contains('baba-dark-theme') ? 'light' : 'dark';
+    localStorage.setItem(BABA_THEME_KEY, nextTheme);
+    applyBabaTheme(nextTheme);
   }
 
   function getBabaById(id) {
@@ -4784,7 +4805,7 @@
       `;
     };
 
-    const hasStartedMatch = Boolean((baba.jogos || []).length || baba.jogoAtual?.iniciadoEm);
+    const hasStartedMatch = hasBabaStartedMatch(baba);
     const renderTeamCard = (team, position, { reveal = false } = {}) => `
       <article class="baba-team ${reveal ? 'baba-team--reveal' : ''} ${team.retiradoDoBaba ? 'is-withdrawn' : ''}"${teamNumberDataAttribute(team)}>
         <div>
@@ -4941,25 +4962,29 @@
   function teamResultCardHTML(baba, team) {
     const playerCount = (team.jogadores || []).length;
     const canManage = isOrganizer() && baba.status !== 'finalizado';
+    const hasStartedMatch = hasBabaStartedMatch(baba);
+    const playerCountText = hasStartedMatch
+      ? `<span>${playerCount} jogador${playerCount === 1 ? '' : 'es'}${team.retiradoDoBaba ? ' · fora da fila' : ''}</span>`
+      : (team.retiradoDoBaba ? '<span>Fora da fila</span>' : '');
     return `
-      <article class="baba-team ${team.retiradoDoBaba ? 'is-withdrawn' : ''} ${team.id === recentlyRevealedTeamId ? 'is-recently-revealed' : ''}" tabindex="0"${teamNumberDataAttribute(team)} aria-label="${escapeHTML(team.name)}, ${playerCount} jogadores">
+      <article class="baba-team ${team.retiradoDoBaba ? 'is-withdrawn' : ''} ${team.id === recentlyRevealedTeamId ? 'is-recently-revealed' : ''}" tabindex="0"${teamNumberDataAttribute(team)} aria-label="${escapeHTML(team.name)}">
         <header class="baba-team-result__header">
           ${teamShieldHTML(team)}
           <span class="baba-team-result__identity">
             <small>Time sorteado</small>
             <strong>${escapeHTML(team.name)}</strong>
-            <span>${playerCount} jogador${playerCount === 1 ? '' : 'es'}${team.retiradoDoBaba ? ' · fora da fila' : ''}</span>
+            ${playerCountText}
           </span>
           ${canManage ? `<button class="baba-team-menu-button" type="button" data-action="open-team-management" data-team-id="${team.id}" aria-label="Editar elenco do ${escapeHTML(team.name)}" title="Editar elenco">
             <svg aria-hidden="true" focusable="false"><use href="#baba-dots"></use></svg>
-          </button>` : `<span class="baba-goalkeeper-badge" aria-label="${playerCount} jogadores">${playerCount}</span>`}
+          </button>` : ''}
         </header>
-        <div class="baba-team__stats" aria-label="Estatisticas do ${escapeHTML(team.name)}">
+        ${hasStartedMatch ? `<div class="baba-team__stats" aria-label="Estatisticas do ${escapeHTML(team.name)}">
           <span><b>${Number(team.pontos || 0)}</b>Pontos</span>
           <span><b>${Number(team.vitorias || 0)}</b>Vitorias</span>
           <span><b>${Number(team.empates || 0)}</b>Empates</span>
           <span><b>${Number(team.golsPro || 0) - Number(team.golsContra || 0)}</b>Saldo</span>
-        </div>
+        </div>` : ''}
         <div class="baba-team__players">
           ${(team.jogadores || []).map((id) => playerResultRowHTML(baba, team, id)).join('') || '<span class="baba-empty">Sem jogadores neste time.</span>'}
         </div>
@@ -5813,7 +5838,7 @@
           <div class="baba-live-scoreboard scoreboard">
             <div class="baba-live-team-column"${teamNumberDataAttribute(teamA)}>
               <strong class="baba-live-team baba-live-team--home scoreboard__team">${teamDetailButton(baba, teamA)}</strong>
-              ${isOrganizer() && !isPrepared && !isOver ? `<button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamA.id}"${teamNumberDataAttribute(teamA)}>Marcar gol</button>` : ''}
+              ${isOrganizer() && !isPrepared && !isOver ? `<button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamA.id}"${teamNumberDataAttribute(teamA)}>Marcar gol do ${escapeHTML(teamA.name)}</button>` : ''}
             </div>
             <div class="baba-live-score scoreboard__score" aria-label="Placar ${scoreA} a ${scoreB}">
               <span class="score-number">${scoreA}</span>
@@ -5822,7 +5847,7 @@
             </div>
             <div class="baba-live-team-column"${teamNumberDataAttribute(teamB)}>
               <strong class="baba-live-team baba-live-team--away scoreboard__team">${teamDetailButton(baba, teamB)}</strong>
-              ${isOrganizer() && !isPrepared && !isOver ? `<button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamB.id}"${teamNumberDataAttribute(teamB)}>Marcar gol</button>` : ''}
+              ${isOrganizer() && !isPrepared && !isOver ? `<button class="baba-goal-btn" type="button" data-action="open-goal-picker" data-team-id="${teamB.id}"${teamNumberDataAttribute(teamB)}>Marcar gol do ${escapeHTML(teamB.name)}</button>` : ''}
             </div>
           </div>
           ${organizerControls}
@@ -6963,6 +6988,7 @@
     });
     els.logoutBtn.addEventListener('click', logout);
     els.modeReset.addEventListener('click', resetMode);
+    els.themeToggle?.addEventListener('click', toggleBabaTheme);
     els.exportBackupJSON?.addEventListener('click', exportBackupJSON);
     els.importBackupJSON?.addEventListener('click', () => {
       if (!requireOrganizer()) return;
@@ -7197,6 +7223,8 @@
   function boot() {
     if (hasBooted) return;
     hasBooted = true;
+    const savedTheme = localStorage.getItem(BABA_THEME_KEY);
+    applyBabaTheme(savedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
     document.body.dataset.babaView = document.querySelector('.baba-view.active')?.dataset.view || 'dashboard';
     window.BabaRepository?.activateView?.(document.body.dataset.babaView);
     wireEvents();
