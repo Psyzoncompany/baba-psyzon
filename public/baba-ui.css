@@ -4209,9 +4209,11 @@ button.baba-history-item.active {
 .baba-goal-celebration__card strong {
   display: block;
   margin: .35rem 0;
+  color: #fff;
   font-family: var(--font-family-display);
   font-size: clamp(2.4rem, 12vw, 5rem);
   line-height: .95;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, .38);
 }
 
 .baba-goal-celebration__card span {
