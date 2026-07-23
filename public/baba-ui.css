@@ -243,6 +243,37 @@ body.baba-dark-theme [data-team-number="3"] .baba-team-result__identity strong {
   color: #050505;
 }
 
+body.baba-dark-theme .baba-standings-stat--points,
+body.baba-dark-theme .baba-standings-stat--points :is(strong, small) {
+  color: #050505;
+}
+
+body.baba-dark-theme .baba-table-scorer {
+  color: #050505;
+  background: var(--team-soft);
+}
+
+body.baba-dark-theme .baba-table-scorer > span,
+body.baba-dark-theme .baba-table-scorer > strong {
+  color: #050505;
+}
+
+body.baba-dark-theme .baba-roster-summary b {
+  color: #fff;
+  text-shadow: none;
+}
+
+body.baba-dark-theme #last-result-panel,
+body.baba-dark-theme #last-result-panel .baba-row {
+  border-color: rgba(190, 215, 235, .18);
+  color: #fff;
+  background: #0d2132;
+}
+
+body.baba-dark-theme #last-result-panel :is(span, b, strong, small) {
+  color: #fff;
+}
+
 .baba-theme-icon-sun { display: none; }
 body.baba-dark-theme .baba-theme-icon-moon { display: none; }
 body.baba-dark-theme .baba-theme-icon-sun { display: block; }
