@@ -2148,6 +2148,93 @@ body.baba-page .baba-more-menu.is-floating button {
   }
 }
 
+/* Tabela mobile: preserva o nome do time e centraliza os dados sem recorte. */
+@media (max-width: 640px) {
+  html body.baba-page .baba-card--standings {
+    overflow: visible;
+    padding: .5rem !important;
+  }
+
+  html body.baba-page .baba-standings-table .baba-table__row[data-team-number] {
+    grid-template-columns: 2.15rem repeat(6, minmax(0, 1fr));
+    grid-template-areas:
+      "pos team team team team pts pts"
+      "pos gp sg wins draws losses .";
+    gap: .3rem .25rem;
+    min-height: 5rem;
+    overflow: hidden;
+    border-radius: 8px !important;
+    padding: .48rem .42rem .48rem .58rem;
+  }
+
+  html body.baba-page .baba-standings-table .baba-position-label {
+    align-self: stretch;
+    justify-content: center;
+  }
+
+  html body.baba-page .baba-standings-table .baba-position-badge {
+    width: 1.75rem;
+    min-width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  html body.baba-page .baba-standings-team {
+    min-width: 0;
+    align-self: center;
+    justify-content: flex-start;
+    overflow: visible;
+  }
+
+  html body.baba-page .baba-standings-table .baba-team-link[data-team-number] {
+    width: 100%;
+    min-width: 0;
+    display: -webkit-box;
+    overflow: hidden;
+    padding: .12rem 0;
+    font-size: .76rem;
+    font-weight: 900;
+    line-height: 1.15;
+    text-align: left;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  html body.baba-page .baba-standings-stat {
+    min-width: 0;
+    min-height: 1.9rem;
+    gap: .08rem;
+    padding: .12rem .05rem;
+    border-radius: 6px;
+  }
+
+  html body.baba-page .baba-standings-stat small {
+    display: block;
+    font-size: .42rem;
+    line-height: 1;
+  }
+
+  html body.baba-page .baba-standings-stat strong,
+  html body.baba-page .baba-standings-stat--points strong {
+    font-size: .7rem;
+    line-height: 1;
+  }
+}
+
+@media (max-width: 390px) {
+  html body.baba-page .baba-standings-table .baba-table__row[data-team-number] {
+    grid-template-columns: 1.9rem repeat(6, minmax(0, 1fr));
+    gap: .25rem .18rem;
+    padding-inline: .48rem .32rem;
+  }
+
+  html body.baba-page .baba-standings-table .baba-team-link[data-team-number] {
+    font-size: .68rem;
+  }
+}
+
 @keyframes baba-sheet-in { from { opacity: .75; transform: translateY(100%); } }
 
 @media (prefers-reduced-motion: reduce) {
