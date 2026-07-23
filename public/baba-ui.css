@@ -107,8 +107,8 @@
 body.baba-dark-theme {
   color-scheme: dark;
   --color-text: #edf7ff;
-  --color-text-soft: #c5d6e7;
-  --color-text-muted: #91a8bf;
+  --color-text-soft: #f7fbff;
+  --color-text-muted: #edf6ff;
   --color-primary-soft: rgba(7, 140, 105, .2);
   --color-danger-soft: rgba(217, 45, 63, .18);
   --color-success-soft: rgba(7, 148, 85, .18);
@@ -135,6 +135,112 @@ body.baba-dark-theme.baba-page {
 
 body.baba-dark-theme :is(.baba-topbar, .baba-online-pill, .baba-sync-strip) {
   background-color: rgba(14, 31, 47, .9);
+}
+
+body.baba-dark-theme :is(
+  .baba-tabs,
+  .baba-more-menu,
+  .baba-choice,
+  .baba-metrics article,
+  .baba-row,
+  .baba-history-item,
+  .baba-ranking-card,
+  .baba-table-scorer,
+  .baba-player-admin,
+  .baba-present-item,
+  .baba-team-player-card,
+  .baba-goal-player,
+  .baba-table__row,
+  .baba-payment-summary article,
+  .baba-goals-summary article,
+  .baba-goal-card,
+  .baba-score-box
+) {
+  color: #f7fbff;
+  background: rgba(13, 31, 47, .88);
+}
+
+body.baba-dark-theme :is(
+  .baba-secondary,
+  .baba-mini-btn,
+  .baba-export-btn,
+  .baba-icon-button,
+  .baba-manage-button,
+  .baba-live-control-btn,
+  .baba-goal-btn,
+  .baba-list-toggle,
+  .baba-draw-skip,
+  .baba-control-flow button,
+  .baba-ranking-filters button,
+  .baba-ranking-scope-controls button,
+  .baba-month-tabs button
+) {
+  border-color: rgba(190, 215, 235, .24);
+  color: #fff;
+  background: rgba(26, 51, 72, .94);
+}
+
+body.baba-dark-theme :is(
+  .baba-secondary,
+  .baba-mini-btn,
+  .baba-export-btn,
+  .baba-icon-button,
+  .baba-manage-button,
+  .baba-live-control-btn,
+  .baba-goal-btn,
+  .baba-list-toggle,
+  .baba-draw-skip,
+  .baba-control-flow button
+):hover:not(:disabled) {
+  color: #fff;
+  background: #244964;
+}
+
+body.baba-dark-theme :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select,
+  textarea
+) {
+  border-color: rgba(190, 215, 235, .24);
+  color: #fff;
+  background: #10283b;
+}
+
+body.baba-dark-theme :is(input, textarea)::placeholder {
+  color: rgba(255, 255, 255, .72);
+}
+
+body.baba-dark-theme :is(
+  .baba-team__stats span,
+  .baba-roster-summary > span,
+  .baba-player-stat
+) {
+  color: #fff;
+  background: rgba(11, 27, 41, .84);
+}
+
+body.baba-dark-theme .baba-team-player-card:hover {
+  color: #fff;
+  background: #183a53;
+}
+
+body.baba-dark-theme :is(
+  .baba-card__head > span,
+  .section-header__meta,
+  .baba-brand__copy small,
+  .baba-team-result__identity > span,
+  .baba-player-row__copy small,
+  .baba-team-player-card__identity small,
+  .baba-match-live__meta,
+  .baba-empty,
+  p,
+  small
+) {
+  color: #edf6ff;
+}
+
+body.baba-dark-theme [data-team-number="3"] .baba-team-result__identity strong {
+  color: #050505;
 }
 
 .baba-theme-icon-sun { display: none; }
@@ -2643,8 +2749,14 @@ button.baba-history-item.active {
 }
 
 .baba-team-result__identity strong {
-  color: var(--team-color-dark);
+  color: #fff;
   font-size: var(--font-size-xl);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .22);
+}
+
+[data-team-number="3"] .baba-team-result__identity strong {
+  color: #050505;
+  text-shadow: none;
 }
 
 .baba-team-menu-button {
