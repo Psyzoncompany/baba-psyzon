@@ -232,6 +232,15 @@
           <svg aria-hidden="true" focusable="false"><use href="#baba-shield"></use></svg>
           <span>Gerenciar baba</span>
         </button>
+        <button id="baba-theme-toggle" class="baba-icon-button" type="button" title="Ativar tema escuro" aria-label="Ativar tema escuro" aria-pressed="false">
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+            <path class="baba-theme-icon-moon" d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <g class="baba-theme-icon-sun">
+              <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </g>
+          </svg>
+        </button>
         <button id="mode-reset-btn" class="baba-icon-button" type="button" title="Trocar modo" aria-label="Trocar modo">
           <svg aria-hidden="true" focusable="false"><use href="#baba-refresh"></use></svg>
         </button>
@@ -484,6 +493,7 @@
               <input id="baba-date-input" type="date" hidden aria-hidden="true" tabindex="-1">
             </div>
             <div class="baba-control-flow">
+              <button id="organizer-create-today-btn" class="baba-start-baba-btn" type="button">Iniciar Baba</button>
               <button id="mark-present-btn" type="button">Marcar Jogadores Presentes</button>
               <button id="draw-teams-btn" type="button">Sortear Times</button>
               <button id="start-first-game-btn" class="baba-start-game-btn" type="button">Iniciar primeiro jogo</button>
