@@ -6986,7 +6986,7 @@
         els.passwordInput.select();
       }
     });
-    els.logoutBtn.addEventListener('click', logout);
+    els.logoutBtn?.addEventListener('click', logout);
     els.modeReset.addEventListener('click', resetMode);
     els.themeToggle?.addEventListener('click', toggleBabaTheme);
     els.exportBackupJSON?.addEventListener('click', exportBackupJSON);

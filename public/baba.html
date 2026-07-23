@@ -244,9 +244,6 @@
         <button id="mode-reset-btn" class="baba-icon-button" type="button" title="Trocar modo" aria-label="Trocar modo">
           <svg aria-hidden="true" focusable="false"><use href="#baba-refresh"></use></svg>
         </button>
-        <button id="baba-logout-btn" class="baba-icon-button" type="button" title="Sair" aria-label="Sair">
-          <svg aria-hidden="true" focusable="false"><use href="#baba-exit"></use></svg>
-        </button>
       </nav>
     </div>
 
@@ -1067,7 +1064,7 @@
 
       function addButtonIcon(button, iconId) {
         if (!button || button.dataset.babaIconReady === iconId) return;
-        if (button.querySelector(':scope > .baba-btn-icon')) {
+        if (button.querySelector(':scope > svg')) {
           button.dataset.babaIconReady = iconId;
           return;
         }
@@ -1140,7 +1137,6 @@
       function decorateButtons(root = document) {
         const staticIcons = {
           'mode-reset-btn': 'baba-refresh',
-          'baba-logout-btn': 'baba-exit',
           'create-today-btn': 'baba-plus',
           'save-history-btn': 'baba-save',
           'mark-present-btn': 'baba-users-check',
