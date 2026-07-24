@@ -243,6 +243,37 @@ body.baba-dark-theme [data-team-number="3"] .baba-team-result__identity strong {
   color: #050505;
 }
 
+body.baba-dark-theme .baba-standings-stat--points,
+body.baba-dark-theme .baba-standings-stat--points :is(strong, small) {
+  color: #050505;
+}
+
+body.baba-dark-theme .baba-table-scorer {
+  color: #050505;
+  background: var(--team-soft);
+}
+
+body.baba-dark-theme .baba-table-scorer > span,
+body.baba-dark-theme .baba-table-scorer > strong {
+  color: #050505;
+}
+
+body.baba-dark-theme .baba-roster-summary b {
+  color: #fff;
+  text-shadow: none;
+}
+
+body.baba-dark-theme #last-result-panel,
+body.baba-dark-theme #last-result-panel .baba-row {
+  border-color: rgba(190, 215, 235, .18);
+  color: #fff;
+  background: #0d2132;
+}
+
+body.baba-dark-theme #last-result-panel :is(span, b, strong, small) {
+  color: #fff;
+}
+
 .baba-theme-icon-sun { display: none; }
 body.baba-dark-theme .baba-theme-icon-moon { display: none; }
 body.baba-dark-theme .baba-theme-icon-sun { display: block; }
@@ -291,6 +322,11 @@ body.baba-page {
 
 body.baba-page.baba-password-is-open,
 body.baba-page.baba-draw-modal-open {
+  overflow: hidden;
+}
+
+body.baba-page:not(.baba-app-mode) {
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -1278,6 +1314,13 @@ body.baba-player-mode .baba-organizer-fab {
   margin: var(--space-5) auto var(--space-12);
 }
 
+body:not(.baba-app-mode) .baba-shell {
+  display: grid;
+  height: calc(100dvh - 7.4rem);
+  margin-block: var(--space-4) 0;
+  place-items: center;
+}
+
 .baba-app,
 .baba-view {
   min-width: 0;
@@ -1343,39 +1386,29 @@ body.baba-player-mode .baba-organizer-fab {
 
 .baba-gateway {
   display: grid;
-  min-height: min(42rem, calc(100vh - 10rem));
-  grid-template-columns: minmax(16rem, .85fr) minmax(20rem, 1.15fr);
+  width: min(100%, 58rem);
+  max-height: 100%;
+  grid-template-columns: 1fr;
   align-items: center;
   overflow: hidden;
   border-radius: var(--radius-xl);
 }
 
-.baba-gateway__media {
-  display: grid;
-  height: 100%;
-  min-height: 30rem;
-  place-items: center;
-  padding: var(--space-10);
-  border-right: 1px solid var(--border-soft);
-  background:
-    radial-gradient(circle at 50% 38%, rgba(7, 140, 105, .12), transparent 44%),
-    rgba(242, 248, 249, .58);
-}
-
-.baba-home-logo {
-  width: min(18rem, 72%);
-  filter: drop-shadow(0 24px 35px rgba(15, 35, 58, .18));
-}
-
 .baba-gateway__panel {
   display: grid;
-  gap: var(--space-5);
-  padding: clamp(2rem, 5vw, 5rem);
+  gap: clamp(.75rem, 2vh, var(--space-5));
+  padding: clamp(1.25rem, 4vw, 3.5rem);
+  text-align: center;
 }
 
 .baba-gateway__panel > p {
+  justify-self: center;
   max-width: 42rem;
   color: var(--color-text-muted);
+}
+
+.baba-gateway__panel > .baba-kicker {
+  justify-self: center;
 }
 
 .baba-kicker,
@@ -1394,31 +1427,41 @@ body.baba-player-mode .baba-organizer-fab {
 .baba-mode-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
+  gap: clamp(.75rem, 2vw, var(--space-5));
 }
 
 .baba-choice {
   position: relative;
   display: grid;
-  min-height: 10rem;
+  min-height: clamp(8.5rem, 22vh, 11.5rem);
   grid-template-columns: auto 1fr auto;
   grid-template-rows: auto auto;
   align-items: center;
   gap: var(--space-2) var(--space-3);
-  padding: var(--space-5);
-  border: 1px solid var(--border-soft);
+  padding: clamp(1rem, 3vw, 1.75rem);
+  border: 2px solid var(--border-soft);
   border-radius: var(--radius-lg);
   color: var(--color-text);
-  background: rgba(255, 255, 255, .68);
-  box-shadow: var(--shadow-sm), var(--shadow-inset);
+  background: rgba(255, 255, 255, .82);
+  box-shadow: var(--shadow-md), var(--shadow-inset);
   text-align: left;
   transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.baba-choice--organizer {
+  border-color: rgba(7, 140, 105, .34);
+  background: linear-gradient(145deg, rgba(232, 250, 244, .96), rgba(255, 255, 255, .86));
+}
+
+.baba-choice--player {
+  border-color: rgba(37, 99, 168, .30);
+  background: linear-gradient(145deg, rgba(237, 245, 253, .96), rgba(255, 255, 255, .86));
 }
 
 .baba-choice:hover {
   border-color: rgba(7, 140, 105, .30);
   box-shadow: var(--shadow-md), var(--shadow-inset);
-  transform: translateY(-3px);
+  transform: translateY(-4px) scale(1.01);
 }
 
 .baba-choice-icon {
@@ -1433,7 +1476,8 @@ body.baba-player-mode .baba-organizer-fab {
 
 .baba-choice > span {
   align-self: end;
-  font-weight: var(--font-weight-medium);
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  font-weight: var(--font-weight-semibold);
 }
 
 .baba-choice > small {
@@ -1967,7 +2011,10 @@ body.baba-player-mode .baba-organizer-fab {
 }
 
 .queue-item {
+  position: relative;
   min-width: 0;
+  touch-action: pan-y;
+  transition: transform var(--transition-fast), opacity var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .queue-item__team {
@@ -1981,6 +2028,58 @@ body.baba-player-mode .baba-organizer-fab {
 .queue-item__position {
   flex: 0 0 auto;
   font-variant-numeric: tabular-nums;
+}
+
+.queue-item__controls {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: .35rem;
+}
+
+.queue-item__drag,
+.queue-item__quick {
+  display: inline-grid;
+  min-width: 2.35rem;
+  min-height: 2.35rem;
+  place-items: center;
+  padding: .35rem;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, .76);
+  box-shadow: var(--shadow-xs);
+}
+
+.queue-item__drag {
+  cursor: grab;
+  touch-action: none;
+}
+
+.queue-item__drag:active {
+  cursor: grabbing;
+}
+
+.queue-item__drag svg,
+.queue-item__quick svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.queue-item__quick span {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.queue-item.is-dragging {
+  z-index: 2;
+  opacity: .72;
+  border-color: var(--color-primary);
+  box-shadow: 0 16px 34px rgba(15, 35, 58, .20);
+  transform: scale(1.015);
+}
+
+.queue-item.is-drag-over {
+  box-shadow: 0 -3px 0 var(--color-primary), var(--shadow-sm);
 }
 
 .baba-row > div {
@@ -4178,9 +4277,11 @@ button.baba-history-item.active {
 .baba-goal-celebration__card strong {
   display: block;
   margin: .35rem 0;
+  color: #fff;
   font-family: var(--font-family-display);
   font-size: clamp(2.4rem, 12vw, 5rem);
   line-height: .95;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, .38);
 }
 
 .baba-goal-celebration__card span {
@@ -4380,20 +4481,6 @@ button.baba-history-item.active {
   .baba-grid--live > .baba-card:nth-of-type(3) { order: 3; }
   .baba-grid--live > .baba-card:nth-of-type(4) { order: 4; }
   .baba-grid--live > .baba-card:nth-of-type(5) { order: 5; }
-
-  .baba-gateway {
-    grid-template-columns: 1fr;
-  }
-
-  .baba-gateway__media {
-    min-height: 14rem;
-    border-right: 0;
-    border-bottom: 1px solid var(--border-soft);
-  }
-
-  .baba-home-logo {
-    width: min(10rem, 42%);
-  }
 
   .baba-ranking-toolbar {
     grid-template-columns: 1fr auto;
@@ -4685,6 +4772,41 @@ button.baba-history-item.active {
   }
 }
 
+@media (max-height: 620px) {
+  body:not(.baba-app-mode) .baba-header-main {
+    padding-block: .4rem;
+  }
+
+  body:not(.baba-app-mode) .baba-brand > img {
+    width: 2.45rem;
+    height: 2.45rem;
+  }
+
+  body:not(.baba-app-mode) .baba-brand__copy small,
+  body:not(.baba-app-mode) .baba-gateway__panel > p {
+    display: none;
+  }
+
+  body:not(.baba-app-mode) .baba-shell {
+    height: calc(100dvh - 5rem);
+    margin-top: .45rem;
+  }
+
+  .baba-gateway__panel {
+    gap: .55rem;
+    padding: .85rem;
+  }
+
+  .baba-mode-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .baba-choice {
+    min-height: 5.5rem;
+    padding: .75rem;
+  }
+}
+
 @media (max-width: 560px) {
   :root {
     --font-size-md: .88rem;
@@ -4730,7 +4852,7 @@ button.baba-history-item.active {
   }
 
   .baba-gateway__panel {
-    padding: var(--space-5);
+    padding: clamp(1rem, 4vw, var(--space-5));
   }
 
   .baba-mode-grid {
@@ -4738,7 +4860,19 @@ button.baba-history-item.active {
   }
 
   .baba-choice {
-    min-height: 7.5rem;
+    min-height: clamp(6.6rem, 18vh, 8rem);
+  }
+
+  .queue-item {
+    align-items: stretch;
+  }
+
+  .queue-item__controls {
+    align-self: center;
+  }
+
+  .queue-item__quick span {
+    display: none;
   }
 
   .baba-password__field {
@@ -5236,6 +5370,33 @@ button.baba-history-item.active {
   .baba-card,
   .baba-hero {
     padding: var(--space-6);
+  }
+}
+
+@media (max-width: 560px) and (max-height: 620px) {
+  .baba-mode-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .baba-choice {
+    min-height: 5.5rem;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .baba-choice-icon {
+    display: none;
+  }
+
+  .baba-choice-arrow {
+    position: absolute;
+    right: .6rem;
+  }
+
+  .baba-choice > small {
+    font-size: .65rem;
   }
 }
 

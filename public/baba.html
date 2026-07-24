@@ -14,7 +14,7 @@
   <meta name="theme-color" content="#f4f8fc">
   <title>Baba Psyzon</title>
   <link href="apple-ui-font.css?v=20260723-1" rel="stylesheet">
-  <link href="baba-ui.css?v=20260723-liquid-glass-redesign-2" rel="stylesheet">
+  <link href="baba-ui.css?v=20260724-queue-wakelock-login-1" rel="stylesheet">
   <script>
     if (window.location.protocol !== 'file:') {
       const manifest = document.createElement('link');
@@ -198,6 +198,20 @@
     <symbol id="baba-chevron" viewBox="0 0 24 24">
       <path d="m7 9 5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
     </symbol>
+    <symbol id="baba-grip" viewBox="0 0 24 24">
+      <circle cx="8" cy="6" r="1.5" fill="currentColor" />
+      <circle cx="16" cy="6" r="1.5" fill="currentColor" />
+      <circle cx="8" cy="12" r="1.5" fill="currentColor" />
+      <circle cx="16" cy="12" r="1.5" fill="currentColor" />
+      <circle cx="8" cy="18" r="1.5" fill="currentColor" />
+      <circle cx="16" cy="18" r="1.5" fill="currentColor" />
+    </symbol>
+    <symbol id="baba-arrow-up" viewBox="0 0 24 24">
+      <path d="M12 19V5m0 0-6 6m6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="baba-arrow-down" viewBox="0 0 24 24">
+      <path d="M12 5v14m0 0 6-6m-6 6-6-6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
   </svg>
 
   <header class="baba-topbar baba-unified-header glass-surface">
@@ -227,7 +241,7 @@
         </div>
       </div>
 
-      <nav class="baba-nav baba-header-actions" aria-label="Acoes da conta">
+      <nav class="baba-nav baba-header-actions" aria-label="Ações da conta">
         <button class="baba-manage-button organizer-only" type="button" data-header-tab="organizer">
           <svg aria-hidden="true" focusable="false"><use href="#baba-shield"></use></svg>
           <span>Gerenciar baba</span>
@@ -244,17 +258,14 @@
         <button id="mode-reset-btn" class="baba-icon-button" type="button" title="Trocar modo" aria-label="Trocar modo">
           <svg aria-hidden="true" focusable="false"><use href="#baba-refresh"></use></svg>
         </button>
-        <button id="baba-logout-btn" class="baba-icon-button" type="button" title="Sair" aria-label="Sair">
-          <svg aria-hidden="true" focusable="false"><use href="#baba-exit"></use></svg>
-        </button>
       </nav>
     </div>
 
-    <nav class="baba-tabs" aria-label="Areas do Baba">
+    <nav class="baba-tabs" aria-label="Áreas do Baba">
       <button class="active" type="button" data-tab="dashboard"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-play"></use></svg><span>Ao vivo</span></button>
       <button type="button" data-tab="table"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-table-icon"></use></svg><span>Tabela</span></button>
       <button type="button" data-tab="ranking"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-chart"></use></svg><span>Ranking</span></button>
-      <button type="button" data-tab="history"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg><span>Historico</span></button>
+      <button type="button" data-tab="history"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg><span>Histórico</span></button>
       <div class="baba-more-nav">
         <button id="baba-more-toggle" type="button" aria-haspopup="true" aria-controls="baba-more-menu" aria-expanded="false">
           <svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-dots"></use></svg><span>Mais</span>
@@ -273,24 +284,21 @@
 
   <main class="baba-shell">
     <section id="mode-gateway" class="baba-gateway">
-      <div class="baba-gateway__media">
-        <img class="baba-home-logo" src="img/baba-psyzon-logo.png" alt="Baba Psyzon">
-      </div>
       <div class="baba-gateway__panel">
         <span class="baba-kicker">Baba em tempo real</span>
-        <h1>Gerencie o baba como uma final.</h1>
-        <p>Crie o baba de hoje, marque presentes, sorteie times, registre placares, controle o rodizio e salve ranking e historico.</p>
+        <h1>Como você quer entrar?</h1>
+        <p>Escolha seu acesso para acompanhar ou organizar o Baba Psyzon.</p>
         <div class="baba-mode-grid">
-          <button id="enter-organizer-btn" class="baba-choice" type="button">
+          <button id="enter-organizer-btn" class="baba-choice baba-choice--organizer" type="button">
             <svg class="baba-choice-icon" aria-hidden="true" focusable="false"><use href="#baba-shield"></use></svg>
             <span>Entrar como Organizador</span>
             <small>Gerencie, organize e controle seu baba.</small>
             <i class="baba-choice-arrow" aria-hidden="true">›</i>
           </button>
-          <button id="enter-player-btn" class="baba-choice" type="button">
+          <button id="enter-player-btn" class="baba-choice baba-choice--player" type="button">
             <svg class="baba-choice-icon" aria-hidden="true" focusable="false"><use href="#baba-users"></use></svg>
             <span>Entrar como Jogador</span>
-            <small>Participe, jogue e faca parte do time.</small>
+            <small>Acompanhe partidas, fila, tabela e ranking.</small>
             <i class="baba-choice-arrow" aria-hidden="true">›</i>
           </button>
         </div>
@@ -315,7 +323,7 @@
               <i class="baba-remember-toggle" aria-hidden="true"></i>
               <span class="baba-remember-copy">
                 <strong>Lembrar este acesso no dispositivo</strong>
-                <small>Abre direto como organizador nas proximas visitas.</small>
+                <small>Abre direto como organizador nas próximas visitas.</small>
               </span>
             </label>
             <small id="password-feedback"></small>
@@ -366,10 +374,10 @@
 
           <article class="baba-card">
             <div class="baba-card__head">
-              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg>Historico do baba atual</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg>Histórico do baba atual</h2>
               <div class="baba-card__actions">
                 <span>Jogos</span>
-                <button class="baba-export-btn" type="button" data-export-pdf="current-history" title="Exportar historico do baba atual em PDF">
+                <button class="baba-export-btn" type="button" data-export-pdf="current-history" title="Exportar histórico do baba atual em PDF">
                   <svg aria-hidden="true" focusable="false"><use href="#baba-download"></use></svg><span>PDF</span>
                 </button>
               </div>
@@ -379,7 +387,7 @@
 
           <article class="baba-card baba-card--wide">
             <div class="baba-card__head">
-              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-trophy"></use></svg>Ultimo resultado</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-trophy"></use></svg>Último resultado</h2>
               <span id="last-result-pill">Sem resultado</span>
             </div>
             <div id="last-result-panel" class="baba-empty">Finalize um jogo para ver quem fica em campo e quem sai.</div>
@@ -407,7 +415,7 @@
           </article>
           <article>
             <svg class="baba-metric-icon" aria-hidden="true" focusable="false"><use href="#baba-next"></use></svg>
-            <span>Proximo</span>
+            <span>Próximo</span>
             <strong id="metric-next-team">-</strong>
             <small>Fila</small>
           </article>
@@ -464,15 +472,15 @@
             <div class="baba-draw-section-heading">
               <div>
                 <span class="baba-draw-eyebrow">Resultado do sorteio</span>
-                <h2 id="draw-results-title">Formacao dos times</h2>
+                <h2 id="draw-results-title">Formação dos times</h2>
               </div>
               <span id="draw-teams-progress" class="baba-draw-count">0 de 0 times sorteados</span>
             </div>
             <div id="teams-grid" class="baba-teams-grid"></div>
           </section>
 
-          <section id="draw-action-bar" class="baba-draw-action-bar organizer-only" aria-label="Acoes do sorteio"></section>
-          <section id="draw-secondary-controls" class="baba-draw-secondary" aria-label="Controles secundarios"></section>
+          <section id="draw-action-bar" class="baba-draw-action-bar organizer-only" aria-label="Ações do sorteio"></section>
+          <section id="draw-secondary-controls" class="baba-draw-secondary" aria-label="Controles secundários"></section>
           <div id="draw-announcer" class="baba-visually-hidden" aria-live="polite" aria-atomic="true"></div>
         </div>
       </section>
@@ -497,7 +505,7 @@
               <button id="mark-present-btn" type="button">Marcar Jogadores Presentes</button>
               <button id="draw-teams-btn" type="button">Sortear Times</button>
               <button id="start-first-game-btn" class="baba-start-game-btn" type="button">Iniciar primeiro jogo</button>
-              <button id="undo-game-btn" type="button">Desfazer Ultimo Jogo</button>
+              <button id="undo-game-btn" type="button">Desfazer Último Jogo</button>
               <button id="finish-baba-btn" type="button">Finalizar Baba</button>
               <button id="reset-current-btn" class="danger" type="button">Resetar Baba Atual</button>
             </div>
@@ -561,8 +569,8 @@
                   <input id="goal-name" type="text" placeholder="Ex: Bola oficial, rede, coletes" required>
                 </label>
                 <label>
-                  <span>Descricao</span>
-                  <textarea id="goal-description" placeholder="Detalhe marca, tamanho, prioridade ou observacoes"></textarea>
+                  <span>Descrição</span>
+                  <textarea id="goal-description" placeholder="Detalhe marca, tamanho, prioridade ou observações"></textarea>
                 </label>
                 <label>
                   <span>Prioridade</span>
@@ -650,8 +658,8 @@
           </article>
           <article class="baba-card baba-card--wide hidden" data-ranking-card="history">
             <div class="baba-card__head">
-              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg>Historico mensal</h2>
-              <span>Por mes</span>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg>Histórico mensal</h2>
+              <span>Por mês</span>
             </div>
             <div id="monthly-history-tabs" class="baba-month-tabs"></div>
             <div id="monthly-history-ranking" class="baba-ranking"></div>
@@ -665,7 +673,7 @@
             <span class="baba-backup-card__icon"><svg aria-hidden="true" focusable="false"><use href="#baba-shield"></use></svg></span>
             <span>
               <strong>Backup completo dos dados</strong>
-              <small>Proteja jogadores, rankings, pagamentos, metas, babas e partidas. As imagens nao entram no JSON para manter o arquivo leve.</small>
+              <small>Proteja jogadores, rankings, pagamentos, metas, babas e partidas. As imagens não entram no JSON para manter o arquivo leve.</small>
             </span>
           </div>
           <div class="baba-backup-card__actions">
@@ -683,7 +691,7 @@
         <div class="baba-grid">
           <article class="baba-card">
             <div class="baba-card__head">
-              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg>Historico dos babas</h2>
+              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg>Histórico dos babas</h2>
               <span id="history-count-label">0 salvos</span>
             </div>
             <div id="history-list" class="baba-history"></div>
@@ -693,7 +701,7 @@
               <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-table-icon"></use></svg>Detalhes</h2>
               <span id="history-detail-label">Selecione um baba</span>
             </div>
-            <div id="history-detail" class="baba-empty">Abra um item do historico para ver placares, times, gols e campeoes.</div>
+            <div id="history-detail" class="baba-empty">Abra um item do histórico para ver placares, times, gols e campeões.</div>
           </article>
         </div>
       </section>
@@ -953,7 +961,7 @@
           try {
             state = raw ? normalizeBabaState(JSON.parse(raw)) : null;
           } catch (error) {
-            console.warn('Nao foi possivel aplicar a atualizacao parcial do Baba:', error);
+            console.warn('Não foi possível aplicar a atualização parcial do Baba:', error);
           }
           window.dispatchEvent(new CustomEvent('baba-remote-state-ready', { detail: { source, state } }));
         }, 0);
@@ -1002,7 +1010,7 @@
 
           wrappedStores.add(store);
         } catch (error) {
-          console.warn('Nao foi possivel ativar a ponte local do Baba:', error);
+          console.warn('Não foi possível ativar a ponte local do Baba:', error);
         }
       }
 
@@ -1057,7 +1065,7 @@
 
           window.__babaNativeStorageBridgeReady = true;
         } catch (error) {
-          console.warn('Nao foi possivel ativar a ponte nativa do Baba:', error);
+          console.warn('Não foi possível ativar a ponte nativa do Baba:', error);
         }
       }
 
@@ -1067,7 +1075,7 @@
 
       function addButtonIcon(button, iconId) {
         if (!button || button.dataset.babaIconReady === iconId) return;
-        if (button.querySelector(':scope > .baba-btn-icon')) {
+        if (button.querySelector(':scope > svg')) {
           button.dataset.babaIconReady = iconId;
           return;
         }
@@ -1140,7 +1148,6 @@
       function decorateButtons(root = document) {
         const staticIcons = {
           'mode-reset-btn': 'baba-refresh',
-          'baba-logout-btn': 'baba-exit',
           'create-today-btn': 'baba-plus',
           'save-history-btn': 'baba-save',
           'mark-present-btn': 'baba-users-check',
@@ -1281,7 +1288,7 @@
   <script type="module" src="baba-persistence.js?v=20260723-permissions-fix-1"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
   <script src="pdf-report.js?v=20260723-payment-layout-1"></script>
-  <script src="baba.js?v=20260723-liquid-glass-redesign-2" defer></script>
+  <script src="baba.js?v=20260724-queue-wakelock-login-1" defer></script>
 </body>
 
 </html>

@@ -30,17 +30,17 @@
   ];
   const RANKING_MODES = [
     { id: 'goals', label: 'Gols', icon: 'baba-ball' },
-    { id: 'wins', label: 'Vitorias', icon: 'baba-check' },
+    { id: 'wins', label: 'Vitórias', icon: 'baba-check' },
     { id: 'losses', label: 'Derrotas', icon: 'baba-x' },
-    { id: 'titles', label: 'Titulos', icon: 'baba-trophy' },
+    { id: 'titles', label: 'Títulos', icon: 'baba-trophy' },
     { id: 'efficiency', label: 'Aproveitamento', icon: 'baba-chart' },
   ];
   const RANKING_SCOPES = [
-    { id: 'monthly', label: 'Do mes', icon: 'baba-calendar' },
+    { id: 'monthly', label: 'Do mês', icon: 'baba-calendar' },
     { id: 'general', label: 'Geral', icon: 'baba-chart' },
     { id: 'daily', label: 'Do dia', icon: 'baba-trophy' },
     { id: 'goalkeeper', label: 'Goleiro', icon: 'baba-save' },
-    { id: 'history', label: 'Historico', icon: 'baba-history-icon' },
+    { id: 'history', label: 'Histórico', icon: 'baba-history-icon' },
   ];
   const PDF_ROW_LIMITS = {
     payments: 18,
@@ -54,8 +54,8 @@
     'Quem fez mais gols?',
     'Quem mais ganhou?',
     'Quem e o melhor jogador?',
-    'Quem esta em melhor fase?',
-    'Quem ainda nao pagou?',
+    'Quem está em melhor fase?',
+    'Quem ainda não pagou?',
     'Compare dois jogadores',
   ];
 
@@ -208,6 +208,9 @@
   let goalTeamId = null;
   let editingGoalId = null;
   let timerTick = null;
+  let wakeLockSentinel = null;
+  let queuePointerDrag = null;
+  let queueNativeDragTeamId = null;
   let hasBooted = false;
   let tabsStickySentinel = null;
   let tabsScrollFrame = null;
@@ -390,7 +393,7 @@
         play();
       }
     } catch (error) {
-      console.warn('Nao foi possivel reproduzir o apito:', error);
+      console.warn('Não foi possível reproduzir o apito:', error);
     }
   }
 
@@ -419,7 +422,7 @@
     }
     const isPrepared = !match.timerRunning && !match.iniciadoEm;
     const timerText = timerEl.querySelector('.baba-timer__text');
-    const nextText = isPrepared ? 'Aguardando inicio' : (remaining ? formatCountdown(remaining) : 'Tempo esgotado');
+    const nextText = isPrepared ? 'Aguardando início' : (remaining ? formatCountdown(remaining) : 'Tempo esgotado');
     if (timerText) timerText.textContent = nextText;
     else timerEl.textContent = nextText;
     timerEl.classList.toggle('is-over', remaining === 0 && !isPrepared);
@@ -860,7 +863,7 @@
       }
       backupState.babas = [...byId.values()].sort((a, b) => Number(b.criadoEm || 0) - Number(a.criadoEm || 0));
     } catch (error) {
-      console.warn('Nao foi possivel carregar todo o historico remoto para o backup:', error);
+      console.warn('Não foi possível carregar todo o histórico remoto para o backup:', error);
       cloudHistoryComplete = false;
     }
     return { backupState, cloudHistoryComplete };
@@ -901,7 +904,7 @@
       showToast(`Backup JSON exportado sem imagens.${warning}`);
     } catch (error) {
       console.error('Falha ao exportar backup JSON:', error);
-      showToast('Nao foi possivel exportar o backup agora.');
+      showToast('Não foi possível exportar o backup agora.');
     } finally {
       setBackupButtonBusy(els.exportBackupJSON, false, '');
     }
@@ -957,7 +960,7 @@
       saveState(`Backup importado com sucesso${imageReport.removed ? `; ${imageReport.removed} imagem(ns) ignorada(s)` : ''}.`);
     } catch (error) {
       console.error('Falha ao importar backup JSON:', error);
-      showToast(error instanceof SyntaxError ? 'O arquivo selecionado nao e um JSON valido.' : (error.message || 'Nao foi possivel importar o backup.'));
+      showToast(error instanceof SyntaxError ? 'O arquivo selecionado não é um JSON válido.' : (error.message || 'Não foi possível importar o backup.'));
     } finally {
       if (els.backupJSONFile) els.backupJSONFile.value = '';
       setBackupButtonBusy(els.importBackupJSON, false, '');
@@ -1077,6 +1080,116 @@
     });
   }
 
+  function applyTeamQueueOrder(queue, message = 'Ordem da fila atualizada.') {
+    if (!requireOrganizer()) return;
+    const baba = getActiveBaba();
+    if (!baba) return showToast('Crie um baba primeiro.');
+    const nextQueue = sanitizeTeamQueue(baba, queue);
+    const currentQueue = sanitizeTeamQueue(baba);
+    if (nextQueue.length !== currentQueue.length
+      || nextQueue.some((teamId, index) => teamId !== currentQueue[index])) {
+      baba.filaTimes = nextQueue;
+      if (baba.pendingTieBreak) baba.pendingTieBreak.queue = [...nextQueue];
+      saveState(message);
+    }
+  }
+
+  function moveQueuedTeam(teamId, destination) {
+    if (!requireOrganizer()) return;
+    const baba = getActiveBaba();
+    if (!baba) return showToast('Crie um baba primeiro.');
+    const queue = sanitizeTeamQueue(baba);
+    const currentIndex = queue.indexOf(teamId);
+    if (currentIndex < 0) return;
+    queue.splice(currentIndex, 1);
+    if (destination === 'end') queue.push(teamId);
+    else queue.unshift(teamId);
+    const team = getTeam(baba, teamId);
+    applyTeamQueueOrder(
+      queue,
+      destination === 'end'
+        ? `${team?.name || 'Time'} foi para o fim da fila.`
+        : `${team?.name || 'Time'} será o próximo a entrar.`,
+    );
+  }
+
+  function queueOrderFromDOM() {
+    return Array.from(els.queueList?.querySelectorAll('[data-queue-team-id]') || [])
+      .map((item) => item.dataset.queueTeamId)
+      .filter(Boolean);
+  }
+
+  function clearQueueDragStyles() {
+    els.queueList?.querySelectorAll('.queue-item').forEach((item) => {
+      item.classList.remove('is-dragging', 'is-drag-over');
+    });
+  }
+
+  function placeQueueItemAtPointer(draggedItem, clientX, clientY) {
+    if (!draggedItem || !els.queueList) return;
+    const target = document.elementFromPoint(clientX, clientY)?.closest?.('[data-queue-team-id]');
+    if (!target || target === draggedItem || target.parentElement !== els.queueList) return;
+    els.queueList.querySelectorAll('.queue-item').forEach((item) => item.classList.remove('is-drag-over'));
+    target.classList.add('is-drag-over');
+    const targetRect = target.getBoundingClientRect();
+    const insertAfter = clientY > targetRect.top + targetRect.height / 2;
+    els.queueList.insertBefore(draggedItem, insertAfter ? target.nextSibling : target);
+  }
+
+  function beginQueuePointerDrag(event) {
+    const handle = event.target.closest?.('[data-queue-drag-handle]');
+    if (!handle || !isOrganizer()) return;
+    const item = handle.closest('[data-queue-team-id]');
+    if (!item) return;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    queuePointerDrag = {
+      item,
+      handle,
+      pointerId: event.pointerId,
+      startX,
+      startY,
+      active: false,
+      holdTimer: window.setTimeout(() => {
+        if (!queuePointerDrag || queuePointerDrag.pointerId !== event.pointerId) return;
+        queuePointerDrag.active = true;
+        item.classList.add('is-dragging');
+        handle.setPointerCapture?.(event.pointerId);
+        navigator.vibrate?.(25);
+      }, 280),
+    };
+  }
+
+  function moveQueuePointerDrag(event) {
+    if (!queuePointerDrag || queuePointerDrag.pointerId !== event.pointerId) return;
+    if (!queuePointerDrag.active) {
+      const moved = Math.hypot(
+        event.clientX - queuePointerDrag.startX,
+        event.clientY - queuePointerDrag.startY,
+      );
+      if (moved > 10) {
+        clearTimeout(queuePointerDrag.holdTimer);
+        queuePointerDrag = null;
+      }
+      return;
+    }
+    event.preventDefault();
+    placeQueueItemAtPointer(queuePointerDrag.item, event.clientX, event.clientY);
+  }
+
+  function finishQueuePointerDrag(event, cancelled = false) {
+    if (!queuePointerDrag || queuePointerDrag.pointerId !== event.pointerId) return;
+    clearTimeout(queuePointerDrag.holdTimer);
+    const wasActive = queuePointerDrag.active;
+    queuePointerDrag.handle.releasePointerCapture?.(event.pointerId);
+    queuePointerDrag = null;
+    if (!wasActive) return;
+    const order = queueOrderFromDOM();
+    clearQueueDragStyles();
+    if (cancelled) return render();
+    applyTeamQueueOrder(order);
+  }
+
   function teamHasActiveRoute(baba, teamId) {
     return [baba?.jogoAtual?.timeA, baba?.jogoAtual?.timeB].includes(teamId)
       || (baba?.pendingTieBreak?.tiedTeams || []).includes(teamId);
@@ -1188,7 +1301,7 @@
   }
 
   function monthLabel(key) {
-    if (!key) return 'Mes atual';
+    if (!key) return 'Mês atual';
     const [year, month] = key.split('-').map(Number);
     if (!year || !month) return key;
     return new Date(year, month - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -1256,7 +1369,7 @@
     if (record.criterioDesempate === 'impar_par') {
       return record.timeQueContinuou ? 'Empate: definido no impar/par' : 'Empate: aguardando impar/par';
     }
-    if (record.decididoPorSorteio) return 'Empate: rodizio definido por sorteio';
+    if (record.decididoPorSorteio) return 'Empate: rodízio definido por sorteio';
     if (record.empate || record.resultado === 'empate') return 'Empate';
     return 'Resultado normal';
   }
@@ -1331,7 +1444,7 @@
     const state = playerPaymentState(playerId, baba, options);
     const team = getPlayerTeam(baba, playerId);
     if (!state) return `<span class="baba-player-identity"${teamNumberDataAttribute(team)}>${escapeHTML(name)}</span>`;
-    const label = state === 'paid' ? 'Pago' : 'Nao pagou';
+    const label = state === 'paid' ? 'Pago' : 'Não pagou';
     return `
       <span class="baba-player-payment is-${state}"${teamNumberDataAttribute(team)}>
         <span class="baba-player-payment__name">${escapeHTML(name)}</span>
@@ -1356,6 +1469,28 @@
       return false;
     }
     return true;
+  }
+
+  async function requestSiteWakeLock() {
+    if (!mode || document.visibilityState !== 'visible' || wakeLockSentinel || !('wakeLock' in navigator)) return;
+    try {
+      wakeLockSentinel = await navigator.wakeLock.request('screen');
+      wakeLockSentinel.addEventListener('release', () => {
+        wakeLockSentinel = null;
+      }, { once: true });
+    } catch (error) {
+      wakeLockSentinel = null;
+    }
+  }
+
+  async function releaseSiteWakeLock() {
+    const sentinel = wakeLockSentinel;
+    wakeLockSentinel = null;
+    try {
+      await sentinel?.release?.();
+    } catch (error) {
+      // O navegador também pode liberar o bloqueio automaticamente ao ocultar a página.
+    }
   }
 
   function hasRememberedOrganizerAccess() {
@@ -1400,11 +1535,13 @@
     els.app.classList.remove('hidden');
     closeOrganizerPassword();
     if (nextMode === 'player') setActiveTab('dashboard');
+    requestSiteWakeLock();
     render();
   }
 
   function resetMode() {
     mode = null;
+    releaseSiteWakeLock();
     sessionStorage.removeItem(MODE_KEY);
     localStorage.removeItem(MODE_KEY);
     document.body.classList.remove('baba-app-mode');
@@ -1561,7 +1698,7 @@
       return;
     }
     if (visitorTeamHasGames(baba)) {
-      showToast('O time Visitante ja jogou. Nao remova visitantes deste baba.');
+      showToast('O time Visitante já jogou. Não remova visitantes deste baba.');
       return;
     }
     baba.visitantes = (baba.visitantes || []).filter((player) => player.id !== playerId);
@@ -1597,7 +1734,7 @@
         });
         refreshPreparedMatchRosters(baba);
       }
-      saveState('Presenca atualizada. Os times sorteados foram mantidos.');
+      saveState('Presença atualizada. Os times sorteados foram mantidos.');
       return;
     }
 
@@ -1717,7 +1854,7 @@
           resolve(String(reader.result || ''));
         }
       };
-      reader.onerror = () => reject(new Error('Nao foi possivel ler a foto.'));
+      reader.onerror = () => reject(new Error('Não foi possível ler a foto.'));
       reader.readAsDataURL(file);
     });
   }
@@ -1742,7 +1879,7 @@
       const selectedFile = els.goalImage?.files?.[0];
       foto = selectedFile ? await readGoalImage(selectedFile) : (editingGoal?.foto || '');
     } catch (error) {
-      showToast(error.message || 'Nao foi possivel salvar a foto.');
+      showToast(error.message || 'Não foi possível salvar a foto.');
       return;
     }
 
@@ -2138,7 +2275,7 @@
 
     if (type === 'standings') {
       report.title = 'Tabela de times';
-      report.subtitle = `Classificacao, elencos e rankings por gols - ${reportContextLabel(baba)}`;
+      report.subtitle = `Classificação, elencos e rankings por gols - ${reportContextLabel(baba)}`;
       report.icon = 'table';
       report.summary = [
         ...baseSummary,
@@ -2146,7 +2283,7 @@
       ];
       report.sections = [
         {
-          title: 'Classificacao',
+          title: 'Classificação',
           note: 'Pontos, gols e saldo',
           icon: 'table',
           wide: true,
@@ -2193,13 +2330,13 @@
     }
 
     if (type === 'current-history') {
-      report.title = 'Historico do baba atual';
+      report.title = 'Histórico do baba atual';
       report.subtitle = `Jogos finalizados - ${reportContextLabel(baba)}`;
       report.icon = 'history';
       report.sections = [
         {
           title: 'Jogos finalizados',
-          note: 'Ultimos jogos',
+          note: 'Últimos jogos',
           icon: 'history',
           maxRows: PDF_ROW_LIMITS.currentHistory,
           columns: ['Jogo', 'Partida', 'Placar', 'Resultado', 'Motivo'],
@@ -2241,14 +2378,14 @@
       ];
       report.sections = [
         {
-          title: `Mes - ${monthLabel(currentMonth)}`,
+          title: `Mês - ${monthLabel(currentMonth)}`,
           note: 'Tabela completa',
           icon: 'calendar',
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
           rows: rankingRowsForPdf(sortRanking(calculateMonthlyRanking(currentMonth, { includeActive: false }), rankingMode)),
-          empty: 'Sem dados no ranking do mes.',
+          empty: 'Sem dados no ranking do mês.',
         },
         {
           title: 'Ranking geral',
@@ -2281,14 +2418,14 @@
           empty: 'Sem jogos com goleiros ainda.',
         },
         {
-          title: `Historico - ${monthLabel(monthlyHistoryKey)}`,
+          title: `Histórico - ${monthLabel(monthlyHistoryKey)}`,
           note: 'Tabela completa',
           icon: 'history',
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
           rows: rankingRowsForPdf(sortRanking(calculateMonthlyRanking(monthlyHistoryKey, { includeActive: false }), rankingMode)),
-          empty: 'Sem historico mensal para exportar.',
+          empty: 'Sem histórico mensal para exportar.',
         },
       ];
       return report;
@@ -3146,7 +3283,7 @@
     const report = buildBabaPdfReport(type);
     if (!report) return showToast('Relatorio nao encontrado para exportar.');
     if (!window.PsyzonPdf?.exportReport) {
-      showToast('O gerador de PDF nao carregou. Atualize a pagina e tente novamente.');
+      showToast('O gerador de PDF não carregou. Atualize a página e tente novamente.');
       return;
     }
 
@@ -3162,7 +3299,7 @@
       showToast(`PDF exportado com ${result.pages} pagina${result.pages === 1 ? '' : 's'}.`);
     } catch (error) {
       console.error('Falha ao gerar o PDF do Baba:', error);
-      showToast(error.message || 'Nao foi possivel gerar o PDF agora.');
+      showToast(error.message || 'Não foi possível gerar o PDF agora.');
     } finally {
       pdfExportInProgress = false;
       previousStates.forEach(({ button, disabled }) => {
@@ -3177,7 +3314,7 @@
     if (!requireOrganizer()) return;
     const baba = getActiveBaba();
     const player = getPaymentPlayers(baba).find((item) => item.id === playerId) || getPlayer(playerId);
-    if (!player) return showToast('Jogador nao encontrado para registrar o pagamento.');
+    if (!player) return showToast('Jogador não encontrado para registrar o pagamento.');
     const record = getMonthlyPaymentRecord();
     record.pagamentos[playerId] = !isPlayerPaidThisMonth(playerId, baba);
     record.atualizadoEm = Date.now();
@@ -3185,7 +3322,7 @@
       baba.pagamentos = baba.pagamentos && typeof baba.pagamentos === 'object' && !Array.isArray(baba.pagamentos) ? baba.pagamentos : {};
       baba.pagamentos[playerId] = record.pagamentos[playerId];
     }
-    saveState(record.pagamentos[playerId] ? `${player.nome} pagou o mes atual.` : `${player.nome} ficou pendente no mes atual.`);
+    saveState(record.pagamentos[playerId] ? `${player.nome} pagou o mês atual.` : `${player.nome} ficou pendente no mês atual.`);
   }
 
   function drawTeams() {
@@ -3479,7 +3616,7 @@
     }
 
     if (!getTeam(baba, teamAId) || !getTeam(baba, teamBId)) {
-      return showToast('Nao foi possivel definir os dois times da partida.');
+      return showToast('Não foi possível definir os dois times da partida.');
     }
 
     baba.filaTimes = order.filter((teamId) => teamId !== teamAId && teamId !== teamBId);
@@ -3530,11 +3667,11 @@
       match.timerStartedAt = null;
       match.timerRunning = false;
       match.status = 'pausado';
-      saveState('Cronometro pausado.');
+      saveState('Cronômetro pausado.');
       return;
     }
     startMatchTimer(match);
-    saveState('Cronometro retomado.');
+    saveState('Cronômetro retomado.');
   }
 
   function editMatchTime() {
@@ -3556,7 +3693,7 @@
     if (!requireOrganizer()) return;
     const baba = getActiveBaba();
     const match = baba?.jogoAtual;
-    if (!match) return showToast('Nao existe partida preparada.');
+    if (!match) return showToast('Não existe partida preparada.');
     startMatchTimer(match);
     baba.status = 'jogando';
     saveState('Partida iniciada.');
@@ -3566,7 +3703,7 @@
     if (!requireOrganizer()) return;
     const baba = getActiveBaba();
     if (!baba) return showToast('Crie um baba primeiro.');
-    if (baba.jogoAtual) return showToast('Finalize o jogo atual antes do proximo.');
+    if (baba.jogoAtual) return showToast('Finalize o jogo atual antes do próximo.');
     if (getRotationTeams(baba).length < 2) return showToast('Sao necessarios dois times ativos para iniciar.');
     startFirstGame();
   }
@@ -3636,7 +3773,7 @@
     }).join('');
     const externalPlayerHTML = `
       <button class="baba-goal-player baba-goal-player--external" type="button" data-goal-player-id="${EXTERNAL_GOAL_SCORER_ID}">
-        <strong>Nao marcar jogador</strong>
+        <strong>Não marcar jogador</strong>
         <small>Gol sem artilheiro no ranking</small>
       </button>
     `;
@@ -3698,7 +3835,7 @@
     if (!requireOrganizer()) return;
     const baba = getActiveBaba();
     const match = baba?.jogoAtual;
-    if (!baba || !match) return showToast('Nao existe jogo em andamento.');
+    if (!baba || !match) return showToast('Não existe jogo em andamento.');
 
     recomputeLiveScore(match);
     const scoreA = Number(match.placarA || 0);
@@ -3861,10 +3998,10 @@
     if (!requireOrganizer()) return;
     const baba = getActiveBaba();
     const pending = baba?.pendingTieBreak;
-    if (!baba || !pending) return showToast('Nao ha empate pendente para decidir.');
+    if (!baba || !pending) return showToast('Não há empate pendente para decidir.');
 
     const route = getPendingTieBreakRoute(baba, pending);
-    if (!route.nextTeamId || route.tiedTeamIds.length < 2) return showToast('Nao foi possivel montar o proximo jogo.');
+    if (!route.nextTeamId || route.tiedTeamIds.length < 2) return showToast('Não foi possível montar o próximo jogo.');
 
     const chosen = String(keepTeamId || '').trim();
     if (!route.tiedTeamIds.includes(chosen)) return showToast('Escolha o time que venceu no impar/par.');
@@ -3908,7 +4045,7 @@
     if (!requireOrganizer()) return;
     const baba = getActiveBaba();
     const lastSnapshot = baba?.undoStack?.pop();
-    if (!lastSnapshot) return showToast('Nao ha jogo para desfazer.');
+    if (!lastSnapshot) return showToast('Não há jogo para desfazer.');
     if (typeof lastSnapshot === 'string') {
       const restored = JSON.parse(lastSnapshot);
       const index = state.babas.findIndex((item) => item.id === restored.id);
@@ -3926,7 +4063,7 @@
       baba.finalizadoEm = lastSnapshot.finalizadoEm || null;
       baba.rankingDoBaba = calculateDailyRanking(baba);
     }
-    saveState('Ultimo jogo desfeito.');
+    saveState('Último jogo desfeito.');
   }
 
   function rebuildTeamStatsFromGames(baba) {
@@ -4036,7 +4173,7 @@
     baba.rankingDoBaba = calculateDailyRanking(baba);
     baba.status = 'finalizado';
     baba.finalizadoEm = Date.now();
-    saveState('Baba finalizado e salvo no historico.');
+    saveState('Baba finalizado e salvo no histórico.');
     setActiveTab('history');
   }
 
@@ -4500,12 +4637,12 @@
     if (baba) {
       els.activeStatus.textContent = baba.status === 'finalizado' ? `Finalizado em ${baba.dataCompleta}` : `Baba aberto - ${baba.dataCompleta}`;
       els.activeSubtitle.textContent = baba.status === 'finalizado'
-        ? 'Baba salvo no historico. Crie um novo baba para a proxima rodada.'
-        : 'Marque os presentes, sorteie os times e deixe o rodizio trabalhar.';
+        ? 'Baba salvo no histórico. Crie um novo baba para a próxima rodada.'
+        : 'Marque os presentes, sorteie os times e deixe o rodízio trabalhar.';
       if (els.dateInput) els.dateInput.value = baba.dataISO || todayISO();
     } else {
       els.activeStatus.textContent = 'Nenhum baba aberto';
-      els.activeSubtitle.textContent = 'Crie o baba de hoje para iniciar a convocacao e o sorteio dos times.';
+      els.activeSubtitle.textContent = 'Crie o baba de hoje para iniciar a convocação e o sorteio dos times.';
       if (els.dateInput) els.dateInput.value = todayISO();
     }
 
@@ -4540,7 +4677,7 @@
       const typeLabel = player.tipo === 'goleiro' ? 'Goleiro' : (visitor || player.visitante ? 'Visitante' : 'Jogador');
       const meta = [
         `<small>${typeLabel} - ${formatCurrency(price)}</small>`,
-        paid ? '<small class="baba-payment-status is-paid">Pago</small>' : '<small class="baba-payment-status is-unpaid">Nao pagou</small>',
+        paid ? '<small class="baba-payment-status is-paid">Pago</small>' : '<small class="baba-payment-status is-unpaid">Não pagou</small>',
         player.ativo ? '' : '<small class="baba-status-pill">Inativo</small>',
       ].filter(Boolean).join('');
       const paymentButtonLabel = paid ? 'Pagamento pendente' : 'Pagamento pago';
@@ -4588,7 +4725,7 @@
     els.presentCountLabel.textContent = `${present.size} marcados`;
 
     if (!activePlayers.length) {
-      setHTML(els.presentList, '<div class="baba-empty">Cadastre jogadores para montar a lista de presenca.</div>');
+      setHTML(els.presentList, '<div class="baba-empty">Cadastre jogadores para montar a lista de presença.</div>');
       return;
     }
 
@@ -4859,9 +4996,9 @@
         key: 'team-actions:single',
         signature: `${index}:${baba.teams.length}:${lateArrivalCount}:${isOrganizer()}`,
         html: `<div class="baba-team-reveal-actions baba-team-reveal-actions--single">
-        <button class="baba-primary" type="button" data-action="advance-team-reveal">Ver proximo time</button>
+        <button class="baba-primary" type="button" data-action="advance-team-reveal">Ver próximo time</button>
         ${createLateTeamHTML}
-        <span>Avance para revelar o proximo time sorteado.</span>
+        <span>Avance para revelar o próximo time sorteado.</span>
         </div>`,
       },
     ]);
@@ -4892,7 +5029,7 @@
 
   function renderDrawProgress(baba) {
     if (!els.drawProgress) return;
-    const steps = ['Jogadores presentes', 'Sorteio dos times', 'Conferencia', 'Iniciar jogos'];
+    const steps = ['Jogadores presentes', 'Sorteio dos times', 'Conferência', 'Iniciar jogos'];
     const current = drawCurrentStep(baba);
     setHTML(els.drawProgress, `
       <ol class="baba-draw-steps">
@@ -4981,7 +5118,7 @@
         </header>
         ${hasStartedMatch ? `<div class="baba-team__stats" aria-label="Estatisticas do ${escapeHTML(team.name)}">
           <span><b>${Number(team.pontos || 0)}</b>Pontos</span>
-          <span><b>${Number(team.vitorias || 0)}</b>Vitorias</span>
+          <span><b>${Number(team.vitorias || 0)}</b>Vitórias</span>
           <span><b>${Number(team.empates || 0)}</b>Empates</span>
           <span><b>${Number(team.golsPro || 0) - Number(team.golsContra || 0)}</b>Saldo</span>
         </div>` : ''}
@@ -5027,7 +5164,7 @@
       </div>
     `);
     setHTML(els.drawSecondaryControls, `
-      <span class="baba-draw-secondary__status"><i aria-hidden="true"></i><span>${baba.status === 'finalizado' ? 'Baba salvo no historico.' : 'Resultado atual preservado e sincronizado automaticamente.'}</span></span>
+      <span class="baba-draw-secondary__status"><i aria-hidden="true"></i><span>${baba.status === 'finalizado' ? 'Baba salvo no histórico.' : 'Resultado atual preservado e sincronizado automaticamente.'}</span></span>
       <span>${lateArrivalCount ? `${lateArrivalCount} jogador${lateArrivalCount === 1 ? '' : 'es'} ainda ${lateArrivalCount === 1 ? 'esta' : 'estao'} sem time.` : 'Todos os presentes estao distribuidos.'}</span>
     `);
   }
@@ -5111,7 +5248,7 @@
     setHTML(els.drawOverlayActions, experience.phase === 'complete' ? `
       <button class="is-primary" type="button" data-action="${experience.currentIndex === total - 1 ? 'finish-draw-experience' : 'advance-draw-experience'}">
         <svg class="baba-btn-icon" aria-hidden="true"><use href="#${experience.currentIndex === total - 1 ? 'baba-check' : 'baba-next'}"></use></svg>
-        ${experience.currentIndex === total - 1 ? 'Conferir resultado' : 'Ver proximo time'}
+        ${experience.currentIndex === total - 1 ? 'Conferir resultado' : 'Ver próximo time'}
       </button>
     ` : '');
   }
@@ -5133,7 +5270,7 @@
         : isDrawing
           ? `Revelando o time ${drawExperience.currentIndex + 1} de ${baba.teams.length}.`
           : baba.status === 'finalizado'
-            ? 'Resultado salvo no historico do baba.'
+            ? 'Resultado salvo no histórico do baba.'
             : 'Confira os jogadores antes de iniciar o primeiro jogo.';
     }
     if (els.drawTeamsProgress) els.drawTeamsProgress.textContent = `${revealedCount} de ${baba?.teams?.length || 0} times sorteados`;
@@ -5397,14 +5534,14 @@
     ));
 
     setHTML(els.standingsList, `
-      <div class="baba-table baba-standings-table" role="table" aria-label="Classificacao dos times" aria-rowcount="${teams.length + 1}">
+      <div class="baba-table baba-standings-table" role="table" aria-label="Classificação dos times" aria-rowcount="${teams.length + 1}">
         <div class="baba-table__row baba-table__head" role="row">
-          <span role="columnheader" title="Posicao">Pos</span>
+          <span role="columnheader" title="Posição">Pos</span>
           <span role="columnheader">Time</span>
           <span role="columnheader" title="Pontos">Pts</span>
           <span role="columnheader" title="Gols pro">GP</span>
           <span role="columnheader" title="Saldo de gols">SG</span>
-          <span role="columnheader" title="Vitorias">V</span>
+          <span role="columnheader" title="Vitórias">V</span>
           <span role="columnheader" title="Empates">E</span>
           <span role="columnheader" title="Derrotas">D</span>
         </div>
@@ -5426,7 +5563,7 @@
             <span class="baba-standings-stat baba-standings-stat--balance" role="cell" aria-label="Saldo de gols">
               <small aria-hidden="true">SG</small><strong>${team.saldo > 0 ? '+' : ''}${team.saldo}</strong>
             </span>
-            <span class="baba-standings-stat baba-standings-stat--wins" role="cell" aria-label="Vitorias">
+            <span class="baba-standings-stat baba-standings-stat--wins" role="cell" aria-label="Vitórias">
               <small aria-hidden="true">V</small><strong>${team.vitorias}</strong>
             </span>
             <span class="baba-standings-stat baba-standings-stat--draws" role="cell" aria-label="Empates">
@@ -5602,7 +5739,7 @@
       <div class="baba-roster-summary">
         <span><small>Jogadores</small><b>${team.jogadores.length}</b></span>
         <span><small>Pontos</small><b>${Number(team.pontos || 0)}</b></span>
-        <span><small>Vitorias</small><b>${Number(team.vitorias || 0)}</b></span>
+        <span><small>Vitórias</small><b>${Number(team.vitorias || 0)}</b></span>
         <span><small>Saldo</small><b>${Number(team.golsPro || 0) - Number(team.golsContra || 0)}</b></span>
       </div>
       ${canManage ? `
@@ -5646,7 +5783,7 @@
   function openPlayerDetail(playerId, babaId = null) {
     const baba = getBabaById(babaId) || getActiveBaba();
     const player = getBabaPlayer(baba, playerId);
-    if (!baba || !player) return showToast('Jogador nao encontrado.');
+    if (!baba || !player) return showToast('Jogador não encontrado.');
     playerDetailOpener = document.activeElement;
     selectedPlayerDetail = { playerId, babaId: baba.id };
     els.playerDetailModal.classList.remove('hidden');
@@ -5691,10 +5828,10 @@
       </div>
       <div class="baba-player-stats-grid">
         <span class="baba-player-stat"><small>Gols hoje</small><b>${today.totalGols}</b></span>
-        <span class="baba-player-stat"><small>Vitorias hoje</small><b>${today.totalVitorias}</b></span>
+        <span class="baba-player-stat"><small>Vitórias hoje</small><b>${today.totalVitorias}</b></span>
         <span class="baba-player-stat"><small>Aproveitamento hoje</small><b>${today.aproveitamento}%</b></span>
-        <span class="baba-player-stat"><small>Gols no historico</small><b>${general.totalGols}</b></span>
-        <span class="baba-player-stat"><small>Vitorias no historico</small><b>${general.totalVitorias}</b></span>
+        <span class="baba-player-stat"><small>Gols no histórico</small><b>${general.totalGols}</b></span>
+        <span class="baba-player-stat"><small>Vitórias no histórico</small><b>${general.totalVitorias}</b></span>
         <span class="baba-player-stat"><small>Aproveitamento geral</small><b>${general.aproveitamento}%</b></span>
       </div>
       ${canManage ? `
@@ -5703,7 +5840,7 @@
           <small>Jogos ja encerrados e seus gols permanecem intactos.</small>
           <div class="baba-player-management__move">
             <select id="player-detail-team-select" ${teamOptions ? '' : 'disabled'}>
-              <option value="">${teamOptions ? 'Mover para outro time...' : 'Nao ha outro time disponivel'}</option>
+              <option value="">${teamOptions ? 'Mover para outro time...' : 'Não há outro time disponível'}</option>
               ${teamOptions}
             </select>
             <button class="baba-primary" type="button" data-action="move-player-from-card" data-id="${player.id}" ${teamOptions ? '' : 'disabled'}>Mover jogador</button>
@@ -5732,7 +5869,7 @@
     els.gameDetailList.innerHTML = `
       <div class="baba-row">
         <strong>${matchLineHTML(baba, getTeam(baba, game.timeA), game.placarA, game.placarB, getTeam(baba, game.timeB))}</strong>
-        <b class="baba-result-tag ${game.empate ? 'is-draw' : 'is-win'}">${game.empate ? resultStatusLabel(game) : 'Vitoria'}</b>
+        <b class="baba-result-tag ${game.empate ? 'is-draw' : 'is-win'}">${game.empate ? resultStatusLabel(game) : 'Vitória'}</b>
       </div>
       ${game.empate ? `
         <div class="baba-row">
@@ -5799,7 +5936,7 @@
       const isPrepared = !match.timerRunning && !match.iniciadoEm;
       const isOver = remaining === 0 && match.iniciadoEm;
       const isPaused = !isPrepared && !isOver && !match.timerRunning;
-      const timerLabel = isPrepared ? 'Aguardando inicio' : (remaining ? formatCountdown(remaining) : 'Tempo esgotado');
+      const timerLabel = isPrepared ? 'Aguardando início' : (remaining ? formatCountdown(remaining) : 'Tempo esgotado');
       const scoreA = Number(match.placarA || 0);
       const scoreB = Number(match.placarB || 0);
       let organizerControls = '';
@@ -5852,7 +5989,7 @@
           </div>
           ${organizerControls}
           <div class="baba-match-live__meta">
-            <span class="baba-pill">Inicio: ${match.iniciadoEm ? formatTime(match.iniciadoEm) : 'pendente'}</span>
+            <span class="baba-pill">Início: ${match.iniciadoEm ? formatTime(match.iniciadoEm) : 'pendente'}</span>
           </div>
         </div>
       `);
@@ -5865,12 +6002,31 @@
       setHTML(els.queueList, visibleQueue.map((teamId, index) => {
         const team = getTeam(baba, teamId);
         return `
-          <div class="baba-row queue-item"${teamNumberDataAttribute(team)}>
+          <div class="baba-row queue-item" data-queue-team-id="${team.id}"${teamNumberDataAttribute(team)}>
             <div class="queue-item__team">
               <strong>${teamDetailButton(baba, team)}</strong>
-              <small class="queue-item__status">${index === 0 ? 'Proximo a entrar' : 'Aguardando'}</small>
+              <small class="queue-item__status">${index === 0 ? 'Próximo a entrar' : 'Aguardando'}</small>
             </div>
-            <b class="queue-item__position">#${index + 1}</b>
+            ${isOrganizer() ? `
+              <div class="queue-item__controls" aria-label="Controles da fila">
+                ${index > 0 ? `
+                  <button class="queue-item__quick" type="button" data-action="queue-make-next" data-team-id="${team.id}" title="Tornar o próximo a entrar" aria-label="Tornar ${escapeHTML(team.name)} o próximo a entrar">
+                    <svg aria-hidden="true" focusable="false"><use href="#baba-arrow-up"></use></svg>
+                    <span>Próximo</span>
+                  </button>
+                ` : ''}
+                ${index < visibleQueue.length - 1 ? `
+                  <button class="queue-item__quick" type="button" data-action="queue-move-end" data-team-id="${team.id}" title="Mandar para o fim da fila" aria-label="Mandar ${escapeHTML(team.name)} para o fim da fila">
+                    <svg aria-hidden="true" focusable="false"><use href="#baba-arrow-down"></use></svg>
+                    <span>Fim</span>
+                  </button>
+                ` : ''}
+                <b class="queue-item__position">#${index + 1}</b>
+                <button class="queue-item__drag" type="button" draggable="true" data-queue-drag-handle aria-label="Segure e arraste ${escapeHTML(team.name)} para reorganizar a fila" title="Segure e arraste para reorganizar">
+                  <svg aria-hidden="true" focusable="false"><use href="#baba-grip"></use></svg>
+                </button>
+              </div>
+            ` : `<b class="queue-item__position">#${index + 1}</b>`}
           </div>
         `;
       }).join(''));
@@ -5889,7 +6045,7 @@
         : escapeHTML(baba.lastResult.resumo);
       els.lastResultPill.textContent = `Jogo ${baba.lastResult.jogo}`;
       const keepHTML = keep ? teamDetailButton(baba, keep, '-') : '<span class="baba-result-pending">Aguardando impar/par</span>';
-      const outHTML = baba.lastResult.timeQueSaiu ? (teamButtonsFromValue(baba, baba.lastResult.timeQueSaiu) || escapeHTML(outNames)) : '<span class="baba-result-pending">Aguardando decisao</span>';
+      const outHTML = baba.lastResult.timeQueSaiu ? (teamButtonsFromValue(baba, baba.lastResult.timeQueSaiu) || escapeHTML(outNames)) : '<span class="baba-result-pending">Aguardando decisão</span>';
       setHTML(els.lastResultPanel, `
         <div class="baba-row">
           <div>
@@ -5928,7 +6084,7 @@
       metric: rankingMode,
     }));
     if (els.goalkeeperRankingList) {
-      setHTML(els.goalkeeperRankingList, renderGoalkeeperRankingList(goalkeepers, 'Ainda nao ha jogos com goleiros para montar este ranking.', {
+      setHTML(els.goalkeeperRankingList, renderGoalkeeperRankingList(goalkeepers, 'Ainda não há jogos com goleiros para montar este ranking.', {
         expandKey: 'goalkeepers',
       }));
     }
@@ -5955,7 +6111,7 @@
     const keys = getAvailableMonthKeys();
     if (!keys.length) {
       setHTML(els.monthlyHistoryTabs, '');
-      setHTML(els.monthlyHistoryRanking, '<div class="baba-empty">Sem historico mensal ainda.</div>');
+      setHTML(els.monthlyHistoryRanking, '<div class="baba-empty">Sem histórico mensal ainda.</div>');
       return;
     }
     if (!selectedMonthlyKey || !keys.includes(selectedMonthlyKey)) selectedMonthlyKey = keys[0];
@@ -5963,17 +6119,17 @@
       <button class="${key === selectedMonthlyKey ? 'active' : ''}" type="button" data-month-key="${key}">${escapeHTML(monthLabel(key))}</button>
     `).join(''));
     const ranking = sortRanking(calculateMonthlyRanking(selectedMonthlyKey, { includeActive: false }), rankingMode);
-    setHTML(els.monthlyHistoryRanking, renderRankingList(ranking, rankingEmptyMessage('neste mes'), {
+    setHTML(els.monthlyHistoryRanking, renderRankingList(ranking, rankingEmptyMessage('neste mês'), {
       expandKey: `month-${selectedMonthlyKey}`,
       metric: rankingMode,
     }));
   }
 
   function rankingEmptyMessage(scope) {
-    if (rankingMode === 'goals') return `Ainda nao ha gols ${scope}.`;
+    if (rankingMode === 'goals') return `Ainda não há gols ${scope}.`;
     const option = RANKING_MODES.find((item) => item.id === rankingMode);
     const label = (option?.label || 'dados').toLowerCase();
-    return `Ainda nao ha dados de ${label} ${scope}.`;
+    return `Ainda não há dados de ${label} ${scope}.`;
   }
 
   function renderRankingFilters() {
@@ -6001,9 +6157,9 @@
 
   function rankingMetricDisplay(stats, metric = 'goals') {
     const value = rankingMetricValue(stats, metric);
-    if (metric === 'wins') return { value, label: value === 1 ? 'vitoria' : 'vitorias' };
+    if (metric === 'wins') return { value, label: value === 1 ? 'vitória' : 'vitórias' };
     if (metric === 'losses') return { value, label: value === 1 ? 'derrota' : 'derrotas' };
-    if (metric === 'titles') return { value, label: value === 1 ? 'titulo' : 'titulos' };
+    if (metric === 'titles') return { value, label: value === 1 ? 'título' : 'títulos' };
     if (metric === 'efficiency') return { value: `${value}%`, label: 'aprov.' };
     return { value, label: value === 1 ? 'gol' : 'gols' };
   }
@@ -6081,7 +6237,7 @@
                 ${stat('baba-x', `${stats.totalDerrotas} D`)}
                 ${stat('baba-calendar', `${stats.totalBabas} babas`)}
                 ${stat('baba-chart', `${stats.mediaGols} media`)}
-                ${stat('baba-trophy', `${stats.totalTitulosBaba} titulos`)}
+                ${stat('baba-trophy', `${stats.totalTitulosBaba} títulos`)}
                 ${stat('baba-table-icon', `${stats.aproveitamento}%`)}
               </div>
             </div>
@@ -6147,7 +6303,7 @@
       <button class="baba-history-item ${baba.id === selectedHistoryId ? 'active' : ''}" type="button" data-history-id="${baba.id}">
         <span>
           <strong>${escapeHTML(baba.dataCompleta)}</strong>
-          <small>${escapeHTML(baba.campeaoDoBaba?.nomes?.join(', ') || 'Sem campeao')}</small>
+          <small>${escapeHTML(baba.campeaoDoBaba?.nomes?.join(', ') || 'Sem campeão')}</small>
         </span>
         <span class="baba-history-actions">
           <b>${baba.jogos?.length || 0} jogos</b>
@@ -6156,7 +6312,7 @@
       </button>
     `).join('');
     const moreButton = window.BabaRepository?.hasMoreHistory?.()
-      ? '<button class="baba-btn secondary" type="button" data-history-more>Carregar historico anterior</button>'
+      ? '<button class="baba-btn secondary" type="button" data-history-more>Carregar histórico anterior</button>'
       : '';
     setHTML(els.historyList, `${historyItems}${moreButton}`);
 
@@ -6166,7 +6322,7 @@
       if (!loadingHistoryIds.has(selected.id)) {
         loadingHistoryIds.add(selected.id);
         window.BabaRepository.loadBaba(selected.id)
-          .catch((error) => showToast(error.message || 'Nao foi possivel carregar este baba.'))
+          .catch((error) => showToast(error.message || 'Não foi possível carregar este baba.'))
           .finally(() => loadingHistoryIds.delete(selected.id));
       }
       return;
@@ -6177,13 +6333,13 @@
   function renderHistoryDetail(baba) {
     if (!baba) return;
     els.historyDetailLabel.textContent = baba.dataCompleta;
-    const championNames = baba.campeaoDoBaba?.nomes?.join(', ') || 'Sem campeao';
+    const championNames = baba.campeaoDoBaba?.nomes?.join(', ') || 'Sem campeão';
     const championPlayers = (baba.campeaoDoBaba?.jogadores || []).map((id) => playerPaymentNameHTML(id, baba)).join(', ') || '-';
 
     setHTML(els.historyDetail, `
       <div class="baba-stack">
-        <div class="baba-row"><span>Campeao do baba</span><b>${escapeHTML(championNames)}</b></div>
-        <div class="baba-row"><span>Jogadores campeoes</span><b>${championPlayers}</b></div>
+        <div class="baba-row"><span>Campeão do baba</span><b>${escapeHTML(championNames)}</b></div>
+        <div class="baba-row"><span>Jogadores campeões</span><b>${championPlayers}</b></div>
         <div class="baba-row"><span>Presentes</span><b>${baba.jogadoresPresentes?.length || 0}</b></div>
         <div class="baba-row"><span>Finalizado</span><b>${formatTime(baba.finalizadoEm)}</b></div>
         ${(baba.teams || []).map((team) => `
@@ -6353,7 +6509,7 @@
     const url = shareUrl.href;
     const shareData = {
       title: 'Baba Psyzon',
-      text: 'Acompanhe o Baba Psyzon ao vivo: times, placar, ranking e historico.',
+      text: 'Acompanhe o Baba Psyzon ao vivo: times, placar, ranking e histórico.',
       url,
     };
 
@@ -6652,7 +6808,7 @@
 
   function assistantDescribeStats(stats) {
     if (!stats) return 'Sem estatisticas registradas.';
-    return `${stats.totalGols || 0} gols, ${stats.totalVitorias || 0} vitorias, ${stats.totalEmpates || 0} empates, ${stats.totalDerrotas || 0} derrotas, ${stats.aproveitamento || 0}% de aproveitamento e ${stats.totalBabas || 0} babas.`;
+    return `${stats.totalGols || 0} gols, ${stats.totalVitorias || 0} vitórias, ${stats.totalEmpates || 0} empates, ${stats.totalDerrotas || 0} derrotas, ${stats.aproveitamento || 0}% de aproveitamento e ${stats.totalBabas || 0} babas.`;
   }
 
   function assistantPerformanceScore(stats, recent = null) {
@@ -6716,7 +6872,7 @@
       .sort((a, b) => b.recentScore - a.recentScore || b.delta - a.delta || a.stats.nome.localeCompare(b.stats.nome))[0];
     babaAssistant.context.players = [improved.stats.jogadorId];
     babaAssistant.context.topic = 'recent';
-    const previousText = improved.prev ? `Nos 5 anteriores tinha ${improved.prev.totalGols || 0} gols e ${improved.prev.totalVitorias || 0} vitorias.` : 'Nao encontrei 5 babas anteriores suficientes para comparar toda a evolucao.';
+    const previousText = improved.prev ? `Nos 5 anteriores tinha ${improved.prev.totalGols || 0} gols e ${improved.prev.totalVitorias || 0} vitórias.` : 'Não encontrei 5 babas anteriores suficientes para comparar toda a evolução.';
     return `${improved.stats.nome} esta em melhor fase recente pelos ultimos ${latest.length} babas.\n\nNeste recorte: ${assistantDescribeStats(improved.stats)}\n${previousText}\n\nUsei gols, vitorias, aproveitamento e volume de jogos para chegar nessa analise.`;
   }
 
@@ -6727,7 +6883,7 @@
     const baba = getActiveBaba();
     const normalized = normalizeAssistantText(question);
     const players = getPaymentPlayers(baba);
-    if (!players.length) return 'Nao encontrei jogadores cadastrados para calcular pagamentos.';
+    if (!players.length) return 'Não encontrei jogadores cadastrados para calcular pagamentos.';
     const playerAsked = assistantFindPlayers(question)[0] || (/\bele\b|\bela\b/.test(normalized) ? getPlayer(babaAssistant.context.players[0]) : null);
     if (playerAsked) {
       const paid = isPlayerPaidThisMonth(playerAsked.id, baba);
@@ -6747,7 +6903,7 @@
       const pendingIds = new Set(pending.map((player) => player.id));
       const metric = normalized.includes('vitor') || normalized.includes('ganh') ? 'wins' : (normalized.includes('aproveitamento') ? 'efficiency' : 'goals');
       const items = sortRanking(ranking, metric).filter((item) => pendingIds.has(item.jogadorId));
-      if (!items.length) return `Nao encontrei desempenho registrado em ${period.label} entre jogadores pendentes de pagamento.`;
+      if (!items.length) return `Não encontrei desempenho registrado em ${period.label} entre jogadores pendentes de pagamento.`;
       const top = items[0];
       babaAssistant.context.players = [top.jogadorId];
       return `${top.nome} lidera entre os jogadores pendentes de pagamento em ${period.label}: ${assistantDescribeStats(top)}\n\nPagamento dele ainda consta como pendente no mes atual.`;
@@ -6757,7 +6913,7 @@
       const paidIds = new Set(paid.map((player) => player.id));
       const metric = normalized.includes('vitor') || normalized.includes('ganh') ? 'wins' : (normalized.includes('aproveitamento') ? 'efficiency' : 'goals');
       const items = sortRanking(ranking, metric).filter((item) => paidIds.has(item.jogadorId));
-      if (!items.length) return `Nao encontrei desempenho registrado em ${period.label} entre jogadores que ja pagaram.`;
+      if (!items.length) return `Não encontrei desempenho registrado em ${period.label} entre jogadores que já pagaram.`;
       const top = items[0];
       babaAssistant.context.players = [top.jogadorId];
       return `${top.nome} lidera entre os jogadores com pagamento confirmado em ${period.label}: ${assistantDescribeStats(top)}.`;
@@ -6804,7 +6960,7 @@
     babaAssistant.context.players = [asked.id];
     if (normalized.includes('pag')) return assistantPaymentAnswer(question);
     if (normalized.includes('gol')) return `${asked.nome} tem ${stats.totalGols || 0} gols em ${period.label}. Media: ${stats.mediaGols || 0} por baba.`;
-    if (normalized.includes('vitor') || normalized.includes('ganh')) return `${asked.nome} tem ${stats.totalVitorias || 0} vitorias em ${period.label}, com ${stats.aproveitamento || 0}% de aproveitamento.`;
+    if (normalized.includes('vitor') || normalized.includes('ganh')) return `${asked.nome} tem ${stats.totalVitorias || 0} vitórias em ${period.label}, com ${stats.aproveitamento || 0}% de aproveitamento.`;
     if (normalized.includes('perd')) return `${asked.nome} tem ${stats.totalDerrotas || 0} derrotas em ${period.label}.`;
     if (normalized.includes('aproveitamento') || normalized.includes('desempenho')) return `${asked.nome} em ${period.label}: ${assistantDescribeStats(stats)}`;
     return `${asked.nome} em ${period.label}: ${assistantDescribeStats(stats)}`;
@@ -6813,23 +6969,23 @@
   function assistantPresenceAnswer(question) {
     const normalized = normalizeAssistantText(question);
     const period = assistantResolvePeriod(question);
-    if (!period.babas.length) return `Nao encontrei babas registrados para ${period.label}.`;
+    if (!period.babas.length) return `Não encontrei babas registrados para ${period.label}.`;
     if (normalized.includes('quem jogou') || normalized.includes('quem veio') || normalized.includes('presentes')) {
       const names = new Set();
       period.babas.forEach((baba) => (baba.jogadoresPresentes || []).forEach((id) => names.add(playerName(id, baba))));
-      if (!names.size) return `Nao encontrei presencas registradas em ${period.label}.`;
+      if (!names.size) return `Não encontrei presenças registradas em ${period.label}.`;
       return `Participaram em ${period.label} (${names.size}):\n- ${Array.from(names).sort((a, b) => a.localeCompare(b)).join('\n- ')}`;
     }
     if (normalized.includes('nao veio') || normalized.includes('faltou')) {
       const active = period.babas[0];
       const present = new Set(period.babas.flatMap((baba) => baba.jogadoresPresentes || []));
       const absent = state.players.filter((player) => player.ativo !== false && !present.has(player.id));
-      if (!absent.length) return `Nao encontrei faltas em ${period.label}.`;
+      if (!absent.length) return `Não encontrei faltas em ${period.label}.`;
       return `Jogadores sem presenca registrada em ${period.label}:\n- ${absent.map((player) => player.nome || playerName(player.id, active)).join('\n- ')}`;
     }
     const ranking = assistantRankingForBabas(period.babas);
     const top = Object.values(ranking).filter((stats) => stats.totalBabas > 0).sort((a, b) => b.totalBabas - a.totalBabas || a.nome.localeCompare(b.nome))[0];
-    if (!top) return `Nao encontrei presencas suficientes em ${period.label}.`;
+    if (!top) return `Não encontrei presenças suficientes em ${period.label}.`;
     babaAssistant.context.players = [top.jogadorId];
     return `${top.nome} e quem mais participou em ${period.label}, com ${top.totalBabas} presencas registradas.`;
   }
@@ -6837,7 +6993,7 @@
   function assistantTeamAnswer(question) {
     const normalized = normalizeAssistantText(question);
     const period = assistantResolvePeriod(question);
-    if (!period.babas.length) return `Nao encontrei babas para analisar times em ${period.label}.`;
+    if (!period.babas.length) return `Não encontrei babas para analisar times em ${period.label}.`;
     const teamRows = [];
     period.babas.forEach((baba) => {
       (baba.teams || []).forEach((team) => {
@@ -6965,7 +7121,55 @@
   }
 
   function wireEvents() {
-    document.addEventListener('pointerdown', unlockBabaAudio, { passive: true });
+    document.addEventListener('pointerdown', (event) => {
+      unlockBabaAudio();
+      requestSiteWakeLock();
+      beginQueuePointerDrag(event);
+    }, { passive: true });
+    document.addEventListener('pointermove', moveQueuePointerDrag, { passive: false });
+    document.addEventListener('pointerup', (event) => finishQueuePointerDrag(event));
+    document.addEventListener('pointercancel', (event) => finishQueuePointerDrag(event, true));
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') requestSiteWakeLock();
+    });
+    window.addEventListener('pagehide', releaseSiteWakeLock);
+    window.addEventListener('pageshow', requestSiteWakeLock);
+
+    els.queueList?.addEventListener('dragstart', (event) => {
+      const handle = event.target.closest?.('[data-queue-drag-handle]');
+      const item = handle?.closest?.('[data-queue-team-id]');
+      if (!item || !isOrganizer()) return event.preventDefault();
+      queueNativeDragTeamId = item.dataset.queueTeamId;
+      item.classList.add('is-dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', queueNativeDragTeamId);
+    });
+    els.queueList?.addEventListener('dragover', (event) => {
+      if (!queueNativeDragTeamId) return;
+      const draggedItem = els.queueList.querySelector(`[data-queue-team-id="${CSS.escape(queueNativeDragTeamId)}"]`);
+      const target = event.target.closest?.('[data-queue-team-id]');
+      if (!draggedItem || !target || target === draggedItem) return;
+      event.preventDefault();
+      els.queueList.querySelectorAll('.queue-item').forEach((item) => item.classList.remove('is-drag-over'));
+      target.classList.add('is-drag-over');
+      const rect = target.getBoundingClientRect();
+      els.queueList.insertBefore(draggedItem, event.clientY > rect.top + rect.height / 2 ? target.nextSibling : target);
+    });
+    els.queueList?.addEventListener('drop', (event) => {
+      if (!queueNativeDragTeamId) return;
+      event.preventDefault();
+      const order = queueOrderFromDOM();
+      queueNativeDragTeamId = null;
+      clearQueueDragStyles();
+      applyTeamQueueOrder(order);
+    });
+    els.queueList?.addEventListener('dragend', () => {
+      const order = queueOrderFromDOM();
+      const hadDrag = Boolean(queueNativeDragTeamId);
+      queueNativeDragTeamId = null;
+      clearQueueDragStyles();
+      if (hadDrag) applyTeamQueueOrder(order);
+    });
     wireBabaAssistant();
     document.addEventListener('click', rememberActionButton, true);
     els.enterOrganizer.addEventListener('click', openOrganizerPassword);
@@ -6986,7 +7190,7 @@
         els.passwordInput.select();
       }
     });
-    els.logoutBtn.addEventListener('click', logout);
+    els.logoutBtn?.addEventListener('click', logout);
     els.modeReset.addEventListener('click', resetMode);
     els.themeToggle?.addEventListener('click', toggleBabaTheme);
     els.exportBackupJSON?.addEventListener('click', exportBackupJSON);
@@ -7126,6 +7330,8 @@
       }
 
       const actionButton = event.target.closest('[data-action]');
+      if (actionButton?.dataset.action === 'queue-make-next') return moveQueuedTeam(actionButton.dataset.teamId, 'next');
+      if (actionButton?.dataset.action === 'queue-move-end') return moveQueuedTeam(actionButton.dataset.teamId, 'end');
       if (actionButton?.dataset.action === 'begin-team-draw') return drawTeams();
       if (actionButton?.dataset.action === 'finish-and-save-draw') return finishBaba();
       if (actionButton?.dataset.action === 'open-present-editor') {
@@ -7199,7 +7405,7 @@
       if (historyMoreButton) {
         historyMoreButton.disabled = true;
         window.BabaRepository?.loadMoreHistory?.()
-          .catch((error) => showToast(error.message || 'Nao foi possivel carregar o historico anterior.'))
+          .catch((error) => showToast(error.message || 'Não foi possível carregar o histórico anterior.'))
           .finally(() => { historyMoreButton.disabled = false; });
       }
 
@@ -7208,7 +7414,7 @@
         selectedMonthlyKey = monthButton.dataset.monthKey;
         renderMonthlyHistory();
         window.BabaRepository?.loadMonthStats?.(selectedMonthlyKey)
-          .catch((error) => showToast(error.message || 'Nao foi possivel carregar o ranking deste mes.'));
+          .catch((error) => showToast(error.message || 'Não foi possível carregar o ranking deste mês.'));
       }
     });
 
@@ -7224,7 +7430,7 @@
     if (hasBooted) return;
     hasBooted = true;
     const savedTheme = localStorage.getItem(BABA_THEME_KEY);
-    applyBabaTheme(savedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+    applyBabaTheme(savedTheme || 'light');
     document.body.dataset.babaView = document.querySelector('.baba-view.active')?.dataset.view || 'dashboard';
     window.BabaRepository?.activateView?.(document.body.dataset.babaView);
     wireEvents();
