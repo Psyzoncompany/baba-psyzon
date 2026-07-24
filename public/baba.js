@@ -3347,7 +3347,11 @@
 
     const goalkeepers = shuffle(presentPlayers.filter((player) => player.tipo === 'goleiro'));
     const fieldPlayers = shuffle(presentPlayers.filter((player) => player.tipo !== 'goleiro'));
-    const firstTeamPlayer = presentPlayers.find((player) => normalizeText(player.nome).trim() === 'rodrigol');
+    const firstTeamPlayer = presentPlayers.find((player) => String(player.nome || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLowerCase() === 'rodrigol');
     if (firstTeamPlayer) {
       const playerGroup = firstTeamPlayer.tipo === 'goleiro' ? goalkeepers : fieldPlayers;
       const playerIndex = playerGroup.findIndex((player) => player.id === firstTeamPlayer.id);
