@@ -3347,6 +3347,14 @@
 
     const goalkeepers = shuffle(presentPlayers.filter((player) => player.tipo === 'goleiro'));
     const fieldPlayers = shuffle(presentPlayers.filter((player) => player.tipo !== 'goleiro'));
+    const firstTeamPlayer = presentPlayers.find((player) => normalizeText(player.nome).trim() === 'rodrigol');
+    if (firstTeamPlayer) {
+      const playerGroup = firstTeamPlayer.tipo === 'goleiro' ? goalkeepers : fieldPlayers;
+      const playerIndex = playerGroup.findIndex((player) => player.id === firstTeamPlayer.id);
+      if (playerIndex > 0) {
+        playerGroup.unshift(...playerGroup.splice(playerIndex, 1));
+      }
+    }
 
     if (fieldPlayers.length < 8) {
       showToast('Marque pelo menos 8 jogadores de linha para deixar Time 1 e Time 2 completos.');
