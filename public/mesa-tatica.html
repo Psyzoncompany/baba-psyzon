@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#08745d">
+  <link rel="icon" type="image/png" href="icons/baba-icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/baba-icon-180.png">
+  <title>Mesa Tática — Baba Psyzon</title>
+  <link href="apple-ui-font.css?v=20260723-1" rel="stylesheet">
+  <link href="baba-ui.css?v=20260729-tactical-1" rel="stylesheet">
+  <link href="mesa-tatica.css?v=20260729-1" rel="stylesheet">
+  <script>
+    try {
+      if ((window.__nativeLS || window.localStorage).getItem('psyzon_baba_theme') === 'dark') {
+        document.documentElement.classList.add('tactical-dark-boot');
+      }
+    } catch (_) {}
+  </script>
+</head>
+
+<body class="baba-page baba-app-mode tactical-page">
+  <svg class="tactical-symbols" aria-hidden="true" focusable="false">
+    <symbol id="tact-icon-back" viewBox="0 0 24 24">
+      <path d="m14 5-7 7 7 7M7 12h13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-board" viewBox="0 0 24 24">
+      <path d="M8 5H5v16h14V5h-3M9 3h6v4H9V3Z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="m9 16 6.7-6.7 2 2L11 18H9v-2Z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-sun" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="tact-icon-moon" viewBox="0 0 24 24">
+      <path d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-new" viewBox="0 0 24 24">
+      <path d="M5 4h10l4 4v12H5V4Zm10 0v5h5M12 11v6m-3-3h6" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-save" viewBox="0 0 24 24">
+      <path d="M5 4h12l2 2v14H5V4Z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"/>
+      <path d="M8 4v6h8V4M8 20v-6h8v6" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-folder" viewBox="0 0 24 24">
+      <path d="M3 6h7l2 2h9v11H3V6Z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-export" viewBox="0 0 24 24">
+      <path d="M12 15V4m0 0L8 8m4-4 4 4M5 13v7h14v-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-fullscreen" viewBox="0 0 24 24">
+      <path d="M8 4H4v4M16 4h4v4M8 20H4v-4m12 4h4v-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-select" viewBox="0 0 24 24">
+      <path d="m5 3 13 9-6 1-3 6L5 3Z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-hand" viewBox="0 0 24 24">
+      <path d="M7 12V7a2 2 0 0 1 4 0v4-6a2 2 0 0 1 4 0v6-4a2 2 0 0 1 4 0v7c0 5-3 7-7 7-3 0-5-1-7-4l-2-3a2 2 0 0 1 4-2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-player" viewBox="0 0 24 24">
+      <circle cx="10" cy="7" r="3" fill="none" stroke="currentColor" stroke-width="2.1"/>
+      <path d="M4 20c.7-4 2.8-6 6-6s5.3 2 6 6m4-12v6m-3-3h6" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="tact-icon-ball" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="m12 7 3.6 2.6-1.4 4.2H9.8L8.4 9.6 12 7Zm0 0V3m3.6 6.6 4-1.3m-5.4 5.5 2.4 3.5m-6.8-3.5-2.4 3.5M8.4 9.6l-4-1.3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="tact-icon-arrow" viewBox="0 0 24 24">
+      <path d="M4 18 19 5m0 0-1 7m1-7-7 1" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-pass" viewBox="0 0 24 24">
+      <path d="M4 17 18 6m0 0-1 6m1-6-6 1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2.5 3"/>
+    </symbol>
+    <symbol id="tact-icon-shot" viewBox="0 0 24 24">
+      <path d="M3 18 18 5m0 0-1 7m1-7-7 1" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="5" cy="17" r="2" fill="currentColor"/>
+    </symbol>
+    <symbol id="tact-icon-dribble" viewBox="0 0 24 24">
+      <path d="M3 18c3-7 6 1 9-6s5 0 9-7m0 0-1 6m1-6-6 1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-defense" viewBox="0 0 24 24">
+      <path d="M12 3 20 6v6c0 5-3.2 8-8 9-4.8-1-8-4-8-9V6l8-3Z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"/>
+      <path d="m8 15 8-6M8 9l8 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="tact-icon-line" viewBox="0 0 24 24">
+      <path d="M4 18 20 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="tact-icon-dashed" viewBox="0 0 24 24">
+      <path d="M4 18 20 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="3 3"/>
+    </symbol>
+    <symbol id="tact-icon-curve" viewBox="0 0 24 24">
+      <path d="M4 18C5 6 14 5 20 10" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/>
+      <path d="m20 10-5-1m5 1-2 5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-zone" viewBox="0 0 24 24">
+      <path d="M4 5h16v14H4V5Z" fill="currentColor" opacity=".18"/>
+      <path d="M4 5h16v14H4V5Z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-dasharray="4 3"/>
+    </symbol>
+    <symbol id="tact-icon-text" viewBox="0 0 24 24">
+      <path d="M5 5h14M12 5v14M8 19h8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="tact-icon-eraser" viewBox="0 0 24 24">
+      <path d="m4 16 9-11 7 6-7 9H8l-4-4Z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"/>
+      <path d="m9 10 7 6M4 20h16" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="tact-icon-undo" viewBox="0 0 24 24">
+      <path d="m9 7-5 5 5 5M5 12h9a6 6 0 1 1 0 12" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-redo" viewBox="0 0 24 24">
+      <path d="m15 7 5 5-5 5m4-5h-9a6 6 0 1 0 0 12" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-trash" viewBox="0 0 24 24">
+      <path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-rotate" viewBox="0 0 24 24">
+      <path d="M20 12a8 8 0 0 1-14 5m-2-5A8 8 0 0 1 18 7M18 3v4h-4M6 21v-4h4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-zoom-in" viewBox="0 0 24 24">
+      <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.1"/>
+      <path d="m15.5 15.5 5 5M10.5 7.5v6m-3-3h6" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="tact-icon-zoom-out" viewBox="0 0 24 24">
+      <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.1"/>
+      <path d="m15.5 15.5 5 5m-8-10h6" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="tact-icon-fit" viewBox="0 0 24 24">
+      <path d="M5 9V5h4m10 4V5h-4M5 15v4h4m10-4v4h-4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-play" viewBox="0 0 24 24">
+      <path d="M8 5v14l11-7L8 5Z" fill="currentColor"/>
+    </symbol>
+    <symbol id="tact-icon-pause" viewBox="0 0 24 24">
+      <path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="tact-icon-prev" viewBox="0 0 24 24">
+      <path d="M19 5v14l-9-7 9-7ZM7 6v12" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-next" viewBox="0 0 24 24">
+      <path d="M5 5v14l9-7-9-7Zm12 1v12" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-reset" viewBox="0 0 24 24">
+      <path d="M5 7v5h5M6 12a7 7 0 1 0 2-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="tact-icon-record" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="7" fill="currentColor"/>
+      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    </symbol>
+    <symbol id="tact-icon-close" viewBox="0 0 24 24">
+      <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="tact-icon-menu" viewBox="0 0 24 24">
+      <path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+    </symbol>
+  </svg>
+
+  <header class="tactical-header glass-surface" data-export-ignore>
+    <div class="tactical-brand">
+      <a class="tactical-icon-btn tactical-back-btn" href="baba.html" aria-label="Voltar ao Baba" title="Voltar ao Baba">
+        <svg aria-hidden="true"><use href="#tact-icon-back"></use></svg>
+      </a>
+      <img src="img/baba-psyzon-logo.png" alt="">
+      <span class="tactical-brand-copy">
+        <strong>Mesa Tática</strong>
+        <small>Baba Psyzon · Futsal</small>
+      </span>
+    </div>
+    <div class="tactical-header-state">
+      <span id="tactical-save-state" class="tactical-save-state" role="status" aria-live="polite">
+        <i aria-hidden="true"></i><span>Rascunho local</span>
+      </span>
+    </div>
+    <nav class="tactical-header-actions" aria-label="Ações da jogada">
+      <button id="new-play-btn" class="tactical-action-btn" type="button" title="Nova jogada">
+        <svg aria-hidden="true"><use href="#tact-icon-new"></use></svg><span>Nova</span>
+      </button>
+      <button id="save-play-btn" class="tactical-action-btn tactical-action-btn--primary" type="button" title="Salvar jogada">
+        <svg aria-hidden="true"><use href="#tact-icon-save"></use></svg><span>Salvar</span>
+      </button>
+      <button id="open-library-btn" class="tactical-icon-btn tactical-mobile-hide" type="button" title="Jogadas salvas" aria-label="Abrir jogadas salvas">
+        <svg aria-hidden="true"><use href="#tact-icon-folder"></use></svg>
+      </button>
+      <button id="open-export-btn" class="tactical-icon-btn" type="button" title="Exportar e compartilhar" aria-label="Exportar e compartilhar" aria-expanded="false">
+        <svg aria-hidden="true"><use href="#tact-icon-export"></use></svg>
+      </button>
+      <button id="tactical-theme-toggle" class="tactical-icon-btn" type="button" title="Ativar tema escuro" aria-label="Ativar tema escuro" aria-pressed="false">
+        <svg class="tactical-theme-moon" aria-hidden="true"><use href="#tact-icon-moon"></use></svg>
+        <svg class="tactical-theme-sun" aria-hidden="true"><use href="#tact-icon-sun"></use></svg>
+      </button>
+      <button id="fullscreen-btn" class="tactical-icon-btn tactical-mobile-hide" type="button" title="Tela cheia" aria-label="Abrir quadra em tela cheia">
+        <svg aria-hidden="true"><use href="#tact-icon-fullscreen"></use></svg>
+      </button>
+    </nav>
+  </header>
+
+  <main class="tactical-shell">
+    <aside id="rotate-hint" class="tactical-rotate-hint glass-surface" role="note" aria-label="Sugestão de orientação" data-export-ignore>
+      <svg aria-hidden="true"><use href="#tact-icon-rotate"></use></svg>
+      <span>Gire o aparelho para usar a quadra com mais espaço.</span>
+      <button id="dismiss-rotate-hint" type="button" aria-label="Fechar sugestão"><svg aria-hidden="true"><use href="#tact-icon-close"></use></svg></button>
+    </aside>
+
+    <section class="tactical-play-meta glass-surface" aria-labelledby="play-details-title" data-export-ignore>
+      <h1 id="play-details-title" class="tactical-visually-hidden">Dados da jogada</h1>
+      <label class="tactical-field tactical-field--name">
+        <span>Nome da jogada</span>
+        <input id="play-name" type="text" maxlength="80" placeholder="Ex.: Saída 3–1 pela ala" autocomplete="off">
+      </label>
+      <label class="tactical-field tactical-field--category">
+        <span>Categoria</span>
+        <select id="play-category">
+          <option value="ataque">Ataque</option>
+          <option value="defesa">Defesa</option>
+          <option value="bola-parada">Bola parada</option>
+          <option value="contra-ataque">Contra-ataque</option>
+          <option value="saida-pressao">Saída de pressão</option>
+          <option value="personalizada">Personalizada</option>
+        </select>
+      </label>
+      <label class="tactical-field tactical-field--description">
+        <span>Descrição</span>
+        <input id="play-description" type="text" maxlength="240" placeholder="Objetivo e observações da jogada" autocomplete="off">
+      </label>
+    </section>
+
+    <div class="tactical-workspace">
+      <aside id="tactical-tools-panel" class="tactical-panel tactical-tools-panel glass-surface" aria-labelledby="tools-panel-title" data-export-ignore>
+        <div class="tactical-panel-head">
+          <div>
+            <span class="tactical-eyebrow">Editor</span>
+            <h2 id="tools-panel-title">Ferramentas</h2>
+          </div>
+          <button class="tactical-panel-close" type="button" data-close-panel="tools" aria-label="Fechar ferramentas">
+            <svg aria-hidden="true"><use href="#tact-icon-close"></use></svg>
+          </button>
+        </div>
+
+        <div class="tactical-tool-grid" role="toolbar" aria-label="Ferramentas da quadra" aria-orientation="vertical">
+          <button class="tactical-tool is-active" type="button" data-tool="select" aria-pressed="true" title="Selecionar e mover (V)">
+            <svg aria-hidden="true"><use href="#tact-icon-select"></use></svg><span>Selecionar</span><kbd>V</kbd>
+          </button>
+          <button class="tactical-tool" type="button" data-tool="pan" aria-pressed="false" title="Mover visualização (H)">
+            <svg aria-hidden="true"><use href="#tact-icon-hand"></use></svg><span>Mover visão</span><kbd>H</kbd>
+          </button>
+          <button class="tactical-tool" type="button" data-tool="player" aria-pressed="false" title="Adicionar jogador (J)">
+            <svg aria-hidden="true"><use href="#tact-icon-player"></use></svg><span>Jogador</span><kbd>J</kbd>
+          </button>
+          <button class="tactical-tool" type="button" data-tool="ball" aria-pressed="false" title="Adicionar bola (B)">
+            <svg aria-hidden="true"><use href="#tact-icon-ball"></use></svg><span>Bola</span><kbd>B</kbd>
+          </button>
+        </div>
+
+        <div class="tactical-tool-section">
+          <h3>Rotas táticas</h3>
+          <div class="tactical-tool-grid tactical-tool-grid--routes" role="toolbar" aria-label="Rotas táticas">
+            <button class="tactical-tool tactical-tool--movement" type="button" data-tool="movement" aria-pressed="false" title="Movimentação">
+              <svg aria-hidden="true"><use href="#tact-icon-arrow"></use></svg><span>Movimento</span>
+            </button>
+            <button class="tactical-tool tactical-tool--pass" type="button" data-tool="pass" aria-pressed="false" title="Passe">
+              <svg aria-hidden="true"><use href="#tact-icon-pass"></use></svg><span>Passe</span>
+            </button>
+            <button class="tactical-tool tactical-tool--shot" type="button" data-tool="shot" aria-pressed="false" title="Finalização">
+              <svg aria-hidden="true"><use href="#tact-icon-shot"></use></svg><span>Finalização</span>
+            </button>
+            <button class="tactical-tool tactical-tool--dribble" type="button" data-tool="dribble" aria-pressed="false" title="Condução de bola">
+              <svg aria-hidden="true"><use href="#tact-icon-dribble"></use></svg><span>Condução</span>
+            </button>
+            <button class="tactical-tool tactical-tool--defense" type="button" data-tool="defense" aria-pressed="false" title="Marcação defensiva">
+              <svg aria-hidden="true"><use href="#tact-icon-defense"></use></svg><span>Marcação</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="tactical-tool-section">
+          <h3>Desenho</h3>
+          <div class="tactical-tool-grid tactical-tool-grid--draw" role="toolbar" aria-label="Ferramentas de desenho">
+            <button class="tactical-tool" type="button" data-tool="line" aria-pressed="false" title="Linha contínua">
+              <svg aria-hidden="true"><use href="#tact-icon-line"></use></svg><span>Linha</span>
+            </button>
+            <button class="tactical-tool" type="button" data-tool="dashed" aria-pressed="false" title="Linha pontilhada">
+              <svg aria-hidden="true"><use href="#tact-icon-dashed"></use></svg><span>Pontilhada</span>
+            </button>
+            <button class="tactical-tool" type="button" data-tool="curve" aria-pressed="false" title="Caminho curvado">
+              <svg aria-hidden="true"><use href="#tact-icon-curve"></use></svg><span>Curva</span>
+            </button>
+            <button class="tactical-tool" type="button" data-tool="zone" aria-pressed="false" title="Marcar área ou zona">
+              <svg aria-hidden="true"><use href="#tact-icon-zone"></use></svg><span>Zona</span>
+            </button>
+            <button class="tactical-tool" type="button" data-tool="text" aria-pressed="false" title="Adicionar texto">
+              <svg aria-hidden="true"><use href="#tact-icon-text"></use></svg><span>Texto</span>
+            </button>
+            <button class="tactical-tool tactical-tool--danger" type="button" data-tool="eraser" aria-pressed="false" title="Borracha">
+              <svg aria-hidden="true"><use href="#tact-icon-eraser"></use></svg><span>Borracha</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="tactical-tool-actions">
+          <button id="undo-btn" class="tactical-secondary-btn" type="button" title="Desfazer (Ctrl+Z)" disabled>
+            <svg aria-hidden="true"><use href="#tact-icon-undo"></use></svg><span>Desfazer</span>
+          </button>
+          <button id="redo-btn" class="tactical-secondary-btn" type="button" title="Refazer (Ctrl+Y)" disabled>
+            <svg aria-hidden="true"><use href="#tact-icon-redo"></use></svg><span>Refazer</span>
+          </button>
+          <button id="clear-board-btn" class="tactical-danger-btn" type="button" title="Limpar quadra">
+            <svg aria-hidden="true"><use href="#tact-icon-trash"></use></svg><span>Limpar quadra</span>
+          </button>
+        </div>
+
+        <div class="tactical-legend" aria-label="Legenda tática">
+          <h3>Legenda</h3>
+          <span><i class="is-movement"></i>Movimento</span>
+          <span><i class="is-pass"></i>Passe</span>
+          <span><i class="is-shot"></i>Finalização</span>
+          <span><i class="is-dribble"></i>Condução</span>
+          <span><i class="is-defense"></i>Marcação</span>
+        </div>
+      </aside>
+
+      <section class="tactical-center" aria-labelledby="court-section-title">
+        <div class="tactical-board-toolbar glass-surface" data-export-ignore>
+          <div>
+            <span class="tactical-eyebrow">Quadra oficial</span>
+            <h2 id="court-section-title">Prancheta de futsal</h2>
+          </div>
+          <div class="tactical-board-actions">
+            <button id="orientation-btn" class="tactical-compact-btn" type="button" title="Alternar orientação">
+              <svg aria-hidden="true"><use href="#tact-icon-rotate"></use></svg><span id="orientation-label">Horizontal</span>
+            </button>
+            <button id="add-player-quick-btn" class="tactical-compact-btn tactical-compact-btn--primary" type="button">
+              <svg aria-hidden="true"><use href="#tact-icon-player"></use></svg><span>Jogador</span>
+            </button>
+            <button id="add-ball-quick-btn" class="tactical-compact-btn" type="button">
+              <svg aria-hidden="true"><use href="#tact-icon-ball"></use></svg><span>Bola</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="tactical-court-frame" class="tactical-court-frame glass-surface">
+          <svg id="tactical-court" class="tactical-court" viewBox="0 0 1000 600" role="application" tabindex="0"
+            aria-label="Quadra tática interativa. Use as ferramentas ou selecione jogadores e desenhos."
+            aria-describedby="court-help">
+            <title>Mesa tática de futsal</title>
+            <desc id="court-help">Arraste jogadores e bola. Use a barra de ferramentas para desenhar rotas, passes, finalizações, zonas e observações.</desc>
+            <defs id="tactical-defs"></defs>
+            <g id="tactical-viewport-layer" data-export-reset-transform>
+              <g id="tactical-court-layer" aria-hidden="true"></g>
+              <g id="tactical-zone-layer"></g>
+              <g id="tactical-drawing-layer"></g>
+              <g id="tactical-preview-layer" data-export-ignore></g>
+              <g id="tactical-entity-layer"></g>
+              <g id="tactical-selection-layer" class="tactical-selection-layer" data-export-ignore></g>
+            </g>
+          </svg>
+          <div class="tactical-court-badge" aria-hidden="true">BABA · TÁTICA</div>
+          <div class="tactical-zoom-controls" aria-label="Zoom da quadra" data-export-ignore>
+            <button id="zoom-out-btn" type="button" aria-label="Diminuir zoom" title="Diminuir zoom">
+              <svg aria-hidden="true"><use href="#tact-icon-zoom-out"></use></svg>
+            </button>
+            <output id="zoom-value" aria-live="polite">100%</output>
+            <button id="zoom-in-btn" type="button" aria-label="Aumentar zoom" title="Aumentar zoom">
+              <svg aria-hidden="true"><use href="#tact-icon-zoom-in"></use></svg>
+            </button>
+            <button id="zoom-fit-btn" type="button" aria-label="Ajustar quadra" title="Ajustar quadra">
+              <svg aria-hidden="true"><use href="#tact-icon-fit"></use></svg>
+            </button>
+            <button id="mobile-fullscreen-btn" class="tactical-mobile-fullscreen" type="button"
+              aria-label="Abrir quadra em tela cheia" title="Tela cheia">
+              <svg aria-hidden="true"><use href="#tact-icon-fullscreen"></use></svg>
+            </button>
+          </div>
+          <p id="court-empty-hint" class="tactical-court-empty-hint" data-export-ignore>
+            Toque em <strong>Jogador</strong> para começar ou escolha uma formação.
+          </p>
+        </div>
+
+        <section class="tactical-playback glass-surface" aria-labelledby="playback-title" data-export-ignore>
+          <div class="tactical-playback-head">
+            <div>
+              <span class="tactical-eyebrow">Jogada animada</span>
+              <h2 id="playback-title">Linha do tempo</h2>
+            </div>
+            <button id="record-play-btn" class="tactical-record-btn" type="button" aria-pressed="false">
+              <svg aria-hidden="true"><use href="#tact-icon-record"></use></svg><span>Gravar jogada</span>
+            </button>
+          </div>
+          <div class="tactical-playback-controls">
+            <button id="previous-stage-btn" class="tactical-playback-btn" type="button" aria-label="Voltar uma etapa" title="Voltar uma etapa">
+              <svg aria-hidden="true"><use href="#tact-icon-prev"></use></svg>
+            </button>
+            <button id="play-pause-btn" class="tactical-playback-btn tactical-playback-btn--main" type="button" aria-label="Reproduzir jogada" title="Reproduzir ou pausar (Espaço)">
+              <svg class="play-icon" aria-hidden="true"><use href="#tact-icon-play"></use></svg>
+              <svg class="pause-icon" aria-hidden="true"><use href="#tact-icon-pause"></use></svg>
+            </button>
+            <button id="next-stage-btn" class="tactical-playback-btn" type="button" aria-label="Avançar uma etapa" title="Avançar uma etapa">
+              <svg aria-hidden="true"><use href="#tact-icon-next"></use></svg>
+            </button>
+            <button id="restart-playback-btn" class="tactical-playback-btn" type="button" aria-label="Reiniciar animação" title="Reiniciar animação">
+              <svg aria-hidden="true"><use href="#tact-icon-reset"></use></svg>
+            </button>
+            <div class="tactical-progress-wrap">
+              <input id="animation-progress" type="range" min="0" max="1000" value="0" aria-label="Progresso da animação">
+              <div class="tactical-progress-meta">
+                <output id="animation-time">00:00 / 00:00</output>
+                <span id="stage-caption">Etapa 1 de 1</span>
+              </div>
+            </div>
+            <label class="tactical-speed-control">
+              <span>Velocidade</span>
+              <select id="playback-speed" aria-label="Velocidade da animação">
+                <option value="0.5">0,5×</option>
+                <option value="1" selected>1×</option>
+                <option value="1.5">1,5×</option>
+                <option value="2">2×</option>
+              </select>
+            </label>
+            <label class="tactical-repeat-control">
+              <input id="repeat-playback" type="checkbox">
+              <span>Repetir</span>
+            </label>
+          </div>
+        </section>
+      </section>
+
+      <aside id="tactical-right-panel" class="tactical-panel tactical-right-panel glass-surface" aria-labelledby="right-panel-title" data-export-ignore>
+        <div class="tactical-panel-head">
+          <div>
+            <span class="tactical-eyebrow">Organização</span>
+            <h2 id="right-panel-title">Jogada</h2>
+          </div>
+          <button class="tactical-panel-close" type="button" data-close-panel="right" aria-label="Fechar painel">
+            <svg aria-hidden="true"><use href="#tact-icon-close"></use></svg>
+          </button>
+        </div>
+        <div class="tactical-side-tabs" role="tablist" aria-label="Painéis da jogada">
+          <button id="tab-roster" class="is-active" type="button" role="tab" aria-selected="true" aria-controls="panel-roster" data-side-tab="roster">Jogadores</button>
+          <button id="tab-stages" type="button" role="tab" aria-selected="false" aria-controls="panel-stages" data-side-tab="stages">Etapas</button>
+          <button id="tab-library" type="button" role="tab" aria-selected="false" aria-controls="panel-library" data-side-tab="library">Salvas</button>
+          <button id="tab-inspector" type="button" role="tab" aria-selected="false" aria-controls="panel-inspector" data-side-tab="inspector">Editar</button>
+        </div>
+
+        <section id="panel-roster" class="tactical-side-panel is-active" role="tabpanel" aria-labelledby="tab-roster" data-side-panel="roster">
+          <div class="tactical-panel-actions">
+            <button id="roster-add-player-btn" class="tactical-primary-btn" type="button">
+              <svg aria-hidden="true"><use href="#tact-icon-player"></use></svg><span>Adicionar jogador</span>
+            </button>
+            <button id="roster-add-ball-btn" class="tactical-secondary-btn" type="button">
+              <svg aria-hidden="true"><use href="#tact-icon-ball"></use></svg><span>Bola</span>
+            </button>
+          </div>
+          <div class="tactical-formations">
+            <div class="tactical-section-title">
+              <h3>Formações rápidas</h3>
+              <select id="formation-team" aria-label="Time para a formação">
+                <option value="team1">Time 1</option>
+                <option value="team2">Time 2</option>
+              </select>
+            </div>
+            <div class="tactical-formation-grid">
+              <button type="button" data-formation="2-2"><strong>2–2</strong><small>Quadrado</small></button>
+              <button type="button" data-formation="3-1"><strong>3–1</strong><small>Pivô</small></button>
+              <button type="button" data-formation="1-2-1"><strong>1–2–1</strong><small>Losango</small></button>
+              <button type="button" data-formation="4-0"><strong>4–0</strong><small>Rotação</small></button>
+              <button type="button" data-formation="custom"><strong>Livre</strong><small>Personalizada</small></button>
+            </div>
+          </div>
+          <div class="tactical-roster-summary">
+            <span><i class="team-one"></i><strong id="team-one-count">0</strong> Time 1</span>
+            <span><i class="team-two"></i><strong id="team-two-count">0</strong> Time 2</span>
+          </div>
+          <div id="roster-list" class="tactical-roster-list" aria-live="polite"></div>
+        </section>
+
+        <section id="panel-stages" class="tactical-side-panel" role="tabpanel" aria-labelledby="tab-stages" data-side-panel="stages" hidden>
+          <div class="tactical-stage-actions">
+            <button id="add-stage-btn" class="tactical-primary-btn" type="button">
+              <svg aria-hidden="true"><use href="#tact-icon-new"></use></svg><span>Adicionar etapa</span>
+            </button>
+            <button id="delete-stage-btn" class="tactical-danger-btn" type="button">
+              <svg aria-hidden="true"><use href="#tact-icon-trash"></use></svg><span>Excluir etapa</span>
+            </button>
+          </div>
+          <label class="tactical-field">
+            <span id="stage-duration-label">Duração até esta etapa</span>
+            <div class="tactical-duration-field">
+              <input id="stage-duration" type="range" min="300" max="5000" step="100" value="1200">
+              <output id="stage-duration-value">1,2 s</output>
+            </div>
+          </label>
+          <div id="stages-list" class="tactical-stages-list" aria-live="polite"></div>
+          <p class="tactical-help-text">Posicione os elementos, inicie a gravação e adicione uma etapa após cada novo movimento.</p>
+        </section>
+
+        <section id="panel-library" class="tactical-side-panel" role="tabpanel" aria-labelledby="tab-library" data-side-panel="library" hidden>
+          <div class="tactical-library-filter">
+            <label class="tactical-field">
+              <span>Pesquisar</span>
+              <input id="library-search" type="search" maxlength="80" placeholder="Nome da jogada">
+            </label>
+            <label class="tactical-field">
+              <span>Categoria</span>
+              <select id="library-category">
+                <option value="all">Todas</option>
+                <option value="ataque">Ataque</option>
+                <option value="defesa">Defesa</option>
+                <option value="bola-parada">Bola parada</option>
+                <option value="contra-ataque">Contra-ataque</option>
+                <option value="saida-pressao">Saída de pressão</option>
+                <option value="personalizada">Personalizada</option>
+              </select>
+            </label>
+          </div>
+          <div id="library-list" class="tactical-library-list" aria-live="polite"></div>
+        </section>
+
+        <section id="panel-inspector" class="tactical-side-panel" role="tabpanel" aria-labelledby="tab-inspector" data-side-panel="inspector" hidden>
+          <div id="selection-inspector" class="tactical-inspector">
+            <div class="tactical-empty-state">
+              <svg aria-hidden="true"><use href="#tact-icon-select"></use></svg>
+              <strong>Nada selecionado</strong>
+              <p>Selecione um jogador, a bola ou um desenho para editar suas propriedades.</p>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <nav class="tactical-mobile-dock glass-surface" aria-label="Controles rápidos" data-export-ignore>
+    <button type="button" data-open-panel="tools" aria-label="Abrir ferramentas">
+      <svg aria-hidden="true"><use href="#tact-icon-menu"></use></svg><span>Ferramentas</span>
+    </button>
+    <button type="button" id="mobile-add-player" aria-label="Adicionar jogador">
+      <svg aria-hidden="true"><use href="#tact-icon-player"></use></svg><span>Jogador</span>
+    </button>
+    <button type="button" id="mobile-play-pause" class="is-primary" aria-label="Reproduzir jogada">
+      <svg class="play-icon" aria-hidden="true"><use href="#tact-icon-play"></use></svg>
+      <svg class="pause-icon" aria-hidden="true"><use href="#tact-icon-pause"></use></svg>
+      <span>Reproduzir</span>
+    </button>
+    <button type="button" id="mobile-undo" aria-label="Desfazer">
+      <svg aria-hidden="true"><use href="#tact-icon-undo"></use></svg><span>Desfazer</span>
+    </button>
+    <button type="button" data-open-panel="right" aria-label="Abrir jogadores e etapas">
+      <svg aria-hidden="true"><use href="#tact-icon-folder"></use></svg><span>Jogada</span>
+    </button>
+  </nav>
+
+  <div id="export-menu" class="tactical-popover tactical-export-menu hidden" role="menu" aria-label="Exportar e compartilhar" data-export-ignore>
+    <button id="export-png-btn" type="button" role="menuitem"><svg aria-hidden="true"><use href="#tact-icon-export"></use></svg><span><strong>Imagem PNG</strong><small>Quadra sem controles</small></span></button>
+    <button id="export-json-btn" type="button" role="menuitem"><svg aria-hidden="true"><use href="#tact-icon-save"></use></svg><span><strong>Exportar JSON</strong><small>Arquivo editável</small></span></button>
+    <button id="import-json-btn" type="button" role="menuitem"><svg aria-hidden="true"><use href="#tact-icon-folder"></use></svg><span><strong>Importar JSON</strong><small>Abrir uma jogada</small></span></button>
+    <button id="print-board-btn" type="button" role="menuitem"><svg aria-hidden="true"><use href="#tact-icon-board"></use></svg><span><strong>Imprimir</strong><small>Estratégia atual</small></span></button>
+    <button id="record-video-btn" type="button" role="menuitem"><svg aria-hidden="true"><use href="#tact-icon-record"></use></svg><span><strong>Gravar animação</strong><small>Vídeo WebM compatível</small></span></button>
+  </div>
+  <input id="import-json-file" class="tactical-visually-hidden" type="file" accept="application/json,.json"
+    aria-label="Importar jogada em arquivo JSON" data-export-ignore>
+
+  <dialog id="player-dialog" class="tactical-dialog" aria-labelledby="player-dialog-title">
+    <form id="player-form" method="dialog">
+      <div class="tactical-dialog-head">
+        <div>
+          <span class="tactical-eyebrow">Marcador</span>
+          <h2 id="player-dialog-title">Adicionar jogador</h2>
+        </div>
+        <button class="tactical-dialog-close" type="button" data-close-dialog="player-dialog" aria-label="Fechar">
+          <svg aria-hidden="true"><use href="#tact-icon-close"></use></svg>
+        </button>
+      </div>
+      <div class="tactical-form-grid">
+        <label class="tactical-field tactical-field--wide">
+          <span>Nome</span>
+          <input id="player-name" name="name" type="text" maxlength="40" placeholder="Nome do jogador" required>
+        </label>
+        <label class="tactical-field">
+          <span>Número</span>
+          <input id="player-number" name="number" type="number" min="0" max="99" inputmode="numeric" value="10">
+        </label>
+        <label class="tactical-field">
+          <span>Posição</span>
+          <select id="player-position" name="position">
+            <option value="goleiro">Goleiro</option>
+            <option value="fixo">Fixo</option>
+            <option value="ala" selected>Ala</option>
+            <option value="pivo">Pivô</option>
+          </select>
+        </label>
+        <label class="tactical-field">
+          <span>Equipe</span>
+          <select id="player-team" name="team">
+            <option value="team1">Time 1</option>
+            <option value="team2">Time 2</option>
+          </select>
+        </label>
+        <label class="tactical-field">
+          <span>Cor</span>
+          <span class="tactical-color-field">
+            <input id="player-color" name="color" type="color" value="#0ea5e9">
+            <output id="player-color-value">#0ea5e9</output>
+          </span>
+        </label>
+        <label class="tactical-check-field tactical-field--wide">
+          <input id="player-locked" name="locked" type="checkbox">
+          <span><strong>Bloquear posição</strong><small>Evita movimentos acidentais na quadra.</small></span>
+        </label>
+      </div>
+      <div class="tactical-dialog-actions">
+        <button id="player-delete-btn" class="tactical-danger-btn hidden" type="button">Remover</button>
+        <button id="player-duplicate-btn" class="tactical-secondary-btn hidden" type="button">Duplicar</button>
+        <span></span>
+        <button class="tactical-secondary-btn" type="button" data-close-dialog="player-dialog">Cancelar</button>
+        <button class="tactical-primary-btn" type="submit">Salvar jogador</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="text-dialog" class="tactical-dialog tactical-dialog--small" aria-labelledby="text-dialog-title">
+    <form id="text-form" method="dialog">
+      <div class="tactical-dialog-head">
+        <div>
+          <span class="tactical-eyebrow">Observação</span>
+          <h2 id="text-dialog-title">Adicionar texto</h2>
+        </div>
+        <button class="tactical-dialog-close" type="button" data-close-dialog="text-dialog" aria-label="Fechar">
+          <svg aria-hidden="true"><use href="#tact-icon-close"></use></svg>
+        </button>
+      </div>
+      <label class="tactical-field">
+        <span>Texto na quadra</span>
+        <textarea id="drawing-text" maxlength="120" rows="3" placeholder="Ex.: pressionar após o passe" required></textarea>
+      </label>
+      <div class="tactical-dialog-actions">
+        <span></span>
+        <button class="tactical-secondary-btn" type="button" data-close-dialog="text-dialog">Cancelar</button>
+        <button class="tactical-primary-btn" type="submit">Adicionar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="context-menu" class="tactical-popover tactical-context-menu hidden" role="menu" aria-label="Opções do elemento" data-export-ignore>
+    <button type="button" role="menuitem" data-context-action="edit">Editar</button>
+    <button type="button" role="menuitem" data-context-action="duplicate">Duplicar</button>
+    <button type="button" role="menuitem" data-context-action="lock">Bloquear posição</button>
+    <button type="button" role="menuitem" data-context-action="delete" class="is-danger">Excluir</button>
+  </div>
+
+  <div id="tactical-panel-backdrop" class="tactical-panel-backdrop hidden" data-export-ignore></div>
+  <div id="tactical-toast" class="tactical-toast" role="status" aria-live="polite" aria-atomic="true" data-export-ignore></div>
+  <div id="tactical-live-status" class="tactical-visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="mesa-tatica-storage.js?v=20260729-1"></script>
+  <script src="mesa-tatica-export.js?v=20260729-1"></script>
+  <script src="mesa-tatica.js?v=20260729-1" defer></script>
+</body>
+
+</html>

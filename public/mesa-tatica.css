@@ -1,0 +1,2894 @@
+/* ==========================================================================
+   Mesa Tática — Baba Psyzon
+   Camada visual isolada. Reutiliza os tokens de baba-ui.css.
+   ========================================================================== */
+
+html.tactical-dark-boot {
+  background: #06131d;
+}
+
+body.tactical-page {
+  --tactical-tools-width: clamp(13.75rem, 17vw, 15.625rem);
+  --tactical-side-width: clamp(17.5rem, 21vw, 20rem);
+  --tactical-gap: clamp(.75rem, 1.2vw, 1.15rem);
+  --tactical-header-height: 4.25rem;
+  --tactical-court: #08775d;
+  --tactical-court-deep: #04533f;
+  --tactical-court-light: rgba(255, 255, 255, .94);
+  --tactical-panel: rgba(249, 252, 253, .76);
+  --tactical-panel-strong: rgba(253, 254, 255, .91);
+  --tactical-panel-soft: rgba(242, 248, 250, .78);
+  --tactical-stroke: rgba(91, 120, 137, .23);
+  --tactical-stroke-strong: rgba(64, 98, 116, .35);
+  --tactical-shadow: 0 20px 55px rgba(13, 43, 54, .14);
+  --tactical-movement: #22c55e;
+  --tactical-pass: #38bdf8;
+  --tactical-shot: #f43f5e;
+  --tactical-dribble: #a78bfa;
+  --tactical-defense: #f59e0b;
+  min-height: 100dvh;
+  overflow-x: clip;
+  color: var(--color-text);
+  background-color: #e5f1f2;
+  background-image:
+    linear-gradient(118deg, rgba(244, 250, 250, .94), rgba(226, 241, 242, .82)),
+    radial-gradient(circle at 10% 0%, rgba(7, 140, 105, .18), transparent 34rem),
+    radial-gradient(circle at 90% 18%, rgba(37, 99, 168, .16), transparent 31rem),
+    url("img/baba-tactical-ambient-v1.jpg");
+  background-position: center, center, center, center;
+  background-size: cover, cover, cover, cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+body.tactical-page.baba-dark-theme {
+  --tactical-court: #075a48;
+  --tactical-court-deep: #032f27;
+  --tactical-court-light: rgba(242, 255, 251, .92);
+  --tactical-panel: rgba(10, 29, 42, .78);
+  --tactical-panel-strong: rgba(13, 35, 50, .94);
+  --tactical-panel-soft: rgba(20, 45, 60, .82);
+  --tactical-stroke: rgba(171, 205, 218, .19);
+  --tactical-stroke-strong: rgba(180, 218, 231, .31);
+  --tactical-shadow: 0 22px 64px rgba(0, 0, 0, .38);
+  background-color: #06131d;
+  background-image:
+    linear-gradient(118deg, rgba(2, 11, 18, .92), rgba(4, 26, 35, .83)),
+    radial-gradient(circle at 10% 0%, rgba(16, 185, 129, .16), transparent 34rem),
+    radial-gradient(circle at 90% 18%, rgba(14, 165, 233, .14), transparent 31rem),
+    url("img/baba-tactical-ambient-v1.jpg");
+}
+
+.tactical-page *,
+.tactical-page *::before,
+.tactical-page *::after {
+  box-sizing: border-box;
+}
+
+.tactical-page .tactical-symbols {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.tactical-page .tactical-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}
+
+.tactical-page .hidden,
+.tactical-page [hidden] {
+  display: none !important;
+}
+
+.tactical-page :is(
+  .tactical-header,
+  .tactical-play-meta,
+  .tactical-panel,
+  .tactical-board-toolbar,
+  .tactical-court-frame,
+  .tactical-playback,
+  .tactical-mobile-dock,
+  .tactical-rotate-hint
+) {
+  border: 1px solid var(--tactical-stroke);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, .42), rgba(255, 255, 255, .08)),
+    var(--tactical-panel);
+  box-shadow: var(--shadow-inset), var(--tactical-shadow);
+  -webkit-backdrop-filter: blur(var(--blur-glass)) saturate(145%);
+  backdrop-filter: blur(var(--blur-glass)) saturate(145%);
+}
+
+.tactical-page.baba-dark-theme :is(
+  .tactical-header,
+  .tactical-play-meta,
+  .tactical-panel,
+  .tactical-board-toolbar,
+  .tactical-playback,
+  .tactical-mobile-dock,
+  .tactical-rotate-hint
+) {
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .012)),
+    var(--tactical-panel);
+}
+
+/* Header ------------------------------------------------------------------ */
+
+.tactical-page .tactical-header {
+  position: sticky;
+  z-index: calc(var(--z-sticky) + 10);
+  top: max(.5rem, env(safe-area-inset-top));
+  display: grid;
+  width: min(calc(100% - 1.5rem), 112rem);
+  min-height: var(--tactical-header-height);
+  grid-template-columns: minmax(13rem, 1fr) auto minmax(20rem, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  margin: max(.5rem, env(safe-area-inset-top)) auto 0;
+  padding: .55rem .7rem;
+  border-radius: var(--radius-xl);
+}
+
+.tactical-page .tactical-brand,
+.tactical-page .tactical-header-actions,
+.tactical-page .tactical-header-state {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.tactical-page .tactical-brand {
+  gap: .55rem;
+}
+
+.tactical-page .tactical-brand > img {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgba(2, 25, 30, .2));
+}
+
+.tactical-page .tactical-brand-copy {
+  display: grid;
+  min-width: 0;
+  line-height: 1.08;
+}
+
+.tactical-page .tactical-brand-copy strong {
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: clamp(.95rem, 1.2vw, 1.15rem);
+  font-weight: 700;
+  letter-spacing: -.025em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tactical-page .tactical-brand-copy small {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: .68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tactical-page .tactical-header-state {
+  justify-content: center;
+}
+
+.tactical-page .tactical-save-state {
+  display: inline-flex;
+  min-height: 2rem;
+  max-width: 15rem;
+  align-items: center;
+  gap: .45rem;
+  padding: .35rem .65rem;
+  overflow: hidden;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-soft);
+  background: var(--tactical-panel-soft);
+  box-shadow: var(--shadow-xs), var(--shadow-inset);
+  font-size: .7rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tactical-page .tactical-save-state > i {
+  width: .5rem;
+  height: .5rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--color-warning);
+  box-shadow: 0 0 0 4px rgba(182, 106, 0, .1);
+}
+
+.tactical-page .tactical-save-state.is-saving > i {
+  background: var(--color-info);
+  animation: tactical-status-pulse 1.1s ease-in-out infinite;
+}
+
+.tactical-page .tactical-save-state.is-saved > i,
+.tactical-page .tactical-save-state.is-success > i {
+  background: var(--color-success);
+  box-shadow: 0 0 0 4px rgba(7, 148, 85, .1);
+}
+
+.tactical-page .tactical-header-actions {
+  justify-content: flex-end;
+  gap: .4rem;
+}
+
+.tactical-page .tactical-theme-sun {
+  display: none;
+}
+
+.tactical-page.baba-dark-theme .tactical-theme-moon {
+  display: none;
+}
+
+.tactical-page.baba-dark-theme .tactical-theme-sun {
+  display: block;
+}
+
+/* Shared controls --------------------------------------------------------- */
+
+.tactical-page :is(
+  .tactical-icon-btn,
+  .tactical-action-btn,
+  .tactical-primary-btn,
+  .tactical-secondary-btn,
+  .tactical-danger-btn,
+  .tactical-panel-close,
+  .tactical-tool,
+  .tactical-compact-btn,
+  .tactical-record-btn,
+  .tactical-playback-btn,
+  .tactical-dialog-close,
+  .tactical-side-tabs > button,
+  .tactical-formation-grid > button,
+  .tactical-mobile-dock > button,
+  .tactical-popover > button,
+  .tactical-rotate-hint > button,
+  .tactical-zoom-controls > button
+) {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  padding: .52rem .72rem;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-soft);
+  background: var(--tactical-panel-strong);
+  box-shadow: var(--shadow-xs), var(--shadow-inset);
+  font: inherit;
+  font-size: .76rem;
+  font-weight: 650;
+  line-height: 1.1;
+  text-align: center;
+  text-decoration: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.tactical-page :is(
+  .tactical-icon-btn,
+  .tactical-panel-close,
+  .tactical-dialog-close,
+  .tactical-playback-btn,
+  .tactical-zoom-controls > button,
+  .tactical-rotate-hint > button
+) {
+  width: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0;
+}
+
+.tactical-page :is(
+  .tactical-icon-btn,
+  .tactical-action-btn,
+  .tactical-primary-btn,
+  .tactical-secondary-btn,
+  .tactical-danger-btn,
+  .tactical-panel-close,
+  .tactical-tool,
+  .tactical-compact-btn,
+  .tactical-record-btn,
+  .tactical-playback-btn,
+  .tactical-dialog-close,
+  .tactical-mobile-dock > button,
+  .tactical-popover > button,
+  .tactical-rotate-hint > button,
+  .tactical-zoom-controls > button
+) svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+}
+
+.tactical-page :is(
+  .tactical-action-btn--primary,
+  .tactical-primary-btn,
+  .tactical-compact-btn--primary,
+  .tactical-playback-btn--main,
+  .tactical-mobile-dock > .is-primary
+) {
+  border-color: rgba(4, 102, 77, .28);
+  color: #fff;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .17), transparent 44%),
+    var(--color-primary);
+  box-shadow: var(--shadow-primary), inset 0 1px 0 rgba(255, 255, 255, .24);
+}
+
+.tactical-page .tactical-danger-btn,
+.tactical-page .tactical-tool--danger,
+.tactical-page .tactical-context-menu .is-danger {
+  border-color: rgba(217, 45, 63, .2);
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.tactical-page :is(
+  .tactical-icon-btn,
+  .tactical-action-btn,
+  .tactical-primary-btn,
+  .tactical-secondary-btn,
+  .tactical-danger-btn,
+  .tactical-panel-close,
+  .tactical-tool,
+  .tactical-compact-btn,
+  .tactical-record-btn,
+  .tactical-playback-btn,
+  .tactical-dialog-close,
+  .tactical-side-tabs > button,
+  .tactical-formation-grid > button,
+  .tactical-mobile-dock > button,
+  .tactical-popover > button,
+  .tactical-rotate-hint > button,
+  .tactical-zoom-controls > button
+):focus-visible,
+.tactical-page .tactical-field :is(input, select, textarea):focus-visible,
+.tactical-page .tactical-duration-field input:focus-visible {
+  outline: 3px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.tactical-page :is(
+  .tactical-icon-btn,
+  .tactical-action-btn,
+  .tactical-primary-btn,
+  .tactical-secondary-btn,
+  .tactical-danger-btn,
+  .tactical-panel-close,
+  .tactical-tool,
+  .tactical-compact-btn,
+  .tactical-record-btn,
+  .tactical-playback-btn,
+  .tactical-dialog-close,
+  .tactical-side-tabs > button,
+  .tactical-formation-grid > button,
+  .tactical-mobile-dock > button,
+  .tactical-popover > button,
+  .tactical-rotate-hint > button,
+  .tactical-zoom-controls > button
+):active:not(:disabled) {
+  transform: scale(.97);
+}
+
+.tactical-page :is(
+  .tactical-icon-btn,
+  .tactical-action-btn,
+  .tactical-primary-btn,
+  .tactical-secondary-btn,
+  .tactical-danger-btn,
+  .tactical-panel-close,
+  .tactical-tool,
+  .tactical-compact-btn,
+  .tactical-record-btn,
+  .tactical-playback-btn,
+  .tactical-dialog-close,
+  .tactical-side-tabs > button,
+  .tactical-formation-grid > button,
+  .tactical-mobile-dock > button,
+  .tactical-popover > button,
+  .tactical-rotate-hint > button,
+  .tactical-zoom-controls > button
+):disabled {
+  cursor: not-allowed;
+  opacity: .44;
+  filter: saturate(.45);
+  box-shadow: none;
+  transform: none;
+}
+
+@media (hover: hover) {
+  .tactical-page :is(
+    .tactical-icon-btn,
+    .tactical-action-btn,
+    .tactical-primary-btn,
+    .tactical-secondary-btn,
+    .tactical-danger-btn,
+    .tactical-panel-close,
+    .tactical-tool,
+    .tactical-compact-btn,
+    .tactical-record-btn,
+    .tactical-playback-btn,
+    .tactical-dialog-close,
+    .tactical-side-tabs > button,
+    .tactical-formation-grid > button,
+    .tactical-mobile-dock > button,
+    .tactical-popover > button,
+    .tactical-rotate-hint > button,
+    .tactical-zoom-controls > button
+  ):hover:not(:disabled) {
+    border-color: rgba(7, 140, 105, .34);
+    color: var(--color-primary-strong);
+    background: var(--tactical-panel-strong);
+    box-shadow: var(--shadow-sm), var(--shadow-inset);
+    transform: translateY(-1px);
+  }
+
+  .tactical-page :is(
+    .tactical-action-btn--primary,
+    .tactical-primary-btn,
+    .tactical-compact-btn--primary,
+    .tactical-playback-btn--main,
+    .tactical-mobile-dock > .is-primary
+  ):hover:not(:disabled) {
+    color: #fff;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, .2), transparent 44%),
+      var(--color-primary-hover);
+  }
+
+  .tactical-page :is(.tactical-danger-btn, .tactical-tool--danger, .tactical-context-menu .is-danger):hover:not(:disabled) {
+    border-color: rgba(217, 45, 63, .34);
+    color: var(--color-danger-hover);
+    background: #ffe7eb;
+  }
+}
+
+/* Main layout ------------------------------------------------------------- */
+
+.tactical-page .tactical-shell {
+  position: relative;
+  z-index: var(--z-base);
+  width: min(calc(100% - 1.5rem), 112rem);
+  margin: var(--space-3) auto var(--space-8);
+  padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+}
+
+.tactical-page .tactical-play-meta {
+  display: grid;
+  grid-template-columns: minmax(13rem, 1fr) minmax(10rem, .45fr) minmax(16rem, 1.15fr);
+  gap: .65rem;
+  padding: .7rem;
+  border-radius: var(--radius-lg);
+}
+
+.tactical-page .tactical-field {
+  display: grid;
+  min-width: 0;
+  gap: .3rem;
+}
+
+.tactical-page .tactical-field > span:first-child {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .045em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tactical-page .tactical-field :is(input, select, textarea) {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: .62rem .7rem;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: var(--radius-sm);
+  outline: none;
+  color: var(--color-text);
+  background: var(--tactical-panel-strong);
+  box-shadow: var(--shadow-inset);
+  font: inherit;
+  font-size: .78rem;
+  transition: border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.tactical-page .tactical-field textarea {
+  min-height: 6.5rem;
+  resize: vertical;
+}
+
+.tactical-page .tactical-field :is(input, textarea)::placeholder {
+  color: color-mix(in srgb, var(--color-text-muted) 72%, transparent);
+}
+
+.tactical-page .tactical-field :is(input, select, textarea):focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 4px rgba(7, 140, 105, .1), var(--shadow-inset);
+}
+
+.tactical-page.baba-dark-theme .tactical-field :is(input, select, textarea) {
+  border-color: var(--tactical-stroke);
+  color: var(--color-text);
+  background: rgba(7, 25, 37, .88);
+}
+
+.tactical-page .tactical-workspace {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: var(--tactical-tools-width) minmax(0, 1fr) var(--tactical-side-width);
+  align-items: start;
+  gap: var(--tactical-gap);
+  margin-top: var(--tactical-gap);
+}
+
+.tactical-page .tactical-panel {
+  min-width: 0;
+  height: calc(100dvh - 7.2rem);
+  max-height: 62rem;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+
+.tactical-page .tactical-tools-panel,
+.tactical-page .tactical-right-panel {
+  position: sticky;
+  top: calc(var(--tactical-header-height) + max(1.4rem, env(safe-area-inset-top)));
+}
+
+.tactical-page .tactical-tools-panel {
+  padding: .85rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.tactical-page .tactical-right-panel {
+  display: flex;
+  flex-direction: column;
+  padding: .85rem;
+}
+
+.tactical-page .tactical-panel-head,
+.tactical-page .tactical-playback-head,
+.tactical-page .tactical-section-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+}
+
+.tactical-page .tactical-panel-head {
+  position: sticky;
+  z-index: 2;
+  top: -.85rem;
+  margin: -.85rem -.85rem .65rem;
+  padding: .85rem;
+  border-bottom: 1px solid var(--tactical-stroke);
+  background: var(--tactical-panel-strong);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.tactical-page .tactical-panel-head h2,
+.tactical-page .tactical-board-toolbar h2,
+.tactical-page .tactical-playback h2 {
+  font-size: .95rem;
+  letter-spacing: -.018em;
+}
+
+.tactical-page .tactical-eyebrow {
+  display: block;
+  margin-bottom: .08rem;
+  color: var(--color-primary);
+  font-size: .61rem;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.tactical-page button.tactical-panel-close {
+  display: none;
+}
+
+/* Tool panel -------------------------------------------------------------- */
+
+.tactical-page .tactical-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .42rem;
+}
+
+.tactical-page .tactical-tool {
+  position: relative;
+  min-height: 3.15rem;
+  justify-content: flex-start;
+  padding: .48rem .55rem;
+  overflow: hidden;
+  font-size: .68rem;
+}
+
+.tactical-page .tactical-tool > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tactical-page .tactical-tool > kbd {
+  margin-left: auto;
+  padding: .12rem .28rem;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: .35rem;
+  color: var(--color-text-muted);
+  background: var(--tactical-panel-soft);
+  font-family: inherit;
+  font-size: .55rem;
+  line-height: 1;
+}
+
+.tactical-page .tactical-tool.is-active,
+.tactical-page .tactical-tool[aria-pressed="true"] {
+  border-color: rgba(7, 140, 105, .4);
+  color: var(--color-primary-strong);
+  background: var(--color-primary-soft);
+  box-shadow: 0 8px 20px rgba(7, 140, 105, .13), var(--shadow-inset);
+}
+
+.tactical-page .tactical-tool--movement {
+  --tactical-tool-accent: var(--tactical-movement);
+}
+
+.tactical-page .tactical-tool--pass {
+  --tactical-tool-accent: var(--tactical-pass);
+}
+
+.tactical-page .tactical-tool--shot {
+  --tactical-tool-accent: var(--tactical-shot);
+}
+
+.tactical-page .tactical-tool--dribble {
+  --tactical-tool-accent: var(--tactical-dribble);
+}
+
+.tactical-page .tactical-tool--defense {
+  --tactical-tool-accent: var(--tactical-defense);
+}
+
+.tactical-page :is(
+  .tactical-tool--movement,
+  .tactical-tool--pass,
+  .tactical-tool--shot,
+  .tactical-tool--dribble,
+  .tactical-tool--defense
+) svg {
+  color: var(--tactical-tool-accent);
+}
+
+.tactical-page :is(
+  .tactical-tool--movement,
+  .tactical-tool--pass,
+  .tactical-tool--shot,
+  .tactical-tool--dribble,
+  .tactical-tool--defense
+).is-active,
+.tactical-page :is(
+  .tactical-tool--movement,
+  .tactical-tool--pass,
+  .tactical-tool--shot,
+  .tactical-tool--dribble,
+  .tactical-tool--defense
+)[aria-pressed="true"] {
+  border-color: var(--tactical-tool-accent);
+  color: var(--tactical-tool-accent);
+  background: color-mix(in srgb, var(--tactical-tool-accent) 12%, var(--tactical-panel-strong));
+}
+
+.tactical-page .tactical-tool-section {
+  margin-top: .85rem;
+  padding-top: .75rem;
+  border-top: 1px solid var(--tactical-stroke);
+}
+
+.tactical-page .tactical-tool-section > h3,
+.tactical-page .tactical-legend > h3 {
+  margin-bottom: .5rem;
+  color: var(--color-text-muted);
+  font-size: .64rem;
+  font-weight: 750;
+  letter-spacing: .065em;
+  text-transform: uppercase;
+}
+
+.tactical-page .tactical-tool-grid--routes,
+.tactical-page .tactical-tool-grid--draw {
+  grid-template-columns: 1fr;
+}
+
+.tactical-page .tactical-tool-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .42rem;
+  margin-top: .85rem;
+  padding-top: .75rem;
+  border-top: 1px solid var(--tactical-stroke);
+}
+
+.tactical-page .tactical-tool-actions .tactical-danger-btn {
+  grid-column: 1 / -1;
+}
+
+.tactical-page .tactical-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .42rem .65rem;
+  margin-top: .85rem;
+  padding: .7rem;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: var(--radius-sm);
+  background: var(--tactical-panel-soft);
+}
+
+.tactical-page .tactical-legend > h3 {
+  width: 100%;
+  margin: 0;
+}
+
+.tactical-page .tactical-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  color: var(--color-text-muted);
+  font-size: .61rem;
+  font-weight: 650;
+}
+
+.tactical-page .tactical-legend > span > i {
+  width: 1.2rem;
+  height: .22rem;
+  border-radius: var(--radius-pill);
+  background: currentColor;
+}
+
+.tactical-page .tactical-legend .is-movement { color: var(--tactical-movement); }
+.tactical-page .tactical-legend .is-pass { color: var(--tactical-pass); border-top: 2px dashed currentColor; background: transparent; }
+.tactical-page .tactical-legend .is-shot { color: var(--tactical-shot); height: .32rem; }
+.tactical-page .tactical-legend .is-dribble { color: var(--tactical-dribble); border-radius: 50%; }
+.tactical-page .tactical-legend .is-defense { color: var(--tactical-defense); border-top: 3px double currentColor; background: transparent; }
+
+/* Center and court -------------------------------------------------------- */
+
+.tactical-page .tactical-center {
+  display: grid;
+  min-width: 0;
+  gap: .65rem;
+}
+
+.tactical-page .tactical-board-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .6rem .7rem;
+  border-radius: var(--radius-lg);
+}
+
+.tactical-page .tactical-board-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .4rem;
+}
+
+.tactical-page .tactical-compact-btn {
+  min-height: 2.5rem;
+  padding: .46rem .62rem;
+  font-size: .7rem;
+}
+
+.tactical-page .tactical-court-frame {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 5 / 3;
+  place-items: center;
+  padding: clamp(.4rem, .8vw, .75rem);
+  overflow: hidden;
+  border-color: rgba(224, 255, 247, .26);
+  border-radius: clamp(1rem, 2vw, 1.55rem);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(99, 255, 208, .12), transparent 43%),
+    linear-gradient(145deg, rgba(1, 28, 24, .96), rgba(1, 16, 24, .98));
+  box-shadow:
+    0 26px 72px rgba(2, 23, 25, .34),
+    inset 0 1px 0 rgba(255, 255, 255, .16);
+  isolation: isolate;
+}
+
+body.tactical-page.tactical-dialog-open {
+  overflow: hidden;
+}
+
+body.tactical-page.tactical-drawer-open {
+  overflow: hidden;
+}
+
+body.tactical-page.tactical-is-exporting {
+  cursor: progress;
+}
+
+.tactical-page .tactical-court-frame::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(255, 255, 255, .028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .025) 1px, transparent 1px);
+  background-size: 2rem 2rem;
+  content: "";
+  opacity: .55;
+}
+
+.tactical-page .tactical-court-frame.is-vertical {
+  width: min(100%, 36rem);
+  aspect-ratio: 3 / 5;
+  justify-self: center;
+}
+
+.tactical-page .tactical-court-frame:fullscreen,
+.tactical-page .tactical-court-frame:-webkit-full-screen {
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  aspect-ratio: auto;
+  padding: max(.5rem, env(safe-area-inset-top)) max(.5rem, env(safe-area-inset-right)) max(.5rem, env(safe-area-inset-bottom)) max(.5rem, env(safe-area-inset-left));
+  border: 0;
+  border-radius: 0;
+  background: #031a1b;
+}
+
+.tactical-page .tactical-center:fullscreen,
+.tactical-page .tactical-center:-webkit-full-screen {
+  display: grid;
+  width: 100vw;
+  height: 100dvh;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: .55rem;
+  padding:
+    max(.5rem, env(safe-area-inset-top))
+    max(.5rem, env(safe-area-inset-right))
+    max(.5rem, env(safe-area-inset-bottom))
+    max(.5rem, env(safe-area-inset-left));
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(25, 194, 145, .16), transparent 40rem),
+    #031a1b;
+}
+
+.tactical-page .tactical-center:fullscreen .tactical-court-frame,
+.tactical-page .tactical-center:-webkit-full-screen .tactical-court-frame {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+
+.tactical-page .tactical-court {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  border-radius: clamp(.65rem, 1.3vw, 1rem);
+  background: var(--tactical-court);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .1),
+    inset 0 0 4rem rgba(0, 35, 27, .22);
+  cursor: default;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.tactical-page .tactical-court:focus-visible {
+  outline: 4px solid rgba(103, 232, 249, .86);
+  outline-offset: -4px;
+}
+
+.tactical-page .tactical-entity:focus-visible,
+.tactical-page .tactical-drawing:focus-visible {
+  outline: none;
+  filter: drop-shadow(0 0 7px rgba(250, 204, 21, .92));
+}
+
+.tactical-page[data-active-tool="pan"] .tactical-court,
+.tactical-page .tactical-court.is-panning {
+  cursor: grab;
+}
+
+.tactical-page[data-active-tool="pan"] .tactical-court:active,
+.tactical-page .tactical-court.is-panning:active {
+  cursor: grabbing;
+}
+
+.tactical-page[data-active-tool="movement"] .tactical-court,
+.tactical-page[data-active-tool="pass"] .tactical-court,
+.tactical-page[data-active-tool="shot"] .tactical-court,
+.tactical-page[data-active-tool="dribble"] .tactical-court,
+.tactical-page[data-active-tool="defense"] .tactical-court,
+.tactical-page[data-active-tool="line"] .tactical-court,
+.tactical-page[data-active-tool="dashed"] .tactical-court,
+.tactical-page[data-active-tool="curve"] .tactical-court,
+.tactical-page[data-active-tool="zone"] .tactical-court,
+.tactical-page[data-active-tool="text"] .tactical-court {
+  cursor: crosshair;
+}
+
+.tactical-page .tactical-court-badge {
+  position: absolute;
+  z-index: 3;
+  top: clamp(.7rem, 1.4vw, 1rem);
+  left: clamp(.7rem, 1.4vw, 1rem);
+  padding: .3rem .52rem;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: var(--radius-pill);
+  color: rgba(255, 255, 255, .82);
+  background: rgba(1, 32, 28, .52);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .13);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  font-size: clamp(.48rem, .8vw, .62rem);
+  font-weight: 750;
+  letter-spacing: .11em;
+}
+
+.tactical-page .tactical-zoom-controls {
+  position: absolute;
+  z-index: 4;
+  right: clamp(.65rem, 1.4vw, 1rem);
+  bottom: clamp(.65rem, 1.4vw, 1rem);
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  padding: .28rem;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: var(--radius-pill);
+  color: #fff;
+  background: rgba(1, 27, 28, .68);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .25), inset 0 1px 0 rgba(255, 255, 255, .14);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.tactical-page .tactical-zoom-controls > button {
+  width: 2.35rem;
+  min-width: 2.35rem;
+  min-height: 2.35rem;
+  border-color: rgba(255, 255, 255, .14);
+  color: #fff;
+  background: rgba(255, 255, 255, .08);
+  box-shadow: none;
+}
+
+.tactical-page .tactical-zoom-controls > output {
+  min-width: 3.1rem;
+  color: rgba(255, 255, 255, .86);
+  font-size: .65rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.tactical-page .tactical-court-empty-hint {
+  position: absolute;
+  z-index: 3;
+  bottom: clamp(.65rem, 1.4vw, 1rem);
+  left: 50%;
+  max-width: min(80%, 25rem);
+  margin: 0;
+  padding: .5rem .75rem;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: var(--radius-pill);
+  color: rgba(255, 255, 255, .86);
+  background: rgba(1, 27, 28, .67);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .2);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  font-size: clamp(.62rem, 1vw, .75rem);
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* SVG court and editor objects ------------------------------------------- */
+
+.tactical-page .tactical-court-surface {
+  fill: var(--tactical-court);
+  stroke: rgba(255, 255, 255, .16);
+  stroke-width: 2;
+}
+
+.tactical-page .tactical-court-line {
+  fill: none;
+  stroke: var(--tactical-court-light);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.tactical-page :is(.tactical-court-mark, .tactical-corner-mark, .tactical-penalty-area) {
+  pointer-events: none;
+}
+
+.tactical-page :is(.tactical-goal, .tactical-court-goal) {
+  fill: rgba(255, 255, 255, .11);
+  stroke: rgba(255, 255, 255, .96);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.tactical-page :is(.tactical-net, .tactical-court-net) {
+  fill: none;
+  stroke: rgba(222, 255, 248, .58);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 5;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.tactical-page .tactical-entity {
+  cursor: grab;
+  touch-action: none;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.tactical-page .tactical-entity:active {
+  cursor: grabbing;
+}
+
+.tactical-page .tactical-player-token {
+  fill: var(--tactical-token-color, #0ea5e9);
+  stroke: rgba(255, 255, 255, .96);
+  stroke-width: 4;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 8px 8px rgba(0, 0, 0, .26));
+  transition: filter var(--transition-fast), opacity var(--transition-fast);
+}
+
+.tactical-page :is(.tactical-player-ring, .tactical-player-disc) {
+  vector-effect: non-scaling-stroke;
+  transition:
+    stroke var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+.tactical-page .tactical-player-number {
+  pointer-events: none;
+  user-select: none;
+}
+
+.tactical-page .tactical-lock-badge {
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .34));
+  pointer-events: none;
+}
+
+.tactical-page .tactical-ball-token {
+  fill: #fff;
+  stroke: #0f172a;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 7px 7px rgba(0, 0, 0, .32));
+}
+
+.tactical-page .tactical-entity-label {
+  fill: #fff;
+  stroke: rgba(3, 20, 26, .55);
+  stroke-width: 3;
+  paint-order: stroke fill;
+  font-family: var(--font-family);
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: -.02em;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+  user-select: none;
+}
+
+.tactical-page .tactical-entity-label.tactical-entity-label--name {
+  font-size: 15px;
+  dominant-baseline: hanging;
+}
+
+.tactical-page .tactical-drawing-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 24;
+  vector-effect: non-scaling-stroke;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.tactical-page .tactical-drawing-path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .2));
+  pointer-events: none;
+}
+
+.tactical-page .tactical-drawing.is-preview {
+  opacity: .82;
+  pointer-events: none;
+}
+
+.tactical-page .tactical-drawing.is-preview .tactical-drawing-path {
+  stroke-dasharray: 11 8;
+  animation: tactical-route-preview .75s linear infinite;
+}
+
+.tactical-page :is(.tactical-drawing--movement, .is-movement) .tactical-drawing-path {
+  stroke: var(--tactical-movement);
+}
+
+.tactical-page :is(.tactical-drawing--pass, .is-pass) .tactical-drawing-path {
+  stroke: var(--tactical-pass);
+  stroke-dasharray: 13 9;
+}
+
+.tactical-page :is(.tactical-drawing--shot, .is-shot) .tactical-drawing-path {
+  stroke: var(--tactical-shot);
+  stroke-width: 7;
+}
+
+.tactical-page :is(.tactical-drawing--dribble, .is-dribble) .tactical-drawing-path {
+  stroke: var(--tactical-dribble);
+  stroke-dasharray: 3 8;
+}
+
+.tactical-page :is(.tactical-drawing--defense, .is-defense) .tactical-drawing-path {
+  stroke: var(--tactical-defense);
+  stroke-dasharray: 16 6 3 6;
+}
+
+.tactical-page .tactical-zone-shape {
+  stroke-dasharray: 10 7;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+}
+
+.tactical-page .tactical-drawing-text {
+  stroke: rgba(3, 22, 30, .72);
+  stroke-width: 4;
+  paint-order: stroke fill;
+  font-family: var(--font-family);
+  font-size: 22px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.tactical-page .tactical-text-background {
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 5px 8px rgba(0, 0, 0, .22));
+}
+
+.tactical-page .tactical-selection-ring {
+  fill: none;
+  stroke: #fef08a;
+  stroke-width: 4;
+  stroke-dasharray: 8 6;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 4px rgba(250, 204, 21, .55));
+  animation: tactical-selection-dash 1.2s linear infinite;
+  pointer-events: none;
+}
+
+.tactical-page .tactical-selection-handle {
+  fill: #fff;
+  stroke: #0ea5e9;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+  pointer-events: all;
+}
+
+.tactical-page .tactical-selection-handle:active {
+  cursor: grabbing;
+}
+
+.tactical-page .tactical-entity.is-selected .tactical-player-token,
+.tactical-page .tactical-player-token.is-selected,
+.tactical-page .tactical-entity.is-selected .tactical-ball-token,
+.tactical-page .tactical-ball-token.is-selected {
+  filter:
+    drop-shadow(0 8px 8px rgba(0, 0, 0, .25))
+    drop-shadow(0 0 7px rgba(250, 204, 21, .86));
+}
+
+.tactical-page .tactical-drawing.is-selected .tactical-drawing-path,
+.tactical-page .tactical-drawing-path.is-selected,
+.tactical-page .tactical-zone-shape.is-selected {
+  filter: drop-shadow(0 0 5px rgba(250, 204, 21, .9));
+}
+
+.tactical-page .tactical-entity.is-locked,
+.tactical-page .tactical-drawing.is-locked,
+.tactical-page .tactical-zone-shape.is-locked,
+.tactical-page .is-locked .tactical-entity {
+  cursor: not-allowed;
+}
+
+.tactical-page .tactical-entity.is-locked .tactical-player-token,
+.tactical-page .tactical-entity.is-locked .tactical-ball-token,
+.tactical-page .is-locked .tactical-player-token,
+.tactical-page .is-locked .tactical-ball-token {
+  stroke-dasharray: 4 3;
+  opacity: .82;
+}
+
+.tactical-page.is-playing .tactical-entity,
+.tactical-page.tactical-is-playing .tactical-entity,
+.tactical-page .tactical-court.is-playing .tactical-entity {
+  pointer-events: none;
+  cursor: default;
+}
+
+/* Playback --------------------------------------------------------------- */
+
+.tactical-page .tactical-playback {
+  padding: .7rem;
+  border-radius: var(--radius-lg);
+}
+
+.tactical-page .tactical-playback-head {
+  margin-bottom: .55rem;
+}
+
+.tactical-page .tactical-record-btn {
+  min-height: 2.5rem;
+  border-color: rgba(217, 45, 63, .22);
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.tactical-page .tactical-record-btn.is-recording,
+.tactical-page.is-recording .tactical-record-btn,
+.tactical-page .tactical-record-btn[aria-pressed="true"] {
+  border-color: rgba(239, 68, 68, .7);
+  color: #fff;
+  background: #d92d3f;
+  box-shadow: 0 0 0 4px rgba(217, 45, 63, .13), 0 10px 24px rgba(217, 45, 63, .22);
+  animation: tactical-recording-pulse 1.4s ease-in-out infinite;
+}
+
+.tactical-page .tactical-playback-controls {
+  display: grid;
+  grid-template-columns: repeat(4, 2.75rem) minmax(10rem, 1fr) auto auto;
+  align-items: center;
+  gap: .42rem;
+}
+
+.tactical-page .tactical-playback-btn--main {
+  border-radius: 50%;
+}
+
+.tactical-page .pause-icon {
+  display: none;
+}
+
+.tactical-page.is-playing .play-icon,
+.tactical-page.tactical-is-playing .play-icon,
+.tactical-page .is-playing .play-icon,
+.tactical-page .tactical-playback-btn.is-playing .play-icon {
+  display: none;
+}
+
+.tactical-page.is-playing .pause-icon,
+.tactical-page.tactical-is-playing .pause-icon,
+.tactical-page .is-playing .pause-icon,
+.tactical-page .tactical-playback-btn.is-playing .pause-icon {
+  display: block;
+}
+
+.tactical-page .tactical-progress-wrap {
+  display: grid;
+  min-width: 0;
+  gap: .22rem;
+  padding-inline: .25rem;
+}
+
+.tactical-page .tactical-progress-wrap input[type="range"],
+.tactical-page .tactical-duration-field input[type="range"] {
+  width: 100%;
+  height: 1.25rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+  appearance: none;
+}
+
+.tactical-page .tactical-progress-wrap input[type="range"]::-webkit-slider-runnable-track,
+.tactical-page .tactical-duration-field input[type="range"]::-webkit-slider-runnable-track {
+  height: .38rem;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--color-primary), rgba(7, 140, 105, .18));
+}
+
+.tactical-page .tactical-progress-wrap input[type="range"]::-webkit-slider-thumb,
+.tactical-page .tactical-duration-field input[type="range"]::-webkit-slider-thumb {
+  width: 1rem;
+  height: 1rem;
+  margin-top: -.31rem;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 3px 9px rgba(4, 102, 77, .3);
+  appearance: none;
+}
+
+.tactical-page .tactical-progress-wrap input[type="range"]::-moz-range-track,
+.tactical-page .tactical-duration-field input[type="range"]::-moz-range-track {
+  height: .38rem;
+  border-radius: var(--radius-pill);
+  background: rgba(7, 140, 105, .18);
+}
+
+.tactical-page .tactical-progress-wrap input[type="range"]::-moz-range-progress,
+.tactical-page .tactical-duration-field input[type="range"]::-moz-range-progress {
+  height: .38rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+}
+
+.tactical-page .tactical-progress-wrap input[type="range"]::-moz-range-thumb,
+.tactical-page .tactical-duration-field input[type="range"]::-moz-range-thumb {
+  width: .8rem;
+  height: .8rem;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 3px 9px rgba(4, 102, 77, .3);
+}
+
+.tactical-page .tactical-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: .5rem;
+  color: var(--color-text-muted);
+  font-size: .58rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.tactical-page .tactical-speed-control,
+.tactical-page .tactical-repeat-control {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: .42rem;
+  padding: .35rem .48rem;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: var(--tactical-panel-soft);
+  font-size: .62rem;
+  font-weight: 650;
+}
+
+.tactical-page .tactical-speed-control select {
+  min-height: 2rem;
+  padding: .2rem .35rem;
+  border: 0;
+  border-radius: .45rem;
+  color: var(--color-text);
+  background: var(--tactical-panel-strong);
+  font: inherit;
+}
+
+.tactical-page .tactical-repeat-control input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--color-primary);
+}
+
+/* Right panel, roster, stages, library and inspector ---------------------- */
+
+.tactical-page .tactical-side-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .22rem;
+  margin-bottom: .65rem;
+  padding: .22rem;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: var(--radius-sm);
+  background: var(--tactical-panel-soft);
+}
+
+.tactical-page .tactical-side-tabs > button {
+  min-height: 2.35rem;
+  padding: .35rem .2rem;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  font-size: .61rem;
+}
+
+.tactical-page .tactical-side-tabs > button.is-active,
+.tactical-page .tactical-side-tabs > button[aria-selected="true"] {
+  border-color: rgba(7, 140, 105, .2);
+  color: var(--color-primary-strong);
+  background: var(--color-primary-soft);
+  box-shadow: var(--shadow-xs), var(--shadow-inset);
+}
+
+.tactical-page .tactical-side-panel {
+  display: none;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: .12rem;
+}
+
+.tactical-page .tactical-side-panel.is-active {
+  display: block;
+}
+
+.tactical-page .tactical-panel-actions,
+.tactical-page .tactical-stage-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .42rem;
+  margin-bottom: .7rem;
+}
+
+.tactical-page .tactical-formations {
+  padding: .65rem;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: var(--radius-sm);
+  background: var(--tactical-panel-soft);
+}
+
+.tactical-page .tactical-section-title h3 {
+  font-size: .72rem;
+}
+
+.tactical-page .tactical-section-title select {
+  width: auto;
+  min-height: 2rem;
+  padding: .25rem .4rem;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: .5rem;
+  color: var(--color-text);
+  background: var(--tactical-panel-strong);
+  font: inherit;
+  font-size: .62rem;
+}
+
+.tactical-page .tactical-formation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .38rem;
+  margin-top: .55rem;
+}
+
+.tactical-page .tactical-formation-grid > button {
+  display: grid;
+  min-height: 3.2rem;
+  gap: .08rem;
+  padding: .42rem;
+}
+
+.tactical-page .tactical-formation-grid > button strong {
+  font-size: .78rem;
+}
+
+.tactical-page .tactical-formation-grid > button small {
+  font-size: .55rem;
+}
+
+.tactical-page .tactical-roster-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .42rem;
+  margin-block: .65rem;
+}
+
+.tactical-page .tactical-roster-summary > span {
+  display: flex;
+  min-height: 2.3rem;
+  align-items: center;
+  justify-content: center;
+  gap: .3rem;
+  padding: .35rem;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: var(--tactical-panel-soft);
+  font-size: .6rem;
+}
+
+.tactical-page .tactical-roster-summary i {
+  width: .55rem;
+  height: .55rem;
+  border-radius: 50%;
+}
+
+.tactical-page .tactical-roster-summary .team-one { background: #0ea5e9; }
+.tactical-page .tactical-roster-summary .team-two { background: #ef4444; }
+
+.tactical-page .tactical-roster-list,
+.tactical-page .tactical-stages-list,
+.tactical-page .tactical-library-list,
+.tactical-page .tactical-inspector {
+  display: grid;
+  min-width: 0;
+  gap: .48rem;
+}
+
+.tactical-page :is(
+  .tactical-roster-item,
+  .tactical-roster-card,
+  .tactical-stage-item,
+  .tactical-stage-card,
+  .tactical-library-item,
+  .tactical-library-card,
+  .tactical-roster-list > *,
+  .tactical-stages-list > *,
+  .tactical-library-list > *
+) {
+  min-width: 0;
+  padding: .62rem;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: var(--tactical-panel-soft);
+  box-shadow: var(--shadow-xs), var(--shadow-inset);
+}
+
+.tactical-page :is(.tactical-stage-item, .tactical-stage-card, .tactical-library-item, .tactical-library-card).is-active,
+.tactical-page :is(.tactical-stage-item, .tactical-stage-card, .tactical-library-item, .tactical-library-card).is-selected {
+  border-color: rgba(7, 140, 105, .42);
+  background: var(--color-primary-soft);
+  box-shadow: 0 8px 22px rgba(7, 140, 105, .12), var(--shadow-inset);
+}
+
+.tactical-page :is(
+  .tactical-roster-item,
+  .tactical-roster-card,
+  .tactical-stage-item,
+  .tactical-stage-card,
+  .tactical-library-item,
+  .tactical-library-card
+) :is(button, a) {
+  min-height: 2.35rem;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: .55rem;
+  color: var(--color-text-soft);
+  background: var(--tactical-panel-strong);
+  font: inherit;
+  font-size: .62rem;
+  font-weight: 650;
+}
+
+.tactical-page .tactical-roster-avatar,
+.tactical-page .tactical-roster-token {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--tactical-token-color, #0ea5e9);
+  box-shadow: 0 5px 12px rgba(2, 28, 35, .2);
+  font-size: .68rem;
+  font-weight: 750;
+}
+
+.tactical-page .tactical-roster-item {
+  display: grid;
+  grid-template-columns: 2.45rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .45rem;
+}
+
+.tactical-page .tactical-roster-item.is-selected {
+  border-color: rgba(7, 140, 105, .45);
+  background: var(--color-primary-soft);
+  box-shadow: 0 8px 22px rgba(7, 140, 105, .12), var(--shadow-inset);
+}
+
+.tactical-page :is(.tactical-roster-marker, .tactical-roster-ball) {
+  display: grid;
+  width: 2.45rem;
+  min-width: 2.45rem;
+  height: 2.45rem;
+  min-height: 2.45rem;
+  place-items: center;
+  padding: 0;
+  border: 3px solid rgba(255, 255, 255, .94);
+  border-radius: 50%;
+  color: #fff;
+  background: var(--marker-color, #0ea5e9);
+  box-shadow: 0 5px 12px rgba(2, 28, 35, .22);
+  font-size: .72rem;
+  font-weight: 800;
+}
+
+.tactical-page .tactical-roster-ball {
+  color: #0f172a;
+  background:
+    radial-gradient(circle at 36% 34%, #fff 0 31%, transparent 32%),
+    conic-gradient(from 20deg, #fff, #dbe4e8 22%, #fff 42%, #cbd5e1 62%, #fff 82%);
+}
+
+.tactical-page .tactical-roster-main,
+.tactical-page .tactical-roster-item-main,
+.tactical-page .tactical-library-head,
+.tactical-page .tactical-stage-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: .55rem;
+}
+
+.tactical-page .tactical-roster-copy,
+.tactical-page .tactical-library-copy,
+.tactical-page .tactical-stage-copy {
+  display: grid;
+  min-width: 0;
+  gap: .08rem;
+}
+
+.tactical-page .tactical-roster-copy {
+  width: 100%;
+  min-height: 2.45rem;
+  padding: .25rem .35rem;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+}
+
+.tactical-page :is(.tactical-roster-copy, .tactical-library-copy, .tactical-stage-copy) strong {
+  overflow: hidden;
+  font-size: .72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tactical-page :is(.tactical-roster-copy, .tactical-library-copy, .tactical-stage-copy) small {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: .58rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tactical-page .tactical-roster-actions,
+.tactical-page .tactical-library-actions,
+.tactical-page .tactical-stage-actions-inline,
+.tactical-page .tactical-inspector-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .32rem;
+  margin-top: .5rem;
+}
+
+.tactical-page .tactical-roster-actions {
+  flex-wrap: nowrap;
+  margin-top: 0;
+}
+
+.tactical-page .tactical-roster-actions > button {
+  width: 2.35rem;
+  min-width: 2.35rem;
+  padding: 0;
+}
+
+.tactical-page .tactical-stage-item {
+  display: grid;
+  width: 100%;
+  min-height: 3.35rem;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-items: center;
+  gap: .55rem;
+  text-align: left;
+}
+
+.tactical-page .tactical-stage-item > span:first-child {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: .58rem;
+  color: var(--color-primary);
+  background: var(--tactical-panel-strong);
+  font-size: .67rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.tactical-page .tactical-stage-item > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: .08rem;
+}
+
+.tactical-page .tactical-stage-item > span:last-child :is(strong, small) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tactical-page .tactical-stage-item > span:last-child strong {
+  font-size: .72rem;
+}
+
+.tactical-page .tactical-stage-item > span:last-child small {
+  color: var(--color-text-muted);
+  font-size: .58rem;
+}
+
+.tactical-page .tactical-library-card.is-current {
+  border-color: rgba(7, 140, 105, .45);
+  box-shadow: 0 8px 22px rgba(7, 140, 105, .12), var(--shadow-inset);
+}
+
+.tactical-page .tactical-library-card > div:first-child {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+
+.tactical-page .tactical-library-card > div:first-child strong {
+  overflow: hidden;
+  font-size: .74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tactical-page .tactical-library-card > div:first-child span {
+  flex: 0 0 auto;
+  padding: .18rem .38rem;
+  border-radius: var(--radius-pill);
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  font-size: .54rem;
+  font-weight: 750;
+}
+
+.tactical-page .tactical-library-card > p {
+  margin-top: .4rem;
+  color: var(--color-text-soft);
+  font-size: .64rem;
+  line-height: 1.42;
+}
+
+.tactical-page .tactical-library-card > small {
+  display: block;
+  margin-top: .3rem;
+  color: var(--color-text-muted);
+  font-size: .55rem;
+}
+
+.tactical-page .tactical-library-filter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(7.5rem, .6fr);
+  gap: .48rem;
+  margin-bottom: .65rem;
+}
+
+.tactical-page .tactical-duration-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .55rem;
+  margin-bottom: .65rem;
+}
+
+.tactical-page .tactical-duration-field output {
+  min-width: 3.4rem;
+  padding: .3rem .42rem;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: .5rem;
+  color: var(--color-text-soft);
+  background: var(--tactical-panel-soft);
+  font-size: .66rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.tactical-page .tactical-help-text {
+  margin-top: .65rem;
+  color: var(--color-text-muted);
+  font-size: .62rem;
+  line-height: 1.45;
+}
+
+.tactical-page .tactical-inspector-section {
+  display: grid;
+  gap: .5rem;
+  padding: .65rem;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: var(--radius-sm);
+  background: var(--tactical-panel-soft);
+}
+
+.tactical-page .tactical-inspector-form {
+  display: grid;
+  min-width: 0;
+  gap: .62rem;
+}
+
+.tactical-page .tactical-inspector-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: .55rem;
+  padding: .58rem;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: var(--radius-sm);
+  background: var(--tactical-panel-soft);
+}
+
+.tactical-page .tactical-inspector-title > i {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  border: 3px solid rgba(255, 255, 255, .92);
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(2, 28, 35, .2);
+}
+
+.tactical-page .tactical-inspector-title > span,
+.tactical-page .tactical-inspector-heading {
+  display: grid;
+  min-width: 0;
+  gap: .1rem;
+}
+
+.tactical-page :is(.tactical-inspector-title, .tactical-inspector-heading) strong {
+  overflow: hidden;
+  font-size: .76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tactical-page :is(.tactical-inspector-title, .tactical-inspector-heading) small {
+  color: var(--color-text-muted);
+  font-size: .59rem;
+}
+
+.tactical-page .tactical-inspector-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .5rem;
+}
+
+.tactical-page .tactical-empty-state {
+  display: grid;
+  min-height: 9rem;
+  place-items: center;
+  align-content: center;
+  gap: .35rem;
+  padding: 1rem;
+  border: 1px dashed var(--tactical-stroke-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: var(--tactical-panel-soft);
+  text-align: center;
+}
+
+.tactical-page .tactical-empty-state--compact {
+  min-height: 6.5rem;
+  padding: .75rem;
+}
+
+.tactical-page .tactical-empty-state > svg {
+  width: 2rem;
+  height: 2rem;
+  color: var(--color-primary);
+}
+
+.tactical-page .tactical-empty-state strong {
+  font-size: .78rem;
+}
+
+.tactical-page .tactical-empty-state p {
+  max-width: 18rem;
+  color: var(--color-text-muted);
+  font-size: .65rem;
+  line-height: 1.45;
+}
+
+/* Dialogs, popovers, toast and mobile drawers ----------------------------- */
+
+.tactical-page .tactical-dialog {
+  width: min(calc(100% - 1.5rem), 36rem);
+  max-height: min(88dvh, 46rem);
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--tactical-stroke-strong);
+  border-radius: var(--radius-xl);
+  color: var(--color-text);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, .3), rgba(255, 255, 255, .04)),
+    var(--tactical-panel-strong);
+  box-shadow: var(--shadow-inset), 0 30px 90px rgba(0, 20, 28, .36);
+  -webkit-backdrop-filter: blur(26px) saturate(145%);
+  backdrop-filter: blur(26px) saturate(145%);
+}
+
+.tactical-page .tactical-dialog--small {
+  width: min(calc(100% - 1.5rem), 29rem);
+}
+
+.tactical-page .tactical-dialog[open] {
+  animation: tactical-dialog-in var(--transition-spring) both;
+}
+
+.tactical-page .tactical-dialog::backdrop {
+  background: rgba(2, 14, 21, .58);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.tactical-page .tactical-dialog > form {
+  display: grid;
+  gap: .85rem;
+  padding: clamp(1rem, 3vw, 1.35rem);
+}
+
+.tactical-page .tactical-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding-bottom: .75rem;
+  border-bottom: 1px solid var(--tactical-stroke);
+}
+
+.tactical-page .tactical-dialog-head h2 {
+  font-size: 1.05rem;
+}
+
+.tactical-page .tactical-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .7rem;
+}
+
+.tactical-page .tactical-field--wide {
+  grid-column: 1 / -1;
+}
+
+.tactical-page .tactical-color-field {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  align-items: center;
+  gap: .5rem;
+}
+
+.tactical-page .tactical-color-field input[type="color"] {
+  width: 3rem;
+  min-height: 2.75rem;
+  padding: .2rem;
+  cursor: pointer;
+}
+
+.tactical-page .tactical-color-field output {
+  color: var(--color-text-muted);
+  font-size: .7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tactical-page .tactical-check-field {
+  display: flex;
+  min-height: 3.5rem;
+  align-items: center;
+  gap: .65rem;
+  padding: .65rem;
+  border: 1px solid var(--tactical-stroke);
+  border-radius: var(--radius-sm);
+  background: var(--tactical-panel-soft);
+}
+
+.tactical-page .tactical-check-field > input {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex: 0 0 auto;
+  accent-color: var(--color-primary);
+}
+
+.tactical-page .tactical-check-field > span {
+  display: grid;
+  gap: .08rem;
+}
+
+.tactical-page .tactical-check-field strong {
+  font-size: .72rem;
+}
+
+.tactical-page .tactical-check-field small {
+  font-size: .6rem;
+}
+
+.tactical-page .tactical-dialog-actions {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto;
+  align-items: center;
+  gap: .45rem;
+  padding-top: .75rem;
+  border-top: 1px solid var(--tactical-stroke);
+}
+
+.tactical-page .tactical-popover {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  display: grid;
+  min-width: 13rem;
+  gap: .22rem;
+  padding: .42rem;
+  border: 1px solid var(--tactical-stroke-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  background: var(--tactical-panel-strong);
+  box-shadow: var(--shadow-inset), 0 22px 64px rgba(1, 22, 29, .3);
+  -webkit-backdrop-filter: blur(24px) saturate(145%);
+  backdrop-filter: blur(24px) saturate(145%);
+  animation: tactical-popover-in var(--transition-base) both;
+}
+
+.tactical-page .tactical-popover.is-open {
+  display: grid;
+}
+
+.tactical-page .tactical-popover > button {
+  width: 100%;
+  min-height: 2.75rem;
+  justify-content: flex-start;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+}
+
+.tactical-page .tactical-popover > button > span {
+  display: grid;
+  gap: .08rem;
+}
+
+.tactical-page .tactical-popover > button strong {
+  font-size: .7rem;
+}
+
+.tactical-page .tactical-popover > button small {
+  color: var(--color-text-muted);
+  font-size: .58rem;
+}
+
+.tactical-page .tactical-export-menu {
+  top: calc(max(.5rem, env(safe-area-inset-top)) + var(--tactical-header-height) + .65rem);
+  right: max(.75rem, env(safe-area-inset-right));
+  width: min(18rem, calc(100vw - 1.5rem));
+}
+
+.tactical-page .tactical-context-menu {
+  width: min(13rem, calc(100vw - 1rem));
+}
+
+.tactical-page .tactical-panel-backdrop {
+  position: fixed;
+  z-index: calc(var(--z-modal) - 2);
+  inset: 0;
+  background: rgba(2, 12, 18, .52);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.tactical-page .tactical-panel-backdrop.is-open {
+  display: block;
+  opacity: 1;
+}
+
+.tactical-page .tactical-panel-backdrop:not(.hidden) {
+  opacity: 1;
+}
+
+.tactical-page .tactical-toast {
+  position: fixed;
+  z-index: var(--z-toast);
+  right: 50%;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  max-width: min(30rem, calc(100vw - 1.5rem));
+  padding: .72rem 1rem;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: var(--radius-pill);
+  color: #fff;
+  background: rgba(5, 31, 40, .9);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .3);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  font-size: .75rem;
+  font-weight: 650;
+  text-align: center;
+  opacity: 0;
+  transform: translate(50%, 1rem);
+  pointer-events: none;
+  transition: opacity var(--transition-fast), transform var(--transition-base);
+}
+
+.tactical-page .tactical-toast.is-open,
+.tactical-page .tactical-toast.is-showing,
+.tactical-page .tactical-toast.show {
+  opacity: 1;
+  transform: translate(50%, 0);
+}
+
+.tactical-page .tactical-mobile-dock,
+.tactical-page .tactical-rotate-hint,
+.tactical-page .tactical-mobile-fullscreen {
+  display: none;
+}
+
+.tactical-page .tactical-rotate-hint.is-dismissed {
+  display: none !important;
+}
+
+/* Scrollbars -------------------------------------------------------------- */
+
+.tactical-page :is(
+  .tactical-tools-panel,
+  .tactical-side-panel,
+  .tactical-dialog
+) {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(7, 140, 105, .38) transparent;
+}
+
+.tactical-page :is(
+  .tactical-tools-panel,
+  .tactical-side-panel,
+  .tactical-dialog
+)::-webkit-scrollbar {
+  width: .42rem;
+}
+
+.tactical-page :is(
+  .tactical-tools-panel,
+  .tactical-side-panel,
+  .tactical-dialog
+)::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-pill);
+  background: rgba(7, 140, 105, .34);
+}
+
+/* Mobile / tablet --------------------------------------------------------- */
+
+@media (max-width: 1180px) and (min-width: 901px) {
+  body.tactical-page {
+    --tactical-tools-width: 13rem;
+    --tactical-side-width: 17rem;
+  }
+
+  .tactical-page .tactical-header {
+    grid-template-columns: minmax(12rem, 1fr) auto minmax(17rem, 1fr);
+  }
+
+  .tactical-page .tactical-header-state {
+    justify-content: flex-start;
+  }
+
+  .tactical-page .tactical-tool > kbd {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  body.tactical-page {
+    --tactical-header-height: 3.7rem;
+    padding-bottom: calc(5.35rem + env(safe-area-inset-bottom));
+    background-attachment: scroll;
+  }
+
+  .tactical-page .tactical-mobile-fullscreen {
+    display: inline-grid;
+  }
+
+  .tactical-page .tactical-header {
+    top: max(.3rem, env(safe-area-inset-top));
+    width: calc(100% - 1rem);
+    min-height: var(--tactical-header-height);
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    gap: .28rem .45rem;
+    margin-top: max(.3rem, env(safe-area-inset-top));
+    padding: .38rem .45rem;
+    border-radius: var(--radius-lg);
+  }
+
+  .tactical-page .tactical-brand {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .tactical-page .tactical-brand > img {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .tactical-page .tactical-brand-copy strong {
+    font-size: .9rem;
+  }
+
+  .tactical-page .tactical-brand-copy small {
+    display: none;
+  }
+
+  .tactical-page .tactical-header-actions {
+    grid-column: 2;
+    grid-row: 1;
+    gap: .25rem;
+  }
+
+  .tactical-page .tactical-header-state {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-start;
+  }
+
+  .tactical-page .tactical-save-state {
+    min-height: 1.45rem;
+    max-width: 100%;
+    padding: .2rem .5rem;
+    font-size: .58rem;
+  }
+
+  .tactical-page .tactical-action-btn {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    padding: 0;
+  }
+
+  .tactical-page .tactical-action-btn > span,
+  .tactical-page .tactical-mobile-hide {
+    display: none;
+  }
+
+  .tactical-page .tactical-shell {
+    z-index: auto;
+    width: calc(100% - 1rem);
+    margin-top: .5rem;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  .tactical-page .tactical-play-meta {
+    grid-template-columns: minmax(0, 1fr) minmax(8.5rem, .45fr);
+    gap: .45rem;
+    padding: .5rem;
+    border-radius: var(--radius-md);
+  }
+
+  .tactical-page .tactical-field--description {
+    grid-column: 1 / -1;
+  }
+
+  .tactical-page .tactical-field > span:first-child {
+    font-size: .56rem;
+  }
+
+  .tactical-page .tactical-field :is(input, select, textarea) {
+    min-height: 2.75rem;
+    padding: .55rem .62rem;
+    font-size: .72rem;
+  }
+
+  .tactical-page .tactical-workspace {
+    display: block;
+    margin-top: .55rem;
+  }
+
+  .tactical-page .tactical-center {
+    width: 100%;
+  }
+
+  .tactical-page .tactical-panel {
+    position: fixed;
+    z-index: calc(var(--z-modal) - 1);
+    top: 0;
+    bottom: 0;
+    width: min(88vw, 22rem);
+    height: 100dvh;
+    max-height: none;
+    padding-top: max(.85rem, env(safe-area-inset-top));
+    padding-bottom: max(.85rem, env(safe-area-inset-bottom));
+    border-radius: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: transform var(--transition-spring), opacity var(--transition-fast), visibility var(--transition-fast);
+  }
+
+  .tactical-page .tactical-roster-item {
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+  }
+
+  .tactical-page :is(.tactical-roster-marker, .tactical-roster-ball) {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .tactical-page .tactical-roster-copy {
+    min-height: 2.75rem;
+  }
+
+  .tactical-page .tactical-roster-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+
+  .tactical-page .tactical-roster-actions > button {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .tactical-page .tactical-tools-panel {
+    left: 0;
+    transform: translateX(-104%);
+    border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+  }
+
+  .tactical-page .tactical-right-panel {
+    right: 0;
+    transform: translateX(104%);
+    border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+  }
+
+  .tactical-page .tactical-panel.is-open,
+  .tactical-page.tactical-tools-open .tactical-tools-panel,
+  .tactical-page.tactical-right-open .tactical-right-panel {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+  }
+
+  .tactical-page button.tactical-panel-close {
+    display: inline-flex;
+  }
+
+  .tactical-page .tactical-board-toolbar {
+    padding: .48rem .55rem;
+    border-radius: var(--radius-md);
+  }
+
+  .tactical-page .tactical-board-actions {
+    gap: .28rem;
+  }
+
+  .tactical-page .tactical-compact-btn {
+    min-height: 2.75rem;
+  }
+
+  .tactical-page .tactical-court-frame {
+    min-height: 0;
+    padding: .35rem;
+    border-radius: var(--radius-md);
+  }
+
+  .tactical-page .tactical-court {
+    border-radius: .65rem;
+  }
+
+  .tactical-page .tactical-zoom-controls > button {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .tactical-page .tactical-playback {
+    padding: .55rem;
+    border-radius: var(--radius-md);
+  }
+
+  .tactical-page .tactical-playback-controls {
+    grid-template-columns: repeat(4, 2.75rem) minmax(8rem, 1fr);
+  }
+
+  .tactical-page .tactical-speed-control,
+  .tactical-page .tactical-repeat-control {
+    grid-row: 2;
+  }
+
+  .tactical-page .tactical-speed-control {
+    grid-column: 1 / 4;
+  }
+
+  .tactical-page .tactical-repeat-control {
+    grid-column: 4 / 6;
+    justify-content: center;
+  }
+
+  .tactical-page .tactical-mobile-dock {
+    position: fixed;
+    z-index: var(--z-fab);
+    right: max(.5rem, env(safe-area-inset-right));
+    bottom: max(.5rem, env(safe-area-inset-bottom));
+    left: max(.5rem, env(safe-area-inset-left));
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: .22rem;
+    padding: .35rem;
+    border-radius: 1.35rem;
+  }
+
+  .tactical-page .tactical-mobile-dock > button {
+    min-height: 3.4rem;
+    flex-direction: column;
+    gap: .16rem;
+    padding: .3rem .12rem;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+    font-size: .54rem;
+  }
+
+  .tactical-page .tactical-mobile-dock > button > svg {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+
+  .tactical-page .tactical-mobile-dock > .is-primary {
+    border-radius: 1rem;
+    background: var(--color-primary);
+    box-shadow: var(--shadow-primary);
+  }
+
+  .tactical-page .tactical-toast {
+    bottom: calc(5.35rem + env(safe-area-inset-bottom));
+  }
+
+  .tactical-page .tactical-export-menu {
+    top: calc(max(.3rem, env(safe-area-inset-top)) + 3.8rem);
+  }
+
+  .tactical-page .tactical-dialog {
+    max-height: calc(100dvh - 1rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 900px) and (orientation: portrait) {
+  .tactical-page .tactical-rotate-hint:not(.hidden) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .55rem;
+    margin-bottom: .5rem;
+    padding: .5rem .6rem;
+    border-radius: var(--radius-md);
+    color: var(--color-text-soft);
+    font-size: .66rem;
+  }
+
+  .tactical-page .tactical-rotate-hint > svg {
+    width: 1.15rem;
+    height: 1.15rem;
+    color: var(--color-primary);
+  }
+
+  .tactical-page .tactical-rotate-hint > button {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .tactical-page .tactical-header {
+    width: calc(100% - .6rem);
+    column-gap: .25rem;
+  }
+
+  .tactical-page .tactical-brand {
+    gap: .35rem;
+  }
+
+  .tactical-page .tactical-header-actions {
+    gap: .15rem;
+  }
+
+  .tactical-page .tactical-back-btn {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .tactical-page .tactical-brand > img {
+    display: none;
+  }
+
+  .tactical-page .tactical-header-actions :is(.tactical-icon-btn, .tactical-action-btn) {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .tactical-page .tactical-header-actions #fullscreen-btn {
+    display: none;
+  }
+
+  .tactical-page .tactical-shell {
+    width: calc(100% - .6rem);
+  }
+
+  .tactical-page .tactical-play-meta {
+    grid-template-columns: minmax(0, 1fr) 7.8rem;
+  }
+
+  .tactical-page .tactical-field--description {
+    display: none;
+  }
+
+  .tactical-page .tactical-board-toolbar > div:first-child .tactical-eyebrow {
+    display: none;
+  }
+
+  .tactical-page .tactical-board-toolbar h2 {
+    font-size: .78rem;
+  }
+
+  .tactical-page .tactical-compact-btn {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    padding: 0;
+  }
+
+  .tactical-page .tactical-compact-btn > span {
+    display: none;
+  }
+
+  .tactical-page .tactical-court-empty-hint {
+    bottom: .5rem;
+    max-width: 70%;
+    padding: .4rem .55rem;
+    font-size: .58rem;
+  }
+
+  .tactical-page .tactical-zoom-controls {
+    right: .45rem;
+    bottom: .45rem;
+  }
+
+  .tactical-page .tactical-zoom-controls > output {
+    display: none;
+  }
+
+  .tactical-page .tactical-playback-head .tactical-eyebrow {
+    display: none;
+  }
+
+  .tactical-page .tactical-record-btn {
+    min-height: 2.75rem;
+  }
+
+  .tactical-page .tactical-record-btn > span {
+    display: none;
+  }
+
+  .tactical-page .tactical-playback-controls {
+    grid-template-columns: repeat(4, 2.75rem) minmax(0, 1fr);
+  }
+
+  .tactical-page .tactical-progress-meta > span {
+    display: none;
+  }
+
+  .tactical-page .tactical-speed-control {
+    grid-column: 1 / 3;
+  }
+
+  .tactical-page .tactical-speed-control > span {
+    display: none;
+  }
+
+  .tactical-page .tactical-repeat-control {
+    grid-column: 3 / 6;
+  }
+
+  .tactical-page .tactical-form-grid,
+  .tactical-page .tactical-inspector-grid,
+  .tactical-page .tactical-library-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .tactical-page .tactical-dialog-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tactical-page .tactical-dialog-actions > span {
+    display: none;
+  }
+
+  .tactical-page .tactical-dialog-actions > button {
+    width: 100%;
+  }
+
+  .tactical-page .tactical-export-menu {
+    right: max(.3rem, env(safe-area-inset-right));
+    width: calc(100vw - .6rem - env(safe-area-inset-left) - env(safe-area-inset-right));
+  }
+}
+
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 620px) {
+  body.tactical-page {
+    --tactical-header-height: 3.15rem;
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+
+  .tactical-page .tactical-header {
+    grid-template-rows: 1fr;
+    min-height: var(--tactical-header-height);
+    padding-block: .25rem;
+  }
+
+  .tactical-page .tactical-header-state,
+  .tactical-page .tactical-brand-copy small,
+  .tactical-page .tactical-rotate-hint {
+    display: none !important;
+  }
+
+  .tactical-page .tactical-brand > img {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .tactical-page .tactical-shell {
+    margin-top: .35rem;
+  }
+
+  .tactical-page .tactical-play-meta {
+    grid-template-columns: minmax(0, 1fr) 9rem minmax(10rem, .9fr);
+    padding: .35rem;
+  }
+
+  .tactical-page .tactical-field > span:first-child {
+    display: none;
+  }
+
+  .tactical-page .tactical-field :is(input, select) {
+    min-height: 2.5rem;
+    padding-block: .42rem;
+  }
+
+  .tactical-page .tactical-field--description {
+    display: grid;
+    grid-column: auto;
+  }
+
+  .tactical-page .tactical-board-toolbar {
+    padding-block: .3rem;
+  }
+
+  .tactical-page .tactical-board-toolbar .tactical-eyebrow {
+    display: none;
+  }
+
+  .tactical-page .tactical-court-frame {
+    height: max(15rem, calc(100dvh - 11.7rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+    aspect-ratio: auto;
+  }
+
+  .tactical-page .tactical-playback {
+    padding: .4rem;
+  }
+
+  .tactical-page .tactical-playback-head {
+    display: none;
+  }
+
+  .tactical-page .tactical-playback-controls {
+    grid-template-columns: repeat(4, 2.5rem) minmax(8rem, 1fr) auto auto;
+  }
+
+  .tactical-page .tactical-playback-btn {
+    width: 2.5rem;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+  }
+
+  .tactical-page .tactical-speed-control,
+  .tactical-page .tactical-repeat-control {
+    grid-row: 1;
+    grid-column: auto;
+    min-height: 2.5rem;
+  }
+
+  .tactical-page .tactical-mobile-dock {
+    padding: .25rem;
+  }
+
+  .tactical-page .tactical-mobile-dock > button {
+    min-height: 2.95rem;
+    flex-direction: row;
+  }
+
+  .tactical-page .tactical-mobile-dock > button > span {
+    display: none;
+  }
+
+  .tactical-page .tactical-toast {
+    bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Motion ------------------------------------------------------------------ */
+
+@keyframes tactical-status-pulse {
+  0%,
+  100% { opacity: .55; transform: scale(.88); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes tactical-selection-dash {
+  to { stroke-dashoffset: -28; }
+}
+
+@keyframes tactical-route-preview {
+  to {
+    stroke-dashoffset: -19;
+  }
+}
+
+@keyframes tactical-recording-pulse {
+  0%,
+  100% { box-shadow: 0 0 0 3px rgba(217, 45, 63, .1), 0 9px 20px rgba(217, 45, 63, .18); }
+  50% { box-shadow: 0 0 0 7px rgba(217, 45, 63, .03), 0 12px 28px rgba(217, 45, 63, .28); }
+}
+
+@keyframes tactical-dialog-in {
+  from { opacity: 0; transform: translateY(.8rem) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes tactical-popover-in {
+  from { opacity: 0; transform: translateY(-.35rem) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tactical-page *,
+  .tactical-page *::before,
+  .tactical-page *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* Print only the strategy ------------------------------------------------- */
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 8mm;
+  }
+
+  body.tactical-page {
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .tactical-page [data-export-ignore],
+  .tactical-page .tactical-header,
+  .tactical-page .tactical-play-meta,
+  .tactical-page .tactical-panel,
+  .tactical-page .tactical-board-toolbar,
+  .tactical-page .tactical-playback,
+  .tactical-page .tactical-mobile-dock,
+  .tactical-page .tactical-popover,
+  .tactical-page .tactical-dialog,
+  .tactical-page .tactical-toast,
+  .tactical-page .tactical-panel-backdrop {
+    display: none !important;
+  }
+
+  .tactical-page .tactical-shell,
+  .tactical-page .tactical-workspace,
+  .tactical-page .tactical-center {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .tactical-page .tactical-center > *:not(.tactical-court-frame) {
+    display: none !important;
+  }
+
+  .tactical-page .tactical-court-frame {
+    display: grid !important;
+    width: 100% !important;
+    height: auto !important;
+    max-width: none !important;
+    aspect-ratio: 5 / 3 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #08775d !important;
+    box-shadow: none !important;
+  }
+
+  .tactical-page .tactical-court-frame::before {
+    content: none !important;
+  }
+
+  .tactical-page .tactical-court {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+}
