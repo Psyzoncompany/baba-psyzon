@@ -25,7 +25,7 @@ service cloud.firestore {
       return isSchemaV2()
         && request.resource.data.id is string
         && request.resource.data.keys().hasOnly([
-          'id', 'dateKey', 'dataISO', 'dataCompleta', 'dia', 'mes', 'ano', 'status',
+          'id', 'dateKey', 'dataISO', 'dataCompleta', 'dia', 'mes', 'ano', 'status', 'matchMode',
           'currentGameId', 'currentQueue', 'filaTimes', 'campeaoDoBaba', 'lastResult',
           'pendingTieBreak', 'teamRevealIndex', 'criadoEm', 'finalizadoEm', 'schemaVersion',
           'statsApplied', 'deleted', 'updatedAtMs'
@@ -84,7 +84,7 @@ service cloud.firestore {
           && request.resource.data.id == teamId
           && request.resource.data.keys().hasOnly([
             'id', 'name', 'tipo', 'order', 'status', 'pontos', 'golsPro', 'golsContra',
-            'vitorias', 'empates', 'derrotas', 'logo', 'schemaVersion', 'deleted', 'updatedAtMs'
+            'vitorias', 'empates', 'derrotas', 'logo', 'manualStats', 'schemaVersion', 'deleted', 'updatedAtMs'
           ]);
         allow delete: if false;
       }
@@ -148,7 +148,7 @@ service cloud.firestore {
       allow create, update: if isSchemaV2()
         && request.resource.data.playerId == playerId
         && request.resource.data.keys().hasOnly([
-          'id', 'playerId', 'nome', 'name', 'tipo', 'type', 'ativo', 'active', 'criadoEm',
+          'id', 'playerId', 'nome', 'name', 'tipo', 'type', 'ativo', 'active', 'novato', 'criadoEm',
           'createdAtMs', 'schemaVersion', 'deleted', 'updatedAtMs'
         ]);
       allow delete: if false;
