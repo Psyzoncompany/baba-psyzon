@@ -447,6 +447,7 @@ function babaMetadata(baba, currentGameId = null, timestamp = now()) {
     mes: baba.mes,
     ano: baba.ano,
     status: baba.status,
+    matchMode: baba.matchMode || 'ONLINE',
     currentGameId,
     currentQueue: [...(baba.filaTimes || [])],
     filaTimes: [...(baba.filaTimes || [])],
@@ -1160,6 +1161,7 @@ function restoreBabaFromSnapshots(babaId, snapshots) {
     mes: meta.mes,
     ano: meta.ano,
     status: meta.status,
+    matchMode: meta.matchMode || 'ONLINE',
     jogadoresPresentes: participants.filter((item) => item.present && !item.visitor).map((item) => item.playerId),
     visitantes: visitors,
     pagamentos: payments,
@@ -1203,10 +1205,18 @@ function mergeRemoteIntoLocal() {
   if (window.__babaRemotePlayers) next.players = clone(window.__babaRemotePlayers);
   if (window.__babaRemotePurchaseGoals) next.purchaseGoals = clone(window.__babaRemotePurchaseGoals);
   if (window.__babaRemoteMonthlyPayments) {
-    next.monthlyPayments = {
-      ...(clone(current.monthlyPayments) || {}),
-      ...(clone(window.__babaRemoteMonthlyPayments) || {}),
-    };
+    const localMonthlyPayments = clone(current.monthlyPayments) || {};
+    const remoteMonthlyPayments = clone(window.__babaRemoteMonthlyPayments) || {};
+    next.monthlyPayments = { ...localMonthlyPayments };
+    Object.entries(remoteMonthlyPayments).forEach(([monthKey, remoteRecord]) => {
+      const localRecord = localMonthlyPayments[monthKey] || {};
+      const localPayments = localRecord.pagamentos && typeof localRecord.pagamentos === 'object' ? localRecord.pagamentos : {};
+      const remotePayments = remoteRecord?.pagamentos && typeof remoteRecord.pagamentos === 'object' ? remoteRecord.pagamentos : {};
+      next.monthlyPayments[monthKey] = {
+        pagamentos: { ...localPayments, ...remotePayments },
+        atualizadoEm: Math.max(Number(localRecord.atualizadoEm || 0), Number(remoteRecord?.atualizadoEm || 0)),
+      };
+    });
   }
   if (window.__babaRemotePlayerStats) next.playerStats = clone(window.__babaRemotePlayerStats);
   next.monthlyStats = Object.fromEntries(monthStatsCache.entries());
@@ -1229,6 +1239,7 @@ function mergeRemoteIntoLocal() {
         mes: meta.mes,
         ano: meta.ano,
         status: meta.status,
+        matchMode: meta.matchMode || 'ONLINE',
         criadoEm: meta.criadoEm,
         finalizadoEm: meta.finalizadoEm || null,
         campeaoDoBaba: meta.campeaoDoBaba || null,
@@ -1366,9 +1377,10 @@ async function loadMonthPayments(monthKey) {
     collection(db, 'baba_months', id, 'payments'),
     limit(QUERY_LIMITS.payments),
   ));
+  const activePayments = snapshot.docs.map((item) => item.data()).filter((item) => !item.deleted);
   const record = {
-    pagamentos: Object.fromEntries(snapshot.docs.map((item) => [item.id, Boolean(item.data().paid)])),
-    atualizadoEm: Math.max(0, ...snapshot.docs.map((item) => Number(item.data().updatedAtMs || 0))),
+    pagamentos: Object.fromEntries(activePayments.map((item) => [item.playerId || item.id, Boolean(item.paid)])),
+    atualizadoEm: Math.max(0, ...activePayments.map((item) => Number(item.updatedAtMs || 0))),
   };
   monthPaymentsCache.set(id, record);
   window.__babaRemoteMonthlyPayments = {
@@ -1386,6 +1398,7 @@ function startPlayersSubscription() {
       nome: item.nome || item.name,
       tipo: item.tipo || item.type || 'jogador',
       ativo: item.ativo !== false,
+      novato: item.novato === true,
       criadoEm: item.criadoEm || item.createdAtMs || now(),
     }));
     scheduleRemoteFlush();
