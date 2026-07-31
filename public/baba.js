@@ -446,6 +446,13 @@
     return attribute ? `[${attribute}="${CSS.escape(element.getAttribute(attribute))}"]` : '';
   }
 
+  function supportsTextSelection(element) {
+    if (!element || typeof element.setSelectionRange !== 'function') return false;
+    if (element instanceof HTMLTextAreaElement) return true;
+    if (!(element instanceof HTMLInputElement)) return false;
+    return ['text', 'search', 'url', 'tel', 'password'].includes(String(element.type || '').toLowerCase());
+  }
+
   function actionButtonSelector(button) {
     if (!button) return '';
     if (button.id) return `#${CSS.escape(button.id)}`;
@@ -523,7 +530,7 @@
     if (activeSelector) {
       const replacement = element.querySelector(activeSelector);
       replacement?.focus({ preventScroll: true });
-      if (replacement && selection && typeof replacement.setSelectionRange === 'function') {
+      if (replacement && selection && supportsTextSelection(replacement)) {
         replacement.setSelectionRange(selection.start, selection.end);
       }
     }
