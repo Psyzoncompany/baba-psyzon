@@ -2102,12 +2102,16 @@
     return [...fixedPlayers, ...visitors];
   }
 
+  function isPaymentEligiblePlayer(player) {
+    return Boolean(player) && player.ativo !== false && player.novato !== true;
+  }
+
   function paymentPriceForPlayer(player) {
     return player?.tipo === 'goleiro' ? GOALKEEPER_BABA_PRICE : PLAYER_BABA_PRICE;
   }
 
-  function getPaymentStats(baba, { activeOnly = false } = {}) {
-    const players = getPaymentPlayers(baba).filter((player) => !activeOnly || player?.ativo !== false);
+  function getPaymentStats(baba) {
+    const players = getPaymentPlayers(baba).filter(isPaymentEligiblePlayer);
     return players.reduce((stats, player) => {
       const price = paymentPriceForPlayer(player);
       const paid = isPlayerPaidThisMonth(player.id, baba);
@@ -2315,7 +2319,7 @@
 
   function paymentRowsForPdf(baba = getActiveBaba(), paidOnly = true) {
     return getPaymentPlayers(baba)
-      .filter((player) => player?.ativo !== false)
+      .filter(isPaymentEligiblePlayer)
       .filter((player) => isPlayerPaidThisMonth(player.id, baba) === paidOnly)
       .sort((a, b) => a.nome.localeCompare(b.nome))
       .map((player, index) => pdfTeamRow([
@@ -2385,7 +2389,7 @@
     };
 
     if (type === 'payments') {
-      const stats = getPaymentStats(baba, { activeOnly: true });
+      const stats = getPaymentStats(baba);
       const pending = Math.max(0, stats.expected - stats.paid);
       report.title = 'Lista de pagamentos';
       report.subtitle = `${paymentMonthLabel()} - vencimento ${paymentDueDateLabel()}`;
@@ -2399,7 +2403,7 @@
       report.sections = [
         {
           title: 'Jogadores que pagaram',
-          note: 'Confirmados no mes - ativos',
+          note: 'Confirmados no mes - ativos e não novatos',
           icon: 'check-circle',
           maxRows: PDF_ROW_LIMITS.payments,
           columns: ['#', 'Jogador', 'Tipo', 'Valor'],
@@ -2408,7 +2412,7 @@
         },
         {
           title: 'Pendentes',
-          note: 'Ainda em aberto - ativos',
+          note: 'Ainda em aberto - ativos e não novatos',
           icon: 'alert-circle',
           maxRows: PDF_ROW_LIMITS.payments,
           columns: ['#', 'Jogador', 'Tipo', 'Valor'],
@@ -7276,10 +7280,14 @@
     }
     const baba = getActiveBaba();
     const normalized = normalizeAssistantText(question);
-    const players = getPaymentPlayers(baba);
+    const players = getPaymentPlayers(baba).filter(isPaymentEligiblePlayer);
     if (!players.length) return 'Não encontrei jogadores cadastrados para calcular pagamentos.';
     const playerAsked = assistantFindPlayers(question)[0] || (/\bele\b|\bela\b/.test(normalized) ? getPlayer(babaAssistant.context.players[0]) : null);
     if (playerAsked) {
+      if (!isPaymentEligiblePlayer(playerAsked)) {
+        const reason = playerAsked.ativo === false ? 'está inativo' : 'é novato';
+        return `${playerAsked.nome} ${reason} e não entra nos cálculos de pagamento deste mês.`;
+      }
       const paid = isPlayerPaidThisMonth(playerAsked.id, baba);
       const value = formatCurrency(paymentPriceForPlayer(playerAsked));
       babaAssistant.context.players = [playerAsked.id];
