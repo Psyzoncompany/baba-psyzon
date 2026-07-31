@@ -130,6 +130,47 @@
     }
   }
 
+  function drawPaymentHeroVector(doc, x, y, width, height) {
+    // Ilustracao vetorial leve: substitui o banner PNG no PDF de pagamentos.
+    setColor(doc, 'setFillColor', [7, 45, 57]);
+    doc.roundedRect(x, y, width, height, 3.5, 3.5, 'F');
+    setColor(doc, 'setFillColor', [12, 90, 88]);
+    doc.circle(x + width - 14, y + 13, 20, 'F');
+    setColor(doc, 'setFillColor', [16, 122, 111]);
+    doc.circle(x + width - 42, y + height - 6, 25, 'F');
+    setColor(doc, 'setDrawColor', [138, 221, 191]);
+    doc.setLineWidth(.55);
+    for (let index = 0; index < 5; index += 1) {
+      const offset = index * 8;
+      doc.line(x + 10 + offset, y + height - 8, x + 29 + offset, y + 8);
+    }
+
+    const walletX = x + width - 75;
+    const walletY = y + 14;
+    setColor(doc, 'setFillColor', [3, 27, 35]);
+    setColor(doc, 'setDrawColor', [205, 230, 88]);
+    doc.setLineWidth(1.05);
+    doc.roundedRect(walletX, walletY, 42, 25, 3, 3, 'FD');
+    doc.roundedRect(walletX + 28, walletY + 8, 16, 10, 2, 2, 'FD');
+    setColor(doc, 'setFillColor', [205, 230, 88]);
+    doc.circle(walletX + 36, walletY + 13, 1.4, 'F');
+    setColor(doc, 'setDrawColor', [138, 221, 191]);
+    doc.setLineWidth(.6);
+    doc.line(walletX + 6, walletY + 7, walletX + 27, walletY + 7);
+    doc.line(walletX + 6, walletY + 12, walletX + 21, walletY + 12);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    setColor(doc, 'setTextColor', [205, 230, 88]);
+    doc.text('CONTROLE', x + 12, y + 16);
+    doc.setFontSize(11);
+    setColor(doc, 'setTextColor', COLORS.white);
+    doc.text('EM DIA', x + 12, y + 26);
+    doc.setFontSize(6.2);
+    setColor(doc, 'setTextColor', [188, 217, 220]);
+    doc.text('PAGAMENTOS DO BABA', x + 12, y + 34);
+  }
+
   function createPaymentReport(report, JsPdf) {
     const doc = new JsPdf({
       orientation: 'landscape',
@@ -156,21 +197,7 @@
 
     setColor(doc, 'setFillColor', [3, 19, 29]);
     doc.roundedRect(margin, heroY, contentWidth, heroHeight, 3.5, 3.5, 'F');
-    if (report.headerImageData) {
-      doc.addImage(
-        report.headerImageData,
-        'PNG',
-        margin + contentWidth - 132,
-        heroY,
-        132,
-        heroHeight,
-        'payment-report-hero',
-        'FAST',
-      );
-    } else {
-      setColor(doc, 'setFillColor', [8, 42, 62]);
-      doc.rect(margin + contentWidth * .57, heroY, contentWidth * .43, heroHeight, 'F');
-    }
+    drawPaymentHeroVector(doc, margin + contentWidth - 132, heroY, 132, heroHeight);
     setColor(doc, 'setDrawColor', [78, 99, 106]);
     doc.setLineWidth(.65);
     doc.roundedRect(margin, heroY, contentWidth, heroHeight, 3.5, 3.5, 'S');
@@ -587,25 +614,7 @@
 
   async function exportReport(report) {
     await document.fonts?.ready?.catch?.(() => {});
-    let preparedReport = report;
-    if (report?.type === 'payments' && !report.headerImageData) {
-      try {
-        const imageUrl = new URL('img/baba-payment-report-hero-v1.png', document.baseURI).href;
-        const response = await fetch(imageUrl);
-        if (!response.ok) throw new Error(`Falha ao carregar banner (${response.status}).`);
-        const blob = await response.blob();
-        const headerImageData = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = () => reject(reader.error || new Error('Falha ao ler banner.'));
-          reader.readAsDataURL(blob);
-        });
-        preparedReport = { ...report, headerImageData };
-      } catch (error) {
-        console.warn('Banner do PDF de pagamentos indisponivel; usando fundo vetorial.', error);
-      }
-    }
-    const doc = createReport(preparedReport);
+    const doc = createReport(report);
     doc.save(cleanFileName(report.fileName || report.title));
     return { pages: doc.getNumberOfPages(), fileName: cleanFileName(report.fileName || report.title) };
   }

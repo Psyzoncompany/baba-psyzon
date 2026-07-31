@@ -2105,8 +2105,8 @@
     return player?.tipo === 'goleiro' ? GOALKEEPER_BABA_PRICE : PLAYER_BABA_PRICE;
   }
 
-  function getPaymentStats(baba) {
-    const players = getPaymentPlayers(baba);
+  function getPaymentStats(baba, { activeOnly = false } = {}) {
+    const players = getPaymentPlayers(baba).filter((player) => !activeOnly || player?.ativo !== false);
     return players.reduce((stats, player) => {
       const price = paymentPriceForPlayer(player);
       const paid = isPlayerPaidThisMonth(player.id, baba);
@@ -2320,7 +2320,7 @@
       .map((player, index) => pdfTeamRow([
         index + 1,
         player.nome,
-        playerPaymentTypeLabel(player),
+        `${playerPaymentTypeLabel(player)}${player.novato ? ' - NOVATO' : ''}`,
         formatCurrency(paymentPriceForPlayer(player)),
       ], pdfPlayerTeam(baba, player.id)));
   }
@@ -2384,7 +2384,7 @@
     };
 
     if (type === 'payments') {
-      const stats = getPaymentStats(baba);
+      const stats = getPaymentStats(baba, { activeOnly: true });
       const pending = Math.max(0, stats.expected - stats.paid);
       report.title = 'Lista de pagamentos';
       report.subtitle = `${paymentMonthLabel()} - vencimento ${paymentDueDateLabel()}`;
@@ -2398,7 +2398,7 @@
       report.sections = [
         {
           title: 'Jogadores que pagaram',
-          note: 'Confirmados no mes',
+          note: 'Confirmados no mes - ativos',
           icon: 'check-circle',
           maxRows: PDF_ROW_LIMITS.payments,
           columns: ['#', 'Jogador', 'Tipo', 'Valor'],
@@ -2407,7 +2407,7 @@
         },
         {
           title: 'Pendentes',
-          note: 'Ainda em aberto',
+          note: 'Ainda em aberto - ativos',
           icon: 'alert-circle',
           maxRows: PDF_ROW_LIMITS.payments,
           columns: ['#', 'Jogador', 'Tipo', 'Valor'],
