@@ -446,6 +446,12 @@
     return attribute ? `[${attribute}="${CSS.escape(element.getAttribute(attribute))}"]` : '';
   }
 
+  function supportsTextSelection(element) {
+    if (!element) return false;
+    if (element.tagName === 'TEXTAREA') return true;
+    return element.tagName === 'INPUT' && ['text', 'search', 'url', 'tel', 'password'].includes(element.type);
+  }
+
   function actionButtonSelector(button) {
     if (!button) return '';
     if (button.id) return `#${CSS.escape(button.id)}`;
@@ -512,7 +518,7 @@
 
     const active = element.contains(document.activeElement) ? document.activeElement : null;
     const activeSelector = stableControlSelector(active);
-    const selection = active && 'selectionStart' in active
+    const selection = supportsTextSelection(active)
       ? { start: active.selectionStart, end: active.selectionEnd }
       : null;
     const scrollTop = element.scrollTop;
@@ -523,7 +529,7 @@
     if (activeSelector) {
       const replacement = element.querySelector(activeSelector);
       replacement?.focus({ preventScroll: true });
-      if (replacement && selection && typeof replacement.setSelectionRange === 'function') {
+      if (supportsTextSelection(replacement) && selection) {
         replacement.setSelectionRange(selection.start, selection.end);
       }
     }

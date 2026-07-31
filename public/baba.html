@@ -14,7 +14,8 @@
   <meta name="theme-color" content="#f4f8fc">
   <title>Baba Psyzon</title>
   <link href="apple-ui-font.css?v=20260723-1" rel="stylesheet">
-  <link href="baba-ui.css?v=20260724-queue-wakelock-login-1" rel="stylesheet">
+  <link href="baba-ui.css?v=20260731-selection-fix-1" rel="stylesheet">
+  <link href="baba-manual.css?v=20260731-manual-mode-1" rel="stylesheet">
   <script>
     if (window.location.protocol !== 'file:') {
       const manifest = document.createElement('link');
@@ -275,6 +276,7 @@
           <button type="button" data-tab="teams" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-users"></use></svg><span>Times</span></button>
           <button type="button" data-tab="goals" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-target"></use></svg><span>Metas</span></button>
           <button class="organizer-only" type="button" data-tab="organizer" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-shield"></use></svg><span>Organizador</span></button>
+          <button class="organizer-only" type="button" data-action="open-manual-mode" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-upload"></use></svg><span>Importar súmula</span></button>
           <button type="button" data-action="reset-mode" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-refresh"></use></svg><span>Trocar acesso</span></button>
           <button type="button" data-action="logout" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-exit"></use></svg><span>Sair</span></button>
         </div>
@@ -285,28 +287,55 @@
   <main class="baba-shell">
     <section id="mode-gateway" class="baba-gateway">
       <div class="baba-gateway__panel">
-        <span class="baba-kicker">Baba em tempo real</span>
-        <h1>Como você quer entrar?</h1>
-        <p>Escolha seu acesso para acompanhar ou organizar o Baba Psyzon.</p>
-        <div class="baba-mode-grid">
-          <button id="enter-organizer-btn" class="baba-choice baba-choice--organizer" type="button">
-            <svg class="baba-choice-icon" aria-hidden="true" focusable="false"><use href="#baba-shield"></use></svg>
-            <span>Entrar como Organizador</span>
-            <small>Gerencie, organize e controle seu baba.</small>
-            <i class="baba-choice-arrow" aria-hidden="true">›</i>
-          </button>
-          <button id="enter-player-btn" class="baba-choice baba-choice--player" type="button">
-            <svg class="baba-choice-icon" aria-hidden="true" focusable="false"><use href="#baba-users"></use></svg>
-            <span>Entrar como Jogador</span>
-            <small>Acompanhe partidas, fila, tabela e ranking.</small>
-            <i class="baba-choice-arrow" aria-hidden="true">›</i>
-          </button>
-          <a href="mesa-tatica.html" class="baba-choice baba-choice--tactical" aria-label="Abrir Mesa Tática">
-            <svg class="baba-choice-icon" aria-hidden="true" focusable="false"><use href="#baba-organizer-board"></use></svg>
-            <span>MESA TÁTICA</span>
-            <small>Monte estratégias, formações e jogadas de futsal.</small>
-            <i class="baba-choice-arrow" aria-hidden="true">›</i>
+        <div id="operation-mode-step" class="baba-gateway-step">
+          <span class="baba-kicker">Registro do Baba</span>
+          <h1>Escolha como deseja registrar a partida</h1>
+          <p>Use o placar em tempo real ou importe depois a súmula oficial preenchida no papel.</p>
+          <div class="baba-mode-grid baba-mode-grid--operation">
+            <button id="enter-online-mode-btn" class="baba-choice baba-choice--online" type="button">
+              <svg class="baba-choice-icon" aria-hidden="true" focusable="false"><use href="#baba-play"></use></svg>
+              <span>Modo Online</span>
+              <small>Registre gols, partidas e estatísticas diretamente pelo site.</small>
+              <i class="baba-choice-arrow" aria-hidden="true">›</i>
+            </button>
+            <button id="enter-manual-mode-btn" class="baba-choice baba-choice--manual" type="button">
+              <svg class="baba-choice-icon" aria-hidden="true" focusable="false"><use href="#baba-upload"></use></svg>
+              <span>Modo Manual</span>
+              <small>Preencha a folha oficial e envie uma foto ou PDF escaneado.</small>
+              <i class="baba-choice-arrow" aria-hidden="true">›</i>
+            </button>
+          </div>
+          <a class="baba-manual-template-link" href="templates/sumula-futsal-manual-a4.pdf" download>
+            <svg aria-hidden="true" focusable="false"><use href="#baba-download"></use></svg>
+            Baixar PDF oficial para impressão
           </a>
+        </div>
+
+        <div id="access-mode-step" class="baba-gateway-step hidden">
+          <span class="baba-kicker">Modo Online</span>
+          <h1>Como você quer entrar?</h1>
+          <p>Escolha seu acesso para acompanhar ou organizar o Baba Psyzon.</p>
+          <div class="baba-mode-grid">
+            <button id="enter-organizer-btn" class="baba-choice baba-choice--organizer" type="button">
+              <svg class="baba-choice-icon" aria-hidden="true" focusable="false"><use href="#baba-shield"></use></svg>
+              <span>Entrar como Organizador</span>
+              <small>Gerencie, organize e controle seu baba.</small>
+              <i class="baba-choice-arrow" aria-hidden="true">›</i>
+            </button>
+            <button id="enter-player-btn" class="baba-choice baba-choice--player" type="button">
+              <svg class="baba-choice-icon" aria-hidden="true" focusable="false"><use href="#baba-users"></use></svg>
+              <span>Entrar como Jogador</span>
+              <small>Acompanhe partidas, fila, tabela e ranking.</small>
+              <i class="baba-choice-arrow" aria-hidden="true">›</i>
+            </button>
+            <a href="mesa-tatica.html" class="baba-choice baba-choice--tactical" aria-label="Abrir Mesa Tática">
+              <svg class="baba-choice-icon" aria-hidden="true" focusable="false"><use href="#baba-organizer-board"></use></svg>
+              <span>MESA TÁTICA</span>
+              <small>Monte estratégias, formações e jogadas de futsal.</small>
+              <i class="baba-choice-arrow" aria-hidden="true">›</i>
+            </a>
+          </div>
+          <button id="back-operation-mode-btn" class="baba-gateway-back" type="button">Voltar para os modos de registro</button>
         </div>
         <form id="organizer-password-form" class="baba-password baba-password-modal hidden" aria-labelledby="organizer-password-title" aria-modal="true" role="dialog">
           <div class="baba-password__window">
@@ -791,6 +820,102 @@
         <button id="close-game-detail-modal" class="baba-mini-btn" type="button">Fechar</button>
       </div>
       <div id="game-detail-list" class="baba-stack"></div>
+    </div>
+  </div>
+
+  <div id="manual-mode-modal" class="baba-modal baba-manual-modal hidden" role="dialog" aria-modal="true" aria-labelledby="manual-mode-title">
+    <div class="baba-modal__panel baba-manual-modal__panel" tabindex="-1">
+      <div class="baba-manual-head">
+        <span>
+          <small>Leitura inteligente da súmula</small>
+          <strong id="manual-mode-title">Modo Manual</strong>
+        </span>
+        <button id="close-manual-mode" class="baba-mini-btn" type="button" aria-label="Fechar Modo Manual">Fechar</button>
+      </div>
+
+      <ol id="manual-mode-progress" class="baba-manual-progress" aria-label="Etapas da importação">
+        <li data-manual-progress="upload" class="is-active">Upload</li>
+        <li data-manual-progress="preprocess">Ajuste</li>
+        <li data-manual-progress="ocr">Leitura</li>
+        <li data-manual-progress="review">Conferência</li>
+        <li data-manual-progress="save">Salvar</li>
+      </ol>
+
+      <section id="manual-upload-step" class="baba-manual-step" data-manual-step="upload">
+        <div id="manual-drop-zone" class="baba-manual-drop-zone" tabindex="0" role="button" aria-controls="manual-score-sheet-file">
+          <svg aria-hidden="true" focusable="false"><use href="#baba-upload"></use></svg>
+          <strong>Enviar foto ou arrastar PDF</strong>
+          <span>JPG, PNG, WEBP ou PDF - até 15 MB</span>
+          <button id="select-manual-file" class="baba-primary" type="button">Selecionar arquivo</button>
+          <input id="manual-score-sheet-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf" hidden>
+        </div>
+        <div class="baba-manual-note">
+          <strong>Use somente o PDF oficial.</strong>
+          <span>O sistema conhece as coordenadas fixas das caixas e nunca salva antes da sua confirmação.</span>
+        </div>
+      </section>
+
+      <section id="manual-crop-step" class="baba-manual-step hidden" data-manual-step="preprocess">
+        <div class="baba-manual-section-head">
+          <span><strong>Confirme o enquadramento</strong><small>Arraste os quatro cantos se a foto estiver torta.</small></span>
+          <span id="manual-crop-confidence" class="baba-manual-confidence"></span>
+        </div>
+        <div class="baba-manual-crop-stage">
+          <canvas id="manual-crop-canvas" aria-label="Pré-visualização da folha e pontos de recorte"></canvas>
+        </div>
+        <div class="baba-manual-actions">
+          <button id="manual-reset-crop" class="baba-secondary" type="button">Detectar novamente</button>
+          <button id="manual-analyze-file" class="baba-primary" type="button">Analisar súmula</button>
+        </div>
+      </section>
+
+      <section id="manual-processing-step" class="baba-manual-step hidden" data-manual-step="ocr" aria-live="polite">
+        <div class="baba-manual-processing-visual" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <strong id="manual-processing-title">Preparando a imagem...</strong>
+        <p id="manual-processing-description">O arquivo permanece em rascunho até a conferência.</p>
+        <ul id="manual-processing-list" class="baba-manual-processing-list">
+          <li data-pipeline="upload">Upload recebido</li>
+          <li data-pipeline="preprocess">Correção de perspectiva e contraste</li>
+          <li data-pipeline="template">Localização das caixas fixas</li>
+          <li data-pipeline="marks">Contagem das marcações</li>
+          <li data-pipeline="ocr">Reconhecimento dos nomes</li>
+          <li data-pipeline="validation">Validação do JSON</li>
+        </ul>
+      </section>
+
+      <section id="manual-review-step" class="baba-manual-step hidden" data-manual-step="review">
+        <div class="baba-manual-section-head">
+          <span><strong>Confira antes de salvar</strong><small>Campos de baixa confiança ficam destacados e podem ser corrigidos.</small></span>
+          <span id="manual-review-confidence" class="baba-manual-confidence"></span>
+        </div>
+        <div id="manual-review-alerts" class="baba-manual-alerts" aria-live="polite"></div>
+        <div class="baba-manual-header-fields">
+          <label>Data<input id="manual-review-date" type="date" required></label>
+          <label>Local / Quadra<input id="manual-review-location" type="text" autocomplete="off"></label>
+          <label>Responsável<input id="manual-review-responsible" type="text" autocomplete="off"></label>
+        </div>
+        <div id="manual-review-teams" class="baba-manual-review-teams"></div>
+        <details class="baba-manual-json-preview">
+          <summary>Ver JSON estruturado</summary>
+          <pre id="manual-json-preview"></pre>
+        </details>
+        <div class="baba-manual-actions baba-manual-actions--sticky">
+          <button id="manual-start-over" class="baba-secondary" type="button">Escolher outro arquivo</button>
+          <button id="manual-save-import" class="baba-primary" type="button">Salvar súmula confirmada</button>
+        </div>
+      </section>
+
+      <section id="manual-success-step" class="baba-manual-step hidden" data-manual-step="save">
+        <div class="baba-manual-success-icon"><svg aria-hidden="true" focusable="false"><use href="#baba-check"></use></svg></div>
+        <strong>Súmula importada com sucesso</strong>
+        <p>Ranking, artilharia e estatísticas foram adicionados sem alterar babas anteriores.</p>
+        <div class="baba-manual-actions">
+          <button id="manual-open-history" class="baba-primary" type="button">Abrir histórico</button>
+          <button id="manual-import-another" class="baba-secondary" type="button">Importar outra</button>
+        </div>
+      </section>
     </div>
   </div>
 
@@ -1291,10 +1416,14 @@
   </script>
 
 
-  <script type="module" src="baba-persistence.js?v=20260723-permissions-fix-1"></script>
+  <script type="module" src="baba-persistence.js?v=20260731-manual-mode-1"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
   <script src="pdf-report.js?v=20260723-payment-layout-1"></script>
-  <script src="baba.js?v=20260724-queue-wakelock-login-1" defer></script>
+  <script src="baba-manual-template.js?v=20260731-manual-mode-1"></script>
+  <script src="baba-manual-core.js?v=20260731-manual-mode-1"></script>
+  <script src="vendor/tesseract/tesseract.min.js?v=6.0.1"></script>
+  <script src="baba.js?v=20260731-manual-mode-1" defer></script>
+  <script src="baba-manual.js?v=20260731-manual-mode-1" defer></script>
 </body>
 
 </html>
