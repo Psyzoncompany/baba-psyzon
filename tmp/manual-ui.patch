@@ -1,0 +1,686 @@
+*** Begin Patch
+*** Add File: public/baba-manual.js
++(() => {
++  'use strict';
++
++  const core = window.BabaManualCore;
++  const template = window.BabaManualTemplate;
++  if (!core || !template) return;
++
++  const MAX_FILE_SIZE = 15 * 1024 * 1024;
++  const $ = (selector, root = document) => root.querySelector(selector);
++  const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
++  const waitForPaint = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
++  const escapeHTML = (value) => String(value ?? '')
++    .replaceAll('&', '&amp;')
++    .replaceAll('<', '&lt;')
++    .replaceAll('>', '&gt;')
++    .replaceAll('"', '&quot;')
++    .replaceAll("'", '&#039;');
++
++  const els = {
++    modal: $('#manual-mode-modal'),
++    panel: $('#manual-mode-modal .baba-manual-modal__panel'),
++    close: $('#close-manual-mode'),
++    progress: $('#manual-mode-progress'),
++    steps: $$('[data-manual-step]'),
++    dropZone: $('#manual-drop-zone'),
++    selectFile: $('#select-manual-file'),
++    fileInput: $('#manual-score-sheet-file'),
++    cropCanvas: $('#manual-crop-canvas'),
++    cropConfidence: $('#manual-crop-confidence'),
++    resetCrop: $('#manual-reset-crop'),
++    analyze: $('#manual-analyze-file'),
++    processingTitle: $('#manual-processing-title'),
++    processingDescription: $('#manual-processing-description'),
++    processingList: $('#manual-processing-list'),
++    reviewConfidence: $('#manual-review-confidence'),
++    reviewAlerts: $('#manual-review-alerts'),
++    reviewDate: $('#manual-review-date'),
++    reviewLocation: $('#manual-review-location'),
++    reviewResponsible: $('#manual-review-responsible'),
++    reviewTeams: $('#manual-review-teams'),
++    jsonPreview: $('#manual-json-preview'),
++    startOver: $('#manual-start-over'),
++    save: $('#manual-save-import'),
++    openHistory: $('#manual-open-history'),
++    importAnother: $('#manual-import-another'),
++  };
++
++  if (!els.modal || !els.fileInput || !els.cropCanvas) return;
++
++  const session = {
++    file: null,
++    sourceCanvas: null,
++    cropDetection: null,
++    quad: null,
++    draggingCorner: -1,
++    normalizedCanvas: null,
++    enhancedCanvas: null,
++    markAnalysis: null,
++    draft: null,
++    importedBabaId: null,
++    lastOpener: null,
++    tesseractWorker: null,
++    processing: false,
++  };
++
++  function bridge() {
++    return window.BabaManualBridge || null;
++  }
++
++  function setStep(step) {
++    els.steps.forEach((element) => element.classList.toggle('hidden', element.dataset.manualStep !== step));
++    const order = ['upload', 'preprocess', 'ocr', 'review', 'save'];
++    const currentIndex = order.indexOf(step);
++    $$('[data-manual-progress]', els.progress).forEach((item) => {
++      const itemIndex = order.indexOf(item.dataset.manualProgress);
++      item.classList.toggle('is-active', itemIndex === currentIndex);
++      item.classList.toggle('is-done', itemIndex < currentIndex);
++    });
++  }
++
++  function setPipeline(key, status) {
++    const item = $(`[data-pipeline="${key}"]`, els.processingList);
++    if (!item) return;
++    item.classList.toggle('is-active', status === 'active');
++    item.classList.toggle('is-done', status === 'done');
++  }
++
++  function resetPipeline() {
++    $$('[data-pipeline]', els.processingList).forEach((item) => item.classList.remove('is-active', 'is-done'));
++  }
++
++  function resetWorkflow() {
++    session.file = null;
++    session.sourceCanvas = null;
++    session.cropDetection = null;
++    session.quad = null;
++    session.draggingCorner = -1;
++    session.normalizedCanvas = null;
++    session.enhancedCanvas = null;
++    session.markAnalysis = null;
++    session.draft = null;
++    session.importedBabaId = null;
++    session.processing = false;
++    els.fileInput.value = '';
++    els.reviewTeams.innerHTML = '';
++    els.reviewAlerts.innerHTML = '';
++    els.jsonPreview.textContent = '';
++    resetPipeline();
++    setStep('upload');
++  }
++
++  function openManualMode(opener = document.activeElement) {
++    if (!bridge()?.isOrganizer?.()) {
++      bridge()?.requestOrganizerForManual?.();
++      return;
++    }
++    session.lastOpener = opener && opener instanceof HTMLElement ? opener : null;
++    resetWorkflow();
++    els.modal.classList.remove('hidden');
++    document.body.classList.add('baba-manual-is-open');
++    requestAnimationFrame(() => els.dropZone.focus({ preventScroll: true }));
++  }
++
++  function closeManualMode({ force = false } = {}) {
++    if (session.processing && !force) return;
++    if (!force && (session.file || session.draft)) {
++      const discard = window.confirm('Descartar esta importação? Nenhum dado foi salvo ainda.');
++      if (!discard) return;
++    }
++    els.modal.classList.add('hidden');
++    document.body.classList.remove('baba-manual-is-open');
++    resetWorkflow();
++    requestAnimationFrame(() => session.lastOpener?.isConnected && session.lastOpener.focus({ preventScroll: true }));
++  }
++
++  function acceptedFile(file) {
++    if (!file) return false;
++    const extension = String(file.name || '').toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] || '';
++    return template.acceptedTypes.includes(file.type)
++      || ['jpg', 'jpeg', 'png', 'webp', 'pdf'].includes(extension);
++  }
++
++  function showFileError(message) {
++    bridge()?.showToast?.(message);
++    els.dropZone.classList.add('is-invalid');
++    window.setTimeout(() => els.dropZone.classList.remove('is-invalid'), 1800);
++  }
++
++  async function loadPdfCanvas(file) {
++    const pdfjs = await import(new URL('vendor/pdfjs/pdf.min.mjs', document.baseURI).href);
++    pdfjs.GlobalWorkerOptions.workerSrc = new URL('vendor/pdfjs/pdf.worker.min.mjs', document.baseURI).href;
++    const bytes = new Uint8Array(await file.arrayBuffer());
++    const pdf = await pdfjs.getDocument({ data: bytes }).promise;
++    if (pdf.numPages !== 1) bridge()?.showToast?.('Apenas a primeira página do PDF será analisada.');
++    const page = await pdf.getPage(1);
++    const baseViewport = page.getViewport({ scale: 1 });
++    const viewport = page.getViewport({ scale: template.canonicalWidth / baseViewport.width });
++    const canvas = document.createElement('canvas');
++    canvas.width = template.canonicalWidth;
++    canvas.height = template.canonicalHeight;
++    const context = canvas.getContext('2d', { alpha: false, willReadFrequently: true });
++    context.fillStyle = '#fff';
++    context.fillRect(0, 0, canvas.width, canvas.height);
++    await page.render({ canvas, canvasContext: context, viewport }).promise;
++    return canvas;
++  }
++
++  async function loadImageCanvas(file) {
++    let bitmap;
++    try {
++      bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
++    } catch (error) {
++      bitmap = await new Promise((resolve, reject) => {
++        const image = new Image();
++        const objectUrl = URL.createObjectURL(file);
++        image.onload = () => { URL.revokeObjectURL(objectUrl); resolve(image); };
++        image.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Imagem invalida.')); };
++        image.src = objectUrl;
++      });
++    }
++    const shouldRotate = bitmap.width > bitmap.height;
++    const sourceWidth = shouldRotate ? bitmap.height : bitmap.width;
++    const sourceHeight = shouldRotate ? bitmap.width : bitmap.height;
++    const scale = Math.min(1, 2600 / Math.max(sourceWidth, sourceHeight));
++    const width = Math.max(1, Math.round(sourceWidth * scale));
++    const height = Math.max(1, Math.round(sourceHeight * scale));
++    const canvas = document.createElement('canvas');
++    canvas.width = width;
++    canvas.height = height;
++    const context = canvas.getContext('2d', { alpha: false, willReadFrequently: true });
++    context.fillStyle = '#fff';
++    context.fillRect(0, 0, width, height);
++    context.save();
++    if (shouldRotate) {
++      context.translate(width, 0);
++      context.rotate(Math.PI / 2);
++      context.drawImage(bitmap, 0, 0, height, width);
++    } else context.drawImage(bitmap, 0, 0, width, height);
++    context.restore();
++    bitmap.close?.();
++    return canvas;
++  }
++
++  async function prepareFile(file) {
++    if (!acceptedFile(file)) return showFileError('Selecione um arquivo JPG, PNG, WEBP ou PDF.');
++    if (file.size > MAX_FILE_SIZE) return showFileError('O arquivo precisa ter no máximo 15 MB.');
++    session.file = file;
++    setPipeline('upload', 'done');
++    try {
++      session.sourceCanvas = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
++        ? await loadPdfCanvas(file)
++        : await loadImageCanvas(file);
++      detectCrop();
++      setStep('preprocess');
++      requestAnimationFrame(() => els.analyze.focus({ preventScroll: true }));
++    } catch (error) {
++      console.error('Falha ao abrir a sumula:', error);
++      resetWorkflow();
++      showFileError('Não foi possível abrir este arquivo. Tente outra foto ou PDF.');
++    }
++  }
++
++  function detectCrop() {
++    if (!session.sourceCanvas) return;
++    const context = session.sourceCanvas.getContext('2d', { willReadFrequently: true });
++    session.cropDetection = core.detectPaperQuad(context.getImageData(0, 0, session.sourceCanvas.width, session.sourceCanvas.height));
++    session.quad = session.cropDetection.quad.map((point) => ({ ...point }));
++    renderCropPreview();
++  }
++
++  function drawCropMask(context, canvas, quad) {
++    context.save();
++    context.fillStyle = 'rgba(0, 0, 0, .5)';
++    context.beginPath();
++    context.rect(0, 0, canvas.width, canvas.height);
++    context.moveTo(quad[0].x, quad[0].y);
++    quad.slice(1).forEach((point) => context.lineTo(point.x, point.y));
++    context.closePath();
++    context.fill('evenodd');
++    context.strokeStyle = '#24d18f';
++    context.lineWidth = Math.max(3, canvas.width / 320);
++    context.beginPath();
++    context.moveTo(quad[0].x, quad[0].y);
++    quad.slice(1).forEach((point) => context.lineTo(point.x, point.y));
++    context.closePath();
++    context.stroke();
++    const radius = Math.max(9, canvas.width / 95);
++    quad.forEach((point, index) => {
++      context.fillStyle = '#fff';
++      context.strokeStyle = '#078c69';
++      context.lineWidth = Math.max(3, radius * .25);
++      context.beginPath();
++      context.arc(point.x, point.y, radius, 0, Math.PI * 2);
++      context.fill();
++      context.stroke();
++      context.fillStyle = '#078c69';
++      context.font = `bold ${Math.max(10, radius)}px sans-serif`;
++      context.textAlign = 'center';
++      context.textBaseline = 'middle';
++      context.fillText(String(index + 1), point.x, point.y + .5);
++    });
++    context.restore();
++  }
++
++  function renderCropPreview() {
++    if (!session.sourceCanvas || !session.quad) return;
++    els.cropCanvas.width = session.sourceCanvas.width;
++    els.cropCanvas.height = session.sourceCanvas.height;
++    const context = els.cropCanvas.getContext('2d');
++    context.drawImage(session.sourceCanvas, 0, 0);
++    drawCropMask(context, els.cropCanvas, session.quad);
++    const confidence = Number(session.cropDetection?.confidence || 0);
++    els.cropConfidence.textContent = `${Math.round(confidence * 100)}% enquadrado`;
++    els.cropConfidence.classList.toggle('is-low', confidence < 0.65);
++  }
++
++  function canvasPointer(event) {
++    const rect = els.cropCanvas.getBoundingClientRect();
++    return {
++      x: ((event.clientX - rect.left) / rect.width) * els.cropCanvas.width,
++      y: ((event.clientY - rect.top) / rect.height) * els.cropCanvas.height,
++    };
++  }
++
++  function cornerAt(point) {
++    const rect = els.cropCanvas.getBoundingClientRect();
++    const radius = Math.max(30, (els.cropCanvas.width / Math.max(1, rect.width)) * 24);
++    return session.quad.findIndex((corner) => Math.hypot(corner.x - point.x, corner.y - point.y) <= radius);
++  }
++
++  function canvasFromRaw(raw) {
++    const canvas = document.createElement('canvas');
++    canvas.width = raw.width;
++    canvas.height = raw.height;
++    const context = canvas.getContext('2d', { alpha: false, willReadFrequently: true });
++    const image = context.createImageData(raw.width, raw.height);
++    image.data.set(raw.data);
++    context.putImageData(image, 0, 0);
++    return canvas;
++  }
++
++  async function requestRemoteOcr(canvas) {
++    if (location.protocol === 'file:') throw new Error('OCR remoto indisponivel no protocolo file.');
++    const controller = new AbortController();
++    const timer = window.setTimeout(() => controller.abort(), 60000);
++    try {
++      const headers = { 'content-type': 'application/json' };
++      if (window.BABA_MANUAL_OCR_API_KEY) headers['x-baba-ocr-key'] = window.BABA_MANUAL_OCR_API_KEY;
++      const response = await fetch(window.BABA_MANUAL_OCR_ENDPOINT || '/api/manual-score-sheet/analyze', {
++        method: 'POST',
++        headers,
++        body: JSON.stringify({ image: canvas.toDataURL('image/png') }),
++        signal: controller.signal,
++      });
++      const payload = await response.json().catch(() => ({}));
++      if (!response.ok || !payload.ok) throw new Error(payload.message || `OCR respondeu ${response.status}.`);
++      return payload;
++    } finally {
++      clearTimeout(timer);
++    }
++  }
++
++  function cropForOcr(canvas, sourceRegion) {
++    const region = core.scaleRegion(sourceRegion, canvas.width, canvas.height);
++    const crop = document.createElement('canvas');
++    crop.width = Math.max(1, region.width * 3);
++    crop.height = Math.max(1, region.height * 3);
++    const context = crop.getContext('2d', { alpha: false });
++    context.fillStyle = '#fff';
++    context.fillRect(0, 0, crop.width, crop.height);
++    context.imageSmoothingEnabled = true;
++    context.imageSmoothingQuality = 'high';
++    context.drawImage(canvas, region.x, region.y, region.width, region.height, 0, 0, crop.width, crop.height);
++    return crop;
++  }
++
++  async function localTesseractOcr(canvas) {
++    if (!window.Tesseract?.createWorker) throw new Error('Tesseract nao carregado.');
++    if (!session.tesseractWorker) {
++      session.tesseractWorker = await window.Tesseract.createWorker('por', 1, {
++        workerPath: new URL('vendor/tesseract/worker.min.js', document.baseURI).href,
++        corePath: new URL('vendor/tesseract-core', document.baseURI).href.replace(/\/$/, ''),
++        langPath: window.BABA_TESSERACT_LANG_PATH || 'https://tessdata.projectnaptha.com/4.0.0',
++        logger(message) {
++          if (message.status === 'recognizing text') {
++            els.processingDescription.textContent = `OCR local em andamento: ${Math.round(Number(message.progress || 0) * 100)}%`;
++          }
++        },
++      });
++      await session.tesseractWorker.setParameters({
++        tessedit_pageseg_mode: window.Tesseract.PSM?.SINGLE_LINE || '7',
++        preserve_interword_spaces: '1',
++        user_defined_dpi: '300',
++      });
++    }
++
++    const recognize = async (region) => {
++      const result = await session.tesseractWorker.recognize(cropForOcr(canvas, region));
++      return {
++        nome: core.cleanOcrText(result.data.text),
++        text: core.cleanOcrText(result.data.text),
++        confidence: Math.max(0, Math.min(1, Number(result.data.confidence || 0) / 100)),
++      };
++    };
++    const header = {};
++    for (const [key, region] of Object.entries(template.headerRegions)) header[key] = await recognize(region);
++    const teams = [];
++    let completed = 0;
++    const total = template.teams.reduce((sum, team) => sum + team.jogadores.length, 0);
++    for (const team of template.teams) {
++      const jogadores = [];
++      for (const player of team.jogadores) {
++        jogadores.push(await recognize(player.nameRegion));
++        completed += 1;
++        els.processingDescription.textContent = `Lendo nomes no dispositivo: ${completed} de ${total}`;
++      }
++      teams.push({ jogadores });
++    }
++    const confidences = [
++      ...Object.values(header).map((item) => item.confidence),
++      ...teams.flatMap((team) => team.jogadores.map((player) => player.confidence)),
++    ].filter((value) => value > 0);
++    return {
++      engine: 'tesseract-por-browser-fallback',
++      confidence: confidences.length ? confidences.reduce((sum, value) => sum + value, 0) / confidences.length : 0,
++      data: header.data.text,
++      local: header.local.text,
++      responsavel: header.responsavel.text,
++      teams,
++    };
++  }
++
++  async function analyzeCurrentFile() {
++    if (!session.sourceCanvas || !session.quad || session.processing) return;
++    session.processing = true;
++    setStep('ocr');
++    resetPipeline();
++    setPipeline('upload', 'done');
++    await waitForPaint();
++    try {
++      setPipeline('preprocess', 'active');
++      els.processingTitle.textContent = 'Corrigindo perspectiva e iluminação...';
++      els.processingDescription.textContent = 'Endireitando a folha e normalizando o contraste.';
++      await waitForPaint();
++      const sourceContext = session.sourceCanvas.getContext('2d', { willReadFrequently: true });
++      const sourceImage = sourceContext.getImageData(0, 0, session.sourceCanvas.width, session.sourceCanvas.height);
++      const warped = core.warpPerspective(sourceImage, session.quad, template.canonicalWidth, template.canonicalHeight);
++      session.normalizedCanvas = canvasFromRaw(warped);
++      session.enhancedCanvas = canvasFromRaw(core.enhanceImageData(warped));
++      setPipeline('preprocess', 'done');
++
++      setPipeline('template', 'active');
++      els.processingTitle.textContent = 'Localizando o template oficial...';
++      els.processingDescription.textContent = 'Conferindo as posições fixas das caixas.';
++      await waitForPaint();
++      const enhancedData = session.enhancedCanvas.getContext('2d', { willReadFrequently: true })
++        .getImageData(0, 0, template.canonicalWidth, template.canonicalHeight);
++      const templateMatch = core.analyzeTemplate(enhancedData);
++      setPipeline('template', 'done');
++
++      setPipeline('marks', 'active');
++      els.processingTitle.textContent = 'Contando gols e resultados...';
++      els.processingDescription.textContent = 'Cada caixa é analisada por densidade e traços internos.';
++      await waitForPaint();
++      session.markAnalysis = core.analyzeMarks(enhancedData);
++      session.markAnalysis.templateMatch = templateMatch;
++      setPipeline('marks', 'done');
++
++      setPipeline('ocr', 'active');
++      els.processingTitle.textContent = 'Reconhecendo os nomes...';
++      els.processingDescription.textContent = 'Tentando o OCR de escrita manual em português.';
++      await waitForPaint();
++      let ocr;
++      try {
++        ocr = await requestRemoteOcr(session.enhancedCanvas);
++      } catch (remoteError) {
++        console.warn('OCR remoto indisponivel:', remoteError);
++        els.processingDescription.textContent = 'OCR remoto indisponível. Usando leitura local como fallback...';
++        try {
++          ocr = await localTesseractOcr(session.enhancedCanvas);
++        } catch (localError) {
++          console.warn('OCR local indisponivel:', localError);
++          ocr = { engine: 'manual-review', confidence: 0, teams: [] };
++          bridge()?.showToast?.('Não foi possível ler os nomes automaticamente. Preencha os campos destacados.');
++        }
++      }
++      setPipeline('ocr', 'done');
++
++      setPipeline('validation', 'active');
++      els.processingTitle.textContent = 'Gerando JSON para conferência...';
++      els.processingDescription.textContent = 'Nenhum dado foi salvo ainda.';
++      session.draft = core.createDraft(session.markAnalysis, ocr, session.file);
++      attachPlayerMatches();
++      setPipeline('validation', 'done');
++      renderReview();
++      setStep('review');
++    } catch (error) {
++      console.error('Falha ao analisar sumula:', error);
++      bridge()?.showToast?.('A análise não foi concluída. Ajuste o enquadramento e tente novamente.');
++      setStep('preprocess');
++    } finally {
++      session.processing = false;
++    }
++  }
++
++  function attachPlayerMatches() {
++    const players = bridge()?.getPlayers?.() || [];
++    session.draft.teams.forEach((team) => {
++      team.jogadores.forEach((player) => {
++        player.matches = core.findPlayerMatches(player.nome, players);
++        const exact = player.matches.find((candidate) => candidate.score >= 0.94);
++        if (exact) player.playerId = exact.id;
++      });
++    });
++  }
++
++  function playerMatchOptions(player) {
++    const options = ['<option value="">Criar/vincular pelo nome informado</option>'];
++    (player.matches || []).forEach((candidate) => {
++      options.push(`<option value="${escapeHTML(candidate.id)}" ${candidate.id === player.playerId ? 'selected' : ''}>${escapeHTML(candidate.nome)} (${Math.round(candidate.score * 100)}%)</option>`);
++    });
++    return options.join('');
++  }
++
++  function renderReview() {
++    if (!session.draft) return;
++    els.reviewDate.value = session.draft.dataISO || '';
++    els.reviewLocation.value = session.draft.local || '';
++    els.reviewResponsible.value = session.draft.responsavel || '';
++    els.reviewTeams.innerHTML = session.draft.teams.map((team, teamIndex) => `
++      <article class="baba-manual-team-card" style="--manual-team-accent:${escapeHTML(team.accent || '#078c69')}">
++        <div class="baba-manual-team-card__head">
++          <label class="baba-manual-field">Nome do time
++            <input type="text" data-manual-team-field="nome" data-team-index="${teamIndex}" value="${escapeHTML(team.nome)}">
++          </label>
++          <label class="baba-manual-field">Cor do colete
++            <input type="text" data-manual-team-field="cor" data-team-index="${teamIndex}" value="${escapeHTML(team.cor)}">
++          </label>
++        </div>
++        <div class="baba-manual-results">
++          ${['vitorias', 'empates', 'derrotas'].map((field) => `
++            <label class="baba-manual-field">${field[0].toUpperCase()}${field.slice(1)}
++              <input type="number" min="0" max="8" inputmode="numeric" data-manual-team-field="${field}" data-team-index="${teamIndex}" value="${Number(team[field] || 0)}">
++            </label>
++          `).join('')}
++        </div>
++        <div class="baba-manual-player-list">
++          ${team.jogadores.map((player, playerIndex) => {
++            const low = Number(player.confidence || 0) < 0.8;
++            return `
++              <div class="baba-manual-player-row ${low ? 'is-low-confidence' : ''}" data-player-row="${teamIndex}-${playerIndex}">
++                <label class="baba-manual-player-field">
++                  <span class="baba-manual-player-field__meta"><span>${escapeHTML(player.slot)}</span>${low ? `<em>${player.nome ? `${Math.round(Number(player.confidence || 0) * 100)}% - confirme` : 'não identificado'}</em>` : ''}</span>
++                  <input type="text" autocomplete="off" data-manual-player-field="nome" data-team-index="${teamIndex}" data-player-index="${playerIndex}" value="${escapeHTML(player.nome)}" placeholder="Digite o nome correto">
++                </label>
++                <label class="baba-manual-player-field">Gols
++                  <input type="number" min="0" max="10" inputmode="numeric" data-manual-player-field="gols" data-team-index="${teamIndex}" data-player-index="${playerIndex}" value="${Number(player.gols || 0)}">
++                </label>
++                ${(player.matches || []).length ? `
++                  <label class="baba-manual-player-match">Possível jogador já cadastrado
++                    <select data-manual-player-match data-team-index="${teamIndex}" data-player-index="${playerIndex}">${playerMatchOptions(player)}</select>
++                  </label>
++                ` : ''}
++              </div>
++            `;
++          }).join('')}
++        </div>
++      </article>
++    `).join('');
++    refreshReviewValidation();
++    requestAnimationFrame(() => els.reviewDate.focus({ preventScroll: true }));
++  }
++
++  function readReview() {
++    if (!session.draft) return null;
++    session.draft.dataISO = els.reviewDate.value;
++    session.draft.local = els.reviewLocation.value.trim();
++    session.draft.responsavel = els.reviewResponsible.value.trim();
++    $$('[data-manual-team-field]', els.reviewTeams).forEach((input) => {
++      const team = session.draft.teams[Number(input.dataset.teamIndex)];
++      if (!team) return;
++      team[input.dataset.manualTeamField] = input.type === 'number' ? Number(input.value || 0) : input.value.trim();
++    });
++    $$('[data-manual-player-field]', els.reviewTeams).forEach((input) => {
++      const player = session.draft.teams[Number(input.dataset.teamIndex)]?.jogadores?.[Number(input.dataset.playerIndex)];
++      if (!player) return;
++      player[input.dataset.manualPlayerField] = input.type === 'number' ? Number(input.value || 0) : input.value.trim();
++      if (input.dataset.manualPlayerField === 'nome' && input.value.trim()) player.confidence = Math.max(Number(player.confidence || 0), 0.8);
++    });
++    $$('[data-manual-player-match]', els.reviewTeams).forEach((select) => {
++      const player = session.draft.teams[Number(select.dataset.teamIndex)]?.jogadores?.[Number(select.dataset.playerIndex)];
++      if (player) player.playerId = select.value;
++    });
++    return session.draft;
++  }
++
++  function refreshReviewValidation() {
++    const draft = readReview();
++    const validation = core.validateDraft(draft);
++    const messages = [
++      ...validation.errors.map((item) => ({ ...item, type: 'error' })),
++      ...validation.warnings.map((item) => ({ ...item, type: 'warning' })),
++    ];
++    els.reviewAlerts.innerHTML = messages.map((item) => `<div class="baba-manual-alert ${item.type === 'error' ? 'is-error' : ''}">${escapeHTML(item.message)}</div>`).join('');
++    $$('.baba-manual-player-row', els.reviewTeams).forEach((row) => row.classList.remove('is-invalid'));
++    validation.errors.forEach((error) => {
++      const match = error.path.match(/^teams\.(\d+)\.jogadores\.(\d+)\./);
++      if (match) $(`[data-player-row="${match[1]}-${match[2]}"]`, els.reviewTeams)?.classList.add('is-invalid');
++    });
++    els.reviewConfidence.textContent = `${Math.round(Number(draft.ocrConfidence || 0) * 100)}% OCR`;
++    els.reviewConfidence.classList.toggle('is-low', Number(draft.ocrConfidence || 0) < 0.8);
++    els.jsonPreview.textContent = JSON.stringify(core.canonicalDraft(draft), null, 2);
++    els.save.disabled = false;
++    return validation;
++  }
++
++  async function saveImport() {
++    if (!session.draft || session.processing) return;
++    const validation = refreshReviewValidation();
++    if (!validation.valid) {
++      bridge()?.showToast?.('Corrija os campos destacados antes de salvar.');
++      els.reviewAlerts.scrollIntoView({ behavior: 'smooth', block: 'center' });
++      return;
++    }
++    session.processing = true;
++    els.save.disabled = true;
++    els.save.textContent = 'Verificando...';
++    try {
++      const fingerprint = await core.fingerprintDraft(session.draft);
++      let result = await bridge()?.importManualDraft?.(session.draft, { fingerprint, allowDuplicate: false });
++      if (result?.duplicate) {
++        const importAgain = window.confirm('Esta súmula parece já ter sido importada.\n\nDeseja importar novamente?');
++        if (!importAgain) return;
++        result = await bridge()?.importManualDraft?.(session.draft, { fingerprint, allowDuplicate: true });
++      }
++      if (!result?.ok) throw new Error(result?.message || 'Não foi possível salvar a súmula.');
++      session.importedBabaId = result.babaId;
++      setStep('save');
++      bridge()?.showToast?.('Súmula manual adicionada ao histórico.');
++    } catch (error) {
++      console.error('Falha ao salvar importacao manual:', error);
++      bridge()?.showToast?.(error.message || 'Não foi possível salvar a súmula.');
++    } finally {
++      session.processing = false;
++      els.save.disabled = false;
++      els.save.textContent = 'Salvar súmula confirmada';
++    }
++  }
++
++  function handleReviewEdit(event) {
++    if (event.target.closest('input, select')) refreshReviewValidation();
++  }
++
++  els.selectFile.addEventListener('click', (event) => { event.stopPropagation(); els.fileInput.click(); });
++  els.dropZone.addEventListener('click', (event) => { if (!event.target.closest('button')) els.fileInput.click(); });
++  els.dropZone.addEventListener('keydown', (event) => {
++    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); els.fileInput.click(); }
++  });
++  ['dragenter', 'dragover'].forEach((type) => els.dropZone.addEventListener(type, (event) => {
++    event.preventDefault();
++    els.dropZone.classList.add('is-dragging');
++  }));
++  ['dragleave', 'drop'].forEach((type) => els.dropZone.addEventListener(type, (event) => {
++    event.preventDefault();
++    els.dropZone.classList.remove('is-dragging');
++  }));
++  els.dropZone.addEventListener('drop', (event) => prepareFile(event.dataTransfer?.files?.[0]));
++  els.fileInput.addEventListener('change', () => prepareFile(els.fileInput.files?.[0]));
++  els.resetCrop.addEventListener('click', detectCrop);
++  els.analyze.addEventListener('click', analyzeCurrentFile);
++  els.startOver.addEventListener('click', resetWorkflow);
++  els.importAnother.addEventListener('click', resetWorkflow);
++  els.save.addEventListener('click', saveImport);
++  els.reviewTeams.addEventListener('input', handleReviewEdit);
++  els.reviewTeams.addEventListener('change', handleReviewEdit);
++  [els.reviewDate, els.reviewLocation, els.reviewResponsible].forEach((input) => input.addEventListener('input', refreshReviewValidation));
++  els.openHistory.addEventListener('click', () => {
++    const babaId = session.importedBabaId;
++    closeManualMode({ force: true });
++    bridge()?.openHistory?.(babaId);
++  });
++  els.close.addEventListener('click', () => closeManualMode());
++  els.modal.addEventListener('click', (event) => { if (event.target === els.modal) closeManualMode(); });
++  document.addEventListener('keydown', (event) => {
++    if (event.key === 'Escape' && !els.modal.classList.contains('hidden')) closeManualMode();
++  });
++
++  els.cropCanvas.addEventListener('pointerdown', (event) => {
++    if (!session.quad) return;
++    session.draggingCorner = cornerAt(canvasPointer(event));
++    if (session.draggingCorner < 0) return;
++    els.cropCanvas.setPointerCapture?.(event.pointerId);
++    event.preventDefault();
++  });
++  els.cropCanvas.addEventListener('pointermove', (event) => {
++    if (session.draggingCorner < 0 || !session.quad) return;
++    const point = canvasPointer(event);
++    session.quad[session.draggingCorner] = {
++      x: Math.max(0, Math.min(els.cropCanvas.width - 1, point.x)),
++      y: Math.max(0, Math.min(els.cropCanvas.height - 1, point.y)),
++    };
++    renderCropPreview();
++    event.preventDefault();
++  });
++  const finishCornerDrag = (event) => {
++    if (session.draggingCorner < 0) return;
++    session.draggingCorner = -1;
++    els.cropCanvas.releasePointerCapture?.(event.pointerId);
++  };
++  els.cropCanvas.addEventListener('pointerup', finishCornerDrag);
++  els.cropCanvas.addEventListener('pointercancel', finishCornerDrag);
++
++  window.addEventListener('pagehide', () => {
++    session.tesseractWorker?.terminate?.();
++    session.tesseractWorker = null;
++  });
++
++  window.BabaManualMode = Object.freeze({
++    open: openManualMode,
++    close: closeManualMode,
++    reset: resetWorkflow,
++  });
++})();
+*** End Patch
