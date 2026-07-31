@@ -228,6 +228,7 @@
   let babaAudioContext = null;
   let selectedTeamDetail = null;
   let selectedPlayerDetail = null;
+  const playerPaymentFilters = { query: '', payment: 'all', status: 'all', novice: 'all' };
   let drawExperience = null;
   let drawSequenceToken = 0;
   let recentlyRevealedTeamId = null;
@@ -4885,20 +4886,25 @@
   function renderPlayersAdmin() {
     const baba = getActiveBaba();
     const visitors = baba?.visitantes || [];
+    const normalizePlayerFilterText = (value) => String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('pt-BR');
     const playerAdminItemHTML = (player, { visitor = false } = {}) => {
       const paid = playerPaymentState(player.id, baba, { force: true }) === 'paid';
+      const active = player.ativo !== false;
       const price = paymentPriceForPlayer(player);
       const typeLabel = player.tipo === 'goleiro' ? 'Goleiro' : (visitor || player.visitante ? 'Visitante' : 'Jogador');
       const meta = [
         `<small>${typeLabel} - ${formatCurrency(price)}</small>`,
         paid ? '<small class="baba-payment-status is-paid">Pago</small>' : '<small class="baba-payment-status is-unpaid">Não pagou</small>',
         player.novato ? '<small class="baba-status-pill">Novato</small>' : '',
-        player.ativo ? '' : '<small class="baba-status-pill">Inativo</small>',
+        active ? '' : '<small class="baba-status-pill">Inativo</small>',
       ].filter(Boolean).join('');
       const paymentButtonLabel = paid ? 'Pagamento pendente' : 'Pagamento pago';
 
       return `
-      <div class="baba-player-admin ${paid ? 'is-paid' : 'is-unpaid'}">
+      <div class="baba-player-admin ${paid ? 'is-paid' : 'is-unpaid'}" data-player-filter-row data-player-name="${escapeHTML(normalizePlayerFilterText(player.nome))}" data-player-payment="${paid ? 'paid' : 'unpaid'}" data-player-status="${active ? 'active' : 'inactive'}" data-player-novice="${player.novato ? 'yes' : 'no'}">
         <div class="baba-player-admin__info">
           <strong>${playerPaymentNameHTML(player.id, baba, { name: player.nome, force: true })}</strong>
           ${meta ? `<div class="baba-player-admin__meta">${meta}</div>` : ''}
@@ -4908,7 +4914,7 @@
           ${visitor
             ? `<button class="baba-mini-btn danger" type="button" data-action="delete-visitor" data-id="${player.id}">Remover</button>`
             : `
-              <button class="baba-mini-btn" type="button" data-action="toggle-player" data-id="${player.id}">${player.ativo ? 'Desativar' : 'Ativar'}</button>
+              <button class="baba-mini-btn" type="button" data-action="toggle-player" data-id="${player.id}">${active ? 'Desativar' : 'Ativar'}</button>
               <button class="baba-mini-btn" type="button" data-action="toggle-player-novice" data-id="${player.id}">${player.novato ? 'Remover novato' : 'Novato'}</button>
               <button class="baba-mini-btn danger" type="button" data-action="delete-player" data-id="${player.id}">Excluir</button>
             `}
@@ -4917,17 +4923,62 @@
     `;
     };
 
-    const playersHTML = [
-      ...state.players.map((player) => playerAdminItemHTML(player)),
-      ...visitors.map((player) => playerAdminItemHTML(player, { visitor: true })),
-    ].join('');
+    const playerItems = [
+      ...state.players.map((player) => ({ player, visitor: false })),
+      ...visitors.map((player) => ({ player, visitor: true })),
+    ].sort((a, b) => (
+      Number(b.player?.ativo !== false) - Number(a.player?.ativo !== false)
+      || String(a.player?.nome || '').localeCompare(String(b.player?.nome || ''), 'pt-BR', { sensitivity: 'base' })
+    ));
+    const playersHTML = playerItems.map(({ player, visitor }) => playerAdminItemHTML(player, { visitor })).join('');
 
     setHTML(els.playersAdminList, `
       <div class="baba-admin-section">
-        <span>Jogadores do baba</span>
+        <div class="baba-player-filter-head">
+          <span>Jogadores do baba</span>
+          <small data-player-filter-count>${playerItems.length} jogadores</small>
+        </div>
+        <div class="baba-player-filters" aria-label="Filtros da lista de pagamentos">
+          <input type="search" data-player-list-filter="query" value="${escapeHTML(playerPaymentFilters.query)}" placeholder="Pesquisar por nome" aria-label="Pesquisar jogador por nome">
+          <select data-player-list-filter="payment" aria-label="Filtrar por pagamento">
+            <option value="all"${playerPaymentFilters.payment === 'all' ? ' selected' : ''}>Pagamento: todos</option>
+            <option value="paid"${playerPaymentFilters.payment === 'paid' ? ' selected' : ''}>Pagou</option>
+            <option value="unpaid"${playerPaymentFilters.payment === 'unpaid' ? ' selected' : ''}>Não pagou</option>
+          </select>
+          <select data-player-list-filter="novice" aria-label="Filtrar por novato">
+            <option value="all"${playerPaymentFilters.novice === 'all' ? ' selected' : ''}>Novato: todos</option>
+            <option value="yes"${playerPaymentFilters.novice === 'yes' ? ' selected' : ''}>Somente novatos</option>
+            <option value="no"${playerPaymentFilters.novice === 'no' ? ' selected' : ''}>Não novatos</option>
+          </select>
+          <select data-player-list-filter="status" aria-label="Filtrar por situação">
+            <option value="all"${playerPaymentFilters.status === 'all' ? ' selected' : ''}>Situação: todos</option>
+            <option value="active"${playerPaymentFilters.status === 'active' ? ' selected' : ''}>Ativos</option>
+            <option value="inactive"${playerPaymentFilters.status === 'inactive' ? ' selected' : ''}>Inativos</option>
+          </select>
+        </div>
         ${playersHTML || '<div class="baba-empty">Cadastre jogadores para controlar a lista e os pagamentos mensais.</div>'}
       </div>
     `);
+    applyPlayerPaymentFilters();
+  }
+
+  function applyPlayerPaymentFilters() {
+    if (!els.playersAdminList) return;
+    const query = String(playerPaymentFilters.query || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('pt-BR');
+    let visibleCount = 0;
+    els.playersAdminList.querySelectorAll('[data-player-filter-row]').forEach((row) => {
+      const matches = (!query || row.dataset.playerName.includes(query))
+        && (playerPaymentFilters.payment === 'all' || row.dataset.playerPayment === playerPaymentFilters.payment)
+        && (playerPaymentFilters.novice === 'all' || row.dataset.playerNovice === playerPaymentFilters.novice)
+        && (playerPaymentFilters.status === 'all' || row.dataset.playerStatus === playerPaymentFilters.status);
+      row.hidden = !matches;
+      if (matches) visibleCount += 1;
+    });
+    const count = els.playersAdminList.querySelector('[data-player-filter-count]');
+    if (count) count.textContent = `${visibleCount} de ${els.playersAdminList.querySelectorAll('[data-player-filter-row]').length} jogadores`;
   }
 
   function renderPresentList(baba) {
@@ -7633,12 +7684,24 @@
     window.addEventListener('scroll', positionMoreMenu, { passive: true });
 
     document.addEventListener('change', (event) => {
+      const playerFilter = event.target.closest('[data-player-list-filter]');
+      if (playerFilter) {
+        playerPaymentFilters[playerFilter.dataset.playerListFilter] = playerFilter.value;
+        applyPlayerPaymentFilters();
+      }
       const input = event.target.closest('[data-present-id]');
       if (input) togglePresent(input.dataset.presentId, input.checked);
       const moveSelect = event.target.closest('[data-move-player-id]');
       if (moveSelect) assignPlayerToTeam(moveSelect.dataset.movePlayerId, moveSelect.value);
       const addSelect = event.target.closest('[data-add-player-team]');
       if (addSelect?.value) assignPlayerToTeam(addSelect.value, addSelect.dataset.addPlayerTeam);
+    });
+
+    document.addEventListener('input', (event) => {
+      const playerFilter = event.target.closest('[data-player-list-filter="query"]');
+      if (!playerFilter) return;
+      playerPaymentFilters.query = playerFilter.value;
+      applyPlayerPaymentFilters();
     });
 
     document.addEventListener('click', (event) => {

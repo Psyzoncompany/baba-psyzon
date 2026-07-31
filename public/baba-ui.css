@@ -3442,6 +3442,46 @@ button.baba-history-item.active {
   scrollbar-color: rgba(100, 116, 139, .35) transparent;
 }
 
+.baba-player-filter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.baba-player-filter-head small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.baba-player-filters {
+  display: grid;
+  grid-template-columns: minmax(11rem, 1.4fr) repeat(3, minmax(8.5rem, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.baba-player-filters input,
+.baba-player-filters select {
+  width: 100%;
+  min-height: 2.45rem;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: var(--surface-glass-strong);
+  font: inherit;
+  font-size: var(--font-size-sm);
+}
+
+.baba-player-filters input {
+  padding-inline: .75rem;
+}
+
+.baba-player-filters select {
+  padding-inline: .6rem;
+}
+
 .baba-player-admin {
   display: flex;
   min-width: 0;
@@ -5069,6 +5109,10 @@ button.baba-history-item.active {
 }
 
 @media (max-width: 560px) {
+  .baba-player-filters {
+    grid-template-columns: 1fr;
+  }
+
   :root {
     --font-size-md: .88rem;
     --control-md: 2.5rem;
