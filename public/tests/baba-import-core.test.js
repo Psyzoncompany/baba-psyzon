@@ -134,14 +134,15 @@ test('interpreta o caso real de 31/07/2026 com dados estruturados', () => {
   assert.equal(parsed.date, '2026-07-31');
   assert.equal(parsed.totalGoalsInformed, 19);
   assert.equal(parsed.scorers.length, 10);
-  assert.equal(parsed.teams.length, 4);
+  assert.equal(parsed.teams.length, 3);
+  assert.equal(parsed.ignoredTeams.length, 1);
   assert.deepEqual(parsed.teams.map((team) => [team.name, team.calculatedPoints]), [
-    ['Time 3', undefined], ['Time 1', undefined], ['Time 2', undefined], ['Time 4', undefined],
+    ['Time 3', undefined], ['Time 1', undefined], ['Time 2', undefined],
   ]);
   const warnings = core.validateStructuredReport(parsed);
   assert.equal(parsed.calculatedTotalGoals, 19);
   assert.equal(warnings.filter((warning) => warning.severity === 'blocker').length, 0);
-  assert.ok(warnings.some((warning) => warning.code === 'EMPTY_TEAM'));
+  assert.ok(warnings.some((warning) => warning.code === 'IGNORED_EMPTY_TEAM'));
   const team3 = parsed.teams.find((team) => team.id === 'team_3');
   const team1 = parsed.teams.find((team) => team.id === 'team_1');
   const team2 = parsed.teams.find((team) => team.id === 'team_2');
@@ -182,6 +183,32 @@ test('aceita texto irregular de WhatsApp, singular de gol, caixa e data numéric
   assert.equal(core.validateStructuredReport(parsed).filter((item) => item.severity === 'blocker').length, 0);
 });
 
+test('interpreta times compactos, elenco em vírgulas e estatísticas abreviadas fora do formato padrão', () => {
+  const parsed = core.parseReport(`Baba 31.07.2026
+Time 3 | caqui | 5V 0E 2D | 15 pts | 10 gols marcados | jogadores: Rodrigol, Negão, Buiu, Juninho (convidado), Wesley (goleiro/convidado)
+Time 1 (vermelho) — vitorias 3, empates 0, derrotas 4, pontos 9, gols feitos 4 — elenco: Buga, Nilton, Ró, Budega, Jeff (goleiro)
+Goleadores
+Juninho: 5 gols no Time 3
+Ró: 2 gols no Time 1
+Rodrigol: 2 gols no Time 3
+Negão: 2 gols no Time 3
+Buiu: 1 gol no Time 3
+Buga: 1 gol no Time 1
+Budega: 1 gol no Time 1
+Total gols 14`);
+  assert.equal(parsed.date, '2026-07-31');
+  assert.equal(parsed.teams.length, 2);
+  assert.equal(parsed.teams[0].vestColor.toLowerCase(), 'caqui');
+  assert.equal(parsed.teams[0].wins, 5);
+  assert.equal(parsed.teams[0].players.length, 5);
+  assert.equal(parsed.teams[1].losses, 4);
+  assert.equal(parsed.scorers.length, 7);
+  assert.equal(parsed.calculatedTotalGoals, undefined);
+  const warnings = core.validateStructuredReport(parsed);
+  assert.equal(parsed.calculatedTotalGoals, 14);
+  assert.equal(warnings.filter((warning) => warning.severity === 'blocker').length, 0);
+});
+
 test('valida data por extenso e rejeita data impossível', () => {
   assert.equal(core.parseDate('Baba — 31 de julho de 2026'), '2026-07-31');
   assert.equal(core.parseDate('31/02/2026'), null);
@@ -212,6 +239,17 @@ test('jogador sem gols recebe zero e continua presente no elenco', () => {
   const people = core.collectPeople(parsed);
   assert.equal(people.find((person) => person.typedName === 'Nilton').goals, 0);
   assert.equal(parsed.teams.find((team) => team.id === 'team_1').players.some((person) => person.name === 'Nilton'), true);
+});
+
+test('remove time vazio também quando a extração veio da IA', () => {
+  const structured = {
+    schemaVersion: 1,
+    teams: [{ id: 'team_4', name: 'Time 4', players: [], wins: 0, draws: 0, losses: 0, pointsInformed: 0, goalsInformed: 0 }],
+    scorers: [],
+  };
+  core.pruneEmptyTeams(structured);
+  assert.equal(structured.teams.length, 0);
+  assert.equal(structured.ignoredTeams[0].id, 'team_4');
 });
 
 test('jogador em dois times é inconsistência impeditiva', () => {
@@ -260,4 +298,16 @@ test('arquitetura grava em transação, protege permissões e desenha etiquetas 
   assert.match(pdf, /NOVATO/);
   assert.match(pdf, /CONVIDADO/);
   assert.match(pdf, /GOLEIRO/);
+});
+
+test('interface trata falta de acesso sem repetir erros e destaca o último colocado', () => {
+  const root = path.join(__dirname, '..');
+  const ui = fs.readFileSync(path.join(root, 'baba-import-ui.js'), 'utf8');
+  const baba = fs.readFileSync(path.join(root, 'baba.js'), 'utf8');
+  assert.match(ui, /refreshAdminAccess/);
+  assert.match(ui, /ADMIN_ACCESS_REQUIRED/);
+  assert.doesNotMatch(ui, /Aliases não puderam ser carregados/);
+  assert.doesNotMatch(ui, /Histórico de imports não pôde ser carregado/);
+  assert.match(baba, /baba-ranking-card--last/);
+  assert.match(baba, /Último colocado/);
 });

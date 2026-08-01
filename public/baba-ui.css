@@ -2362,6 +2362,12 @@ body.baba-dark-theme .baba-choice--tactical .baba-choice-icon {
   box-shadow: 0 5px 14px rgba(212, 158, 20, .16);
 }
 
+.baba-ranking-card--last:not(.baba-ranking-card--top1) .baba-ranking-position {
+  color: #9f1239;
+  background: #ffe4e6;
+  box-shadow: inset 0 0 0 1px rgba(190, 18, 60, .12);
+}
+
 .baba-ranking-title {
   display: flex;
   min-width: 0;
@@ -2628,6 +2634,17 @@ button.baba-history-item.active {
 .baba-position-badge.is-first {
   color: #805300;
   background: #fff2bf;
+}
+
+.baba-position-badge.is-last {
+  color: #9f1239;
+  background: #ffe4e6;
+  box-shadow: inset 0 0 0 1px rgba(190, 18, 60, .12);
+}
+
+.baba-table__row.is-last:not(.is-first) {
+  border-color: rgba(190, 18, 60, .14);
+  background: linear-gradient(90deg, rgba(255, 241, 242, .72), rgba(255, 255, 255, .62));
 }
 
 .baba-standings-team .baba-team-link {
@@ -3333,6 +3350,47 @@ button.baba-history-item.active {
   gap: var(--space-5);
 }
 
+.baba-organizer-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+  padding: clamp(1.25rem, 2.4vw, 1.8rem);
+  border: 1px solid rgba(13, 148, 136, .18);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(6, 78, 84, .98), rgba(13, 112, 104, .94));
+  box-shadow: 0 14px 34px rgba(15, 78, 82, .16);
+}
+
+.baba-organizer-intro > div:first-child { display: grid; gap: .3rem; }
+.baba-organizer-intro > div:first-child > span {
+  color: #a7f3d0;
+  font-size: .66rem;
+  font-weight: 850;
+  letter-spacing: .13em;
+}
+.baba-organizer-intro h1 { margin: 0; color: #fff; font-size: clamp(1.45rem, 2.8vw, 2rem); }
+.baba-organizer-intro p { margin: 0; color: rgba(240, 253, 250, .74); font-size: var(--font-size-sm); }
+.baba-organizer-intro__badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: .5rem;
+  border: 1px solid rgba(167, 243, 208, .2);
+  border-radius: var(--radius-pill);
+  background: rgba(4, 47, 52, .38);
+  padding: .58rem .78rem;
+  color: #ecfdf5;
+  font-size: .72rem;
+  font-weight: 750;
+}
+.baba-organizer-intro__badge i { width: .48rem; height: .48rem; border-radius: 50%; background: #6ee7b7; }
+
+.baba-organizer-layout > .baba-control-card { grid-column: 1; }
+.baba-organizer-layout > .baba-import-card { grid-column: 2; }
+.baba-organizer-layout > .baba-player-payment-card { grid-column: 1 / -1; }
+
 .baba-player-payment-card {
   min-width: 0;
 }
@@ -3446,6 +3504,44 @@ button.baba-history-item.active {
 
 .baba-import-card {
   border-color: color-mix(in srgb, var(--color-info) 24%, var(--border-soft));
+}
+
+.baba-import-access {
+  display: grid;
+  grid-template-columns: 2.15rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .75rem;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: .75rem .85rem;
+  background: var(--surface-subtle);
+}
+.baba-import-access.is-success { border-color: rgba(5, 120, 87, .22); background: var(--color-success-soft); }
+.baba-import-access.is-warning { border-color: rgba(180, 83, 9, .24); background: var(--color-warning-soft); }
+.baba-import-access.is-danger { border-color: rgba(185, 28, 28, .22); background: var(--color-danger-soft); }
+.baba-import-access__icon {
+  display: grid;
+  width: 2.1rem;
+  height: 2.1rem;
+  place-items: center;
+  border-radius: .65rem;
+  background: rgba(255, 255, 255, .7);
+  font-weight: 850;
+}
+.baba-import-access > span:nth-child(2) { display: grid; gap: .12rem; }
+.baba-import-access strong { color: var(--color-text); font-size: var(--font-size-sm); }
+.baba-import-access small { color: var(--color-text-muted); font-size: var(--font-size-xs); line-height: 1.4; }
+.baba-import-access button {
+  min-height: 2.25rem;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, .8);
+  color: var(--color-text);
+  padding: .5rem .72rem;
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+  cursor: pointer;
 }
 
 .baba-import-root,
@@ -3755,6 +3851,9 @@ button.baba-history-item.active {
 }
 
 @media (max-width: 680px) {
+  .baba-organizer-intro { align-items: flex-start; flex-direction: column; }
+  .baba-import-access { grid-template-columns: 2.15rem 1fr; }
+  .baba-import-access button { grid-column: 1 / -1; width: 100%; }
   .baba-import-fields,
   .baba-import-fields--team,
   .baba-import-fields--person,
@@ -5067,6 +5166,10 @@ button.baba-history-item.active {
   .baba-organizer-layout,
   .baba-goals-layout {
     grid-template-columns: 1fr;
+  }
+
+  .baba-organizer-layout > :is(.baba-control-card, .baba-import-card, .baba-player-payment-card) {
+    grid-column: 1;
   }
 
   .baba-table-scorer-grid {

@@ -14,7 +14,7 @@
   <meta name="theme-color" content="#f4f8fc">
   <title>Baba Psyzon</title>
   <link href="apple-ui-font.css?v=20260723-1" rel="stylesheet">
-  <link href="baba-ui.css?v=20260731-player-filters-1" rel="stylesheet">
+  <link href="baba-ui.css?v=20260801-organizer-import-3" rel="stylesheet">
   <script>
     window.BABA_AI_ENDPOINT = window.BABA_AI_ENDPOINT || '/api/baba-import/analyze';
     if (window.location.protocol !== 'file:') {
@@ -493,6 +493,14 @@
       </section>
 
       <section class="baba-view" data-view="organizer">
+        <header class="baba-organizer-intro">
+          <div>
+            <span>PAINEL ADMINISTRATIVO</span>
+            <h1>Organização do baba</h1>
+            <p>Operação da partida, importação de resultados e gestão financeira em um só lugar.</p>
+          </div>
+          <div class="baba-organizer-intro__badge"><i aria-hidden="true"></i> Ambiente do organizador</div>
+        </header>
         <div class="baba-organizer-layout">
           <article class="baba-card baba-control-card organizer-only">
             <div class="baba-card__head">
@@ -527,6 +535,7 @@
               <span id="baba-import-status" class="baba-import-status" role="status">Aguardando relatório</span>
             </div>
             <div id="baba-import-root" class="baba-import-root">
+              <div id="baba-import-access" class="baba-import-access" role="status" aria-live="polite"></div>
               <label class="baba-import-label" for="baba-import-text">Relatório do baba</label>
               <textarea id="baba-import-text" class="baba-import-text" rows="13" maxlength="100000" spellcheck="true" placeholder="Cole aqui o texto recebido pelo WhatsApp, copiado de PDF ou digitado manualmente..."></textarea>
               <div class="baba-import-toolbar">
@@ -1324,13 +1333,13 @@
   </script>
 
 
-  <script src="baba-import-core.js?v=20260801-import-1"></script>
+  <script src="baba-import-core.js?v=20260801-import-3"></script>
   <script type="module" src="baba-import-persistence.js?v=20260801-import-1"></script>
-  <script type="module" src="baba-import-ui.js?v=20260801-import-1"></script>
+  <script type="module" src="baba-import-ui.js?v=20260801-import-3"></script>
   <script type="module" src="baba-persistence.js?v=20260801-import-1"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
   <script src="pdf-report.js?v=20260731-payment-vector-1"></script>
-  <script src="baba.js?v=20260731-payment-eligibility-1" defer></script>
+  <script src="baba.js?v=20260801-ranking-last-place-1" defer></script>
 </body>
 
 </html>

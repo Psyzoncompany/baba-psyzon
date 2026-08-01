@@ -5879,9 +5879,9 @@
           <span role="columnheader" title="Derrotas">D</span>
         </div>
         ${teams.map((team, index) => `
-          <div class="baba-table__row ${team.isLive ? 'is-live' : ''} ${index === 0 ? 'is-first baba-gold-leader' : ''}"${teamNumberDataAttribute(team)} role="row" aria-label="${escapeHTML(team.name)}, ${index + 1}º lugar, ${team.pontos} pontos">
+          <div class="baba-table__row ${team.isLive ? 'is-live' : ''} ${index === 0 ? 'is-first baba-gold-leader' : ''} ${teams.length > 1 && index === teams.length - 1 ? 'is-last' : ''}"${teamNumberDataAttribute(team)} role="row" aria-label="${escapeHTML(team.name)}, ${index + 1}º lugar, ${team.pontos} pontos">
             <span class="baba-position-label" role="cell">
-              <b class="baba-position-badge ${index === 0 ? 'is-first' : ''}">${index + 1}º</b>
+              <b class="baba-position-badge ${index === 0 ? 'is-first' : ''} ${teams.length > 1 && index === teams.length - 1 ? 'is-last' : ''}" title="${teams.length > 1 && index === teams.length - 1 ? 'Último colocado' : `${index + 1}º colocado`}">${index + 1}º</b>
             </span>
             <span class="baba-standings-team" role="cell">
               ${teamDetailButton(baba, team)}
@@ -6652,11 +6652,12 @@
     const cards = visibleItems.map((stats, index) => {
       const position = index + 1;
       const topClass = position <= 3 ? ` baba-ranking-card--top${position}` : '';
+      const lastClass = items.length > 1 && index === items.length - 1 ? ' baba-ranking-card--last' : '';
       const icon = position === 1 ? 'baba-trophy' : 'baba-ball';
       const score = rankingMetricDisplay(stats, metric);
       const playerTeam = getPlayerTeam(getActiveBaba(), stats.jogadorId);
       return `
-        <div class="baba-ranking-card${topClass}"${teamNumberDataAttribute(playerTeam)}>
+        <div class="baba-ranking-card${topClass}${lastClass}"${teamNumberDataAttribute(playerTeam)}>
           <div class="baba-ranking-card__main">
             <span class="baba-ranking-position">${position}</span>
             <div>
@@ -6692,9 +6693,10 @@
     const cards = visibleItems.map((stats, index) => {
       const position = index + 1;
       const topClass = position <= 3 ? ` baba-ranking-card--top${position}` : '';
+      const lastClass = items.length > 1 && index === items.length - 1 ? ' baba-ranking-card--last' : '';
       const playerTeam = getPlayerTeam(getActiveBaba(), stats.jogadorId);
       return `
-        <div class="baba-ranking-card baba-goalkeeper-card${topClass}"${teamNumberDataAttribute(playerTeam)}>
+        <div class="baba-ranking-card baba-goalkeeper-card${topClass}${lastClass}"${teamNumberDataAttribute(playerTeam)}>
           <div class="baba-ranking-card__main">
             <span class="baba-ranking-position">${position}</span>
             <div>

@@ -185,16 +185,20 @@
   function parseScorerLine(line) {
     const clean = stripListPrefix(line);
     const parts = splitDashParts(clean);
-    if (parts.length < 2) return null;
     const goalPartIndex = parts.findIndex((part) => /\b\d+\s*gols?\b/i.test(part));
-    if (goalPartIndex < 0) return null;
-    let name = parts[0].replace(/^\d+\s*[ºª.)-]?\s*/, '').trim();
+    const flexible = clean.match(/^(.+?)\s*[:=-]?\s*(\d+)\s*gols?\b(?:.*?\btime\s*(\d+)\b)?(.*)$/i)
+      || clean.match(/^(\d+)\s*gols?\s*[-:|]?\s*(.+?)(?:\s*[-:|]?\s*time\s*(\d+)\b)?(.*)$/i);
+    if (goalPartIndex < 0 && !flexible) return null;
+    const structuredParts = goalPartIndex >= 0 && parts.length > 1;
+    const goalsFirst = flexible && /^\d+\s*gols?/i.test(clean);
+    let name = structuredParts ? parts[0] : (goalsFirst ? flexible[2] : flexible[1]);
+    name = name.replace(/^(?:gols?|artilheiros?)\s*:\s*/i, '').replace(/^\d+\s*[ºª.)-]?\s*/, '').trim();
     if (!name || /^(?:total|gols marcados|destaque|artilheiro\s*:)/i.test(name)) return null;
-    const teamPart = parts.find((part) => /\btime\s*\d+\b/i.test(part));
+    const teamPart = parts.find((part) => /\btime\s*\d+\b/i.test(part)) || clean;
     const teamMatch = teamPart?.match(/\btime\s*(\d+)\b/i);
-    const goals = parseInteger(parts[goalPartIndex]);
+    const goals = structuredParts ? parseInteger(parts[goalPartIndex]) : parseInteger(flexible[goalsFirst ? 1 : 2]);
     if (goals == null) return null;
-    const roleText = parts.filter((_, index) => index > goalPartIndex).join(' ');
+    const roleText = structuredParts ? parts.filter((_, index) => index > goalPartIndex).join(' ') : (flexible?.[4] || '');
     return {
       name: normalizeWhitespace(name),
       typedName: normalizeWhitespace(name),
@@ -207,16 +211,17 @@
 
   function parseTeamHeader(line) {
     const clean = stripListPrefix(line);
-    const match = clean.match(/(?:^|\s)time\s*(\d+)\b/i);
+    const match = clean.match(/^(?:classifica(?:cao)?\s*[:-]?\s*)?time\s*(\d+)\b/i);
     if (!match) return null;
-    if (!/(colete|classifica|^\d+\s*[ºª.)-]?\s*time)/i.test(clean)) return null;
     const number = Number(match[1]);
     const colorMatch = clean.match(/colete\s+([^—–|,;]+)/i);
+    const parenthesizedColor = clean.match(/time\s*\d+\s*\(([^)]+)\)/i);
+    const trailingColor = clean.match(/time\s*\d+\s*(?:[-—–|:]\s*|\s+)([a-zà-ÿ]+)(?=\s*(?:[-—–|,;]|$))/i);
     return {
       id: `team_${number}`,
       name: `Time ${number}`,
       order: number,
-      vestColor: normalizeWhitespace(colorMatch?.[1] || ''),
+      vestColor: normalizeWhitespace(colorMatch?.[1] || parenthesizedColor?.[1] || trailingColor?.[1] || ''),
       wins: null,
       draws: null,
       losses: null,
@@ -225,6 +230,42 @@
       players: [],
       emptyReported: false,
     };
+  }
+
+  function applyTeamStats(team, value) {
+    if (!team) return false;
+    const source = normalizeWhitespace(value).toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const patterns = {
+      wins: [/(?:vitorias?|vencidos?|ganhos?)\s*:?\s*(\d+)/i, /\b(\d+)\s*v\b/i],
+      draws: [/(?:empates?)\s*:?\s*(\d+)/i, /\b(\d+)\s*e\b/i],
+      losses: [/(?:derrotas?|perdidos?)\s*:?\s*(\d+)/i, /\b(\d+)\s*d\b/i],
+      pointsInformed: [/(?:pontos?|pts?)\s*:?\s*(\d+)/i, /\b(\d+)\s*(?:pontos?|pts?)\b/i],
+      goalsInformed: [/(?:gols?\s+(?:marcados?|feitos?)|gp)\s*:?\s*(\d+)/i, /\b(\d+)\s*gols?\s+(?:marcados?|feitos?)\b/i],
+    };
+    let found = false;
+    Object.entries(patterns).forEach(([field, regexes]) => {
+      const match = regexes.map((regex) => source.match(regex)).find(Boolean);
+      if (match) { team[field] = Number(match[1]); found = true; }
+    });
+    return found;
+  }
+
+  function splitPlayerList(value) {
+    const source = String(value || '').replace(/^\s*(?:jogadores?|elenco|escalacao)\s*:?\s*/i, '').trim();
+    if (!source) return [];
+    const tokens = [];
+    let current = '';
+    let depth = 0;
+    for (const char of source) {
+      if (char === '(') depth += 1;
+      if (char === ')') depth = Math.max(0, depth - 1);
+      if ((char === ',' || char === ';') && depth === 0) {
+        if (current.trim()) tokens.push(current.trim());
+        current = '';
+      } else current += char;
+    }
+    if (current.trim()) tokens.push(current.trim());
+    return tokens.map(parsePlayerToken).filter(Boolean);
   }
 
   function uniqueByNormalizedName(items) {
@@ -272,6 +313,23 @@
     return { players: tokens.map(parsePlayerToken).filter(Boolean).map((item) => ({ ...item, goals: 0 })), endIndex: index };
   }
 
+  function pruneEmptyTeams(parsed) {
+    if (!parsed || !Array.isArray(parsed.teams)) return parsed;
+    if (!Array.isArray(parsed.ignoredTeams)) parsed.ignoredTeams = [];
+    parsed.teams = parsed.teams.filter((team) => {
+      const hasPlayers = Boolean(team.players?.length);
+      const hasScorers = (parsed.scorers || []).some((scorer) => scorer.teamKey === team.id);
+      const hasCompetitiveData = ['wins', 'draws', 'losses', 'pointsInformed', 'goalsInformed']
+        .some((field) => Number(team[field] || 0) > 0);
+      const shouldIgnore = !hasPlayers && !hasScorers && !hasCompetitiveData;
+      if (shouldIgnore && !parsed.ignoredTeams.some((item) => item.id === team.id)) {
+        parsed.ignoredTeams.push({ ...team, ignoreReason: team.emptyReported ? 'explicitly-empty' : 'empty' });
+      }
+      return !shouldIgnore;
+    });
+    return parsed;
+  }
+
   function parseReport(input) {
     const originalText = sanitizeImportedText(input);
     const lines = originalText.split('\n').map((line) => line.trim());
@@ -281,6 +339,7 @@
       totalGoalsInformed: null,
       topScorerInformed: null,
       teams: [],
+      ignoredTeams: [],
       scorers: [],
       zeroGoalPlayers: [],
       observations: [],
@@ -294,55 +353,55 @@
       const line = lines[index];
       if (!line) continue;
       const normalized = normalizeName(line);
-      if (/^artilheiros?$/.test(normalized)) { section = 'scorers'; readingPlayers = false; continue; }
-      if (/^classificacao dos times?$/.test(normalized)) { section = 'teams'; readingPlayers = false; continue; }
+      if (/^(?:artilheiros?|goleadores?|gols do baba|quem marcou)$/.test(normalized)) { section = 'scorers'; currentTeam = null; readingPlayers = false; continue; }
+      if (/^(?:classificacao(?: dos times)?|tabela(?: dos times)?|times|equipes)$/.test(normalized)) { section = 'teams'; readingPlayers = false; continue; }
       if (/^regra de pontuacao/.test(normalized)) { section = 'observations'; currentTeam = null; readingPlayers = false; continue; }
-      if (/^jogadores\s*:?$/.test(normalized) && currentTeam) { readingPlayers = true; continue; }
+      if (/^(?:jogadores|elenco|escalacao)\s*:?$/.test(normalized) && currentTeam) { readingPlayers = true; continue; }
       if (/^sem gols registrados?\s*:?/i.test(line)) {
         const parsed = parseZeroGoalBlock(lines, index);
         result.zeroGoalPlayers.push(...parsed.players);
         index = parsed.endIndex;
         continue;
       }
-      const totalMatch = line.match(/total\s+de\s+gols(?:\s+registrados?)?\s*:\s*(\d+)/i);
+      const totalMatch = line.match(/(?:total\s+(?:de\s+)?gols(?:\s+registrados?)?|gols\s+no\s+baba)\s*:?\s*(\d+)/i);
       if (totalMatch) { result.totalGoalsInformed = Number(totalMatch[1]); continue; }
-      const topMatch = line.match(/^artilheiro\s*:\s*(.+?)\s+(?:—|–|-)\s*(\d+)\s*gols?/i);
+      const topMatch = line.match(/^(?:artilheiro|maior goleador)\s*:?\s*(.+?)\s+(?:—|–|-|com\s+)?\s*(\d+)\s*gols?/i);
       if (topMatch) {
         result.topScorerInformed = { name: normalizeWhitespace(topMatch[1]), goals: Number(topMatch[2]) };
         continue;
       }
 
       const teamHeader = parseTeamHeader(line);
-      if (teamHeader && (section === 'teams' || /colete/i.test(line))) {
+      if (teamHeader) {
         currentTeam = teamHeader;
         result.teams.push(teamHeader);
         section = 'teams';
         readingPlayers = false;
+        applyTeamStats(currentTeam, line);
+        const inlinePlayers = line.match(/(?:jogadores?|elenco|escalação)\s*:?\s*(.+)$/i);
+        if (inlinePlayers) currentTeam.players.push(...splitPlayerList(inlinePlayers[1]));
         continue;
       }
       if (currentTeam && section === 'teams') {
-        const statPatterns = [
-          ['wins', /^vitorias?\s*:?\s*(\d+)/i],
-          ['draws', /^empates?\s*:?\s*(\d+)/i],
-          ['losses', /^derrotas?\s*:?\s*(\d+)/i],
-          ['pointsInformed', /^pontos?\s*:?\s*(\d+)/i],
-          ['goalsInformed', /^gols marcados?\s*:?\s*(\d+)/i],
-        ];
-        const stat = statPatterns.find(([, regex]) => regex.test(normalized));
-        if (stat) {
-          currentTeam[stat[0]] = Number(normalized.match(stat[1])[1]);
+        if (applyTeamStats(currentTeam, line)) {
+          continue;
+        }
+        const rosterLine = line.match(/^(?:jogadores?|elenco|escalação)\s*:?\s*(.+)$/i);
+        if (rosterLine) {
+          readingPlayers = true;
+          currentTeam.players.push(...splitPlayerList(rosterLine[1]));
           continue;
         }
         if (readingPlayers || /^[*•-]/.test(line)) {
           if (/sem jogadores? registrados?/i.test(line)) { currentTeam.emptyReported = true; continue; }
-          const player = parsePlayerToken(line);
-          if (player) { currentTeam.players.push(player); continue; }
+          const players = splitPlayerList(line);
+          if (players.length) { currentTeam.players.push(...players); continue; }
         }
       }
 
       if (section === 'scorers' || /\b\d+\s*gols?\b/i.test(line)) {
-        const scorer = parseScorerLine(line);
-        if (scorer) { result.scorers.push(scorer); continue; }
+        const scorers = line.split(/\s*;\s*/).map(parseScorerLine).filter(Boolean);
+        if (scorers.length) { result.scorers.push(...scorers); continue; }
       }
       if (!/^(?:baba|regra de pontuacao|vitoria\s*=|empate\s*=|destaque)/i.test(normalized)) {
         result.observations.push(line);
@@ -370,7 +429,7 @@
         roster.roles = mergeRoles(roster.roles, zero.roles);
       }
     });
-    return result;
+    return pruneEmptyTeams(result);
   }
 
   function scoreCandidate(typedName, player, aliases = []) {
@@ -485,6 +544,9 @@
     }
     if (!parsed.date) warnings.push(makeWarning('MISSING_DATE', 'blocker', 'A data do baba não foi identificada.', 'date'));
     if (!Array.isArray(parsed.teams) || !parsed.teams.length) warnings.push(makeWarning('MISSING_TEAMS', 'blocker', 'Nenhum time foi identificado.', 'teams'));
+    (parsed.ignoredTeams || []).forEach((team) => {
+      warnings.push(makeWarning('IGNORED_EMPTY_TEAM', 'info', `${team.name || 'Time vazio'} foi ignorado porque não teve jogadores nem participação no baba.`, 'ignoredTeams'));
+    });
 
     const seenTeamIds = new Set();
     const playerTeams = new Map();
@@ -655,6 +717,7 @@
     roleLabels,
     parseDate,
     parseReport,
+    pruneEmptyTeams,
     matchPlayerName,
     collectPeople,
     resolvePeople,
