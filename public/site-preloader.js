@@ -5,7 +5,7 @@
   const loaderScriptUrl = new URL(document.currentScript?.src || 'site-preloader.js', window.location.href);
   if (!document.querySelector('script[data-site-version-loader]')) {
     const versionScript = document.createElement('script');
-    versionScript.src = new URL('site-version.js?v=6.0.44', loaderScriptUrl).href;
+    versionScript.src = new URL('site-version.js?v=6.0.45', loaderScriptUrl).href;
     versionScript.defer = true;
     versionScript.dataset.siteVersionLoader = 'true';
     document.head.appendChild(versionScript);

@@ -1002,7 +1002,7 @@ async function backupLegacyState(state, migrationId) {
   const migrationRef = accountDoc('migrations', migrationId);
   await setDoc(migrationRef, {
     status: 'running',
-    sourcePath: POINTER_PATH.join('/'),
+    sourcePath: pointerRef().path,
     targetBabaId: state.activeBabaId || null,
     schemaFrom: Number(state.version || 1),
     schemaTo: SCHEMA_VERSION,

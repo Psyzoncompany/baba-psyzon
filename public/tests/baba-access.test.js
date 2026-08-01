@@ -15,12 +15,14 @@ test('login Google usa persistencia local e informa mudancas de autenticacao', (
   const login = readPublic('login.html');
 
   assert.match(source, /setPersistence\(auth, browserLocalPersistence\)/);
+  assert.match(source, /return signInWithRedirect\(auth, googleProvider\)/);
   assert.match(source, /getRedirectResult\(auth\)/);
   assert.match(source, /firebase-auth-state/);
   assert.match(source, /provider\.providerId === 'google\.com'/);
   assert.match(source, /removeItem\('forceLocalMode'\)/);
   assert.match(source, /window\.isLocalMode = false/);
   assert.doesNotMatch(source, /browserSessionPersistence/);
+  assert.doesNotMatch(source, /signInWithPopup/);
   assert.match(login, /id="google-login-btn"/);
   assert.doesNotMatch(login, /id="email"|id="password"|id="login-btn"|toggle-mode-btn/);
 });
@@ -92,6 +94,13 @@ test('persistencia e importacao usam o espaco exclusivo da conta', () => {
   assert.match(importPersistence, /doc\(db, 'baba_accounts', accountId\(\)/);
   assert.doesNotMatch(importPersistence, /doc\(db, 'baba_imports'/);
   assert.doesNotMatch(importPersistence, /collection\(db, 'baba_player_aliases'/);
+});
+
+test('migracao v2 registra o caminho da conta sem referencia global obsoleta', () => {
+  const persistence = readPublic('baba-persistence.js');
+
+  assert.match(persistence, /sourcePath: pointerRef\(\)\.path/);
+  assert.doesNotMatch(persistence, /POINTER_PATH/);
 });
 
 test('importador reutiliza a sessao do site sem segundo botao de login', () => {

@@ -1,7 +1,7 @@
 // c:\Users\AAAA\Desktop\sitey-caixa\firebase-config.js
 
 // Importa as funções do Firebase (versão compat para facilitar o uso com scripts existentes)
-import { onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, onSnapshot, setDoc, updateDoc, serverTimestamp, deleteField } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 import { app, auth, db } from "./js/firebase-init.js";
@@ -1647,21 +1647,7 @@ if (!window.isLocalMode) {
     window.firebaseAuth = {
         loginWithGoogle: async () => {
             await setAuthPersistence();
-            try {
-                return await signInWithPopup(auth, googleProvider);
-            } catch (error) {
-                const fallbackCodes = new Set([
-                    'auth/popup-blocked',
-                    'auth/cancelled-popup-request',
-                    'auth/popup-closed-by-user',
-                    'auth/operation-not-supported-in-this-environment',
-                    'auth/web-storage-unsupported'
-                ]);
-                if (fallbackCodes.has(error?.code)) {
-                    return signInWithRedirect(auth, googleProvider);
-                }
-                throw error;
-            }
+            return signInWithRedirect(auth, googleProvider);
         },
         logout: () => {
             nativeLocalStorage.removeItem('psyzon_remember_device');
