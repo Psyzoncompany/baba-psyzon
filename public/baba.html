@@ -14,7 +14,7 @@
   <meta name="theme-color" content="#f4f8fc">
   <title>Baba Psyzon</title>
   <link href="apple-ui-font.css?v=20260723-1" rel="stylesheet">
-  <link href="baba-ui.css?v=20260731-player-filters-1" rel="stylesheet">
+  <link href="baba-ui.css?v=20260801-organizer-layout-2" rel="stylesheet">
   <script>
     window.BABA_AI_ENDPOINT = window.BABA_AI_ENDPOINT || '/api/baba-import/analyze';
     if (window.location.protocol !== 'file:') {
@@ -493,8 +493,19 @@
       </section>
 
       <section class="baba-view" data-view="organizer">
+        <header class="baba-organizer-hero">
+          <div>
+            <span class="baba-organizer-hero__eyebrow">CENTRAL DE OPERAÇÕES</span>
+            <h1>Painel do organizador</h1>
+            <p>Controle o baba, importe resultados e gerencie jogadores em um único espaço.</p>
+          </div>
+          <div class="baba-organizer-hero__status" aria-label="Recursos do painel">
+            <span><i aria-hidden="true"></i> Controle ao vivo</span>
+            <span><i aria-hidden="true"></i> Histórico estruturado</span>
+          </div>
+        </header>
         <div class="baba-organizer-layout">
-          <article class="baba-card baba-control-card organizer-only">
+          <article class="baba-card baba-control-card baba-organizer-control organizer-only">
             <div class="baba-card__head">
               <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-whistle"></use></svg>Controle do Baba</h2>
               <span>AUTOMACAO</span>
@@ -518,7 +529,7 @@
             </div>
           </article>
 
-          <article id="baba-import-card" class="baba-card baba-card--wide baba-import-card organizer-only" aria-labelledby="baba-import-title">
+          <article id="baba-import-card" class="baba-card baba-card--wide baba-import-card baba-organizer-import organizer-only" aria-labelledby="baba-import-title">
             <div class="baba-card__head">
               <div>
                 <h2 id="baba-import-title"><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-chart"></use></svg>Importar novo baba com IA</h2>
@@ -527,6 +538,7 @@
               <span id="baba-import-status" class="baba-import-status" role="status">Aguardando relatório</span>
             </div>
             <div id="baba-import-root" class="baba-import-root">
+              <aside id="baba-import-access" class="baba-import-access" role="status" aria-live="polite"></aside>
               <label class="baba-import-label" for="baba-import-text">Relatório do baba</label>
               <textarea id="baba-import-text" class="baba-import-text" rows="13" maxlength="100000" spellcheck="true" placeholder="Cole aqui o texto recebido pelo WhatsApp, copiado de PDF ou digitado manualmente..."></textarea>
               <div class="baba-import-toolbar">
@@ -550,7 +562,7 @@
             </div>
           </article>
 
-          <article class="baba-card baba-card--wide baba-player-payment-card organizer-only">
+          <article class="baba-card baba-card--wide baba-player-payment-card baba-organizer-players organizer-only">
             <div class="baba-card__head">
               <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-user-plus"></use></svg>Jogadores e pagamentos</h2>
               <div class="baba-card__actions">
@@ -1324,9 +1336,9 @@
   </script>
 
 
-  <script src="baba-import-core.js?v=20260801-import-1"></script>
+  <script src="baba-import-core.js?v=20260801-import-2"></script>
   <script type="module" src="baba-import-persistence.js?v=20260801-import-1"></script>
-  <script type="module" src="baba-import-ui.js?v=20260801-import-1"></script>
+  <script type="module" src="baba-import-ui.js?v=20260801-import-2"></script>
   <script type="module" src="baba-persistence.js?v=20260801-import-1"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
   <script src="pdf-report.js?v=20260731-payment-vector-1"></script>

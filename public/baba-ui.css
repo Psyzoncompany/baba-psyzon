@@ -3333,6 +3333,92 @@ button.baba-history-item.active {
   gap: var(--space-5);
 }
 
+.baba-organizer-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+  padding: clamp(1.35rem, 2.5vw, 2rem);
+  overflow: hidden;
+  border: 1px solid rgba(15, 118, 110, .16);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 90% 10%, rgba(45, 212, 191, .2), transparent 32%),
+    linear-gradient(135deg, #082f35 0%, #0b4b4b 58%, #11665c 100%);
+  color: #fff;
+  box-shadow: 0 18px 45px rgba(8, 47, 53, .18);
+}
+
+.baba-organizer-hero__eyebrow {
+  color: #a7f3d0;
+  font-size: .68rem;
+  font-weight: 850;
+  letter-spacing: .13em;
+}
+
+.baba-organizer-hero h1 {
+  margin: .35rem 0 .4rem;
+  color: #fff;
+  font-size: clamp(1.55rem, 3vw, 2.35rem);
+  line-height: 1.08;
+}
+
+.baba-organizer-hero p {
+  max-width: 42rem;
+  margin: 0;
+  color: rgba(236, 254, 255, .78);
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+}
+
+.baba-organizer-hero__status {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .55rem;
+}
+
+.baba-organizer-hero__status span {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  border: 1px solid rgba(167, 243, 208, .24);
+  border-radius: var(--radius-pill);
+  background: rgba(6, 42, 46, .42);
+  padding: .5rem .72rem;
+  color: rgba(255, 255, 255, .9);
+  font-size: .7rem;
+  font-weight: 720;
+  backdrop-filter: blur(8px);
+}
+
+.baba-organizer-hero__status i {
+  width: .46rem;
+  height: .46rem;
+  border-radius: 50%;
+  background: #6ee7b7;
+  box-shadow: 0 0 0 3px rgba(110, 231, 183, .13);
+}
+
+.baba-organizer-layout {
+  grid-template-columns: minmax(17.5rem, .62fr) minmax(0, 1.38fr);
+  grid-template-areas:
+    "control import"
+    "control players";
+  align-items: start;
+}
+
+.baba-organizer-control {
+  grid-area: control;
+  position: sticky;
+  top: calc(var(--space-4) + env(safe-area-inset-top));
+  border-color: color-mix(in srgb, var(--color-primary) 20%, var(--border-soft));
+}
+
+.baba-organizer-import { grid-area: import; }
+.baba-organizer-players { grid-area: players; }
+
 .baba-player-payment-card {
   min-width: 0;
 }
@@ -3374,6 +3460,9 @@ button.baba-history-item.active {
   justify-content: flex-start;
   text-align: left;
 }
+
+.baba-control-flow button + button { margin-top: .15rem; }
+.baba-control-flow .danger { margin-top: var(--space-3); }
 
 .baba-management-section,
 .baba-admin-section {
@@ -3446,6 +3535,49 @@ button.baba-history-item.active {
 
 .baba-import-card {
   border-color: color-mix(in srgb, var(--color-info) 24%, var(--border-soft));
+  box-shadow: 0 14px 35px rgba(15, 23, 42, .07), var(--shadow-inset);
+}
+
+.baba-import-access {
+  display: none;
+  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .8rem;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: .85rem 1rem;
+}
+
+.baba-import-access.is-visible { display: grid; }
+.baba-import-access.is-ready { border-color: rgba(5, 120, 87, .22); background: var(--color-success-soft); }
+.baba-import-access.is-warning { border-color: rgba(180, 83, 9, .24); background: var(--color-warning-soft); }
+.baba-import-access.is-danger { border-color: rgba(185, 28, 28, .22); background: var(--color-danger-soft); }
+.baba-import-access__icon {
+  display: grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: .75rem;
+  background: rgba(255, 255, 255, .72);
+  font-size: 1rem;
+  font-weight: 850;
+}
+.baba-import-access__copy { display: grid; gap: .12rem; }
+.baba-import-access__copy strong { color: var(--color-text); font-size: var(--font-size-sm); }
+.baba-import-access__copy span { color: var(--color-text-muted); font-size: var(--font-size-xs); line-height: 1.45; }
+.baba-import-access button,
+.baba-import-access a {
+  min-height: 2.35rem;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, .78);
+  color: var(--color-text);
+  padding: .55rem .75rem;
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .baba-import-root,
@@ -3755,6 +3887,10 @@ button.baba-history-item.active {
 }
 
 @media (max-width: 680px) {
+  .baba-organizer-hero { align-items: flex-start; flex-direction: column; }
+  .baba-organizer-hero__status { justify-content: flex-start; }
+  .baba-import-access { grid-template-columns: 2.4rem 1fr; }
+  .baba-import-access :is(button, a) { grid-column: 1 / -1; width: 100%; text-align: center; }
   .baba-import-fields,
   .baba-import-fields--team,
   .baba-import-fields--person,
@@ -5068,6 +5204,12 @@ button.baba-history-item.active {
   .baba-goals-layout {
     grid-template-columns: 1fr;
   }
+
+  .baba-organizer-layout {
+    grid-template-areas: "control" "import" "players";
+  }
+
+  .baba-organizer-control { position: static; }
 
   .baba-table-scorer-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
