@@ -20,6 +20,20 @@
     <style>
         body {
             font-family: var(--font-site, "Baba Apple UI", sans-serif);
+            overflow-x: hidden;
+        }
+
+        main,
+        main > section,
+        #login-form,
+        #login-form > div {
+            min-width: 0;
+        }
+
+        #commission-email,
+        #commission-password {
+            min-width: 0;
+            max-width: 100%;
         }
 
         .bg-login {
@@ -84,6 +98,25 @@
                     Entrar com Google
                 </button>
 
+                <div class="flex items-center gap-3 text-xs text-slate-500" aria-hidden="true">
+                    <span class="h-px flex-1 bg-slate-700"></span><span>ou acesso da comissão</span><span class="h-px flex-1 bg-slate-700"></span>
+                </div>
+
+                <div class="space-y-3">
+                    <label for="commission-email" class="block text-sm text-slate-300">E-mail de acesso</label>
+                    <input id="commission-email" type="email" inputmode="email" autocomplete="username" required
+                        class="w-full rounded-xl border border-slate-600 bg-slate-900/70 px-4 py-3 text-white outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20"
+                        placeholder="email@exemplo.com">
+                    <label for="commission-password" class="block text-sm text-slate-300">Senha</label>
+                    <input id="commission-password" type="password" autocomplete="current-password" minlength="8" required
+                        class="w-full rounded-xl border border-slate-600 bg-slate-900/70 px-4 py-3 text-white outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20"
+                        placeholder="Digite a senha criada pelo organizador">
+                    <button type="submit" id="commission-login-btn"
+                        class="w-full rounded-xl border border-cyan-400/40 bg-cyan-500/15 px-4 py-3 font-semibold text-cyan-100 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-60">
+                        Entrar com e-mail e senha
+                    </button>
+                </div>
+
                 <p class="text-center text-xs text-slate-400">O login permanece salvo neste dispositivo até você escolher sair.</p>
 
             </form>
@@ -115,14 +148,18 @@
         </a>
     </nav>
 
-    <script type="module" src="firebase-config.js?v=20260801-account-save-2"></script>
+    <script type="module" src="firebase-config.js?v=20260801-commission-login-1"></script>
 
     <script>
         const googleBtn = document.getElementById('google-login-btn');
+        const commissionEmail = document.getElementById('commission-email');
+        const commissionPassword = document.getElementById('commission-password');
+        const commissionBtn = document.getElementById('commission-login-btn');
         const rememberCheckbox = document.getElementById('remember-device');
         const errorMsg = document.getElementById('error-msg');
 
         const GOOGLE_BUTTON_DEFAULT = googleBtn.innerHTML;
+        const COMMISSION_BUTTON_DEFAULT = commissionBtn.textContent;
         const REMEMBER_KEY = 'psyzon_remember_device';
 
         // --- LEMBRAR DISPOSITIVO ---
@@ -147,9 +184,11 @@
             return firebaseAuth;
         }
 
-        function setLoading({ google = false } = {}) {
+        function setLoading({ google = false, commission = false } = {}) {
             googleBtn.disabled = google;
             googleBtn.innerHTML = google ? 'Conectando Google...' : GOOGLE_BUTTON_DEFAULT;
+            commissionBtn.disabled = commission;
+            commissionBtn.textContent = commission ? 'Entrando...' : COMMISSION_BUTTON_DEFAULT;
         }
 
         const showError = (message) => {
@@ -162,6 +201,10 @@
             const map = {
                 'auth/unauthorized-domain': 'Este domínio não está autorizado no Firebase.',
                 'auth/operation-not-allowed': 'Método de login não habilitado no Firebase.',
+                'auth/popup-blocked': 'O navegador bloqueou a janela do Google. Permita pop-ups para este site e tente novamente.',
+                'auth/invalid-credential': 'E-mail ou senha incorretos.',
+                'auth/wrong-password': 'E-mail ou senha incorretos.',
+                'auth/user-not-found': 'E-mail ou senha incorretos.',
                 'auth/popup-closed-by-user': 'Você fechou a janela do Google antes de concluir.',
                 'auth/google-login-required': 'Entre com uma conta Google para acessar o site.',
                 'auth/too-many-requests': 'Muitas tentativas. Aguarde um momento e tente de novo.',
@@ -185,6 +228,23 @@
                 console.error(error);
                 showError(friendlyError(error));
                 setLoading();
+            }
+        });
+
+        document.getElementById('login-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            errorMsg.classList.add('hidden');
+            if (!commissionEmail.reportValidity() || !commissionPassword.reportValidity()) return;
+            setLoading({ commission: true });
+            saveRememberPreference();
+            try {
+                const firebaseAuth = await waitForFirebaseAuth();
+                await firebaseAuth.loginWithEmailPassword(commissionEmail.value, commissionPassword.value);
+            } catch (error) {
+                console.error(error);
+                showError(friendlyError(error));
+                setLoading();
+                commissionPassword.select();
             }
         });
 

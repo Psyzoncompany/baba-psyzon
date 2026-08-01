@@ -10,21 +10,23 @@ function readPublic(file) {
   return fs.readFileSync(path.join(publicRoot, file), 'utf8');
 }
 
-test('login Google usa persistencia local e informa mudancas de autenticacao', () => {
+test('login Google usa popup sem recarregar a pagina e informa mudancas de autenticacao', () => {
   const source = readPublic('firebase-config.js');
   const login = readPublic('login.html');
 
   assert.match(source, /setPersistence\(auth, browserLocalPersistence\)/);
-  assert.match(source, /return signInWithRedirect\(auth, googleProvider\)/);
-  assert.match(source, /getRedirectResult\(auth\)/);
+  assert.match(source, /return signInWithPopup\(auth, googleProvider\)/);
   assert.match(source, /firebase-auth-state/);
-  assert.match(source, /provider\.providerId === 'google\.com'/);
+  assert.match(source, /isGoogleLinkedUser\(user\)/);
   assert.match(source, /removeItem\('forceLocalMode'\)/);
   assert.match(source, /window\.isLocalMode = false/);
   assert.doesNotMatch(source, /browserSessionPersistence/);
-  assert.doesNotMatch(source, /signInWithPopup/);
+  assert.doesNotMatch(source, /signInWithRedirect|getRedirectResult/);
   assert.match(login, /id="google-login-btn"/);
-  assert.doesNotMatch(login, /id="email"|id="password"|id="login-btn"|toggle-mode-btn/);
+  assert.match(login, /id="commission-email"/);
+  assert.match(login, /id="commission-password"/);
+  assert.match(login, /id="commission-login-btn"/);
+  assert.match(source, /signInWithEmailAndPassword/);
 });
 
 test('estado, modo e tela ficam isolados pela conta Google no armazenamento nativo', () => {
@@ -60,16 +62,39 @@ test('codigo de jogador e aleatorio, salvo somente como hash e revogavel', () =>
   assert.match(source, /currentCodeHash: codeHash/);
   assert.match(source, /active: true/);
   assert.doesNotMatch(source, /currentCode:\s*code/);
+  assert.match(source, /nativeStorage\(\)\.setItem\(PLAYER_ACCESS_KEY, JSON\.stringify\(saved\)\)/);
+  assert.match(source, /parseSavedAccess\(playerAccessStorageKey\(accountId\)\) \|\| pointer/);
 });
 
-test('interface oferece login Google e entrada e geracao de codigo', () => {
+test('interface oferece Google, senha vinculada e entrada e geracao de codigo', () => {
   const html = readPublic('baba.html');
 
   assert.match(html, /id="organizer-google-login"/);
   assert.match(html, /id="player-code-form"/);
   assert.match(html, /id="generate-player-code"/);
   assert.match(html, /id="copy-player-code"/);
+  assert.match(html, /id="organizer-email-login"/);
+  assert.match(html, /id="commission-access-form"/);
+  assert.match(html, /id="commission-access-password-confirm"/);
   assert.match(html, /src="(?:\.\/)?baba-access\.js\?v=/);
+});
+
+test('senha da comissao fica vinculada ao mesmo usuario Google', () => {
+  const source = readPublic('firebase-config.js');
+
+  assert.match(source, /EmailAuthProvider\.credential/);
+  assert.match(source, /linkWithCredential\(user, credential\)/);
+  assert.match(source, /updatePassword\(user, normalizedPassword\)/);
+  assert.match(source, /normalizedEmail !== String\(user\.email/);
+  assert.match(source, /signInProvider !== GoogleAuthProvider\.PROVIDER_ID/);
+});
+
+test('ranking de pior jogador prioriza derrotas e desempata pelo menor numero de gols', () => {
+  const source = readPublic('baba.js');
+
+  assert.match(source, /\{ id: 'worst', label: 'Pior jogador'/);
+  assert.match(source, /metric === 'worst'[\s\S]*?b\.totalDerrotas - a\.totalDerrotas \|\| a\.totalGols - b\.totalGols/);
+  assert.match(source, /metric === 'worst'\) return Number\(stats\.totalJogos \|\| 0\) > 0/);
 });
 
 test('regras isolam cada conta e permitem validar somente o hash do codigo publico', () => {
@@ -78,6 +103,7 @@ test('regras isolam cada conta e permitem validar somente o hash do codigo publi
   assert.match(rules, /function isImportAdmin\(\)\s*\{\s*return signedIn\(\);\s*\}/);
   assert.match(rules, /function ownsAccount\(accountId\)/);
   assert.match(rules, /sign_in_provider == 'google\.com'/);
+  assert.match(rules, /firebase\.identities\["google\.com"\] != null/);
   assert.match(rules, /match \/users\/\{userId\}/);
   assert.match(rules, /match \/baba_accounts\/\{accountId\}/);
   assert.match(rules, /match \/baba_access_config\/\{accountId\}/);
@@ -94,6 +120,17 @@ test('persistencia e importacao usam o espaco exclusivo da conta', () => {
   assert.match(importPersistence, /doc\(db, 'baba_accounts', accountId\(\)/);
   assert.doesNotMatch(importPersistence, /doc\(db, 'baba_imports'/);
   assert.doesNotMatch(importPersistence, /collection\(db, 'baba_player_aliases'/);
+});
+
+test('jogador espera o historico atual da conta do codigo antes de abrir o painel', () => {
+  const app = readPublic('baba.js');
+  const persistence = readPublic('baba-persistence.js');
+
+  assert.match(app, /refreshAccountData\?\.\(result\.accountId\)/);
+  assert.match(app, /Sincronizando histórico do organizador/);
+  assert.match(persistence, /async function refreshAccountData\(candidateAccountId/);
+  assert.match(persistence, /replaceHistoryOnNextMerge = true/);
+  assert.match(persistence, /const localBabas = replaceHistoryOnNextMerge/);
 });
 
 test('migracao v2 registra o caminho da conta sem referencia global obsoleta', () => {

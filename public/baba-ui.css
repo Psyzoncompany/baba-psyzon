@@ -1646,6 +1646,16 @@ body.baba-dark-theme .baba-choice--tactical .baba-choice-icon {
 
 .baba-google-access:disabled { cursor: wait; opacity: .65; }
 .baba-password__note { margin: var(--space-3) 0 0; color: var(--color-text-muted); font-size: var(--font-size-xs); text-align: center; }
+.baba-access-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+.baba-access-divider::before,
+.baba-access-divider::after { height: 1px; flex: 1; background: var(--border-soft); content: ""; }
 
 /* 8. Forms ----------------------------------------------------------------- */
 
@@ -3563,6 +3573,30 @@ button.baba-history-item.active {
   font-weight: 750;
   cursor: pointer;
 }
+
+.baba-commission-access {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-soft);
+}
+
+.baba-commission-access > div:first-child { display: grid; gap: .18rem; margin-bottom: var(--space-1); }
+.baba-commission-access small { color: var(--color-text-muted); font-size: var(--font-size-xs); line-height: 1.4; }
+.baba-commission-access input[readonly] { color: var(--color-text-soft); background: var(--surface-subtle); }
+.baba-commission-access button {
+  min-height: 2.75rem;
+  margin-top: var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 34%, var(--border-medium));
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: #fff;
+  font: inherit;
+  font-weight: 780;
+  cursor: pointer;
+}
+.baba-commission-access button:disabled { cursor: not-allowed; opacity: .58; }
 
 @media (max-width: 560px) {
   .baba-player-access-admin > div:nth-of-type(2) {

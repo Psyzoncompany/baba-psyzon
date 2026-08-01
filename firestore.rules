@@ -6,12 +6,17 @@ service cloud.firestore {
         && request.auth.token.firebase.sign_in_provider == 'google.com';
     }
 
+    function linkedGoogleAccount() {
+      return request.auth != null
+        && request.auth.token.firebase.identities["google.com"] != null;
+    }
+
     function isImportAdmin() {
       return signedIn();
     }
 
     function ownsAccount(accountId) {
-      return signedIn() && request.auth.uid == accountId;
+      return linkedGoogleAccount() && request.auth.uid == accountId;
     }
 
     match /users/{userId} {

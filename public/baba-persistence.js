@@ -71,6 +71,7 @@ let saveInFlight = false;
 let backoffUntil = 0;
 let latestPointerData = null;
 let lastPointerSignature = '';
+let replaceHistoryOnNextMerge = false;
 
 function now() {
   return Date.now();
@@ -1243,7 +1244,7 @@ async function fetchBaba(babaId) {
 function mergeRemoteIntoLocal() {
   if (localWritePending) {
     remoteFlushDeferred = true;
-    return;
+    return null;
   }
   remoteFlushDeferred = false;
   const current = readLocalState() || emptyState();
@@ -1267,7 +1268,11 @@ function mergeRemoteIntoLocal() {
   if (window.__babaRemotePlayerStats) next.playerStats = clone(window.__babaRemotePlayerStats);
   next.monthlyStats = Object.fromEntries(monthStatsCache.entries());
   const metadata = window.__babaRemoteMetadata || [];
-  const byId = new Map((current.babas || []).map((baba) => [baba.id, baba]));
+  const localBabas = replaceHistoryOnNextMerge
+    ? (current.babas || []).filter((baba) => baba.id === activeBabaId && baba.status !== 'finalizado')
+    : (current.babas || []);
+  const byId = new Map(localBabas.map((baba) => [baba.id, baba]));
+  replaceHistoryOnNextMerge = false;
   metadata.forEach((meta) => {
     if (meta.deleted) {
       byId.delete(meta.id);
@@ -1308,7 +1313,7 @@ function mergeRemoteIntoLocal() {
   const viewSignature = stateViewSignature(next);
   if (viewSignature === lastRemoteViewSignature || viewSignature === stateViewSignature(current)) {
     lastRemoteViewSignature = viewSignature;
-    return;
+    return next;
   }
   lastRemoteViewSignature = viewSignature;
   next.updatedAt = now();
@@ -1324,6 +1329,7 @@ function mergeRemoteIntoLocal() {
   } finally {
     applyingRemote = false;
   }
+  return next;
 }
 
 function scheduleRemoteFlush() {
@@ -1478,8 +1484,31 @@ function startHistorySubscription() {
     window.__babaRemoteMetadata = snapshot.docs.map((item) => item.data());
     historyCursor = snapshot.docs[snapshot.docs.length - 1] || null;
     hasMoreHistory = snapshot.size === RECENT_BABA_LIMIT;
+    replaceHistoryOnNextMerge = true;
     scheduleRemoteFlush();
   }, 'do historico');
+}
+
+async function refreshAccountData(candidateAccountId = '') {
+  const requestedAccountId = resolveAccountId(candidateAccountId);
+  if (!requestedAccountId) throw new Error('Conta do organizador não identificada.');
+  if (activeAccountId && activeAccountId !== requestedAccountId) {
+    throw new Error('O código informado pertence a outra conta. Recarregue a página e tente novamente.');
+  }
+  activeAccountId = requestedAccountId;
+  await startRepository();
+  const snapshot = await getDocs(query(
+    accountCollection('babas'),
+    orderBy('criadoEm', 'desc'),
+    limit(RECENT_BABA_LIMIT),
+  ));
+  window.__babaRemoteMetadata = snapshot.docs.map((item) => item.data());
+  historyCursor = snapshot.docs[snapshot.docs.length - 1] || null;
+  hasMoreHistory = snapshot.size === RECENT_BABA_LIMIT;
+  replaceHistoryOnNextMerge = true;
+  const merged = mergeRemoteIntoLocal();
+  startHistorySubscription();
+  return merged || readLocalState() || emptyState();
 }
 
 function startMonthsSubscription() {
@@ -1833,6 +1862,7 @@ window.BabaRepository = {
   loadMonthStats,
   loadMonthPayments,
   loadMoreHistory,
+  refreshAccountData,
   activateView,
   migrateLegacyState,
   restoreLegacyBackup,

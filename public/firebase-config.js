@@ -1,7 +1,19 @@
 // c:\Users\AAAA\Desktop\sitey-caixa\firebase-config.js
 
 // Importa as funções do Firebase (versão compat para facilitar o uso com scripts existentes)
-import { onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import {
+    onAuthStateChanged,
+    setPersistence,
+    browserLocalPersistence,
+    signInWithPopup,
+    signInWithEmailAndPassword,
+    EmailAuthProvider,
+    GoogleAuthProvider,
+    linkWithCredential,
+    updatePassword,
+    getIdTokenResult,
+    signOut
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, onSnapshot, setDoc, updateDoc, serverTimestamp, deleteField } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 import { app, auth, db } from "./js/firebase-init.js";
@@ -18,6 +30,32 @@ googleProvider.addScope('profile');
 const setAuthPersistence = async () => {
     await setPersistence(auth, browserLocalPersistence);
     return browserLocalPersistence;
+};
+
+// Inicializa a persistencia uma unica vez. O popup continua sendo aberto pelo clique
+// do usuario e nao depende do armazenamento entre dominios usado pelo redirect.
+const authPersistenceReady = setAuthPersistence();
+
+const hasLinkedProvider = (user, providerId) => Boolean(
+    user?.providerData?.some((provider) => provider.providerId === providerId)
+);
+
+const isGoogleLinkedUser = (user) => hasLinkedProvider(user, GoogleAuthProvider.PROVIDER_ID);
+
+const requireGoogleOwnerSession = async () => {
+    const user = auth.currentUser;
+    if (!user || !isGoogleLinkedUser(user)) {
+        const error = new Error('Entre com a conta Google proprietaria para criar ou trocar o acesso da comissao.');
+        error.code = 'auth/google-owner-required';
+        throw error;
+    }
+    const token = await getIdTokenResult(user, true);
+    if (token?.signInProvider !== GoogleAuthProvider.PROVIDER_ID) {
+        const error = new Error('Por seguranca, entre novamente com o Google para alterar o acesso da comissao.');
+        error.code = 'auth/requires-google-reauth';
+        throw error;
+    }
+    return user;
 };
 
 // Som de sucesso sutil (Web Audio API)
@@ -1546,6 +1584,9 @@ if (window.isLocalMode) {
     window.firebaseAuth = {
         login: async () => { },
         loginWithGoogle: async () => { },
+        loginWithEmailPassword: async () => ({ user: { uid: 'local_user' } }),
+        saveCommissionLogin: async () => ({ user: { uid: 'local_user' }, created: true }),
+        accountAccessInfo: async () => ({ email: '', hasPassword: false, canManage: false }),
         waitUntilReady: async () => ({ uid: 'local_user' }),
         logout: () => {
             nativeLocalStorage.removeItem('forceLocalMode');
@@ -1569,18 +1610,24 @@ if (window.isLocalMode) {
             initialAuthStateResolved = true;
             resolveInitialAuthState(user || null);
         }
-        if (user && !user.providerData?.some((provider) => provider.providerId === 'google.com')) {
-            window.firebaseAuthLastError = { code: 'auth/google-login-required', message: 'Entre com uma conta Google para acessar o site.' };
+        if (user && !isGoogleLinkedUser(user)) {
+            window.firebaseAuthLastError = { code: 'auth/google-login-required', message: 'Este acesso nao esta vinculado a uma conta Google organizadora.' };
             window.dispatchEvent(new CustomEvent('firebase-auth-error', { detail: window.firebaseAuthLastError }));
             await signOut(auth);
             return;
         }
         if (user) {
+            const token = await getIdTokenResult(user);
+            const isCommissionSession = token?.signInProvider === EmailAuthProvider.PROVIDER_ID;
             window.dispatchEvent(new CustomEvent('firebase-auth-state', { detail: { user, authenticated: true } }));
+            if (isCommissionSession && !isBabaPage() && !window.location.pathname.endsWith('login.html')) {
+                window.location.href = '/baba.html';
+                return;
+            }
             ensureFloatingSaveButton();
             // Se estivermos na página de login, redireciona para index
             if (window.location.pathname.endsWith('login.html')) {
-                window.location.href = '/index.html';
+                window.location.href = isCommissionSession ? '/baba.html' : '/index.html';
                 return;
             }
 
@@ -1646,8 +1693,45 @@ if (window.isLocalMode) {
 if (!window.isLocalMode) {
     window.firebaseAuth = {
         loginWithGoogle: async () => {
-            await setAuthPersistence();
-            return signInWithRedirect(auth, googleProvider);
+            await authPersistenceReady;
+            return signInWithPopup(auth, googleProvider);
+        },
+        loginWithEmailPassword: async (email, password) => {
+            await authPersistenceReady;
+            return signInWithEmailAndPassword(auth, String(email || '').trim(), String(password || ''));
+        },
+        saveCommissionLogin: async (email, password) => {
+            await authPersistenceReady;
+            const user = await requireGoogleOwnerSession();
+            const normalizedEmail = String(email || '').trim().toLowerCase();
+            const normalizedPassword = String(password || '');
+            if (!normalizedEmail || normalizedEmail !== String(user.email || '').trim().toLowerCase()) {
+                const error = new Error('O login deve usar o mesmo e-mail exibido na conta Google.');
+                error.code = 'auth/email-mismatch';
+                throw error;
+            }
+            if (normalizedPassword.length < 8) {
+                const error = new Error('Crie uma senha com pelo menos 8 caracteres.');
+                error.code = 'auth/weak-password';
+                throw error;
+            }
+            if (hasLinkedProvider(user, EmailAuthProvider.PROVIDER_ID)) {
+                await updatePassword(user, normalizedPassword);
+                return { user, created: false };
+            }
+            const credential = EmailAuthProvider.credential(normalizedEmail, normalizedPassword);
+            const result = await linkWithCredential(user, credential);
+            return { ...result, created: true };
+        },
+        accountAccessInfo: async () => {
+            const user = auth.currentUser;
+            if (!user || !isGoogleLinkedUser(user)) return { email: '', hasPassword: false, canManage: false };
+            const token = await getIdTokenResult(user);
+            return {
+                email: user.email || '',
+                hasPassword: hasLinkedProvider(user, EmailAuthProvider.PROVIDER_ID),
+                canManage: token?.signInProvider === GoogleAuthProvider.PROVIDER_ID,
+            };
         },
         logout: () => {
             nativeLocalStorage.removeItem('psyzon_remember_device');
@@ -1657,11 +1741,6 @@ if (!window.isLocalMode) {
         currentUser: () => auth.currentUser,
     };
 
-    getRedirectResult(auth).catch((error) => {
-        console.error('Não foi possível concluir o retorno do login Google:', error);
-        window.firebaseAuthLastError = { code: error?.code || '', message: error?.message || '' };
-        window.dispatchEvent(new CustomEvent('firebase-auth-error', { detail: { code: error?.code || '', message: error?.message || '' } }));
-    });
 }
 
 // IA removida para otimizar carregamento do site.

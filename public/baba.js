@@ -39,6 +39,7 @@
     { id: 'goals', label: 'Gols', icon: 'baba-ball' },
     { id: 'wins', label: 'Vitórias', icon: 'baba-check' },
     { id: 'losses', label: 'Derrotas', icon: 'baba-x' },
+    { id: 'worst', label: 'Pior jogador', icon: 'baba-x' },
     { id: 'titles', label: 'Títulos', icon: 'baba-trophy' },
     { id: 'efficiency', label: 'Aproveitamento', icon: 'baba-chart' },
   ];
@@ -77,6 +78,9 @@
     passwordForm: $('#organizer-password-form'),
     passwordFeedback: $('#password-feedback'),
     organizerGoogleLogin: $('#organizer-google-login'),
+    organizerEmailLogin: $('#organizer-email-login'),
+    organizerPasswordLogin: $('#organizer-password-login'),
+    organizerEmailLoginBtn: $('#organizer-email-login-btn'),
     closePassword: $('#close-organizer-password'),
     playerCodeForm: $('#player-code-form'),
     playerCodeInput: $('#player-access-code'),
@@ -87,6 +91,12 @@
     copyPlayerCode: $('#copy-player-code'),
     playerAccessCodeOutput: $('#player-access-code-output'),
     playerAccessAdminFeedback: $('#player-access-admin-feedback'),
+    commissionAccessForm: $('#commission-access-form'),
+    commissionAccessEmail: $('#commission-access-email'),
+    commissionAccessPassword: $('#commission-access-password'),
+    commissionAccessPasswordConfirm: $('#commission-access-password-confirm'),
+    saveCommissionAccess: $('#save-commission-access'),
+    commissionAccessFeedback: $('#commission-access-feedback'),
     modeReset: $('#mode-reset-btn'),
     themeToggle: $('#baba-theme-toggle'),
     logoutBtn: $('#baba-logout-btn'),
@@ -1669,6 +1679,7 @@
     const candidateView = options.view || localStorage.getItem(VIEW_KEY) || 'dashboard';
     const savedView = VALID_VIEWS.has(candidateView) ? candidateView : 'dashboard';
     setActiveTab(nextMode === 'player' && savedView === 'organizer' ? 'dashboard' : savedView);
+    if (nextMode === 'organizer') refreshCommissionAccess();
     requestSiteWakeLock();
     render();
   }
@@ -1706,10 +1717,97 @@
         'auth/unauthorized-domain': 'Este domínio precisa ser autorizado no Firebase Authentication.',
         'auth/operation-not-allowed': 'Ative o provedor Google no Firebase Authentication.',
         'auth/popup-closed-by-user': 'O login foi cancelado antes de concluir.',
+        'auth/popup-blocked': 'O navegador bloqueou a janela do Google. Permita pop-ups para este site e tente novamente.',
       };
       els.passwordFeedback.textContent = messages[error?.code] || error?.message || 'Não foi possível entrar com o Google.';
     } finally {
       if (els.organizerGoogleLogin) els.organizerGoogleLogin.disabled = false;
+    }
+  }
+
+  function organizerAuthMessage(error) {
+    const messages = {
+      'auth/invalid-credential': 'E-mail ou senha incorretos.',
+      'auth/wrong-password': 'E-mail ou senha incorretos.',
+      'auth/user-not-found': 'E-mail ou senha incorretos.',
+      'auth/too-many-requests': 'Muitas tentativas. Aguarde um pouco e tente novamente.',
+      'auth/operation-not-allowed': 'Ative o provedor E-mail/senha no Firebase Authentication.',
+      'auth/email-already-in-use': 'Este e-mail já pertence a outra conta do sistema.',
+      'auth/provider-already-linked': 'O acesso por senha já está vinculado a esta conta.',
+      'auth/requires-recent-login': 'Entre novamente com o Google e repita a alteração.',
+      'auth/requires-google-reauth': 'Por segurança, saia e entre novamente com o Google para alterar este acesso.',
+      'auth/google-owner-required': 'Somente a sessão aberta pelo Google pode alterar este acesso.',
+    };
+    return messages[error?.code] || error?.message || 'Não foi possível concluir o acesso.';
+  }
+
+  async function loginOrganizerWithEmail(event) {
+    event.preventDefault();
+    if (!els.organizerEmailLogin?.reportValidity() || !els.organizerPasswordLogin?.reportValidity()) return;
+    if (els.organizerEmailLoginBtn) els.organizerEmailLoginBtn.disabled = true;
+    els.passwordFeedback.textContent = 'Entrando...';
+    try {
+      const result = await window.firebaseAuth?.loginWithEmailPassword?.(
+        els.organizerEmailLogin.value,
+        els.organizerPasswordLogin.value,
+      );
+      const user = result?.user || authenticatedAdmin();
+      if (user) setMode('organizer', { rememberDevice: true });
+    } catch (error) {
+      els.passwordFeedback.textContent = organizerAuthMessage(error);
+      els.organizerPasswordLogin?.select();
+    } finally {
+      if (els.organizerEmailLoginBtn) els.organizerEmailLoginBtn.disabled = false;
+    }
+  }
+
+  async function refreshCommissionAccess() {
+    if (!els.commissionAccessForm || !authenticatedAdmin()) return;
+    try {
+      const info = await window.firebaseAuth?.accountAccessInfo?.();
+      if (els.commissionAccessEmail) els.commissionAccessEmail.value = info?.email || '';
+      if (els.saveCommissionAccess) {
+        els.saveCommissionAccess.textContent = info?.hasPassword ? 'Trocar senha da comissão' : 'Criar acesso da comissão';
+        els.saveCommissionAccess.disabled = !info?.canManage;
+      }
+      if (els.commissionAccessPassword) els.commissionAccessPassword.disabled = !info?.canManage;
+      if (els.commissionAccessPasswordConfirm) els.commissionAccessPasswordConfirm.disabled = !info?.canManage;
+      if (els.commissionAccessFeedback) {
+        els.commissionAccessFeedback.textContent = info?.canManage
+          ? (info?.hasPassword
+            ? 'Acesso ativo e sincronizado. Digite uma nova senha somente se quiser trocá-la.'
+            : 'Use o e-mail acima como login e crie a senha que será entregue à comissão.')
+          : 'Para criar ou trocar esta senha, saia e entre com o botão Google.';
+      }
+    } catch (error) {
+      if (els.commissionAccessFeedback) els.commissionAccessFeedback.textContent = organizerAuthMessage(error);
+    }
+  }
+
+  async function saveCommissionAccess(event) {
+    event.preventDefault();
+    const password = els.commissionAccessPassword?.value || '';
+    const confirmation = els.commissionAccessPasswordConfirm?.value || '';
+    if (!els.commissionAccessPassword?.reportValidity() || !els.commissionAccessPasswordConfirm?.reportValidity()) return;
+    if (password !== confirmation) {
+      els.commissionAccessFeedback.textContent = 'As duas senhas precisam ser iguais.';
+      els.commissionAccessPasswordConfirm?.select();
+      return;
+    }
+    if (els.saveCommissionAccess) els.saveCommissionAccess.disabled = true;
+    els.commissionAccessFeedback.textContent = 'Salvando acesso...';
+    try {
+      const result = await window.firebaseAuth?.saveCommissionLogin?.(els.commissionAccessEmail?.value, password);
+      els.commissionAccessPassword.value = '';
+      els.commissionAccessPasswordConfirm.value = '';
+      els.commissionAccessFeedback.textContent = result?.created
+        ? 'Acesso criado. A comissão já pode entrar com este e-mail e a nova senha.'
+        : 'Senha atualizada. Os dados continuam vinculados à mesma conta Google.';
+      if (els.saveCommissionAccess) els.saveCommissionAccess.textContent = 'Trocar senha da comissão';
+    } catch (error) {
+      els.commissionAccessFeedback.textContent = organizerAuthMessage(error);
+    } finally {
+      if (els.saveCommissionAccess) els.saveCommissionAccess.disabled = false;
     }
   }
 
@@ -1731,7 +1829,9 @@
         els.playerCodeInput?.select();
         return;
       }
-      state = readState();
+      els.playerCodeFeedback.textContent = 'Sincronizando histórico do organizador...';
+      const syncedState = await window.BabaRepository?.refreshAccountData?.(result.accountId);
+      state = syncedState ? normalizeState(syncedState) : readState();
       setMode('player', { rememberDevice: els.rememberPlayerCode?.checked !== false });
     } catch (error) {
       els.playerCodeFeedback.textContent = error?.message || 'Não foi possível validar o código.';
@@ -6694,12 +6794,14 @@
   function rankingMetricValue(stats, metric = 'goals') {
     if (metric === 'wins') return Number(stats.totalVitorias || 0);
     if (metric === 'losses') return Number(stats.totalDerrotas || 0);
+    if (metric === 'worst') return Number(stats.totalDerrotas || 0);
     if (metric === 'titles') return Number(stats.totalTitulosBaba || 0);
     if (metric === 'efficiency') return Number(stats.aproveitamento || 0);
     return Number(stats.totalGols || 0);
   }
 
   function hasRankingMetric(stats, metric = 'goals') {
+    if (metric === 'worst') return Number(stats.totalJogos || 0) > 0;
     if (metric === 'efficiency') return Number(stats.totalJogos || 0) > 0;
     return rankingMetricValue(stats, metric) > 0;
   }
@@ -6708,6 +6810,10 @@
     const value = rankingMetricValue(stats, metric);
     if (metric === 'wins') return { value, label: value === 1 ? 'vitória' : 'vitórias' };
     if (metric === 'losses') return { value, label: value === 1 ? 'derrota' : 'derrotas' };
+    if (metric === 'worst') {
+      const goals = Number(stats.totalGols || 0);
+      return { value, label: `${value === 1 ? 'derrota' : 'derrotas'} • ${goals} ${goals === 1 ? 'gol' : 'gols'}` };
+    }
     if (metric === 'titles') return { value, label: value === 1 ? 'título' : 'títulos' };
     if (metric === 'efficiency') return { value: `${value}%`, label: 'aprov.' };
     return { value, label: value === 1 ? 'gol' : 'gols' };
@@ -6722,6 +6828,9 @@
         }
         if (metric === 'losses') {
           return b.totalDerrotas - a.totalDerrotas || b.totalGols - a.totalGols || a.nome.localeCompare(b.nome);
+        }
+        if (metric === 'worst') {
+          return b.totalDerrotas - a.totalDerrotas || a.totalGols - b.totalGols || a.nome.localeCompare(b.nome);
         }
         if (metric === 'titles') {
           return b.totalTitulosBaba - a.totalTitulosBaba || b.totalVitorias - a.totalVitorias || b.totalGols - a.totalGols || a.nome.localeCompare(b.nome);
@@ -7748,8 +7857,9 @@
     els.passwordForm.addEventListener('click', (event) => {
       if (event.target === els.passwordForm) closeOrganizerPassword();
     });
-    els.passwordForm.addEventListener('submit', (event) => event.preventDefault());
+    els.passwordForm.addEventListener('submit', loginOrganizerWithEmail);
     els.organizerGoogleLogin?.addEventListener('click', loginOrganizerWithGoogle);
+    els.commissionAccessForm?.addEventListener('submit', saveCommissionAccess);
     els.playerCodeForm?.addEventListener('submit', submitPlayerCode);
     els.playerCodeForm?.addEventListener('click', (event) => {
       if (event.target === els.playerCodeForm) closePlayerCode();
@@ -8083,11 +8193,21 @@
     else if (authenticatedAdmin()) {
       setMode('organizer', { rememberDevice: true });
       restorePlayerAccessCodeForOrganizer();
+      refreshCommissionAccess();
     }
     else if (savedMode === 'player') {
       const accessRepository = await waitForAccessRepository();
       const restored = await accessRepository?.restorePlayerAccess?.();
-      if (restored?.valid) setMode('player', { rememberDevice: true });
+      if (restored?.valid) {
+        try {
+          const syncedState = await window.BabaRepository?.refreshAccountData?.(restored.accountId);
+          state = syncedState ? normalizeState(syncedState) : readState();
+        } catch (error) {
+          state = readState();
+          showToast('Sem conexão: exibindo a última cópia sincronizada deste organizador.');
+        }
+        setMode('player', { rememberDevice: true });
+      }
       else resetMode();
     } else resetMode();
     render();
@@ -8110,6 +8230,7 @@
       state = readState();
       setMode('organizer', { rememberDevice: true });
       restorePlayerAccessCodeForOrganizer();
+      refreshCommissionAccess();
     }
     else if (mode === 'organizer') resetMode();
   });

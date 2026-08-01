@@ -33,21 +33,31 @@ function accessCodeRef(codeHash) {
   return doc(db, 'baba_access_codes', codeHash);
 }
 
-function readSavedAccess() {
+function parseSavedAccess(key) {
   try {
-    return JSON.parse(nativeStorage().getItem(playerAccessStorageKey()) || 'null');
+    return JSON.parse(nativeStorage().getItem(key) || 'null');
   } catch (error) {
     return null;
   }
 }
 
+function readSavedAccess() {
+  const pointer = parseSavedAccess(PLAYER_ACCESS_KEY);
+  const accountId = safeAccountId(pointer?.accountId);
+  if (!accountId) return pointer;
+  return parseSavedAccess(playerAccessStorageKey(accountId)) || pointer;
+}
+
 function saveAccess(code, accountId) {
   verifiedAccountId = safeAccountId(accountId);
-  nativeStorage().setItem(playerAccessStorageKey(accountId), JSON.stringify({
+  const saved = {
     code: formatCode(code),
     accountId: verifiedAccountId,
     verifiedAtMs: Date.now(),
-  }));
+  };
+  nativeStorage().setItem(playerAccessStorageKey(accountId), JSON.stringify(saved));
+  // A chave base funciona como ponteiro para restaurar a conta correta no proximo carregamento.
+  nativeStorage().setItem(PLAYER_ACCESS_KEY, JSON.stringify(saved));
   window.dispatchEvent(new CustomEvent('baba-account-changed', { detail: { accountId: verifiedAccountId } }));
 }
 
@@ -139,14 +149,16 @@ async function restorePlayerAccess() {
     if (!saved?.code) return { valid: false, reason: 'Nenhum código salvo neste dispositivo.' };
     return verifyPlayerCode(saved.code, { remember: true });
   } catch (error) {
-    nativeStorage().removeItem(PLAYER_ACCESS_KEY);
+    clearPlayerAccess();
     return { valid: false, reason: 'O código salvo não é mais válido.' };
   }
 }
 
 function clearPlayerAccess() {
+  const accountId = verifiedAccountId || safeAccountId(readSavedAccess()?.accountId);
   verifiedAccountId = '';
-  nativeStorage().removeItem(playerAccessStorageKey());
+  if (accountId) nativeStorage().removeItem(playerAccessStorageKey(accountId));
+  nativeStorage().removeItem(PLAYER_ACCESS_KEY);
 }
 
 function getSavedPlayerCode() {
