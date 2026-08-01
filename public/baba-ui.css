@@ -3442,6 +3442,331 @@ button.baba-history-item.active {
   scrollbar-color: rgba(100, 116, 139, .35) transparent;
 }
 
+/* Importação inteligente de babas ----------------------------------------- */
+
+.baba-import-card {
+  border-color: color-mix(in srgb, var(--color-info) 24%, var(--border-soft));
+}
+
+.baba-import-root,
+.baba-import-review,
+.baba-import-section,
+.baba-import-people,
+.baba-import-management__list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.baba-import-label,
+.baba-import-fields label,
+.baba-import-player-choice {
+  display: grid;
+  gap: .38rem;
+  color: var(--color-text-soft);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: .025em;
+}
+
+.baba-import-text,
+.baba-import-fields input,
+.baba-import-fields select,
+.baba-import-fields textarea,
+.baba-import-player-choice select {
+  width: 100%;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: var(--surface-glass-strong);
+  color: var(--color-text);
+  padding: .72rem .82rem;
+  font: inherit;
+  font-weight: 500;
+  box-shadow: var(--shadow-inset);
+}
+
+.baba-import-text {
+  min-height: 15rem;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.baba-import-text:focus,
+.baba-import-fields :is(input, select, textarea):focus,
+.baba-import-player-choice select:focus {
+  border-color: var(--border-focus);
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.baba-import-toolbar,
+.baba-import-management__actions,
+.baba-import-person__actions,
+.baba-import-final,
+.baba-import-review__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.baba-import-auto,
+.baba-import-roles label,
+.baba-import-duplicate label {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  color: var(--color-text-soft);
+  font-size: var(--font-size-sm);
+  font-weight: 650;
+}
+
+.baba-import-auto input,
+.baba-import-roles input,
+.baba-import-duplicate input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--color-primary);
+}
+
+.baba-import-feedback {
+  min-height: 1.4em;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.baba-import-feedback[data-tone="danger"],
+.baba-import-status[data-tone="danger"] { color: var(--color-danger); }
+.baba-import-feedback[data-tone="warning"],
+.baba-import-status[data-tone="warning"] { color: var(--color-warning); }
+.baba-import-feedback[data-tone="success"],
+.baba-import-status[data-tone="success"] { color: var(--color-success); }
+
+.baba-import-status {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-pill);
+  background: var(--surface-subtle);
+  padding: .45rem .72rem;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+}
+
+.baba-import-review {
+  margin-top: var(--space-3);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border-soft);
+}
+
+.baba-import-eyebrow {
+  color: var(--color-info);
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .09em;
+}
+
+.baba-import-review__header h3,
+.baba-import-section h4,
+.baba-import-management h4 {
+  margin: .25rem 0 0;
+  color: var(--color-text);
+}
+
+.baba-import-confidence {
+  display: grid;
+  min-width: 7rem;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  padding: .7rem .9rem;
+  text-align: right;
+}
+
+.baba-import-confidence strong { font-size: 1.35rem; }
+.baba-import-confidence span { color: var(--color-text-muted); font-size: .7rem; }
+.baba-import-confidence[data-tone="success"] strong { color: var(--color-success); }
+.baba-import-confidence[data-tone="review"] strong { color: var(--color-warning); }
+.baba-import-confidence[data-tone="danger"] strong { color: var(--color-danger); }
+
+.baba-import-section {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  padding: var(--space-4);
+}
+
+.baba-import-section__hint,
+.baba-import-section p,
+.baba-import-person p,
+.baba-import-team span,
+.baba-import-management__row span {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.baba-import-fields {
+  display: grid;
+  grid-template-columns: minmax(9rem, .7fr) minmax(9rem, .7fr) minmax(14rem, 1.6fr);
+  gap: var(--space-3);
+}
+
+.baba-import-fields--team {
+  grid-template-columns: repeat(7, minmax(6.5rem, 1fr));
+}
+
+.baba-import-fields--person {
+  grid-template-columns: minmax(11rem, 1.4fr) minmax(8rem, 1fr) minmax(5rem, .5fr);
+}
+
+.baba-import-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.baba-import-kpis > div {
+  display: grid;
+  gap: .25rem;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--surface-glass-strong);
+  padding: .8rem;
+}
+
+.baba-import-kpis span { color: var(--color-text-muted); font-size: .7rem; }
+.baba-import-kpis strong { color: var(--color-text); font-size: var(--font-size-sm); }
+
+.baba-import-warning-list { display: grid; gap: .55rem; }
+.baba-import-warning {
+  display: grid;
+  grid-template-columns: 1.8rem 1fr;
+  gap: .65rem;
+  align-items: start;
+  border: 1px solid;
+  border-radius: var(--radius-sm);
+  padding: .72rem;
+}
+
+.baba-import-warning__icon {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  font-weight: 850;
+}
+
+.baba-import-warning.is-blocker { border-color: color-mix(in srgb, var(--color-danger) 35%, transparent); background: var(--color-danger-soft); }
+.baba-import-warning.is-blocker .baba-import-warning__icon { background: var(--color-danger); color: #fff; }
+.baba-import-warning.is-warning { border-color: color-mix(in srgb, var(--color-warning) 35%, transparent); background: var(--color-warning-soft); }
+.baba-import-warning.is-warning .baba-import-warning__icon { background: var(--color-warning); color: #fff; }
+.baba-import-warning.is-info { border-color: color-mix(in srgb, var(--color-info) 35%, transparent); background: var(--color-info-soft); }
+.baba-import-warning.is-info .baba-import-warning__icon { background: var(--color-info); color: #fff; }
+.baba-import-warning strong { color: var(--color-text); font-size: var(--font-size-sm); }
+
+.baba-import-empty {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  padding: .85rem;
+}
+
+.baba-import-team-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.baba-import-team,
+.baba-import-person {
+  display: grid;
+  gap: var(--space-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface-glass-strong);
+  padding: var(--space-4);
+}
+
+.baba-import-team__head,
+.baba-import-person__summary > div,
+.baba-import-management__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.baba-import-chip {
+  display: inline-flex;
+  border-radius: var(--radius-pill);
+  padding: .3rem .58rem;
+  font-size: .68rem;
+  font-weight: 800;
+}
+.baba-import-chip.is-success { background: var(--color-success-soft); color: var(--color-success); }
+.baba-import-chip.is-review { background: var(--color-warning-soft); color: var(--color-warning); }
+.baba-import-chip.is-danger { background: var(--color-danger-soft); color: var(--color-danger); }
+.baba-import-chip.is-new { background: var(--color-info-soft); color: var(--color-info); }
+
+.baba-import-roles {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: .65rem .8rem;
+}
+.baba-import-roles legend { padding: 0 .35rem; color: var(--color-text-muted); font-size: .68rem; font-weight: 750; }
+
+.baba-import-person__actions button,
+.baba-import-management button {
+  min-height: var(--control-sm);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: var(--surface-glass-strong);
+  color: var(--color-text);
+  padding: .55rem .78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.baba-import-player-choice { min-width: 14rem; }
+.baba-import-candidates { color: var(--color-text-soft); font-size: var(--font-size-xs); }
+.baba-import-candidates > div { display: flex; justify-content: space-between; padding: .35rem .2rem; border-bottom: 1px solid var(--border-soft); }
+.baba-import-duplicate { border-color: color-mix(in srgb, var(--color-warning) 35%, var(--border-soft)); background: var(--color-warning-soft); }
+.baba-import-final { position: sticky; bottom: calc(var(--space-3) + env(safe-area-inset-bottom)); z-index: 3; box-shadow: var(--shadow-md); }
+.baba-import-final button:disabled { cursor: not-allowed; opacity: .55; }
+
+.baba-import-management {
+  border-top: 1px solid var(--border-soft);
+  padding-top: var(--space-4);
+}
+.baba-import-management summary { cursor: pointer; color: var(--color-text); font-weight: 750; }
+.baba-import-management__actions { margin: var(--space-3) 0; justify-content: flex-start; }
+.baba-import-management__row { border-bottom: 1px solid var(--border-soft); padding: .7rem 0; }
+.baba-import-management__row > div { display: grid; gap: .2rem; }
+.is-danger { color: var(--color-danger) !important; }
+
+@media (max-width: 980px) {
+  .baba-import-fields--team { grid-template-columns: repeat(3, minmax(7rem, 1fr)); }
+  .baba-import-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .baba-import-team-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 680px) {
+  .baba-import-fields,
+  .baba-import-fields--team,
+  .baba-import-fields--person,
+  .baba-import-kpis { grid-template-columns: 1fr; }
+  .baba-import-toolbar,
+  .baba-import-review__header,
+  .baba-import-final { align-items: stretch; flex-direction: column; }
+  .baba-import-confidence { text-align: left; }
+  .baba-import-person__actions { align-items: stretch; flex-direction: column; }
+  .baba-import-player-choice { min-width: 0; }
+}
+
 .baba-player-filter-head {
   display: flex;
   align-items: center;

@@ -1,5 +1,18 @@
 # Sitey Caixa
 
+## Importação inteligente de babas
+
+A área **Organizador → Importar novo baba com IA** transforma relatórios em dados estruturados, compara jogadores e aliases, valida gols/pontos e exige revisão antes da transação Firestore. O parser determinístico é obrigatório; a API de IA é apenas um apoio para textos desorganizados.
+
+Configuração:
+
+1. Copie `.env.example` para `.env` no servidor e preencha `OPENAI_API_KEY`, `OPENAI_MODEL` e `FIREBASE_PROJECT_ID`.
+2. Defina o custom claim `admin: true`/`role: admin|organizer` ou o mesmo papel em `users/{uid}` para os administradores autorizados.
+3. Execute `npm run migrate:baba-import` e publique regras/índices com `firebase deploy --only firestore:rules,firestore:indexes`.
+4. Inicie o endpoint opcional com `npm run api`, conforme o ambiente de hospedagem.
+
+Comandos de verificação: `npm test`, `npm run lint`, `npm run typecheck` e `npm run build`.
+
 ## Correções de produção importantes
 
 ### 1) Domínio OAuth autorizado (erro `domain not authorized`)

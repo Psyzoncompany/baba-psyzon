@@ -5,6 +5,17 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isImportAdmin() {
+      return signedIn() && (
+        request.auth.token.get('admin', false) == true
+        || request.auth.token.get('role', '') == 'admin'
+        || request.auth.token.get('role', '') == 'organizer'
+        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('admin', false) == true
+        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin'
+        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'organizer'
+      );
+    }
+
     function isSchemaV2() {
       return request.resource.data.schemaVersion == 2;
     }
@@ -28,7 +39,8 @@ service cloud.firestore {
           'id', 'dateKey', 'dataISO', 'dataCompleta', 'dia', 'mes', 'ano', 'status', 'matchMode',
           'currentGameId', 'currentQueue', 'filaTimes', 'campeaoDoBaba', 'lastResult',
           'pendingTieBreak', 'teamRevealIndex', 'criadoEm', 'finalizadoEm', 'schemaVersion',
-          'statsApplied', 'deleted', 'updatedAtMs'
+          'statsApplied', 'deleted', 'updatedAtMs', 'importId', 'importSource', 'observations',
+          'importedTotalGoals'
         ]);
     }
 
@@ -64,7 +76,9 @@ service cloud.firestore {
 
     match /babas/{babaId} {
       allow read: if true;
-      allow create, update: if validBaba() && request.resource.data.id == babaId;
+      allow create, update: if validBaba()
+        && request.resource.data.id == babaId
+        && (!request.resource.data.keys().hasAny(['importId']) || isImportAdmin());
       allow delete: if false;
 
       match /participants/{participantId} {
@@ -73,8 +87,10 @@ service cloud.firestore {
           && request.resource.data.playerId == participantId
           && request.resource.data.keys().hasOnly([
             'playerId', 'name', 'nameSnapshot', 'type', 'present', 'visitor', 'active',
-            'teamId', 'joinedAt', 'schemaVersion', 'deleted', 'updatedAtMs'
-          ]);
+            'teamId', 'joinedAt', 'schemaVersion', 'deleted', 'updatedAtMs', 'guest',
+            'goalkeeper', 'novice', 'typedName', 'importId'
+          ])
+          && (!request.resource.data.keys().hasAny(['importId']) || isImportAdmin());
         allow delete: if false;
       }
 
@@ -84,8 +100,10 @@ service cloud.firestore {
           && request.resource.data.id == teamId
           && request.resource.data.keys().hasOnly([
             'id', 'name', 'tipo', 'order', 'status', 'pontos', 'golsPro', 'golsContra',
-            'vitorias', 'empates', 'derrotas', 'logo', 'manualStats', 'schemaVersion', 'deleted', 'updatedAtMs'
-          ]);
+            'vitorias', 'empates', 'derrotas', 'logo', 'manualStats', 'schemaVersion', 'deleted', 'updatedAtMs',
+            'vestColor', 'colete', 'importId'
+          ])
+          && (!request.resource.data.keys().hasAny(['importId']) || isImportAdmin());
         allow delete: if false;
       }
 
@@ -149,8 +167,43 @@ service cloud.firestore {
         && request.resource.data.playerId == playerId
         && request.resource.data.keys().hasOnly([
           'id', 'playerId', 'nome', 'name', 'tipo', 'type', 'ativo', 'active', 'novato', 'criadoEm',
-          'createdAtMs', 'schemaVersion', 'deleted', 'updatedAtMs'
-        ]);
+          'createdAtMs', 'schemaVersion', 'deleted', 'updatedAtMs', 'noviceActive', 'noviceSinceMs',
+          'noviceReason', 'firstBabaId', 'firstBabaDate', 'normalizedName', 'normalizedAliasKey',
+          'deletedByImportReversal', 'noviceReasonImportId'
+        ])
+        && (!request.resource.data.keys().hasAny(['firstBabaId', 'deletedByImportReversal']) || isImportAdmin());
+      allow delete: if false;
+    }
+
+    match /baba_player_aliases/{aliasId} {
+      allow read, create, update, delete: if isImportAdmin();
+    }
+
+    match /baba_imports/{importId} {
+      allow read, create, update, delete: if isImportAdmin();
+
+      match /warnings/{warningId} {
+        allow read, create, update, delete: if isImportAdmin();
+      }
+
+      match /audit_logs/{auditId} {
+        allow read, create, update: if isImportAdmin();
+        allow delete: if false;
+      }
+    }
+
+    match /baba_import_keys/{keyId} {
+      allow read, create, update: if isImportAdmin();
+      allow delete: if false;
+    }
+
+    match /baba_player_name_keys/{keyId} {
+      allow read, create, update: if isImportAdmin();
+      allow delete: if false;
+    }
+
+    match /baba_player_status_history/{historyId} {
+      allow read, create, update: if isImportAdmin();
       allow delete: if false;
     }
 

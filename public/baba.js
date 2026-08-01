@@ -20,6 +20,10 @@
     ONLINE: 'ONLINE',
     MANUAL: 'MANUAL',
   };
+  const NOVICE_EXIT_POLICY = Object.freeze({
+    mode: 'manual',
+    description: 'O jogador deixa de ser novato quando o organizador remove manualmente a condição.',
+  });
   const TEAM_VISUALS = [
     { logo: 'img/baba-team-1-flamengo.png', accent: '#d53445' },
     { logo: 'img/baba-team-2-palmeiras.png', accent: '#148552' },
@@ -709,6 +713,9 @@
       : [];
     next.babas.forEach((baba) => {
       baba.visitantes = Array.isArray(baba.visitantes) ? baba.visitantes : [];
+      baba.participantFlags = baba.participantFlags && typeof baba.participantFlags === 'object' && !Array.isArray(baba.participantFlags)
+        ? baba.participantFlags
+        : {};
       baba.pagamentos = baba.pagamentos && typeof baba.pagamentos === 'object' && !Array.isArray(baba.pagamentos) ? baba.pagamentos : {};
       baba.undoStack = normalizeUndoStack(baba.undoStack);
       baba.matchMode = normalizeMatchMode(baba.matchMode);
@@ -1081,6 +1088,21 @@
 
   function getBabaPlayer(baba, id) {
     return getPlayer(id) || getVisitor(baba, id);
+  }
+
+  function getParticipantFlags(baba, playerId) {
+    const player = getBabaPlayer(baba, playerId);
+    const stored = baba?.participantFlags?.[playerId] || {};
+    return {
+      guest: Boolean(stored.guest || player?.visitante || player?.tipo === 'visitante'),
+      goalkeeper: Boolean(stored.goalkeeper || player?.tipo === 'goleiro'),
+      novice: Boolean(stored.novice || player?.novato),
+      typedName: stored.typedName || player?.nome || '',
+    };
+  }
+
+  function isBabaGoalkeeper(baba, playerId) {
+    return getParticipantFlags(baba, playerId).goalkeeper;
   }
 
   function getTeam(baba, id) {
@@ -1814,6 +1836,16 @@
     const player = getPlayer(playerId);
     if (!player) return;
     player.novato = !player.novato;
+    player.noviceActive = player.novato;
+    player.noviceReason = player.novato ? 'manual-mark' : 'manual-removal';
+    player.noviceReasonImportId = null;
+    if (player.novato) player.noviceSinceMs = Date.now();
+    if (window.BabaImportRepository?.currentUser?.()) {
+      window.BabaImportRepository.recordPlayerStatus?.(playerId, player.novato, {
+        babaId: getActiveBaba()?.id || null,
+        reason: player.novato ? 'manual-mark' : 'manual-removal',
+      }).catch((error) => console.warn('Não foi possível registrar o histórico de novato:', error));
+    }
     saveState(player.novato ? `${player.nome} marcado como novato.` : `${player.nome} deixou de ser marcado como novato.`);
   }
 
@@ -2129,10 +2161,13 @@
     return getPaymentStats(getActiveBaba()).paid;
   }
 
-  function playerPaymentTypeLabel(player) {
-    if (player?.tipo === 'goleiro') return 'Goleiro';
-    if (player?.tipo === 'visitante' || player?.visitante) return 'Visitante';
-    return 'Jogador';
+  function playerPaymentTypeLabel(player, baba = getActiveBaba()) {
+    const flags = getParticipantFlags(baba, player?.id);
+    const labels = [];
+    if (flags.novice) labels.push('NOVATO');
+    if (flags.guest) labels.push('CONVIDADO');
+    if (flags.goalkeeper) labels.push('GOLEIRO');
+    return labels.length ? labels.join(' · ') : 'JOGADOR';
   }
 
   function reportContextLabel(baba = getActiveBaba()) {
@@ -2295,7 +2330,7 @@
       const players = (sourceTeam.jogadores || [])
         .map((playerId) => getBabaPlayer(baba, playerId))
         .filter(Boolean);
-      const goalkeepers = players.filter((player) => player.tipo === 'goleiro').length;
+      const goalkeepers = players.filter((player) => isBabaGoalkeeper(baba, player.id)).length;
       const fieldPlayers = Math.max(0, players.length - goalkeepers);
       return pdfTeamRow([
         team.name,
@@ -2319,14 +2354,15 @@
 
   function paymentRowsForPdf(baba = getActiveBaba(), paidOnly = true) {
     return getPaymentPlayers(baba)
-      .filter(isPaymentEligiblePlayer)
-      .filter((player) => isPlayerPaidThisMonth(player.id, baba) === paidOnly)
+      .filter((player) => paidOnly
+        ? isPaymentEligiblePlayer(player) && isPlayerPaidThisMonth(player.id, baba)
+        : (!isPaymentEligiblePlayer(player) || !isPlayerPaidThisMonth(player.id, baba)))
       .sort((a, b) => a.nome.localeCompare(b.nome))
       .map((player, index) => pdfTeamRow([
         index + 1,
         player.nome,
-        `${playerPaymentTypeLabel(player)}${player.novato ? ' - NOVATO' : ''}`,
-        formatCurrency(paymentPriceForPlayer(player)),
+        playerPaymentTypeLabel(player, baba),
+        isPaymentEligiblePlayer(player) ? formatCurrency(paymentPriceForPlayer(player)) : 'ISENTO',
       ], pdfPlayerTeam(baba, player.id)));
   }
 
@@ -2403,7 +2439,7 @@
       report.sections = [
         {
           title: 'Jogadores que pagaram',
-          note: 'Confirmados no mes - ativos e não novatos',
+          note: 'Confirmados no mes - regras de cobrança preservadas',
           icon: 'check-circle',
           maxRows: PDF_ROW_LIMITS.payments,
           columns: ['#', 'Jogador', 'Tipo', 'Valor'],
@@ -2411,8 +2447,8 @@
           empty: 'Nenhum pagamento confirmado ainda.',
         },
         {
-          title: 'Pendentes',
-          note: 'Ainda em aberto - ativos e não novatos',
+          title: 'Pendentes e novatos',
+          note: 'Novatos aparecem como isentos, sem alterar os cálculos',
           icon: 'alert-circle',
           maxRows: PDF_ROW_LIMITS.payments,
           columns: ['#', 'Jogador', 'Tipo', 'Valor'],
@@ -4424,7 +4460,7 @@
           stats.totalVitorias += Number(teamStats.wins || 0);
           stats.totalEmpates += Number(teamStats.draws || 0);
           stats.totalDerrotas += Number(teamStats.losses || 0);
-          if (getBabaPlayer(baba, playerId)?.tipo === 'goleiro') {
+          if (isBabaGoalkeeper(baba, playerId)) {
             stats.goalkeeperGames += Number(teamStats.wins || 0) + Number(teamStats.draws || 0) + Number(teamStats.losses || 0);
           }
           ranking[playerId] = stats;
@@ -4553,7 +4589,7 @@
   function addGoalkeeperGameStats(ranking, baba, team, goalsAgainst) {
     (team?.jogadores || []).forEach((playerId) => {
       const player = getBabaPlayer(baba, playerId);
-      if (player?.tipo !== 'goleiro') return;
+      if (!isBabaGoalkeeper(baba, playerId)) return;
       const stats = ensureGoalkeeperStats(ranking, player, baba);
       if (!stats) return;
       stats.jogos += 1;
@@ -7851,6 +7887,54 @@
     });
   }
 
+  function applyCommittedImport({ baba, newPlayers = [], updatedPlayers = [] } = {}) {
+    if (!baba?.id) throw new Error('Baba importado inválido.');
+    newPlayers.forEach((player) => {
+      if (player?.id && !state.players.some((item) => item.id === player.id)) state.players.push(player);
+    });
+    updatedPlayers.forEach((player) => {
+      const index = state.players.findIndex((item) => item.id === player.id);
+      if (index >= 0) state.players[index] = player;
+    });
+    state.babas = state.babas.filter((item) => item.id !== baba.id);
+    state.babas.unshift(baba);
+    state.activeBabaId = baba.id;
+    selectedHistoryId = baba.id;
+    saveState('Baba importado e salvo no histórico.');
+    setActiveTab('history');
+  }
+
+  function applyRevertedImport({ babaId, removedPlayerIds = [], noviceDeactivatedPlayerIds = [] } = {}) {
+    const baba = state.babas.find((item) => item.id === babaId);
+    if (baba) applyDeletedBabaToPersistedStats(baba);
+    state.babas = state.babas.filter((item) => item.id !== babaId);
+    const removable = new Set(removedPlayerIds);
+    state.players = state.players.filter((player) => !removable.has(player.id));
+    const deactivateNovice = new Set(noviceDeactivatedPlayerIds);
+    state.players.forEach((player) => {
+      if (!deactivateNovice.has(player.id)) return;
+      player.novato = false;
+      player.noviceActive = false;
+      player.noviceReason = 'import-reverted';
+      player.noviceReasonImportId = null;
+    });
+    if (state.activeBabaId === babaId) state.activeBabaId = state.babas.find((item) => item.status !== 'finalizado')?.id || state.babas[0]?.id || null;
+    if (selectedHistoryId === babaId) selectedHistoryId = null;
+    saveState('Importação desfeita; dados reutilizados foram preservados.');
+  }
+
+  window.BabaImportHost = Object.freeze({
+    getState: () => state,
+    isOrganizer,
+    showToast,
+    newId,
+    formatDate,
+    noviceExitPolicy: NOVICE_EXIT_POLICY,
+    applyCommittedImport,
+    applyRevertedImport,
+  });
+  window.dispatchEvent(new CustomEvent('baba-import-host-ready'));
+
   function boot() {
     if (hasBooted) return;
     hasBooted = true;
@@ -7874,6 +7958,7 @@
     }
     else resetMode();
     render();
+    window.BabaImportUI?.mount?.();
     wireTabsStickyState();
     document.getElementById('initial-loader')?.remove();
   }

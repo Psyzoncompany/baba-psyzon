@@ -29,7 +29,7 @@ const QUERY_LIMITS = Object.freeze({
   goals: 1_000,
   payments: 250,
   stats: 250,
-  players: 250,
+  players: 1000,
   purchaseGoals: 100,
   months: 60,
 });
@@ -455,6 +455,10 @@ function babaMetadata(baba, currentGameId = null, timestamp = now()) {
     lastResult: baba.lastResult || null,
     pendingTieBreak: baba.pendingTieBreak || null,
     teamRevealIndex: Number(baba.teamRevealIndex || 0),
+    importId: baba.importId || null,
+    importSource: baba.importId ? 'intelligent-text-import' : null,
+    observations: baba.observacoes || '',
+    importedTotalGoals: baba.importedTotalGoals ?? null,
     criadoEm: Number(baba.criadoEm || timestamp),
     finalizadoEm: baba.finalizadoEm || null,
     schemaVersion: SCHEMA_VERSION,
@@ -476,6 +480,7 @@ function participantDocuments(state, baba, timestamp = now()) {
   ]);
   return [...ids].map((playerId) => {
     const player = visitors.get(playerId) || fixed.get(playerId) || {};
+    const flags = baba.participantFlags?.[playerId] || {};
     return compact({
       playerId,
       name: player.nome || 'Jogador removido',
@@ -483,6 +488,10 @@ function participantDocuments(state, baba, timestamp = now()) {
       type: player.tipo || 'jogador',
       present: visitors.has(playerId) || (baba.jogadoresPresentes || []).includes(playerId),
       visitor: visitors.has(playerId),
+      guest: Boolean(flags.guest || visitors.has(playerId)),
+      goalkeeper: Boolean(flags.goalkeeper || player.tipo === 'goleiro'),
+      novice: Boolean(flags.novice || player.novato),
+      typedName: flags.typedName || player.nome || '',
       active: player.ativo !== false,
       teamId: teamByPlayer.get(playerId) || null,
       joinedAt: Number(player.criadoEm || baba.criadoEm || timestamp),
@@ -1151,6 +1160,15 @@ function restoreBabaFromSnapshots(babaId, snapshots) {
     visitante: true,
     criadoEm: item.joinedAt,
   }));
+  const participantFlags = participants.reduce((flags, item) => {
+    flags[item.playerId] = {
+      guest: Boolean(item.guest || item.visitor),
+      goalkeeper: Boolean(item.goalkeeper || item.type === 'goleiro'),
+      novice: Boolean(item.novice),
+      typedName: item.typedName || item.nameSnapshot || item.name || '',
+    };
+    return flags;
+  }, {});
   const localUndo = readLocalState()?.babas?.find((item) => item.id === id)?.undoStack || [];
   return compact({
     __detailLoaded: true,
@@ -1164,6 +1182,7 @@ function restoreBabaFromSnapshots(babaId, snapshots) {
     matchMode: meta.matchMode || 'ONLINE',
     jogadoresPresentes: participants.filter((item) => item.present && !item.visitor).map((item) => item.playerId),
     visitantes: visitors,
+    participantFlags,
     pagamentos: payments,
     teams,
     filaTimes: meta.filaTimes || meta.currentQueue || [],
@@ -1174,6 +1193,9 @@ function restoreBabaFromSnapshots(babaId, snapshots) {
     lastResult: meta.lastResult || null,
     pendingTieBreak: meta.pendingTieBreak || null,
     teamRevealIndex: Number(meta.teamRevealIndex || 0),
+    importId: meta.importId || null,
+    observacoes: meta.observations || '',
+    importedTotalGoals: meta.importedTotalGoals ?? null,
     undoStack: localUndo,
     criadoEm: Number(meta.criadoEm || now()),
     finalizadoEm: meta.finalizadoEm || null,
@@ -1399,6 +1421,14 @@ function startPlayersSubscription() {
       tipo: item.tipo || item.type || 'jogador',
       ativo: item.ativo !== false,
       novato: item.novato === true,
+      noviceActive: item.noviceActive === true || item.novato === true,
+      noviceSinceMs: item.noviceSinceMs || null,
+      noviceReason: item.noviceReason || '',
+      noviceReasonImportId: item.noviceReasonImportId || null,
+      firstBabaId: item.firstBabaId || null,
+      firstBabaDate: item.firstBabaDate || null,
+      normalizedName: item.normalizedName || '',
+      normalizedAliasKey: item.normalizedAliasKey || '',
       criadoEm: item.criadoEm || item.createdAtMs || now(),
     }));
     scheduleRemoteFlush();

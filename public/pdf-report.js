@@ -171,6 +171,43 @@
     doc.text('PAGAMENTOS DO BABA', x + 12, y + 34);
   }
 
+  function drawPaymentClassificationBadges(doc, value, x, y, width, rowHeight) {
+    const labels = cleanText(value).split(/\s*[·|-]\s*/).map((label) => label.trim().toUpperCase()).filter(Boolean);
+    const palette = {
+      NOVATO: { fill: [30, 94, 178], text: [255, 255, 255], stroke: [21, 72, 142] },
+      CONVIDADO: { fill: [126, 74, 18], text: [255, 251, 235], stroke: [102, 58, 12] },
+      GOLEIRO: { fill: [5, 120, 87], text: [255, 255, 255], stroke: [4, 92, 68] },
+      JOGADOR: { fill: [232, 239, 246], text: [44, 62, 86], stroke: [190, 204, 220] },
+    };
+    doc.setFont('helvetica', 'bold');
+    let fontSize = rowHeight < 5 ? 3.8 : 4.25;
+    doc.setFontSize(fontSize);
+    let widths = labels.map((label) => doc.getTextWidth(label) + 2.2);
+    const gaps = Math.max(0, labels.length - 1) * .7;
+    const available = Math.max(8, width - 5);
+    const total = widths.reduce((sum, item) => sum + item, 0) + gaps;
+    if (total > available) {
+      const scale = Math.max(.68, available / total);
+      fontSize *= scale;
+      doc.setFontSize(fontSize);
+      widths = labels.map((label) => doc.getTextWidth(label) + 1.6);
+    }
+    let cursor = x + 2.5;
+    const badgeHeight = Math.min(3.5, Math.max(2.8, rowHeight - 1.1));
+    labels.forEach((label, index) => {
+      const colors = palette[label] || palette.JOGADOR;
+      const badgeWidth = Math.min(widths[index], Math.max(3, (x + width - 2) - cursor));
+      if (badgeWidth <= 3) return;
+      setColor(doc, 'setFillColor', colors.fill);
+      setColor(doc, 'setDrawColor', colors.stroke);
+      doc.setLineWidth(.2);
+      doc.roundedRect(cursor, y + ((rowHeight - badgeHeight) / 2), badgeWidth, badgeHeight, 1, 1, 'FD');
+      setColor(doc, 'setTextColor', colors.text);
+      doc.text(label, cursor + (badgeWidth / 2), y + (rowHeight * .65), { align: 'center' });
+      cursor += badgeWidth + .7;
+    });
+  }
+
   function createPaymentReport(report, JsPdf) {
     const doc = new JsPdf({
       orientation: 'landscape',
@@ -332,6 +369,11 @@
           let cellX = x;
           row.slice(0, 4).forEach((cell, cellIndex) => {
             const rightAligned = cellIndex === 3;
+            if (cellIndex === 2) {
+              drawPaymentClassificationBadges(doc, cell, cellX, currentY, widths[cellIndex], rowHeight);
+              cellX += widths[cellIndex];
+              return;
+            }
             doc.setFont('helvetica', cellIndex === 0 ? 'bold' : 'normal');
             doc.setFontSize(rowHeight < 5 ? 5.7 : 6.5);
             setColor(doc, 'setTextColor', [20, 37, 58]);

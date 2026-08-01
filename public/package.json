@@ -6,13 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "api": "node server.js",
+    "lint": "next lint && node --check baba-import-core.js && node --check baba-import-ui.js && node --input-type=module --check < baba-import-persistence.js && node --check scripts/migrate-baba-import-schema.mjs && node --check server.js",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.js",
+    "migrate:baba-import": "node scripts/migrate-baba-import-schema.mjs",
+    "migrate:baba-import:down": "node scripts/migrate-baba-import-schema.mjs --down --confirm-down"
   },
   "dependencies": {
     "autoprefixer": "^10.4.24",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "firebase-admin": "^14.2.0",
     "jspdf": "^4.2.1",
     "next": "14.2.30",
     "node-fetch": "^3.3.2",
