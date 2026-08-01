@@ -36,7 +36,7 @@ function currentUser() {
 function requireAuthenticatedAdminContext() {
   const user = currentUser();
   if (!user || user.uid === 'local_user') {
-    throw new Error('Entre com uma conta Firebase autorizada para salvar importações administrativas.');
+    throw new Error('Entre com o Google para salvar importações administrativas.');
   }
   return user;
 }

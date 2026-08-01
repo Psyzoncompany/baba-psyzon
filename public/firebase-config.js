@@ -1,7 +1,7 @@
 // c:\Users\AAAA\Desktop\sitey-caixa\firebase-config.js
 
 // Importa as funções do Firebase (versão compat para facilitar o uso com scripts existentes)
-import { onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, signInWithRedirect, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, onSnapshot, setDoc, updateDoc, serverTimestamp, deleteField } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 import { app, auth, db } from "./js/firebase-init.js";
@@ -14,12 +14,10 @@ googleProvider.setCustomParameters({
 googleProvider.addScope('email');
 googleProvider.addScope('profile');
 
-// Persistência padrão: sessão (morre ao fechar o navegador)
-// Só usa persistência local se o usuário marcar "Lembrar dispositivo"
-const setAuthPersistence = async (remember = false) => {
-    const mode = remember ? browserLocalPersistence : browserSessionPersistence;
-    await setPersistence(auth, mode);
-    return mode;
+// Todo login permanece no dispositivo até o usuário escolher sair.
+const setAuthPersistence = async () => {
+    await setPersistence(auth, browserLocalPersistence);
+    return browserLocalPersistence;
 };
 
 // Som de sucesso sutil (Web Audio API)
@@ -1423,9 +1421,19 @@ const isFirebaseStorageKey = (key) => typeof key === 'string' && (
 );
 // O Baba possui persistencia propria em colecoes pequenas. Manter esta chave no
 // storage nativo evita duplicar cada alteracao dentro de users/{uid}.
-const isBabaNativeStorageKey = (key) => isBabaPage() && key === 'psyzon_baba_state_v1';
+const BABA_NATIVE_STORAGE_KEYS = new Set([
+    'psyzon_baba_state_v1',
+    'psyzon_baba_mode',
+    'psyzon_baba_last_view',
+    'psyzon_baba_theme',
+    'psyzon_baba_player_access_v1',
+]);
+const isBabaNativeStorageKey = (key) => isBabaPage() && BABA_NATIVE_STORAGE_KEYS.has(key);
 
-window.isLocalMode = nativeLocalStorage.getItem('forceLocalMode') === 'true';
+// O modo local legado impedia o Google de inicializar em dispositivos que ainda
+// possuíam essa chave. O acesso atual sempre usa Firebase Authentication.
+nativeLocalStorage.removeItem('forceLocalMode');
+window.isLocalMode = false;
 window.__nativeLS = nativeLocalStorage;
 
 if (!window.isLocalMode) {
@@ -1538,6 +1546,7 @@ if (window.isLocalMode) {
             resolveInitialAuthState(user || null);
         }
         if (user) {
+            window.dispatchEvent(new CustomEvent('firebase-auth-state', { detail: { user, authenticated: true } }));
             ensureFloatingSaveButton();
             // Se estivermos na página de login, redireciona para index
             if (window.location.pathname.endsWith('login.html')) {
@@ -1586,6 +1595,7 @@ if (window.isLocalMode) {
             }
         } else {
             // Não logado
+            window.dispatchEvent(new CustomEvent('firebase-auth-state', { detail: { user: null, authenticated: false } }));
             stopCloudSync();
             window.BackendInitialized = false;
             memoryStore = {};
@@ -1605,23 +1615,25 @@ if (window.isLocalMode) {
 // (Apenas se NÃO estiver no modo local, pois o modo local já definiu o seu proprio firebaseAuth acima)
 if (!window.isLocalMode) {
     window.firebaseAuth = {
-        login: async (email, password, remember = false) => {
-            await setAuthPersistence(remember);
+        login: async (email, password) => {
+            await setAuthPersistence();
             return signInWithEmailAndPassword(auth, email, password);
         },
-        signup: async (email, password, remember = false) => {
-            await setAuthPersistence(remember);
+        signup: async (email, password) => {
+            await setAuthPersistence();
             return createUserWithEmailAndPassword(auth, email, password);
         },
-        loginWithGoogle: async (remember = false) => {
-            await setAuthPersistence(remember);
+        loginWithGoogle: async () => {
+            await setAuthPersistence();
             try {
                 return await signInWithPopup(auth, googleProvider);
             } catch (error) {
                 const fallbackCodes = new Set([
                     'auth/popup-blocked',
                     'auth/cancelled-popup-request',
-                    'auth/popup-closed-by-user'
+                    'auth/popup-closed-by-user',
+                    'auth/operation-not-supported-in-this-environment',
+                    'auth/web-storage-unsupported'
                 ]);
                 if (fallbackCodes.has(error?.code)) {
                     return signInWithRedirect(auth, googleProvider);
@@ -1636,6 +1648,12 @@ if (!window.isLocalMode) {
         waitUntilReady: () => initialAuthStateReady,
         currentUser: () => auth.currentUser,
     };
+
+    getRedirectResult(auth).catch((error) => {
+        console.error('Não foi possível concluir o retorno do login Google:', error);
+        window.firebaseAuthLastError = { code: error?.code || '', message: error?.message || '' };
+        window.dispatchEvent(new CustomEvent('firebase-auth-error', { detail: { code: error?.code || '', message: error?.message || '' } }));
+    });
 }
 
 // IA removida para otimizar carregamento do site.

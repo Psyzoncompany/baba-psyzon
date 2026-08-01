@@ -80,9 +80,9 @@
                         autocomplete="new-password">
                 </div>
                 <label for="remember-device" class="flex items-center gap-2 cursor-pointer select-none">
-                    <input type="checkbox" id="remember-device"
+                    <input type="checkbox" id="remember-device" checked disabled
                         class="w-4 h-4 rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-cyan-500 cursor-pointer">
-                    <span class="text-sm text-gray-400">Lembrar dispositivo</span>
+                    <span class="text-sm text-gray-400">Login salvo neste dispositivo</span>
                 </label>
 
                 <div id="error-msg"
@@ -156,7 +156,7 @@
         </a>
     </nav>
 
-    <script type="module" src="firebase-config.js"></script>
+    <script type="module" src="firebase-config.js?v=20260801-google-admin-1"></script>
 
     <script>
         const loginForm = document.getElementById('login-form');
@@ -232,7 +232,7 @@
         };
 
         // O Firebase restaura o token. Esta chave guarda apenas a preferência visual.
-        rememberCheckbox.checked = loadRememberPreference();
+        rememberCheckbox.checked = true;
 
         // --- FIREBASE ---
         async function waitForFirebaseAuth(timeoutMs = 12000) {
@@ -287,6 +287,11 @@
             };
             return map[code] || error?.message || 'Algo deu errado. Tente novamente.';
         };
+
+        window.addEventListener('firebase-auth-error', (event) => {
+            showError(friendlyError(event.detail));
+            setLoading();
+        });
 
         googleBtn.addEventListener('click', async () => {
             errorMsg.classList.add('hidden');

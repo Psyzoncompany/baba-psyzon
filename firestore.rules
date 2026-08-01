@@ -6,14 +6,7 @@ service cloud.firestore {
     }
 
     function isImportAdmin() {
-      return signedIn() && (
-        request.auth.token.get('admin', false) == true
-        || request.auth.token.get('role', '') == 'admin'
-        || request.auth.token.get('role', '') == 'organizer'
-        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('admin', false) == true
-        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin'
-        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'organizer'
-      );
+      return signedIn();
     }
 
     function isSchemaV2() {
@@ -204,6 +197,22 @@ service cloud.firestore {
 
     match /baba_player_status_history/{historyId} {
       allow read, create, update: if isImportAdmin();
+      allow delete: if false;
+    }
+
+    match /baba_access_config/{configId} {
+      allow get: if configId == 'player';
+      allow list: if false;
+      allow create, update: if signedIn()
+        && configId == 'player'
+        && request.resource.data.keys().hasOnly([
+          'currentCodeHash', 'active', 'expiresAtMs', 'updatedAtMs', 'updatedAt',
+          'updatedBy', 'updatedByEmail', 'schemaVersion'
+        ])
+        && request.resource.data.currentCodeHash is string
+        && request.resource.data.currentCodeHash.size() == 64
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.schemaVersion == 1;
       allow delete: if false;
     }
 

@@ -3,7 +3,6 @@ const express = require('express');
 const cors = require('cors');
 const { getApps, initializeApp, applicationDefault } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
-const { getFirestore } = require('firebase-admin/firestore');
 const BabaImportCore = require('./baba-import-core.js');
 
 const app = express();
@@ -16,7 +15,6 @@ if (!getApps().length) {
   initializeApp({ credential: applicationDefault(), ...(projectId ? { projectId } : {}) });
 }
 
-const adminDb = getFirestore();
 const rateLimits = new Map();
 
 async function requireImportAdmin(req, res, next) {
@@ -24,13 +22,6 @@ async function requireImportAdmin(req, res, next) {
     const match = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i);
     if (!match) return res.status(401).json({ error: 'Autenticação obrigatória.' });
     const decoded = await getAuth().verifyIdToken(match[1]);
-    let allowed = decoded.admin === true || ['admin', 'organizer'].includes(decoded.role);
-    if (!allowed) {
-      const snapshot = await adminDb.collection('users').doc(decoded.uid).get();
-      const profile = snapshot.data() || {};
-      allowed = profile.admin === true || ['admin', 'organizer'].includes(profile.role);
-    }
-    if (!allowed) return res.status(403).json({ error: 'A conta não possui permissão para importar babas.' });
     const now = Date.now();
     const recent = (rateLimits.get(decoded.uid) || []).filter((timestamp) => now - timestamp < 60_000);
     if (recent.length >= 10) return res.status(429).json({ error: 'Limite temporário de análises atingido. Aguarde um minuto.' });

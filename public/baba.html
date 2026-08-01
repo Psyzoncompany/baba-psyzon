@@ -14,7 +14,7 @@
   <meta name="theme-color" content="#f4f8fc">
   <title>Baba Psyzon</title>
   <link href="apple-ui-font.css?v=20260723-1" rel="stylesheet">
-  <link href="baba-ui.css?v=20260801-organizer-import-3" rel="stylesheet">
+  <link href="baba-ui.css?v=20260801-google-access-1" rel="stylesheet">
   <script>
     window.BABA_AI_ENDPOINT = window.BABA_AI_ENDPOINT || '/api/baba-import/analyze';
     if (window.location.protocol !== 'file:') {
@@ -25,7 +25,7 @@
 
       const firebaseScript = document.createElement('script');
       firebaseScript.type = 'module';
-      firebaseScript.src = 'firebase-config.js?v=20260723-permissions-fix-1';
+      firebaseScript.src = 'firebase-config.js?v=20260801-google-admin-1';
       document.head.appendChild(firebaseScript);
     } else {
       window.BackendInitialized = true;
@@ -293,13 +293,13 @@
           <button id="enter-organizer-btn" class="baba-choice baba-choice--organizer" type="button">
             <svg class="baba-choice-icon" aria-hidden="true" focusable="false"><use href="#baba-shield"></use></svg>
             <span>Entrar como Organizador</span>
-            <small>Gerencie, organize e controle seu baba.</small>
+            <small>Entre com Google para gerenciar e controlar o baba.</small>
             <i class="baba-choice-arrow" aria-hidden="true">›</i>
           </button>
           <button id="enter-player-btn" class="baba-choice baba-choice--player" type="button">
             <svg class="baba-choice-icon" aria-hidden="true" focusable="false"><use href="#baba-users"></use></svg>
             <span>Entrar como Jogador</span>
-            <small>Acompanhe partidas, fila, tabela e ranking.</small>
+            <small>Use o código fornecido pelo organizador.</small>
             <i class="baba-choice-arrow" aria-hidden="true">›</i>
           </button>
           <a href="mesa-tatica.html" class="baba-choice baba-choice--tactical" aria-label="Abrir Mesa Tática">
@@ -313,27 +313,35 @@
           <div class="baba-password__window">
             <div class="baba-password__head">
               <span>
-                <strong id="organizer-password-title">Acesso do organizador</strong>
-                <small>Digite a senha para liberar os controles do baba.</small>
+                <strong id="organizer-password-title">Login do administrador</strong>
+                <small>Toda conta Google autenticada possui acesso administrativo.</small>
               </span>
               <button id="close-organizer-password" class="baba-password__close" type="button" aria-label="Fechar janela de senha">
                 <svg aria-hidden="true" focusable="false"><use href="#baba-x"></use></svg>
               </button>
             </div>
-            <label for="organizer-password">Senha do organizador</label>
-            <div class="baba-password__field">
-              <input id="organizer-password" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Digite a senha">
-              <button type="submit">Liberar</button>
-            </div>
-            <label class="baba-password__remember" for="remember-organizer-password">
-              <input id="remember-organizer-password" type="checkbox">
-              <i class="baba-remember-toggle" aria-hidden="true"></i>
-              <span class="baba-remember-copy">
-                <strong>Lembrar este acesso no dispositivo</strong>
-                <small>Abre direto como organizador nas próximas visitas.</small>
-              </span>
-            </label>
+            <button id="organizer-google-login" class="baba-google-access" type="button">Continuar com Google</button>
+            <p class="baba-password__note">O login será salvo neste dispositivo até você escolher sair.</p>
             <small id="password-feedback"></small>
+          </div>
+        </form>
+        <form id="player-code-form" class="baba-password baba-password-modal hidden" aria-labelledby="player-code-title" aria-modal="true" role="dialog">
+          <div class="baba-password__window">
+            <div class="baba-password__head">
+              <span><strong id="player-code-title">Acesso do jogador</strong><small>Digite o código enviado pelo organizador.</small></span>
+              <button id="close-player-code" class="baba-password__close" type="button" aria-label="Fechar código do jogador"><svg aria-hidden="true" focusable="false"><use href="#baba-x"></use></svg></button>
+            </div>
+            <label for="player-access-code">Código de acesso</label>
+            <div class="baba-password__field">
+              <input id="player-access-code" type="text" inputmode="text" autocomplete="one-time-code" maxlength="9" placeholder="ABCD-2345">
+              <button type="submit">Entrar</button>
+            </div>
+            <label class="baba-password__remember" for="remember-player-code">
+              <input id="remember-player-code" type="checkbox" checked>
+              <i class="baba-remember-toggle" aria-hidden="true"></i>
+              <span class="baba-remember-copy"><strong>Lembrar neste dispositivo</strong><small>Ao atualizar, você volta automaticamente para onde parou.</small></span>
+            </label>
+            <small id="player-code-feedback"></small>
           </div>
         </form>
       </div>
@@ -524,6 +532,15 @@
               <button id="finish-baba-btn" type="button">Finalizar Baba</button>
               <button id="reset-current-btn" class="danger" type="button">Resetar Baba Atual</button>
             </div>
+            <section class="baba-player-access-admin" aria-labelledby="player-access-admin-title">
+              <div><strong id="player-access-admin-title">Código dos jogadores</strong><small>Gere um novo código para compartilhar. O anterior será revogado.</small></div>
+              <output id="player-access-code-output">Nenhum código gerado neste dispositivo</output>
+              <div>
+                <button id="generate-player-code" type="button">Gerar novo código</button>
+                <button id="copy-player-code" type="button" disabled>Copiar código</button>
+              </div>
+              <small id="player-access-admin-feedback" aria-live="polite"></small>
+            </section>
           </article>
 
           <article id="baba-import-card" class="baba-card baba-card--wide baba-import-card organizer-only" aria-labelledby="baba-import-title">
@@ -1334,12 +1351,13 @@
 
 
   <script src="baba-import-core.js?v=20260801-import-3"></script>
+  <script type="module" src="baba-access.js?v=20260801-player-code-1"></script>
   <script type="module" src="baba-import-persistence.js?v=20260801-import-1"></script>
   <script type="module" src="baba-import-ui.js?v=20260801-import-3"></script>
   <script type="module" src="baba-persistence.js?v=20260801-import-1"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
   <script src="pdf-report.js?v=20260731-payment-vector-1"></script>
-  <script src="baba.js?v=20260801-ranking-last-place-1" defer></script>
+  <script src="baba.js?v=20260801-google-access-1" defer></script>
 </body>
 
 </html>

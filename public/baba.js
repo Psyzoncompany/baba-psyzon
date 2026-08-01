@@ -1,10 +1,9 @@
 (() => {
   const STORAGE_KEY = 'psyzon_baba_state_v1';
-  const ADMIN_PASSWORD = '153090';
   const TEAM_NAMES = ['Time 1', 'Time 2', 'Time 3', 'Time 4', 'Time 5'];
   const MODE_KEY = 'psyzon_baba_mode';
-  const REMEMBER_ORGANIZER_KEY = 'psyzon_baba_organizer_remembered';
-  const REMEMBERED_ACCESS_VALUE = 'organizer_access_v2';
+  const VIEW_KEY = 'psyzon_baba_last_view';
+  const VALID_VIEWS = new Set(['dashboard', 'table', 'ranking', 'history', 'teams', 'goals', 'organizer']);
   const BABA_THEME_KEY = 'psyzon_baba_theme';
   const BACKUP_SCHEMA = 'baba-amigos-backup';
   const BACKUP_VERSION = 1;
@@ -76,10 +75,18 @@
     enterOrganizer: $('#enter-organizer-btn'),
     enterPlayer: $('#enter-player-btn'),
     passwordForm: $('#organizer-password-form'),
-    passwordInput: $('#organizer-password'),
     passwordFeedback: $('#password-feedback'),
-    rememberOrganizer: $('#remember-organizer-password'),
+    organizerGoogleLogin: $('#organizer-google-login'),
     closePassword: $('#close-organizer-password'),
+    playerCodeForm: $('#player-code-form'),
+    playerCodeInput: $('#player-access-code'),
+    playerCodeFeedback: $('#player-code-feedback'),
+    rememberPlayerCode: $('#remember-player-code'),
+    closePlayerCode: $('#close-player-code'),
+    generatePlayerCode: $('#generate-player-code'),
+    copyPlayerCode: $('#copy-player-code'),
+    playerAccessCodeOutput: $('#player-access-code-output'),
+    playerAccessAdminFeedback: $('#player-access-admin-feedback'),
     modeReset: $('#mode-reset-btn'),
     themeToggle: $('#baba-theme-toggle'),
     logoutBtn: $('#baba-logout-btn'),
@@ -1606,40 +1613,51 @@
     }
   }
 
-  function hasRememberedOrganizerAccess() {
-    const saved = localStorage.getItem(REMEMBER_ORGANIZER_KEY);
-    return saved === REMEMBERED_ACCESS_VALUE || saved === ADMIN_PASSWORD || saved === 'true';
+  function authenticatedAdmin() {
+    const user = window.firebaseAuth?.currentUser?.();
+    return user && user.uid !== 'local_user' ? user : null;
   }
 
-  function rememberOrganizerAccess(remember) {
-    if (remember) localStorage.setItem(REMEMBER_ORGANIZER_KEY, REMEMBERED_ACCESS_VALUE);
-    else localStorage.removeItem(REMEMBER_ORGANIZER_KEY);
+  function waitForAccessRepository(timeoutMs = 4000) {
+    if (window.BabaAccessRepository) return Promise.resolve(window.BabaAccessRepository);
+    return new Promise((resolve) => {
+      const finish = () => resolve(window.BabaAccessRepository || null);
+      window.addEventListener('baba-access-ready', finish, { once: true });
+      window.setTimeout(finish, timeoutMs);
+    });
   }
 
   function openOrganizerPassword() {
-    const remembered = hasRememberedOrganizerAccess();
     els.passwordForm.classList.remove('hidden');
     document.body.classList.add('baba-password-is-open');
-    els.passwordInput.value = remembered ? ADMIN_PASSWORD : '';
-    if (els.rememberOrganizer) els.rememberOrganizer.checked = remembered;
     els.passwordFeedback.textContent = '';
-    window.setTimeout(() => {
-      els.passwordInput.focus();
-      if (remembered) els.passwordInput.select();
-    }, 40);
+    window.setTimeout(() => els.organizerGoogleLogin?.focus(), 40);
   }
 
   function closeOrganizerPassword() {
     els.passwordForm.classList.add('hidden');
     document.body.classList.remove('baba-password-is-open');
-    els.passwordInput.value = '';
     els.passwordFeedback.textContent = '';
+  }
+
+  function openPlayerCode() {
+    els.playerCodeForm?.classList.remove('hidden');
+    document.body.classList.add('baba-password-is-open');
+    if (els.playerCodeFeedback) els.playerCodeFeedback.textContent = '';
+    window.setTimeout(() => els.playerCodeInput?.focus(), 40);
+  }
+
+  function closePlayerCode() {
+    els.playerCodeForm?.classList.add('hidden');
+    document.body.classList.remove('baba-password-is-open');
+    if (els.playerCodeInput) els.playerCodeInput.value = '';
+    if (els.playerCodeFeedback) els.playerCodeFeedback.textContent = '';
   }
 
   function setMode(nextMode, options = {}) {
     mode = nextMode;
     sessionStorage.setItem(MODE_KEY, nextMode);
-    if (options.rememberDevice === true) localStorage.setItem(MODE_KEY, nextMode);
+    if (options.rememberDevice !== false) localStorage.setItem(MODE_KEY, nextMode);
     else if (options.rememberDevice === false) localStorage.removeItem(MODE_KEY);
     document.body.classList.add('baba-app-mode');
     document.body.classList.toggle('baba-player-mode', nextMode === 'player');
@@ -1647,7 +1665,10 @@
     els.gateway.classList.add('hidden');
     els.app.classList.remove('hidden');
     closeOrganizerPassword();
-    if (nextMode === 'player') setActiveTab('dashboard');
+    closePlayerCode();
+    const candidateView = options.view || localStorage.getItem(VIEW_KEY) || 'dashboard';
+    const savedView = VALID_VIEWS.has(candidateView) ? candidateView : 'dashboard';
+    setActiveTab(nextMode === 'player' && savedView === 'organizer' ? 'dashboard' : savedView);
     requestSiteWakeLock();
     render();
   }
@@ -1663,11 +1684,104 @@
     els.gateway.classList.remove('hidden');
     els.app.classList.add('hidden');
     closeOrganizerPassword();
-    if (els.rememberOrganizer) els.rememberOrganizer.checked = hasRememberedOrganizerAccess();
+    closePlayerCode();
   }
 
-  function logout() {
-    showToast('O Baba permanece aberto neste link.');
+  async function logout() {
+    if (mode === 'player') window.BabaAccessRepository?.clearPlayerAccess?.();
+    if (authenticatedAdmin()) await window.firebaseAuth?.logout?.().catch?.(() => {});
+    resetMode();
+    showToast('Acesso encerrado neste dispositivo.');
+  }
+
+  async function loginOrganizerWithGoogle() {
+    if (els.organizerGoogleLogin) els.organizerGoogleLogin.disabled = true;
+    els.passwordFeedback.textContent = 'Conectando com o Google...';
+    try {
+      const result = await window.firebaseAuth?.loginWithGoogle?.(true);
+      const user = result?.user || authenticatedAdmin();
+      if (user) setMode('organizer', { rememberDevice: true });
+    } catch (error) {
+      const messages = {
+        'auth/unauthorized-domain': 'Este domínio precisa ser autorizado no Firebase Authentication.',
+        'auth/operation-not-allowed': 'Ative o provedor Google no Firebase Authentication.',
+        'auth/popup-closed-by-user': 'O login foi cancelado antes de concluir.',
+      };
+      els.passwordFeedback.textContent = messages[error?.code] || error?.message || 'Não foi possível entrar com o Google.';
+    } finally {
+      if (els.organizerGoogleLogin) els.organizerGoogleLogin.disabled = false;
+    }
+  }
+
+  async function submitPlayerCode(event) {
+    event.preventDefault();
+    if (!window.BabaAccessRepository) {
+      els.playerCodeFeedback.textContent = 'O validador ainda está carregando. Tente novamente.';
+      return;
+    }
+    const submit = els.playerCodeForm?.querySelector('[type="submit"]');
+    if (submit) submit.disabled = true;
+    els.playerCodeFeedback.textContent = 'Validando código...';
+    try {
+      const result = await window.BabaAccessRepository.verifyPlayerCode(els.playerCodeInput?.value, {
+        remember: els.rememberPlayerCode?.checked !== false,
+      });
+      if (!result.valid) {
+        els.playerCodeFeedback.textContent = result.reason;
+        els.playerCodeInput?.select();
+        return;
+      }
+      setMode('player', { rememberDevice: els.rememberPlayerCode?.checked !== false });
+    } catch (error) {
+      els.playerCodeFeedback.textContent = error?.message || 'Não foi possível validar o código.';
+    } finally {
+      if (submit) submit.disabled = false;
+    }
+  }
+
+  async function generatePlayerAccessCode() {
+    if (!authenticatedAdmin()) return openOrganizerPassword();
+    if (els.generatePlayerCode) els.generatePlayerCode.disabled = true;
+    if (els.playerAccessAdminFeedback) els.playerAccessAdminFeedback.textContent = 'Gerando código seguro...';
+    try {
+      const result = await window.BabaAccessRepository?.generatePlayerCode?.();
+      if (!result?.code) throw new Error('O gerador de código não foi carregado.');
+      els.playerAccessCodeOutput.textContent = result.code;
+      els.playerAccessCodeOutput.dataset.code = result.code;
+      els.copyPlayerCode.disabled = false;
+      els.playerAccessAdminFeedback.textContent = 'Novo código ativo. Qualquer código anterior foi revogado.';
+    } catch (error) {
+      els.playerAccessAdminFeedback.textContent = error?.message || 'Não foi possível gerar o código.';
+    } finally {
+      if (els.generatePlayerCode) els.generatePlayerCode.disabled = false;
+    }
+  }
+
+  async function restorePlayerAccessCodeForOrganizer() {
+    const repository = await waitForAccessRepository();
+    const savedCode = repository?.getSavedPlayerCode?.();
+    if (!savedCode || !els.playerAccessCodeOutput) return;
+    try {
+      const result = await repository.verifyPlayerCode(savedCode, { remember: true });
+      if (!result?.valid || mode !== 'organizer') return;
+      els.playerAccessCodeOutput.textContent = result.code;
+      els.playerAccessCodeOutput.dataset.code = result.code;
+      if (els.copyPlayerCode) els.copyPlayerCode.disabled = false;
+      if (els.playerAccessAdminFeedback) els.playerAccessAdminFeedback.textContent = 'Código ativo restaurado neste dispositivo.';
+    } catch (error) {
+      // A tela administrativa continua utilizável mesmo quando a rede está indisponível.
+    }
+  }
+
+  async function copyPlayerAccessCode() {
+    const code = els.playerAccessCodeOutput?.dataset.code;
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      els.playerAccessAdminFeedback.textContent = `Código ${code} copiado.`;
+    } catch (error) {
+      els.playerAccessAdminFeedback.textContent = `Código: ${code}`;
+    }
   }
 
   function createBaba(dateISO = todayISO()) {
@@ -6835,6 +6949,7 @@
 
   function setActiveTab(tab) {
     const safeTab = !isOrganizer() && tab === 'organizer' ? 'dashboard' : tab;
+    localStorage.setItem(VIEW_KEY, safeTab);
     document.body.dataset.babaView = safeTab;
     $$('.baba-tabs [data-tab], #baba-more-menu [data-tab]').forEach((button) => button.classList.toggle('active', button.dataset.tab === safeTab));
     const isMoreTab = ['teams', 'goals', 'organizer'].includes(safeTab);
@@ -6871,6 +6986,16 @@
   }
 
   function handleDialogKeydown(event) {
+    if (!els.playerCodeForm?.classList.contains('hidden')) {
+      if (event.key === 'Escape') { event.preventDefault(); closePlayerCode(); return; }
+      trapDialogFocus(event, els.playerCodeForm);
+      return;
+    }
+    if (!els.passwordForm?.classList.contains('hidden')) {
+      if (event.key === 'Escape') { event.preventDefault(); closeOrganizerPassword(); return; }
+      trapDialogFocus(event, els.passwordForm);
+      return;
+    }
     if (!els.drawOverlay?.classList.contains('hidden')) {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -7612,24 +7737,27 @@
     });
     wireBabaAssistant();
     document.addEventListener('click', rememberActionButton, true);
-    els.enterOrganizer.addEventListener('click', openOrganizerPassword);
-    els.enterPlayer.addEventListener('click', () => setMode('player', { rememberDevice: false }));
+    els.enterOrganizer.addEventListener('click', () => {
+      if (authenticatedAdmin()) setMode('organizer', { rememberDevice: true });
+      else openOrganizerPassword();
+    });
+    els.enterPlayer.addEventListener('click', openPlayerCode);
     els.closePassword?.addEventListener('click', closeOrganizerPassword);
+    els.closePlayerCode?.addEventListener('click', closePlayerCode);
     els.passwordForm.addEventListener('click', (event) => {
       if (event.target === els.passwordForm) closeOrganizerPassword();
     });
-    els.passwordForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-      if (els.passwordInput.value === ADMIN_PASSWORD) {
-        const rememberDevice = Boolean(els.rememberOrganizer?.checked);
-        rememberOrganizerAccess(rememberDevice);
-        setMode('organizer', { rememberDevice });
-      }
-      else {
-        els.passwordFeedback.textContent = 'Senha incorreta.';
-        els.passwordInput.select();
-      }
+    els.passwordForm.addEventListener('submit', (event) => event.preventDefault());
+    els.organizerGoogleLogin?.addEventListener('click', loginOrganizerWithGoogle);
+    els.playerCodeForm?.addEventListener('submit', submitPlayerCode);
+    els.playerCodeForm?.addEventListener('click', (event) => {
+      if (event.target === els.playerCodeForm) closePlayerCode();
     });
+    els.playerCodeInput?.addEventListener('input', () => {
+      els.playerCodeInput.value = window.BabaAccessRepository?.formatCode?.(els.playerCodeInput.value) || els.playerCodeInput.value.toUpperCase();
+    });
+    els.generatePlayerCode?.addEventListener('click', generatePlayerAccessCode);
+    els.copyPlayerCode?.addEventListener('click', copyPlayerAccessCode);
     els.logoutBtn?.addEventListener('click', logout);
     els.modeReset.addEventListener('click', resetMode);
     els.themeToggle?.addEventListener('click', toggleBabaTheme);
@@ -7937,7 +8065,7 @@
   });
   window.dispatchEvent(new CustomEvent('baba-import-host-ready'));
 
-  function boot() {
+  async function boot() {
     if (hasBooted) return;
     hasBooted = true;
     const savedTheme = localStorage.getItem(BABA_THEME_KEY);
@@ -7950,15 +8078,17 @@
     const rememberedMode = localStorage.getItem(MODE_KEY);
     const savedMode = sessionMode || rememberedMode;
     document.body.classList.toggle('baba-locked-viewer', isForcedViewerMode());
-    if (isForcedViewerMode()) setMode('player');
-    else if (savedMode === 'organizer' && rememberedMode === 'organizer' && !hasRememberedOrganizerAccess()) {
-      localStorage.removeItem(MODE_KEY);
-      resetMode();
+    if (isForcedViewerMode()) setMode('player', { rememberDevice: false });
+    else if (authenticatedAdmin()) {
+      setMode('organizer', { rememberDevice: true });
+      restorePlayerAccessCodeForOrganizer();
     }
-    else if (savedMode === 'organizer' || savedMode === 'player') {
-      setMode(savedMode, { rememberDevice: rememberedMode === savedMode });
-    }
-    else resetMode();
+    else if (savedMode === 'player') {
+      const accessRepository = await waitForAccessRepository();
+      const restored = await accessRepository?.restorePlayerAccess?.();
+      if (restored?.valid) setMode('player', { rememberDevice: true });
+      else resetMode();
+    } else resetMode();
     render();
     window.BabaImportUI?.mount?.();
     wireTabsStickyState();
@@ -7972,6 +8102,27 @@
       boot();
     }
   }, 100);
+
+  window.addEventListener('firebase-auth-state', (event) => {
+    if (!hasBooted) return;
+    if (event.detail?.authenticated) {
+      setMode('organizer', { rememberDevice: true });
+      restorePlayerAccessCodeForOrganizer();
+    }
+    else if (mode === 'organizer') resetMode();
+  });
+
+  window.addEventListener('firebase-auth-error', (event) => {
+    if (!hasBooted) return;
+    openOrganizerPassword();
+    const messages = {
+      'auth/unauthorized-domain': 'Este domínio precisa ser autorizado no Firebase Authentication.',
+      'auth/operation-not-allowed': 'Ative o provedor Google no Firebase Authentication.',
+    };
+    els.passwordFeedback.textContent = messages[event.detail?.code]
+      || event.detail?.message
+      || 'Não foi possível concluir o login com o Google.';
+  });
 
   setTimeout(() => {
     if (!window.BackendInitialized && window.location.protocol === 'file:') {

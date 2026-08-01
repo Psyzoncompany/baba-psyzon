@@ -1631,6 +1631,22 @@ body.baba-dark-theme .baba-choice--tactical .baba-choice-icon {
   gap: .12rem;
 }
 
+.baba-google-access {
+  width: 100%;
+  min-height: 3rem;
+  border: 1px solid rgba(37, 99, 235, .2);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  font: inherit;
+  font-weight: 780;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, .2);
+  cursor: pointer;
+}
+
+.baba-google-access:disabled { cursor: wait; opacity: .65; }
+.baba-password__note { margin: var(--space-3) 0 0; color: var(--color-text-muted); font-size: var(--font-size-xs); text-align: center; }
+
 /* 8. Forms ----------------------------------------------------------------- */
 
 .baba-page input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
@@ -3504,6 +3520,54 @@ button.baba-history-item.active {
 
 .baba-import-card {
   border-color: color-mix(in srgb, var(--color-info) 24%, var(--border-soft));
+}
+
+.baba-player-access-admin {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-soft);
+}
+
+.baba-player-access-admin > div:first-child { display: grid; gap: .18rem; }
+.baba-player-access-admin small { color: var(--color-text-muted); font-size: var(--font-size-xs); line-height: 1.4; }
+.baba-player-access-admin output {
+  display: grid;
+  min-height: 3.2rem;
+  place-items: center;
+  border: 1px dashed color-mix(in srgb, var(--color-primary) 38%, var(--border-soft));
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  font-size: 1.15rem;
+  font-weight: 850;
+  letter-spacing: .12em;
+  text-align: center;
+}
+
+.baba-player-access-admin > div:nth-of-type(2) {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.baba-player-access-admin button {
+  min-height: 2.55rem;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: var(--surface-glass-strong);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+  cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .baba-player-access-admin > div:nth-of-type(2) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .baba-import-access {

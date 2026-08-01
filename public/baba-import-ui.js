@@ -66,7 +66,7 @@ function renderAdminAccess() {
   if (!element) return;
   const states = {
     ready: ['success', '✓', 'Conta administrativa conectada', 'Aliases, histórico e salvamento estão liberados.'],
-    denied: ['danger', '!', 'Permissão administrativa ausente', uiState.adminAccessMessage || 'A conta precisa ter role admin/organizer e as regras do Firestore precisam estar publicadas.'],
+    denied: ['danger', '!', 'Regras administrativas desatualizadas', uiState.adminAccessMessage || 'Todo login Google é administrador. Publique as regras atuais do Firestore para liberar a gravação.'],
     'signed-out': ['warning', '↗', 'Login necessário para salvar', 'Você pode analisar o texto agora. Entre com a conta administrativa para confirmar a importação.'],
     checking: ['neutral', '…', 'Verificando acesso', 'Aguarde a validação da sessão Firebase.'],
   };
@@ -99,7 +99,7 @@ async function refreshAdminAccess({ force = false } = {}) {
   } catch (error) {
     uiState.adminAccess = 'denied';
     uiState.adminAccessMessage = isPermissionError(error)
-      ? 'O Firebase recusou o acesso. Publique as regras e confirme role admin/organizer para esta conta.'
+      ? 'O Firebase recusou o acesso. Publique as regras atuais; toda conta autenticada já é administradora.'
       : 'Não foi possível validar a conta administrativa agora.';
     renderAdminAccess();
     return false;
@@ -149,7 +149,7 @@ function refreshValidation() {
       severity: 'blocker',
       path: '',
       message: uiState.adminAccess === 'denied'
-        ? 'A conta conectada não possui acesso administrativo no Firestore.'
+        ? 'As regras publicadas do Firestore ainda não liberaram esta conta autenticada.'
         : 'Entre com a conta administrativa antes de confirmar a importação.',
       details: { adminAccess: uiState.adminAccess },
     });
@@ -624,7 +624,7 @@ async function renderAliases() {
   container.innerHTML = '<p>Carregando aliases...</p>';
   try {
     if (!await refreshAdminAccess()) {
-      container.innerHTML = '<p>Conecte uma conta admin/organizer para visualizar aliases.</p>';
+      container.innerHTML = '<p>Entre com Google para visualizar aliases.</p>';
       return;
     }
     container.innerHTML = uiState.aliases.length ? `<h4>Aliases (${uiState.aliases.length})</h4>${uiState.aliases.map((alias) => `
@@ -643,7 +643,7 @@ async function renderImportHistory() {
   container.innerHTML = '<p>Carregando histórico...</p>';
   try {
     if (!await refreshAdminAccess()) {
-      container.innerHTML = '<p>Conecte uma conta admin/organizer para visualizar o histórico.</p>';
+      container.innerHTML = '<p>Entre com Google para visualizar o histórico.</p>';
       return;
     }
     container.innerHTML = uiState.imports.length ? `<h4>Importações (${uiState.imports.length})</h4>${uiState.imports.map((item) => `
