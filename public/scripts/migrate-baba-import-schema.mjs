@@ -13,6 +13,11 @@ if (!getApps().length) {
   initializeApp({ credential: applicationDefault(), ...(projectId ? { projectId } : {}) });
 }
 const db = getFirestore();
+const accountUid = String(process.env.BABA_ACCOUNT_UID || '').trim();
+if (!accountUid) {
+  throw new Error('Defina BABA_ACCOUNT_UID com o UID da conta Google que receberá a migration.');
+}
+const accountRef = db.collection('baba_accounts').doc(accountUid);
 
 function normalizeName(value) {
   return String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9' -]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -31,7 +36,7 @@ async function commitChunks(operations) {
 }
 
 async function migrateUp() {
-  const snapshot = await db.collection('baba_players').get();
+  const snapshot = await accountRef.collection('players').get();
   const operations = [];
   snapshot.docs.forEach((playerSnapshot) => {
     const player = playerSnapshot.data();
@@ -41,7 +46,7 @@ async function migrateUp() {
     const normalizedAliasKey = normalizeAlias(name);
     if (!normalizedAliasKey) return;
     operations.push((batch) => batch.set(playerSnapshot.ref, { normalizedName, normalizedAliasKey }, { merge: true }));
-    operations.push((batch) => batch.set(db.collection('baba_player_name_keys').doc(normalizedAliasKey), {
+    operations.push((batch) => batch.set(accountRef.collection('player_name_keys').doc(normalizedAliasKey), {
       normalizedName,
       normalizedAliasKey,
       playerId: player.playerId || player.id || playerSnapshot.id,
@@ -51,7 +56,7 @@ async function migrateUp() {
       createdAtMs: Date.now(),
     }, { merge: true }));
   });
-  operations.push((batch) => batch.set(db.collection('schema_migrations').doc('20260801_baba_import_v1'), {
+  operations.push((batch) => batch.set(accountRef.collection('schema_migrations').doc('20260801_baba_import_v1'), {
     id: '20260801_baba_import_v1',
     status: 'applied',
     playersProcessed: snapshot.size,
@@ -63,8 +68,8 @@ async function migrateUp() {
 
 async function migrateDown() {
   const [players, keys] = await Promise.all([
-    db.collection('baba_players').get(),
-    db.collection('baba_player_name_keys').where('source', '==', 'migration').get(),
+    accountRef.collection('players').get(),
+    accountRef.collection('player_name_keys').where('source', '==', 'migration').get(),
   ]);
   const operations = [];
   players.docs.forEach((snapshot) => operations.push((batch) => batch.update(snapshot.ref, {
@@ -72,7 +77,7 @@ async function migrateDown() {
     normalizedAliasKey: FieldValue.delete(),
   })));
   keys.docs.forEach((snapshot) => operations.push((batch) => batch.delete(snapshot.ref)));
-  operations.push((batch) => batch.set(db.collection('schema_migrations').doc('20260801_baba_import_v1'), {
+  operations.push((batch) => batch.set(accountRef.collection('schema_migrations').doc('20260801_baba_import_v1'), {
     status: 'reverted',
     revertedAtMs: Date.now(),
   }, { merge: true }));

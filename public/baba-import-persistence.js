@@ -41,6 +41,18 @@ function requireAuthenticatedAdminContext() {
   return user;
 }
 
+function accountId() {
+  return safeId(requireAuthenticatedAdminContext().uid, '');
+}
+
+function accountDoc(...segments) {
+  return doc(db, 'baba_accounts', accountId(), ...segments);
+}
+
+function accountCollection(...segments) {
+  return collection(db, 'baba_accounts', accountId(), ...segments);
+}
+
 function playerDocument(player, timestamp) {
   return compact({
     ...player,
@@ -205,12 +217,12 @@ function aliasDocument(alias, importId, user, timestamp) {
 }
 
 export async function loadAliases() {
-  const snapshot = await getDocs(query(collection(db, 'baba_player_aliases'), orderBy('normalizedText'), limit(LIST_LIMITS.aliases)));
+  const snapshot = await getDocs(query(accountCollection('aliases'), orderBy('normalizedText'), limit(LIST_LIMITS.aliases)));
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.deleted !== true);
 }
 
 export async function loadImports() {
-  const snapshot = await getDocs(query(collection(db, 'baba_imports'), orderBy('createdAtMs', 'desc'), limit(LIST_LIMITS.imports)));
+  const snapshot = await getDocs(query(accountCollection('imports'), orderBy('createdAtMs', 'desc'), limit(LIST_LIMITS.imports)));
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.deleted !== true);
 }
 
@@ -234,14 +246,14 @@ export async function commitImport(payload) {
   const { importId, text, textHash, analysis, state, baba, newPlayers = [], updatedPlayers = [], aliasesToCreate = [], usedAliasIds = [], warnings = [], autoSaved = false } = payload;
   if (!importId || !textHash || !analysis || !baba?.id) throw new Error('Dados da importação incompletos.');
   const timestamp = Date.now();
-  const importRef = doc(db, 'baba_imports', safeId(importId));
-  const importKeyRef = doc(db, 'baba_import_keys', safeId(textHash));
-  const babaRef = doc(db, 'babas', safeId(baba.id));
-  const playerLockRefs = newPlayers.map((player) => doc(db, 'baba_player_name_keys', safeId(window.BabaImportCore.normalizeAlias(player.nome))));
+  const importRef = accountDoc('imports', safeId(importId));
+  const importKeyRef = accountDoc('import_keys', safeId(textHash));
+  const babaRef = accountDoc('babas', safeId(baba.id));
+  const playerLockRefs = newPlayers.map((player) => accountDoc('player_name_keys', safeId(window.BabaImportCore.normalizeAlias(player.nome))));
   const importedStats = statsDocuments(state, baba, timestamp);
-  const generalStatRefs = importedStats.map((stats) => doc(db, 'player_stats', safeId(stats.playerId)));
+  const generalStatRefs = importedStats.map((stats) => accountDoc('player_stats', safeId(stats.playerId)));
   const monthKey = String(baba.dataISO || '').slice(0, 7);
-  const monthStatRefs = importedStats.map((stats) => doc(db, 'baba_months', safeId(monthKey), 'stats', safeId(stats.playerId)));
+  const monthStatRefs = importedStats.map((stats) => accountDoc('months', safeId(monthKey), 'stats', safeId(stats.playerId)));
 
   await runTransaction(db, async (transaction) => {
     const snapshots = await Promise.all([
@@ -267,7 +279,7 @@ export async function commitImport(payload) {
     });
 
     newPlayers.forEach((player, index) => {
-      transaction.set(doc(db, 'baba_players', safeId(player.id)), playerDocument(player, timestamp), { merge: false });
+      transaction.set(accountDoc('players', safeId(player.id)), playerDocument(player, timestamp), { merge: false });
       transaction.set(playerLockRefs[index], {
         normalizedName: window.BabaImportCore.normalizeName(player.nome),
         normalizedAliasKey: window.BabaImportCore.normalizeAlias(player.nome),
@@ -277,7 +289,7 @@ export async function commitImport(payload) {
         createdAtMs: timestamp,
         schemaVersion: IMPORT_SCHEMA_VERSION,
       }, { merge: false });
-      transaction.set(doc(db, 'baba_player_status_history', safeId(`${player.id}_${importId}`)), {
+      transaction.set(accountDoc('player_status_history', safeId(`${player.id}_${importId}`)), {
         id: `${player.id}_${importId}`,
         playerId: player.id,
         status: 'novice',
@@ -292,8 +304,8 @@ export async function commitImport(payload) {
       }, { merge: false });
     });
     updatedPlayers.forEach((player) => {
-      transaction.set(doc(db, 'baba_players', safeId(player.id)), playerDocument(player, timestamp), { merge: true });
-      transaction.set(doc(db, 'baba_player_status_history', safeId(`${player.id}_${importId}`)), {
+      transaction.set(accountDoc('players', safeId(player.id)), playerDocument(player, timestamp), { merge: true });
+      transaction.set(accountDoc('player_status_history', safeId(`${player.id}_${importId}`)), {
         id: `${player.id}_${importId}`, playerId: player.id, status: 'novice', active: true,
         reason: 'confirmed-in-import', babaId: baba.id, importId, changedBy: user.uid,
         changedAtMs: timestamp, schemaVersion: IMPORT_SCHEMA_VERSION, deleted: false,
@@ -302,22 +314,22 @@ export async function commitImport(payload) {
 
     transaction.set(babaRef, babaMetadata(baba, importId, timestamp), { merge: false });
     participantDocuments(state, baba, importId, timestamp).forEach((participant) => {
-      transaction.set(doc(db, 'babas', safeId(baba.id), 'participants', safeId(participant.playerId)), participant, { merge: false });
+      transaction.set(accountDoc('babas', safeId(baba.id), 'participants', safeId(participant.playerId)), participant, { merge: false });
     });
     (baba.teams || []).forEach((team, index) => {
-      transaction.set(doc(db, 'babas', safeId(baba.id), 'teams', safeId(team.id)), teamDocument(team, index, importId, timestamp), { merge: false });
+      transaction.set(accountDoc('babas', safeId(baba.id), 'teams', safeId(team.id)), teamDocument(team, index, importId, timestamp), { merge: false });
     });
     importedStats.forEach((stats, index) => {
-      transaction.set(doc(db, 'babas', safeId(baba.id), 'stats', safeId(stats.playerId)), stats, { merge: false });
+      transaction.set(accountDoc('babas', safeId(baba.id), 'stats', safeId(stats.playerId)), stats, { merge: false });
       transaction.set(generalStatRefs[index], mergeAggregateStats(generalStatSnapshots[index].data(), stats, timestamp), { merge: false });
       transaction.set(monthStatRefs[index], mergeAggregateStats(monthStatSnapshots[index].data(), stats, timestamp), { merge: false });
     });
-    transaction.set(doc(db, 'baba_months', safeId(monthKey)), {
+    transaction.set(accountDoc('months', safeId(monthKey)), {
       id: monthKey, monthKey, schemaVersion: SCHEMA_VERSION, updatedAtMs: timestamp, deleted: false,
     }, { merge: true });
     participantDocuments(state, baba, importId, timestamp).forEach((participant) => {
       const player = (state.players || []).find((item) => item.id === participant.playerId);
-      transaction.set(doc(db, 'babas', safeId(baba.id), 'payments', safeId(participant.playerId)), {
+      transaction.set(accountDoc('babas', safeId(baba.id), 'payments', safeId(participant.playerId)), {
         playerId: participant.playerId,
         paid: false,
         amount: participant.goalkeeper || player?.tipo === 'goleiro' ? 7 : 15,
@@ -329,10 +341,10 @@ export async function commitImport(payload) {
       }, { merge: false });
     });
     aliasesToCreate.forEach((alias) => {
-      transaction.set(doc(db, 'baba_player_aliases', safeId(alias.id)), aliasDocument(alias, importId, user, timestamp), { merge: false });
+      transaction.set(accountDoc('aliases', safeId(alias.id)), aliasDocument(alias, importId, user, timestamp), { merge: false });
     });
     [...new Set(usedAliasIds)].forEach((aliasId) => {
-      transaction.set(doc(db, 'baba_player_aliases', safeId(aliasId)), {
+      transaction.set(accountDoc('aliases', safeId(aliasId)), {
         usageCount: increment(1),
         lastUsedAtMs: timestamp,
         lastUsedImportId: importId,
@@ -340,7 +352,7 @@ export async function commitImport(payload) {
       }, { merge: true });
     });
     warnings.forEach((warning, index) => {
-      transaction.set(doc(db, 'baba_imports', safeId(importId), 'warnings', safeId(`${index + 1}_${warning.code}`)), compact({
+      transaction.set(accountDoc('imports', safeId(importId), 'warnings', safeId(`${index + 1}_${warning.code}`)), compact({
         ...warning,
         index,
         importId,
@@ -391,7 +403,7 @@ export async function commitImport(payload) {
       createdAtMs: timestamp,
       schemaVersion: IMPORT_SCHEMA_VERSION,
     }, { merge: false });
-    transaction.set(doc(db, 'baba_imports', safeId(importId), 'audit_logs', 'created'), {
+    transaction.set(accountDoc('imports', safeId(importId), 'audit_logs', 'created'), {
       id: 'created',
       action: autoSaved ? 'auto-committed' : 'admin-committed',
       actorId: user.uid,
@@ -416,7 +428,7 @@ export async function updateAlias(aliasId, changes) {
   if (typeof changes.active === 'boolean') allowed.active = changes.active;
   allowed.updatedAtMs = Date.now();
   allowed.updatedBy = user.uid;
-  await setDoc(doc(db, 'baba_player_aliases', safeId(aliasId)), allowed, { merge: true });
+  await setDoc(accountDoc('aliases', safeId(aliasId)), allowed, { merge: true });
   return allowed;
 }
 
@@ -424,7 +436,7 @@ export async function recordPlayerStatus(playerId, active, details = {}) {
   const user = requireAuthenticatedAdminContext();
   const timestamp = Date.now();
   const id = safeId(`${playerId}_${timestamp}`);
-  await setDoc(doc(db, 'baba_player_status_history', id), {
+  await setDoc(accountDoc('player_status_history', id), {
     id,
     playerId,
     status: 'novice',
@@ -440,7 +452,7 @@ export async function recordPlayerStatus(playerId, active, details = {}) {
 
 export async function revertImport(importId, { removablePlayerIds = [] } = {}) {
   const user = requireAuthenticatedAdminContext();
-  const importRef = doc(db, 'baba_imports', safeId(importId));
+  const importRef = accountDoc('imports', safeId(importId));
   const timestamp = Date.now();
   let result = null;
   await runTransaction(db, async (transaction) => {
@@ -450,9 +462,9 @@ export async function revertImport(importId, { removablePlayerIds = [] } = {}) {
     if (record.status === 'reverted') throw new Error('Esta importação já foi desfeita.');
     const statsDelta = record.statsDelta || [];
     const monthKey = record.monthKey || String(record.eventDate || '').slice(0, 7);
-    const generalRefs = statsDelta.map((stats) => doc(db, 'player_stats', safeId(stats.playerId)));
-    const monthRefs = statsDelta.map((stats) => doc(db, 'baba_months', safeId(monthKey), 'stats', safeId(stats.playerId)));
-    const novicePlayerRefs = (record.noviceActivatedPlayerIds || []).map((playerId) => doc(db, 'baba_players', safeId(playerId)));
+    const generalRefs = statsDelta.map((stats) => accountDoc('player_stats', safeId(stats.playerId)));
+    const monthRefs = statsDelta.map((stats) => accountDoc('months', safeId(monthKey), 'stats', safeId(stats.playerId)));
+    const novicePlayerRefs = (record.noviceActivatedPlayerIds || []).map((playerId) => accountDoc('players', safeId(playerId)));
     const aggregateSnapshots = await Promise.all([
       ...generalRefs.map((ref) => transaction.get(ref)),
       ...monthRefs.map((ref) => transaction.get(ref)),
@@ -460,26 +472,26 @@ export async function revertImport(importId, { removablePlayerIds = [] } = {}) {
     ]);
     const allowedPlayers = new Set(removablePlayerIds);
     const playersToRemove = (record.newPlayerIds || []).filter((id) => allowedPlayers.has(id));
-    transaction.set(doc(db, 'babas', safeId(record.babaId)), { deleted: true, status: 'reverted', importId, updatedAtMs: timestamp }, { merge: true });
+    transaction.set(accountDoc('babas', safeId(record.babaId)), { deleted: true, status: 'reverted', importId, updatedAtMs: timestamp }, { merge: true });
     (record.playerIds || []).forEach((playerId) => {
-      transaction.set(doc(db, 'babas', safeId(record.babaId), 'participants', safeId(playerId)), { playerId, deleted: true, schemaVersion: SCHEMA_VERSION, updatedAtMs: timestamp }, { merge: true });
-      transaction.set(doc(db, 'babas', safeId(record.babaId), 'payments', safeId(playerId)), { playerId, deleted: true, schemaVersion: SCHEMA_VERSION, updatedAtMs: timestamp }, { merge: true });
-      transaction.set(doc(db, 'babas', safeId(record.babaId), 'stats', safeId(playerId)), { playerId, deleted: true, schemaVersion: SCHEMA_VERSION, updatedAtMs: timestamp }, { merge: true });
+      transaction.set(accountDoc('babas', safeId(record.babaId), 'participants', safeId(playerId)), { playerId, deleted: true, schemaVersion: SCHEMA_VERSION, updatedAtMs: timestamp }, { merge: true });
+      transaction.set(accountDoc('babas', safeId(record.babaId), 'payments', safeId(playerId)), { playerId, deleted: true, schemaVersion: SCHEMA_VERSION, updatedAtMs: timestamp }, { merge: true });
+      transaction.set(accountDoc('babas', safeId(record.babaId), 'stats', safeId(playerId)), { playerId, deleted: true, schemaVersion: SCHEMA_VERSION, updatedAtMs: timestamp }, { merge: true });
     });
-    (record.teamIds || []).forEach((teamId) => transaction.set(doc(db, 'babas', safeId(record.babaId), 'teams', safeId(teamId)), {
+    (record.teamIds || []).forEach((teamId) => transaction.set(accountDoc('babas', safeId(record.babaId), 'teams', safeId(teamId)), {
       id: teamId, deleted: true, schemaVersion: SCHEMA_VERSION, updatedAtMs: timestamp,
     }, { merge: true }));
     statsDelta.forEach((stats, index) => {
       transaction.set(generalRefs[index], mergeAggregateStats(aggregateSnapshots[index].data(), stats, timestamp, -1), { merge: false });
       transaction.set(monthRefs[index], mergeAggregateStats(aggregateSnapshots[generalRefs.length + index].data(), stats, timestamp, -1), { merge: false });
     });
-    (record.aliasIds || []).forEach((aliasId) => transaction.set(doc(db, 'baba_player_aliases', safeId(aliasId)), {
+    (record.aliasIds || []).forEach((aliasId) => transaction.set(accountDoc('aliases', safeId(aliasId)), {
       active: false, deleted: true, deactivatedByReversal: importId, updatedAtMs: timestamp,
     }, { merge: true }));
-    playersToRemove.forEach((playerId) => transaction.set(doc(db, 'baba_players', safeId(playerId)), {
+    playersToRemove.forEach((playerId) => transaction.set(accountDoc('players', safeId(playerId)), {
       deleted: true, active: false, ativo: false, deletedByImportReversal: importId, updatedAtMs: timestamp,
     }, { merge: true }));
-    (record.newPlayerNameKeys || []).forEach((nameKey) => transaction.set(doc(db, 'baba_player_name_keys', safeId(nameKey)), {
+    (record.newPlayerNameKeys || []).forEach((nameKey) => transaction.set(accountDoc('player_name_keys', safeId(nameKey)), {
       active: false, deactivatedByReversal: importId, updatedAtMs: timestamp,
     }, { merge: true }));
     const noviceSnapshotOffset = generalRefs.length + monthRefs.length;
@@ -491,7 +503,7 @@ export async function revertImport(importId, { removablePlayerIds = [] } = {}) {
         noviceReasonImportId: null, updatedAtMs: timestamp,
       }, { merge: true });
     });
-    playersToRemove.forEach((playerId) => transaction.set(doc(db, 'baba_player_status_history', safeId(`${playerId}_${importId}_reverted`)), {
+    playersToRemove.forEach((playerId) => transaction.set(accountDoc('player_status_history', safeId(`${playerId}_${importId}_reverted`)), {
       id: `${playerId}_${importId}_reverted`, playerId, status: 'novice', active: false,
       reason: 'import-reverted', babaId: record.babaId, importId, changedBy: user.uid,
       changedAtMs: timestamp, schemaVersion: IMPORT_SCHEMA_VERSION, deleted: false,
@@ -503,8 +515,8 @@ export async function revertImport(importId, { removablePlayerIds = [] } = {}) {
       removedPlayerIds: playersToRemove,
       preservedPlayerIds: (record.newPlayerIds || []).filter((id) => !allowedPlayers.has(id)),
     }, { merge: true });
-    transaction.set(doc(db, 'baba_import_keys', safeId(record.textHash)), { status: 'reverted', revertedAtMs: timestamp }, { merge: true });
-    transaction.set(doc(db, 'baba_imports', safeId(importId), 'audit_logs', safeId(`reverted_${timestamp}`)), {
+    transaction.set(accountDoc('import_keys', safeId(record.textHash)), { status: 'reverted', revertedAtMs: timestamp }, { merge: true });
+    transaction.set(accountDoc('imports', safeId(importId), 'audit_logs', safeId(`reverted_${timestamp}`)), {
       id: `reverted_${timestamp}`,
       action: 'reverted',
       actorId: user.uid,

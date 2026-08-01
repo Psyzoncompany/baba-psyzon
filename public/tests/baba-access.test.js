@@ -12,16 +12,20 @@ function readPublic(file) {
 
 test('login Google usa persistencia local e informa mudancas de autenticacao', () => {
   const source = readPublic('firebase-config.js');
+  const login = readPublic('login.html');
 
   assert.match(source, /setPersistence\(auth, browserLocalPersistence\)/);
   assert.match(source, /getRedirectResult\(auth\)/);
   assert.match(source, /firebase-auth-state/);
+  assert.match(source, /provider\.providerId === 'google\.com'/);
   assert.match(source, /removeItem\('forceLocalMode'\)/);
   assert.match(source, /window\.isLocalMode = false/);
   assert.doesNotMatch(source, /browserSessionPersistence/);
+  assert.match(login, /id="google-login-btn"/);
+  assert.doesNotMatch(login, /id="email"|id="password"|id="login-btn"|toggle-mode-btn/);
 });
 
-test('estado, modo, tela e acesso do jogador ficam no armazenamento nativo', () => {
+test('estado, modo e tela ficam isolados pela conta Google no armazenamento nativo', () => {
   const source = readPublic('firebase-config.js');
   const requiredKeys = [
     'psyzon_baba_state_v1',
@@ -32,6 +36,8 @@ test('estado, modo, tela e acesso do jogador ficam no armazenamento nativo', () 
   ];
 
   for (const key of requiredKeys) assert.match(source, new RegExp(`['\"]${key}['\"]`));
+  assert.match(source, /const scopedKey = `\$\{key\}:\$\{accountId\}`/);
+  assert.match(source, /psyzon_baba_legacy_storage_owner/);
 });
 
 test('acesso administrativo nao usa mais senha fixa e restaura a ultima tela', () => {
@@ -64,11 +70,35 @@ test('interface oferece login Google e entrada e geracao de codigo', () => {
   assert.match(html, /src="(?:\.\/)?baba-access\.js\?v=/);
 });
 
-test('regras tornam cada conta autenticada administradora e permitem validar codigo publico', () => {
+test('regras isolam cada conta e permitem validar somente o hash do codigo publico', () => {
   const rules = fs.readFileSync(path.join(repositoryRoot, 'firestore.rules'), 'utf8');
 
   assert.match(rules, /function isImportAdmin\(\)\s*\{\s*return signedIn\(\);\s*\}/);
-  assert.match(rules, /match \/baba_access_config\/\{configId\}/);
-  assert.match(rules, /allow get: if configId == 'player'/);
+  assert.match(rules, /function ownsAccount\(accountId\)/);
+  assert.match(rules, /sign_in_provider == 'google\.com'/);
+  assert.match(rules, /match \/users\/\{userId\}/);
+  assert.match(rules, /match \/baba_accounts\/\{accountId\}/);
+  assert.match(rules, /match \/baba_access_config\/\{accountId\}/);
+  assert.match(rules, /match \/baba_access_codes\/\{codeHash\}/);
+  assert.match(rules, /allow get: if true/);
   assert.match(rules, /request\.resource\.data\.currentCodeHash\.size\(\) == 64/);
+});
+
+test('persistencia e importacao usam o espaco exclusivo da conta', () => {
+  const persistence = readPublic('baba-persistence.js');
+  const importPersistence = readPublic('baba-import-persistence.js');
+
+  assert.match(persistence, /doc\(db, 'baba_accounts', accountId/);
+  assert.match(importPersistence, /doc\(db, 'baba_accounts', accountId\(\)/);
+  assert.doesNotMatch(importPersistence, /doc\(db, 'baba_imports'/);
+  assert.doesNotMatch(importPersistence, /collection\(db, 'baba_player_aliases'/);
+});
+
+test('importador reutiliza a sessao do site sem segundo botao de login', () => {
+  const ui = readPublic('baba-import-ui.js');
+  const html = readPublic('baba.html');
+
+  assert.match(ui, /refreshAccountData/);
+  assert.doesNotMatch(ui, /firebase-login|ADMIN_ACCESS_REQUIRED|refreshAdminAccess/);
+  assert.doesNotMatch(html, /id="baba-import-access"/);
 });

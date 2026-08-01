@@ -1731,6 +1731,7 @@
         els.playerCodeInput?.select();
         return;
       }
+      state = readState();
       setMode('player', { rememberDevice: els.rememberPlayerCode?.checked !== false });
     } catch (error) {
       els.playerCodeFeedback.textContent = error?.message || 'Não foi possível validar o código.';
@@ -8106,6 +8107,7 @@
   window.addEventListener('firebase-auth-state', (event) => {
     if (!hasBooted) return;
     if (event.detail?.authenticated) {
+      state = readState();
       setMode('organizer', { rememberDevice: true });
       restorePlayerAccessCodeForOrganizer();
     }

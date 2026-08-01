@@ -26,18 +26,34 @@
         <h1 class="text-2xl md:text-3xl font-bold">Notas de Atualização</h1>
         <p class="text-sm text-gray-400">Histórico de melhorias e correções do site.</p>
       </div>
-      <a href="processos.html"
+      <a href="index.html" onclick="if (history.length > 1) { event.preventDefault(); history.back(); }"
         class="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10">←
         Voltar</a>
     </div>
 
     <section class="space-y-4">
 
+      <article id="version-6-0-44" class="glass-card p-5 border border-cyan-400/40 shadow-lg shadow-cyan-950/20">
+        <div class="flex items-center justify-between gap-3 mb-2">
+          <h2 class="text-xl font-bold text-cyan-200">Versão 6.0.44</h2>
+          <span class="text-xs font-semibold text-cyan-200 bg-cyan-500/10 border border-cyan-400/20 rounded-full px-2.5 py-1">Atual</span>
+        </div>
+        <p class="text-xs text-gray-400 mb-3">1 de agosto de 2026</p>
+        <ul class="list-disc pl-5 text-sm text-gray-200 space-y-1.5">
+          <li>Login do sistema simplificado para <strong>Google</strong>, com sessão persistente no dispositivo.</li>
+          <li>Cada conta Google agora possui seu próprio espaço de dados para babas, jogadores, rankings, pagamentos, aliases e importações.</li>
+          <li>Códigos de jogador passaram a identificar a conta correta do organizador; gerar um código novo revoga o anterior.</li>
+          <li>A importação de baba com IA reutiliza o login principal e não exibe mais um segundo pedido de autenticação.</li>
+          <li>Importador aprimorado para textos em formatos diferentes, descarte de times vazios e indicação profissional do último colocado.</li>
+          <li>Novo botão global de versão no rodapé, com acesso direto a este histórico de atualizações em todas as áreas do site.</li>
+        </ul>
+      </article>
+
 
       <article class="glass-card p-5 border border-cyan-500/20">
         <div class="flex items-center justify-between gap-3 mb-2">
           <h2 class="text-xl font-bold text-cyan-200">Versão 6.0.43</h2>
-          <span class="text-xs text-gray-400">Atual</span>
+          <span class="text-xs text-gray-400">Anterior</span>
         </div>
         <ul class="list-disc pl-5 text-sm text-gray-200 space-y-1">
           <li>Sincronização em tempo real sem recarregar página aplicada na <strong>Index</strong>: quando chega atualização remota, os cards e listas agora se redesenham automaticamente no mesmo layout.</li>
@@ -562,7 +578,7 @@
   <script type="module" src="firebase-config.js"></script>
 
   <script src="theme-toggle.js"></script>
-  <script src="site-preloader.js" defer></script>
+  <script src="site-preloader.js?v=6.0.44" defer></script>
 </body>
 
 </html>

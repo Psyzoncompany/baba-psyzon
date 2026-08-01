@@ -2,6 +2,14 @@
    Prefetches the main static screens and their JS/CSS assets after the first paint,
    so moving between pages feels cached instead of loading from zero. */
 (() => {
+  const loaderScriptUrl = new URL(document.currentScript?.src || 'site-preloader.js', window.location.href);
+  if (!document.querySelector('script[data-site-version-loader]')) {
+    const versionScript = document.createElement('script');
+    versionScript.src = new URL('site-version.js?v=6.0.44', loaderScriptUrl).href;
+    versionScript.defer = true;
+    versionScript.dataset.siteVersionLoader = 'true';
+    document.head.appendChild(versionScript);
+  }
   const ROOT_PAGE = 'index.html';
   const SITE_PAGES = [
     'central.html',
@@ -20,6 +28,7 @@
     'style.css',
     'ui-liquid.css',
     'theme-toggle.js',
+    'site-version.js',
     'firebase-config.js',
     'img/logo.png',
     'img/ui-icon-sheet.png',

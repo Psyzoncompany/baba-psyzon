@@ -293,19 +293,20 @@ test('arquitetura grava em transação, protege permissões e desenha etiquetas 
   assert.match(persistence, /runTransaction\(db/);
   assert.match(persistence, /await repository\(\)\.commitImport|commitImport/);
   assert.match(rules, /function isImportAdmin\(\)/);
-  assert.match(rules, /match \/baba_player_aliases/);
+  assert.match(rules, /match \/baba_accounts\/\{accountId\}/);
+  assert.match(persistence, /accountDoc\('aliases'/);
   assert.match(pdf, /drawPaymentClassificationBadges/);
   assert.match(pdf, /NOVATO/);
   assert.match(pdf, /CONVIDADO/);
   assert.match(pdf, /GOLEIRO/);
 });
 
-test('interface trata falta de acesso sem repetir erros e destaca o último colocado', () => {
+test('interface reutiliza o login principal e destaca o último colocado', () => {
   const root = path.join(__dirname, '..');
   const ui = fs.readFileSync(path.join(root, 'baba-import-ui.js'), 'utf8');
   const baba = fs.readFileSync(path.join(root, 'baba.js'), 'utf8');
-  assert.match(ui, /refreshAdminAccess/);
-  assert.match(ui, /ADMIN_ACCESS_REQUIRED/);
+  assert.match(ui, /refreshAccountData/);
+  assert.doesNotMatch(ui, /ADMIN_ACCESS_REQUIRED|firebase-login/);
   assert.doesNotMatch(ui, /Aliases não puderam ser carregados/);
   assert.doesNotMatch(ui, /Histórico de imports não pôde ser carregado/);
   assert.match(baba, /baba-ranking-card--last/);

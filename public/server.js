@@ -22,6 +22,9 @@ async function requireImportAdmin(req, res, next) {
     const match = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i);
     if (!match) return res.status(401).json({ error: 'Autenticação obrigatória.' });
     const decoded = await getAuth().verifyIdToken(match[1]);
+    if (decoded.firebase?.sign_in_provider !== 'google.com') {
+      return res.status(403).json({ error: 'Entre com uma conta Google para usar a importação.' });
+    }
     const now = Date.now();
     const recent = (rateLimits.get(decoded.uid) || []).filter((timestamp) => now - timestamp < 60_000);
     if (recent.length >= 10) return res.status(429).json({ error: 'Limite temporário de análises atingido. Aguarde um minuto.' });

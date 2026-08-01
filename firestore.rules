@@ -2,11 +2,20 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
-      return request.auth != null;
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
     }
 
     function isImportAdmin() {
       return signedIn();
+    }
+
+    function ownsAccount(accountId) {
+      return signedIn() && request.auth.uid == accountId;
+    }
+
+    match /users/{userId} {
+      allow read, create, update, delete: if ownsAccount(userId);
     }
 
     function isSchemaV2() {
@@ -200,11 +209,10 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    match /baba_access_config/{configId} {
-      allow get: if configId == 'player';
+    match /baba_access_config/{accountId} {
+      allow get: if ownsAccount(accountId);
       allow list: if false;
-      allow create, update: if signedIn()
-        && configId == 'player'
+      allow create, update: if ownsAccount(accountId)
         && request.resource.data.keys().hasOnly([
           'currentCodeHash', 'active', 'expiresAtMs', 'updatedAtMs', 'updatedAt',
           'updatedBy', 'updatedByEmail', 'schemaVersion'
@@ -214,6 +222,112 @@ service cloud.firestore {
         && request.resource.data.updatedBy == request.auth.uid
         && request.resource.data.schemaVersion == 1;
       allow delete: if false;
+    }
+
+    match /baba_access_codes/{codeHash} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.accountId == request.auth.uid
+        && codeHash.size() == 64
+        && request.resource.data.schemaVersion == 1;
+      allow update: if signedIn()
+        && resource.data.accountId == request.auth.uid
+        && request.resource.data.accountId == request.auth.uid
+        && codeHash.size() == 64
+        && request.resource.data.schemaVersion == 1;
+      allow delete: if false;
+    }
+
+    match /baba_accounts/{accountId} {
+      allow read: if ownsAccount(accountId);
+      allow create, update, delete: if ownsAccount(accountId);
+
+      match /meta/{metaId} {
+        allow read: if true;
+        allow create, update: if ownsAccount(accountId);
+        allow delete: if false;
+      }
+
+      match /babas/{babaId} {
+        allow read: if true;
+        allow create, update: if ownsAccount(accountId);
+        allow delete: if false;
+
+        match /{document=**} {
+          allow read: if true;
+          allow create, update: if ownsAccount(accountId);
+          allow delete: if false;
+        }
+      }
+
+      match /players/{playerId} {
+        allow read: if true;
+        allow create, update: if ownsAccount(accountId);
+        allow delete: if false;
+      }
+
+      match /purchase_goals/{goalId} {
+        allow read: if true;
+        allow create, update: if ownsAccount(accountId);
+        allow delete: if false;
+      }
+
+      match /player_stats/{playerId} {
+        allow read: if true;
+        allow create, update: if ownsAccount(accountId);
+        allow delete: if false;
+      }
+
+      match /months/{monthId} {
+        allow read: if true;
+        allow create, update: if ownsAccount(accountId);
+        allow delete: if false;
+
+        match /{document=**} {
+          allow read: if true;
+          allow create, update: if ownsAccount(accountId);
+          allow delete: if false;
+        }
+      }
+
+      match /imports/{importId} {
+        allow read, create, update, delete: if ownsAccount(accountId);
+
+        match /{document=**} {
+          allow read, create, update: if ownsAccount(accountId);
+          allow delete: if false;
+        }
+      }
+
+      match /aliases/{aliasId} {
+        allow read, create, update, delete: if ownsAccount(accountId);
+      }
+
+      match /import_keys/{keyId} {
+        allow read, create, update: if ownsAccount(accountId);
+        allow delete: if false;
+      }
+
+      match /player_name_keys/{keyId} {
+        allow read, create, update: if ownsAccount(accountId);
+        allow delete: if false;
+      }
+
+      match /player_status_history/{historyId} {
+        allow read, create, update: if ownsAccount(accountId);
+        allow delete: if false;
+      }
+
+      match /migrations/{migrationId} {
+        allow read, create, update: if ownsAccount(accountId);
+        allow delete: if false;
+
+        match /legacy_chunks/{chunkId} {
+          allow read, create, update: if ownsAccount(accountId);
+          allow delete: if false;
+        }
+      }
     }
 
     match /baba_purchase_goals/{goalId} {

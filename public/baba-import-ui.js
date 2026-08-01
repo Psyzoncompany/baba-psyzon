@@ -10,8 +10,8 @@ const uiState = {
   duplicates: [],
   duplicateConfirmed: false,
   saving: false,
-  adminAccess: 'checking',
-  adminAccessMessage: '',
+  accountDataLoaded: false,
+  accountDataUid: '',
 };
 
 function host() {
@@ -56,52 +56,23 @@ function authenticatedUser() {
   return user && user.uid !== 'local_user' ? user : null;
 }
 
-function isPermissionError(error) {
-  const message = `${error?.code || ''} ${error?.message || ''}`.toLowerCase();
-  return message.includes('permission-denied') || message.includes('insufficient permissions');
-}
-
-function renderAdminAccess() {
-  const element = document.getElementById('baba-import-access');
-  if (!element) return;
-  const states = {
-    ready: ['success', '✓', 'Conta administrativa conectada', 'Aliases, histórico e salvamento estão liberados.'],
-    denied: ['danger', '!', 'Regras administrativas desatualizadas', uiState.adminAccessMessage || 'Todo login Google é administrador. Publique as regras atuais do Firestore para liberar a gravação.'],
-    'signed-out': ['warning', '↗', 'Login necessário para salvar', 'Você pode analisar o texto agora. Entre com a conta administrativa para confirmar a importação.'],
-    checking: ['neutral', '…', 'Verificando acesso', 'Aguarde a validação da sessão Firebase.'],
-  };
-  const [tone, icon, title, description] = states[uiState.adminAccess] || states['signed-out'];
-  element.className = `baba-import-access is-${tone}`;
-  element.innerHTML = `<span class="baba-import-access__icon" aria-hidden="true">${icon}</span><span><strong>${escapeHTML(title)}</strong><small>${escapeHTML(description)}</small></span>${uiState.adminAccess === 'signed-out' ? '<button type="button" data-import-action="firebase-login">Entrar com Google</button>' : ''}`;
-}
-
-async function refreshAdminAccess({ force = false } = {}) {
+async function refreshAccountData({ force = false } = {}) {
   const current = authenticatedUser();
-  if (!force && uiState.adminAccess === 'ready' && current) return true;
-  if (!force && uiState.adminAccess === 'denied' && current) return false;
-  uiState.adminAccess = 'checking';
-  renderAdminAccess();
   try { await window.firebaseAuth?.waitUntilReady?.(); } catch (error) { /* estado tratado abaixo */ }
-  if (!authenticatedUser()) {
-    uiState.adminAccess = 'signed-out';
-    renderAdminAccess();
-    return false;
-  }
+  const user = authenticatedUser();
+  if (!user) return false;
+  if (!force && uiState.accountDataLoaded && uiState.accountDataUid === user.uid) return true;
   try {
     [uiState.aliases, uiState.imports] = await Promise.all([
       repository().loadAliases(),
       repository().loadImports(),
     ]);
-    uiState.adminAccess = 'ready';
-    uiState.adminAccessMessage = '';
-    renderAdminAccess();
+    uiState.accountDataLoaded = true;
+    uiState.accountDataUid = user.uid;
     return true;
   } catch (error) {
-    uiState.adminAccess = 'denied';
-    uiState.adminAccessMessage = isPermissionError(error)
-      ? 'O Firebase recusou o acesso. Publique as regras atuais; toda conta autenticada já é administradora.'
-      : 'Não foi possível validar a conta administrativa agora.';
-    renderAdminAccess();
+    uiState.accountDataLoaded = false;
+    console.warn('Dados de importação da conta não puderam ser carregados:', error);
     return false;
   }
 }
@@ -142,18 +113,6 @@ function refreshValidation() {
     ...core.validateStructuredReport(uiState.analysis.parsed),
     ...core.validateResolutions(uiState.analysis.people),
   ];
-  if (uiState.adminAccess !== 'ready') {
-    uiState.analysis.warnings.push({
-      id: 'ADMIN_ACCESS_REQUIRED:root',
-      code: 'ADMIN_ACCESS_REQUIRED',
-      severity: 'blocker',
-      path: '',
-      message: uiState.adminAccess === 'denied'
-        ? 'As regras publicadas do Firestore ainda não liberaram esta conta autenticada.'
-        : 'Entre com a conta administrativa antes de confirmar a importação.',
-      details: { adminAccess: uiState.adminAccess },
-    });
-  }
   if (uiState.duplicates.length && !uiState.duplicateConfirmed) {
     uiState.analysis.warnings.push({
       id: 'POSSIBLE_DUPLICATE:root',
@@ -347,7 +306,7 @@ async function analyzeImport() {
   const button = document.getElementById('baba-import-analyze');
   if (button) button.disabled = true;
   try {
-    await refreshAdminAccess();
+    await refreshAccountData();
     let analysis = core.buildAnalysis(text, host()?.getState?.().players || [], uiState.aliases);
     analysis = await maybeUseAI(text, analysis);
     uiState.originalText = text;
@@ -606,11 +565,7 @@ async function commitCurrentImport(autoSaved = false) {
     setFeedback(`Baba de ${formatDate(entities.baba.dataISO)} criado com sucesso em uma única transação.`, 'success');
     host()?.showToast?.('Importação concluída e baba salvo no histórico.');
   } catch (error) {
-    if (isPermissionError(error) || !authenticatedUser()) {
-      uiState.adminAccess = authenticatedUser() ? 'denied' : 'signed-out';
-      uiState.adminAccessMessage = authenticatedUser() ? 'O Firebase recusou a gravação para esta conta.' : '';
-      renderAdminAccess();
-    } else console.error('Falha ao confirmar importação:', error);
+    console.error('Falha ao confirmar importação:', error);
     setFeedback(error.message || 'A transação falhou; nenhum dado parcial foi salvo.', 'danger');
   } finally {
     uiState.saving = false;
@@ -623,8 +578,8 @@ async function renderAliases() {
   if (!container) return;
   container.innerHTML = '<p>Carregando aliases...</p>';
   try {
-    if (!await refreshAdminAccess()) {
-      container.innerHTML = '<p>Entre com Google para visualizar aliases.</p>';
+    if (!await refreshAccountData()) {
+      container.innerHTML = '<p>A sessão da conta não está disponível. Atualize a página.</p>';
       return;
     }
     container.innerHTML = uiState.aliases.length ? `<h4>Aliases (${uiState.aliases.length})</h4>${uiState.aliases.map((alias) => `
@@ -642,8 +597,8 @@ async function renderImportHistory() {
   if (!container) return;
   container.innerHTML = '<p>Carregando histórico...</p>';
   try {
-    if (!await refreshAdminAccess()) {
-      container.innerHTML = '<p>Entre com Google para visualizar o histórico.</p>';
+    if (!await refreshAccountData()) {
+      container.innerHTML = '<p>A sessão da conta não está disponível. Atualize a página.</p>';
       return;
     }
     container.innerHTML = uiState.imports.length ? `<h4>Importações (${uiState.imports.length})</h4>${uiState.imports.map((item) => `
@@ -699,12 +654,6 @@ function wireEvents() {
     const button = event.target.closest('[data-import-action]');
     if (!button) return;
     try {
-      if (button.dataset.importAction === 'firebase-login') {
-        await window.firebaseAuth?.loginWithGoogle?.(true);
-        await refreshAdminAccess({ force: true });
-        if (uiState.analysis) renderReview();
-        return;
-      }
       if (button.dataset.importAction === 'toggle-alias') await toggleAlias(button);
       if (button.dataset.importAction === 'edit-alias') await editAlias(button);
       if (button.dataset.importAction === 'revert-import') await revertImport(button);
@@ -718,15 +667,14 @@ function mount() {
   if (uiState.mounted || !core || !host() || !document.getElementById('baba-import-root')) return;
   uiState.mounted = true;
   wireEvents();
-  renderAdminAccess();
-  refreshAdminAccess().then(() => {
+  refreshAccountData().then(() => {
     if (uiState.analysis) renderReview();
   });
 }
 
 window.BabaImportUI = Object.freeze({ mount, analyzeImport });
 window.addEventListener('baba-import-host-ready', mount);
-window.addEventListener('backend-ready', () => refreshAdminAccess({ force: true }).then(() => {
+window.addEventListener('backend-ready', () => refreshAccountData({ force: true }).then(() => {
   if (uiState.analysis) renderReview();
 }));
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);

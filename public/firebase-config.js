@@ -1,7 +1,7 @@
 // c:\Users\AAAA\Desktop\sitey-caixa\firebase-config.js
 
 // Importa as funções do Firebase (versão compat para facilitar o uso com scripts existentes)
-import { onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { onAuthStateChanged, setPersistence, browserLocalPersistence, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, onSnapshot, setDoc, updateDoc, serverTimestamp, deleteField } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 import { app, auth, db } from "./js/firebase-init.js";
@@ -1429,6 +1429,30 @@ const BABA_NATIVE_STORAGE_KEYS = new Set([
     'psyzon_baba_player_access_v1',
 ]);
 const isBabaNativeStorageKey = (key) => isBabaPage() && BABA_NATIVE_STORAGE_KEYS.has(key);
+const BABA_ACCOUNT_STORAGE_KEYS = new Set([
+    'psyzon_baba_state_v1',
+    'psyzon_baba_mode',
+    'psyzon_baba_last_view',
+    'psyzon_baba_theme',
+]);
+const babaAccountId = () => String(auth.currentUser?.uid || window.BabaAccessRepository?.currentAccountId?.() || '')
+    .replace(/[^a-zA-Z0-9_-]/g, '')
+    .slice(0, 128);
+const babaNativeStorageKey = (key) => {
+    if (!BABA_ACCOUNT_STORAGE_KEYS.has(key)) return key;
+    const accountId = babaAccountId();
+    if (!accountId) return key;
+    const scopedKey = `${key}:${accountId}`;
+    if (nativeLocalStorage.getItem(scopedKey) == null && nativeLocalStorage.getItem(key) != null) {
+        const claimKey = 'psyzon_baba_legacy_storage_owner';
+        const claimedBy = nativeLocalStorage.getItem(claimKey);
+        if (!claimedBy || claimedBy === accountId) {
+            nativeLocalStorage.setItem(scopedKey, nativeLocalStorage.getItem(key));
+            nativeLocalStorage.setItem(claimKey, accountId);
+        }
+    }
+    return scopedKey;
+};
 
 // O modo local legado impedia o Google de inicializar em dispositivos que ainda
 // possuíam essa chave. O acesso atual sempre usa Firebase Authentication.
@@ -1441,7 +1465,7 @@ if (!window.isLocalMode) {
         value: {
             getItem: (key) => {
                 if (isFirebaseStorageKey(key)) return nativeLocalStorage.getItem(key);
-                if (isBabaNativeStorageKey(key)) return nativeLocalStorage.getItem(key);
+                if (isBabaNativeStorageKey(key)) return nativeLocalStorage.getItem(babaNativeStorageKey(key));
                 const val = memoryStore[key];
                 if (val === undefined) return null;
                 // Se for objeto, retorna string JSON (comportamento padrão do localStorage)
@@ -1453,7 +1477,7 @@ if (!window.isLocalMode) {
                     return;
                 }
                 if (isBabaNativeStorageKey(key)) {
-                    nativeLocalStorage.setItem(key, value);
+                    nativeLocalStorage.setItem(babaNativeStorageKey(key), value);
                     return;
                 }
 
@@ -1481,7 +1505,7 @@ if (!window.isLocalMode) {
                     return;
                 }
                 if (isBabaNativeStorageKey(key)) {
-                    nativeLocalStorage.removeItem(key);
+                    nativeLocalStorage.removeItem(babaNativeStorageKey(key));
                     return;
                 }
 
@@ -1544,6 +1568,12 @@ if (window.isLocalMode) {
         if (!initialAuthStateResolved) {
             initialAuthStateResolved = true;
             resolveInitialAuthState(user || null);
+        }
+        if (user && !user.providerData?.some((provider) => provider.providerId === 'google.com')) {
+            window.firebaseAuthLastError = { code: 'auth/google-login-required', message: 'Entre com uma conta Google para acessar o site.' };
+            window.dispatchEvent(new CustomEvent('firebase-auth-error', { detail: window.firebaseAuthLastError }));
+            await signOut(auth);
+            return;
         }
         if (user) {
             window.dispatchEvent(new CustomEvent('firebase-auth-state', { detail: { user, authenticated: true } }));
@@ -1615,14 +1645,6 @@ if (window.isLocalMode) {
 // (Apenas se NÃO estiver no modo local, pois o modo local já definiu o seu proprio firebaseAuth acima)
 if (!window.isLocalMode) {
     window.firebaseAuth = {
-        login: async (email, password) => {
-            await setAuthPersistence();
-            return signInWithEmailAndPassword(auth, email, password);
-        },
-        signup: async (email, password) => {
-            await setAuthPersistence();
-            return createUserWithEmailAndPassword(auth, email, password);
-        },
         loginWithGoogle: async () => {
             await setAuthPersistence();
             try {

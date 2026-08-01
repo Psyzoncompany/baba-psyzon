@@ -1,4 +1,4 @@
-import { db } from './js/firebase-init.js';
+import { auth, db } from './js/firebase-init.js';
 import {
   collection,
   doc,
@@ -18,7 +18,6 @@ const SCHEMA_VERSION = 2;
 const STORAGE_KEY = 'psyzon_baba_state_v1';
 const DEVICE_ID_KEY = 'psyzon_baba_public_device_id';
 const DEBUG_SIZE_KEY = 'psyzon_baba_debug_size';
-const POINTER_PATH = ['orders_public', 'baba_live_state'];
 const RECENT_BABA_LIMIT = 24;
 const BACKUP_CHUNK_SIZE = 160_000;
 const BATCH_LIMIT = 400;
@@ -41,7 +40,7 @@ const USE_BABA_SCHEMA_V2 = window.BABA_USE_SCHEMA_V2 !== false;
 const OFFLINE_TEST_MODE = new URLSearchParams(window.location.search).has('babaOffline');
 
 const tools = window.BabaHtmlTools;
-const pointerRef = doc(db, ...POINTER_PATH);
+let activeAccountId = '';
 const unsubscribers = new Set();
 const subscriptionsByKey = new Map();
 const activeSubscriptions = new Map();
@@ -98,6 +97,26 @@ function safeId(value, fallback = 'item') {
   return normalized.slice(0, 180) || fallback;
 }
 
+function resolveAccountId(candidate = '') {
+  return safeId(candidate || auth.currentUser?.uid || window.BabaAccessRepository?.currentAccountId?.(), '');
+}
+
+function accountDoc(...segments) {
+  const accountId = resolveAccountId(activeAccountId);
+  if (!accountId) throw new Error('Conta do Baba não identificada.');
+  return doc(db, 'baba_accounts', accountId, ...segments);
+}
+
+function accountCollection(...segments) {
+  const accountId = resolveAccountId(activeAccountId);
+  if (!accountId) throw new Error('Conta do Baba não identificada.');
+  return collection(db, 'baba_accounts', accountId, ...segments);
+}
+
+function pointerRef() {
+  return accountDoc('meta', 'live');
+}
+
 function clone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
 }
@@ -139,6 +158,11 @@ function isQuotaError(error) {
 
 function getNativeStore() {
   return window.__nativeLS || window.localStorage;
+}
+
+function pendingSyncKey() {
+  const accountId = resolveAccountId(activeAccountId);
+  return accountId ? `${PENDING_SYNC_KEY}:${accountId}` : PENDING_SYNC_KEY;
 }
 
 function compact(value) {
@@ -596,7 +620,7 @@ async function persistBaba(state, baba, previousBaba = null, previousState = nul
   const operations = [];
   pushChangedOperation(
     operations,
-    doc(db, 'babas', babaId),
+    accountDoc('babas', babaId),
     babaMetadata(baba, currentGameId, timestamp),
     previousBaba ? babaMetadata(previousBaba, previousGameId, timestamp) : null,
   );
@@ -609,7 +633,7 @@ async function persistBaba(state, baba, previousBaba = null, previousState = nul
   const nextParticipantIds = new Set(participants.map((item) => item.playerId));
   participants.forEach((item) => pushChangedOperation(
     operations,
-    doc(db, 'babas', babaId, 'participants', safeId(item.playerId)),
+    accountDoc('babas', babaId, 'participants', safeId(item.playerId)),
     item,
     previousParticipantById.get(item.playerId),
   ));
@@ -621,7 +645,7 @@ async function persistBaba(state, baba, previousBaba = null, previousState = nul
   const nextTeamIds = new Set((baba.teams || []).map((team) => team.id));
   (baba.teams || []).forEach((team, index) => pushChangedOperation(
     operations,
-    doc(db, 'babas', babaId, 'teams', safeId(team.id)),
+    accountDoc('babas', babaId, 'teams', safeId(team.id)),
     teamDocument(team, index, timestamp),
     previousTeamById.get(team.id),
   ));
@@ -653,7 +677,7 @@ async function persistBaba(state, baba, previousBaba = null, previousState = nul
     nextGameIds.add(gameId);
     pushChangedOperation(
       operations,
-      doc(db, 'babas', babaId, 'games', gameId),
+      accountDoc('babas', babaId, 'games', gameId),
       gameDocument(game, status, timestamp),
       previousGameById.get(gameId),
     );
@@ -661,7 +685,7 @@ async function persistBaba(state, baba, previousBaba = null, previousState = nul
       nextGoalIds.add(goal.id);
       pushChangedOperation(
         operations,
-        doc(db, 'babas', babaId, 'goals', goal.id),
+        accountDoc('babas', babaId, 'goals', goal.id),
         goalDocument(goal, babaId, timestamp),
         previousGoalById.get(goal.id),
       );
@@ -676,7 +700,7 @@ async function persistBaba(state, baba, previousBaba = null, previousState = nul
   Object.entries(baba.pagamentos || {}).forEach(([playerId, paid]) => {
     pushChangedOperation(
       operations,
-      doc(db, 'babas', babaId, 'payments', safeId(playerId)),
+      accountDoc('babas', babaId, 'payments', safeId(playerId)),
       paymentDocument(state, baba, playerId, paid, timestamp),
       previousPaymentById.get(playerId),
     );
@@ -693,7 +717,7 @@ async function persistBaba(state, baba, previousBaba = null, previousState = nul
   const nextStatIds = new Set(Object.keys(stats));
   Object.entries(stats).forEach(([playerId, item]) => pushChangedOperation(
     operations,
-    doc(db, 'babas', babaId, 'stats', safeId(playerId)),
+    accountDoc('babas', babaId, 'stats', safeId(playerId)),
     compact({ ...item, playerId, schemaVersion: SCHEMA_VERSION, deleted: false, updatedAtMs: timestamp }),
     previousStats[playerId]
       ? compact({ ...previousStats[playerId], playerId, schemaVersion: SCHEMA_VERSION, deleted: false, updatedAtMs: timestamp })
@@ -703,37 +727,37 @@ async function persistBaba(state, baba, previousBaba = null, previousState = nul
   if (previousBaba) {
     previousParticipants.forEach((item) => {
       if (!nextParticipantIds.has(item.playerId)) operations.push(setOperation(
-        doc(db, 'babas', babaId, 'participants', safeId(item.playerId)),
+        accountDoc('babas', babaId, 'participants', safeId(item.playerId)),
         { playerId: item.playerId, schemaVersion: SCHEMA_VERSION, deleted: true, updatedAtMs: timestamp },
       ));
     });
     (previousBaba.teams || []).forEach((team) => {
       if (!nextTeamIds.has(team.id)) operations.push(setOperation(
-        doc(db, 'babas', babaId, 'teams', safeId(team.id)),
+        accountDoc('babas', babaId, 'teams', safeId(team.id)),
         { id: team.id, schemaVersion: SCHEMA_VERSION, deleted: true, updatedAtMs: timestamp },
       ));
     });
     Object.keys(previousBaba.pagamentos || {}).forEach((playerId) => {
       if (!nextPaymentIds.has(playerId)) operations.push(setOperation(
-        doc(db, 'babas', babaId, 'payments', safeId(playerId)),
+        accountDoc('babas', babaId, 'payments', safeId(playerId)),
         { playerId, schemaVersion: SCHEMA_VERSION, deleted: true, updatedAtMs: timestamp },
       ));
     });
     new Set([...Object.keys(previousStats), ...Object.keys(previousBaba.rankingDoBaba || {})]).forEach((playerId) => {
       if (!nextStatIds.has(playerId)) operations.push(setOperation(
-        doc(db, 'babas', babaId, 'stats', safeId(playerId)),
+        accountDoc('babas', babaId, 'stats', safeId(playerId)),
         { playerId, schemaVersion: SCHEMA_VERSION, deleted: true, updatedAtMs: timestamp },
       ));
     });
     previousGames.forEach(({ game }) => {
       const gameId = gameIdFor(game);
       if (!nextGameIds.has(gameId)) operations.push(setOperation(
-        doc(db, 'babas', babaId, 'games', gameId),
+        accountDoc('babas', babaId, 'games', gameId),
         { id: gameId, schemaVersion: SCHEMA_VERSION, deleted: true, updatedAtMs: timestamp },
       ));
       allGoalEvents(game, gameId, timestamp).forEach((goal) => {
         if (!nextGoalIds.has(goal.id)) operations.push(setOperation(
-          doc(db, 'babas', babaId, 'goals', goal.id),
+          accountDoc('babas', babaId, 'goals', goal.id),
           { id: goal.id, babaId, schemaVersion: SCHEMA_VERSION, deleted: true },
         ));
       });
@@ -787,13 +811,13 @@ async function persistGlobalData(state, previousState = null) {
     const previousPlayer = previousPlayers.get(player.id);
     pushChangedOperation(
       operations,
-      doc(db, 'baba_players', safeId(player.id)),
+      accountDoc('players', safeId(player.id)),
       playerDocument(player, timestamp),
       previousPlayer ? playerDocument(previousPlayer, timestamp) : null,
     );
   });
   (previousState?.players || []).forEach((player) => {
-    if (!nextPlayers.has(player.id)) operations.push(setOperation(doc(db, 'baba_players', safeId(player.id)), {
+    if (!nextPlayers.has(player.id)) operations.push(setOperation(accountDoc('players', safeId(player.id)), {
       playerId: player.id, deleted: true, schemaVersion: SCHEMA_VERSION, updatedAtMs: timestamp,
     }));
   });
@@ -805,13 +829,13 @@ async function persistGlobalData(state, previousState = null) {
     const previousGoal = previousGoals.get(goal.id);
     pushChangedOperation(
       operations,
-      doc(db, 'baba_purchase_goals', safeId(goal.id)),
+      accountDoc('purchase_goals', safeId(goal.id)),
       purchaseGoalDocument(goal, previousGoal, timestamp),
       previousGoal ? purchaseGoalDocument(previousGoal, previousGoal, timestamp) : null,
     );
   }
   (previousState?.purchaseGoals || []).forEach((goal) => {
-    if (!nextGoals.has(goal.id)) operations.push(setOperation(doc(db, 'baba_purchase_goals', safeId(goal.id)), {
+    if (!nextGoals.has(goal.id)) operations.push(setOperation(accountDoc('purchase_goals', safeId(goal.id)), {
       id: goal.id, deleted: true, schemaVersion: SCHEMA_VERSION, updatedAtMs: timestamp,
     }));
   });
@@ -820,7 +844,7 @@ async function persistGlobalData(state, previousState = null) {
     const previousRecord = previousState?.monthlyPayments?.[monthKey];
     const paymentsChanged = stableSignature(record?.pagamentos || {}) !== stableSignature(previousRecord?.pagamentos || {});
     if (!previousRecord || paymentsChanged) {
-      operations.push(setOperation(doc(db, 'baba_months', safeId(monthKey)), {
+      operations.push(setOperation(accountDoc('months', safeId(monthKey)), {
         id: monthKey, monthKey, schemaVersion: SCHEMA_VERSION, updatedAtMs: timestamp, deleted: false,
       }));
     }
@@ -828,7 +852,7 @@ async function persistGlobalData(state, previousState = null) {
       const previousPaid = previousRecord?.pagamentos?.[playerId];
       if (previousRecord && Object.prototype.hasOwnProperty.call(previousRecord.pagamentos || {}, playerId)
         && Boolean(previousPaid) === Boolean(paid)) return;
-      operations.push(setOperation(doc(db, 'baba_months', safeId(monthKey), 'payments', safeId(playerId)), {
+      operations.push(setOperation(accountDoc('months', safeId(monthKey), 'payments', safeId(playerId)), {
         playerId, paid: Boolean(paid), updatedAtMs: Number(record.atualizadoEm || timestamp), schemaVersion: SCHEMA_VERSION,
       }));
     });
@@ -840,26 +864,26 @@ async function persistAggregateStats(state) {
   const { general, monthly } = computeAggregateStats(state);
   const operations = [];
   Object.entries(general).forEach(([playerId, item]) => operations.push(setOperation(
-    doc(db, 'player_stats', safeId(playerId)), compact({ ...item, playerId, schemaVersion: SCHEMA_VERSION, updatedAtMs: now() }),
+    accountDoc('player_stats', safeId(playerId)), compact({ ...item, playerId, schemaVersion: SCHEMA_VERSION, updatedAtMs: now() }),
   )));
   Object.entries(monthly).forEach(([monthKey, ranking]) => {
-    operations.push(setOperation(doc(db, 'baba_months', safeId(monthKey)), {
+    operations.push(setOperation(accountDoc('months', safeId(monthKey)), {
       id: monthKey, monthKey, schemaVersion: SCHEMA_VERSION, updatedAtMs: now(), deleted: false,
     }));
     Object.entries(ranking).forEach(([playerId, item]) => operations.push(setOperation(
-      doc(db, 'baba_months', safeId(monthKey), 'stats', safeId(playerId)),
+      accountDoc('months', safeId(monthKey), 'stats', safeId(playerId)),
       compact({ ...item, playerId, schemaVersion: SCHEMA_VERSION, updatedAtMs: now() }),
     )));
   });
   (state.babas || []).filter((baba) => baba.status === 'finalizado').forEach((baba) => {
-    operations.push(setOperation(doc(db, 'babas', safeId(baba.id)), { statsApplied: true, updatedAtMs: now() }));
+    operations.push(setOperation(accountDoc('babas', safeId(baba.id)), { statsApplied: true, updatedAtMs: now() }));
   });
   await commitOperations(operations);
 }
 
 async function applyBabaStatsDelta(state, baba, direction) {
   if (!baba || baba.status !== 'finalizado') return;
-  const babaRef = doc(db, 'babas', safeId(baba.id));
+  const babaRef = accountDoc('babas', safeId(baba.id));
   const monthKey = monthKeyFromBaba(baba);
   const stats = computeBabaStats(baba, new Map((state.players || []).map((player) => [player.id, player])));
   await runTransaction(db, async (transaction) => {
@@ -869,8 +893,8 @@ async function applyBabaStatsDelta(state, baba, direction) {
     const rows = Object.entries(stats).map(([playerId, item]) => ({
       playerId,
       item,
-      generalRef: doc(db, 'player_stats', safeId(playerId)),
-      monthRef: doc(db, 'baba_months', safeId(monthKey), 'stats', safeId(playerId)),
+      generalRef: accountDoc('player_stats', safeId(playerId)),
+      monthRef: accountDoc('months', safeId(monthKey), 'stats', safeId(playerId)),
     }));
     const snapshots = [];
     for (const row of rows) {
@@ -899,7 +923,7 @@ async function applyBabaStatsDelta(state, baba, direction) {
       transaction.set(generalRef, merge(general.data()), { merge: true });
       transaction.set(monthRef, merge(month.data()), { merge: true });
     });
-    transaction.set(doc(db, 'baba_months', safeId(monthKey)), {
+    transaction.set(accountDoc('months', safeId(monthKey)), {
       id: monthKey, monthKey, schemaVersion: SCHEMA_VERSION, updatedAtMs: now(), deleted: false,
     }, { merge: true });
     transaction.set(babaRef, { statsApplied: direction > 0, updatedAtMs: now() }, { merge: true });
@@ -911,7 +935,7 @@ async function markRemovedBabas(nextState, previousState) {
   const nextIds = new Set((nextState.babas || []).map((baba) => baba.id));
   const removed = (previousState.babas || []).filter((baba) => !nextIds.has(baba.id));
   for (const baba of removed) await applyBabaStatsDelta(previousState, baba, -1);
-  const operations = removed.map((baba) => setOperation(doc(db, 'babas', safeId(baba.id)), {
+  const operations = removed.map((baba) => setOperation(accountDoc('babas', safeId(baba.id)), {
       id: baba.id, deleted: true, schemaVersion: SCHEMA_VERSION, updatedAtMs: now(),
     }));
   await commitOperations(operations);
@@ -964,7 +988,7 @@ async function persistState(nextState, previousState = lastLocalState, { migrati
     updatedAt: serverTimestamp(),
     updatedAtMs: now(),
   });
-  await setDoc(pointerRef, pointerData, { merge: true });
+  await setDoc(pointerRef(), pointerData, { merge: true });
   latestPointerData = { ...pointerState, sourceId: deviceId, updatedAtMs: pointerData.updatedAtMs };
   lastPointerSignature = nextPointerSignature;
 }
@@ -975,7 +999,7 @@ async function backupLegacyState(state, migrationId) {
   for (let offset = 0; offset < raw.length; offset += BACKUP_CHUNK_SIZE) chunks.push(raw.slice(offset, offset + BACKUP_CHUNK_SIZE));
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
   const checksum = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
-  const migrationRef = doc(db, 'migrations', migrationId);
+  const migrationRef = accountDoc('migrations', migrationId);
   await setDoc(migrationRef, {
     status: 'running',
     sourcePath: POINTER_PATH.join('/'),
@@ -989,7 +1013,7 @@ async function backupLegacyState(state, migrationId) {
     startedAtMs: now(),
   }, { merge: true });
   await commitOperations(chunks.map((data, index) => setOperation(
-    doc(db, 'migrations', migrationId, 'legacy_chunks', String(index).padStart(4, '0')),
+    accountDoc('migrations', migrationId, 'legacy_chunks', String(index).padStart(4, '0')),
     { index, data, schemaVersion: SCHEMA_VERSION },
     { merge: false },
   )));
@@ -1000,7 +1024,7 @@ async function validateMigration(state) {
   const result = { babas: 0, participants: 0, teams: 0, games: 0, goals: 0, payments: 0, stats: 0 };
   for (const baba of state.babas || []) {
     const babaId = safeId(baba.id);
-    const babaSnapshot = await getDoc(doc(db, 'babas', babaId));
+    const babaSnapshot = await getDoc(accountDoc('babas', babaId));
     if (!babaSnapshot.exists()) throw new Error(`Baba ${babaId} nao foi criado.`);
     result.babas += 1;
     const games = [...(baba.jogos || [])];
@@ -1015,7 +1039,7 @@ async function validateMigration(state) {
     };
     for (const name of ['participants', 'teams', 'games', 'goals', 'payments', 'stats']) {
       const snapshot = await getDocs(query(
-        collection(db, 'babas', babaId, name),
+        accountCollection('babas', babaId, name),
         limit(QUERY_LIMITS[name] || 250),
       ));
       const activeCount = snapshot.docs.filter((item) => !item.data().deleted).length;
@@ -1033,12 +1057,12 @@ async function migrateLegacyState(state) {
   if (migrationRunning || !hasUsefulState(state)) return;
   migrationRunning = true;
   const migrationId = safeId(`baba_schema_v2_${state.activeBabaId || 'catalog'}`);
-  const migrationRef = doc(db, 'migrations', migrationId);
+  const migrationRef = accountDoc('migrations', migrationId);
   updateStatus('online', 'Migrando', 'Preparando os dados do Baba para o novo armazenamento.');
   try {
     const existing = await getDoc(migrationRef);
     if (existing.data()?.status === 'completed') {
-      await setDoc(pointerRef, {
+      await setDoc(pointerRef(), {
         activeBabaId: state.activeBabaId || null,
         status: state.babas?.find((baba) => baba.id === state.activeBabaId)?.status || 'idle',
         currentGameId: null,
@@ -1060,7 +1084,7 @@ async function migrateLegacyState(state) {
       backupChecksum: backup.checksum,
       validatedCounts: counts,
     }, { merge: true });
-    await setDoc(pointerRef, {
+    await setDoc(pointerRef(), {
       activeBabaId: state.activeBabaId || null,
       status: state.babas?.find((baba) => baba.id === state.activeBabaId)?.status || 'idle',
       currentGameId: state.babas?.find((baba) => baba.id === state.activeBabaId)?.jogoAtual
@@ -1205,13 +1229,13 @@ function restoreBabaFromSnapshots(babaId, snapshots) {
 async function fetchBaba(babaId) {
   const id = safeId(babaId);
   const [meta, participants, teams, games, goals, payments, stats] = await Promise.all([
-    getDoc(doc(db, 'babas', id)),
-    getDocs(query(collection(db, 'babas', id, 'participants'), limit(QUERY_LIMITS.participants))),
-    getDocs(query(collection(db, 'babas', id, 'teams'), limit(QUERY_LIMITS.teams))),
-    getDocs(query(collection(db, 'babas', id, 'games'), limit(QUERY_LIMITS.games))),
-    getDocs(query(collection(db, 'babas', id, 'goals'), limit(QUERY_LIMITS.goals))),
-    getDocs(query(collection(db, 'babas', id, 'payments'), limit(QUERY_LIMITS.payments))),
-    getDocs(query(collection(db, 'babas', id, 'stats'), limit(QUERY_LIMITS.stats))),
+    getDoc(accountDoc('babas', id)),
+    getDocs(query(accountCollection('babas', id, 'participants'), limit(QUERY_LIMITS.participants))),
+    getDocs(query(accountCollection('babas', id, 'teams'), limit(QUERY_LIMITS.teams))),
+    getDocs(query(accountCollection('babas', id, 'games'), limit(QUERY_LIMITS.games))),
+    getDocs(query(accountCollection('babas', id, 'goals'), limit(QUERY_LIMITS.goals))),
+    getDocs(query(accountCollection('babas', id, 'payments'), limit(QUERY_LIMITS.payments))),
+    getDocs(query(accountCollection('babas', id, 'stats'), limit(QUERY_LIMITS.stats))),
   ]);
   return restoreBabaFromSnapshots(id, { meta, participants, teams, games, goals, payments, stats });
 }
@@ -1337,13 +1361,13 @@ async function loadBaba(babaId, { realtime = false } = {}) {
   if (realtime) {
     if (!activeSubscriptions.has(id)) {
       const targets = [
-        ['meta', doc(db, 'babas', id)],
-        ['participants', query(collection(db, 'babas', id, 'participants'), limit(QUERY_LIMITS.participants))],
-        ['teams', query(collection(db, 'babas', id, 'teams'), limit(QUERY_LIMITS.teams))],
-        ['games', query(collection(db, 'babas', id, 'games'), limit(QUERY_LIMITS.games))],
-        ['goals', query(collection(db, 'babas', id, 'goals'), limit(QUERY_LIMITS.goals))],
-        ['payments', query(collection(db, 'babas', id, 'payments'), limit(QUERY_LIMITS.payments))],
-        ['stats', query(collection(db, 'babas', id, 'stats'), limit(QUERY_LIMITS.stats))],
+        ['meta', accountDoc('babas', id)],
+        ['participants', query(accountCollection('babas', id, 'participants'), limit(QUERY_LIMITS.participants))],
+        ['teams', query(accountCollection('babas', id, 'teams'), limit(QUERY_LIMITS.teams))],
+        ['games', query(accountCollection('babas', id, 'games'), limit(QUERY_LIMITS.games))],
+        ['goals', query(accountCollection('babas', id, 'goals'), limit(QUERY_LIMITS.goals))],
+        ['payments', query(accountCollection('babas', id, 'payments'), limit(QUERY_LIMITS.payments))],
+        ['stats', query(accountCollection('babas', id, 'stats'), limit(QUERY_LIMITS.stats))],
       ];
       const parts = {};
       activeSnapshotParts.set(id, parts);
@@ -1381,7 +1405,7 @@ async function loadBaba(babaId, { realtime = false } = {}) {
 async function loadMonthStats(monthKey) {
   if (!monthKey || monthStatsCache.has(monthKey)) return monthStatsCache.get(monthKey) || {};
   const snapshot = await getDocs(query(
-    collection(db, 'baba_months', safeId(monthKey), 'stats'),
+    accountCollection('months', safeId(monthKey), 'stats'),
     limit(QUERY_LIMITS.stats),
   ));
   const ranking = {};
@@ -1396,7 +1420,7 @@ async function loadMonthPayments(monthKey) {
   if (!id) return {};
   if (monthPaymentsCache.has(id)) return monthPaymentsCache.get(id);
   const snapshot = await getDocs(query(
-    collection(db, 'baba_months', id, 'payments'),
+    accountCollection('months', id, 'payments'),
     limit(QUERY_LIMITS.payments),
   ));
   const activePayments = snapshot.docs.map((item) => item.data()).filter((item) => !item.deleted);
@@ -1414,7 +1438,7 @@ async function loadMonthPayments(monthKey) {
 }
 
 function startPlayersSubscription() {
-  subscribe('global:players', query(collection(db, 'baba_players'), limit(QUERY_LIMITS.players)), (snapshot) => {
+  subscribe('global:players', query(accountCollection('players'), limit(QUERY_LIMITS.players)), (snapshot) => {
     window.__babaRemotePlayers = snapshot.docs.map((item) => item.data()).filter((item) => !item.deleted).map((item) => ({
       id: item.playerId || item.id,
       nome: item.nome || item.name,
@@ -1436,21 +1460,21 @@ function startPlayersSubscription() {
 }
 
 function startPurchaseGoalsSubscription() {
-  subscribe('global:purchase-goals', query(collection(db, 'baba_purchase_goals'), limit(QUERY_LIMITS.purchaseGoals)), (snapshot) => {
+  subscribe('global:purchase-goals', query(accountCollection('purchase_goals'), limit(QUERY_LIMITS.purchaseGoals)), (snapshot) => {
     window.__babaRemotePurchaseGoals = snapshot.docs.map((item) => item.data()).filter((item) => !item.deleted);
     scheduleRemoteFlush();
   }, 'de metas');
 }
 
 function startPlayerStatsSubscription() {
-  subscribe('global:player-stats', query(collection(db, 'player_stats'), limit(QUERY_LIMITS.players)), (snapshot) => {
+  subscribe('global:player-stats', query(accountCollection('player_stats'), limit(QUERY_LIMITS.players)), (snapshot) => {
     window.__babaRemotePlayerStats = Object.fromEntries(snapshot.docs.map((item) => [item.id, item.data()]));
     scheduleRemoteFlush();
   }, 'do ranking geral');
 }
 
 function startHistorySubscription() {
-  subscribe('global:recent-babas', query(collection(db, 'babas'), orderBy('criadoEm', 'desc'), limit(RECENT_BABA_LIMIT)), (snapshot) => {
+  subscribe('global:recent-babas', query(accountCollection('babas'), orderBy('criadoEm', 'desc'), limit(RECENT_BABA_LIMIT)), (snapshot) => {
     window.__babaRemoteMetadata = snapshot.docs.map((item) => item.data());
     historyCursor = snapshot.docs[snapshot.docs.length - 1] || null;
     hasMoreHistory = snapshot.size === RECENT_BABA_LIMIT;
@@ -1460,7 +1484,7 @@ function startHistorySubscription() {
 
 function startMonthsSubscription() {
   subscribe('global:months', query(
-    collection(db, 'baba_months'),
+    accountCollection('months'),
     orderBy('monthKey', 'desc'),
     limit(QUERY_LIMITS.months),
   ), (snapshot) => {
@@ -1495,7 +1519,7 @@ function activateView(viewName) {
 async function loadMoreHistory() {
   if (!historyCursor || !hasMoreHistory) return [];
   const snapshot = await getDocs(query(
-    collection(db, 'babas'),
+    accountCollection('babas'),
     orderBy('criadoEm', 'desc'),
     startAfter(historyCursor),
     limit(RECENT_BABA_LIMIT),
@@ -1516,7 +1540,7 @@ async function loadMoreHistory() {
 async function startPointerListener() {
   if (pointerListenerStarted) return;
   pointerListenerStarted = true;
-  subscribe('pointer:active-baba', pointerRef, async (snapshot) => {
+  subscribe('pointer:active-baba', pointerRef(), async (snapshot) => {
     const data = snapshot.data() || {};
     if (Number(data.schemaVersion || 0) < SCHEMA_VERSION) return;
     latestPointerData = data;
@@ -1544,7 +1568,7 @@ async function startPointerListener() {
 function writePendingSave(job) {
   if (!job) return;
   try {
-    getNativeStore().setItem(PENDING_SYNC_KEY, JSON.stringify({
+    getNativeStore().setItem(pendingSyncKey(), JSON.stringify({
       raw: stateRaw(job.state),
       baseRaw: stateRaw(lastLocalState || emptyState()),
       signature: job.signature,
@@ -1560,7 +1584,7 @@ function writePendingSave(job) {
 
 function clearPendingSave() {
   try {
-    getNativeStore().removeItem(PENDING_SYNC_KEY);
+    getNativeStore().removeItem(pendingSyncKey());
   } catch (error) {
     console.warn('Nao foi possivel limpar a fila local do Baba:', error);
   }
@@ -1568,7 +1592,7 @@ function clearPendingSave() {
 
 function readPendingSave() {
   try {
-    const record = JSON.parse(getNativeStore().getItem(PENDING_SYNC_KEY) || 'null');
+    const record = JSON.parse(getNativeStore().getItem(pendingSyncKey()) || 'null');
     const state = parseState(record?.raw);
     const baseState = parseState(record?.baseRaw);
     if (!hasUsefulState(state)) return null;
@@ -1706,9 +1730,9 @@ function scheduleSave(raw, reason = 'local-change') {
 }
 
 async function restoreLegacyBackup(migrationId) {
-  const migrationSnapshot = await getDoc(doc(db, 'migrations', migrationId));
+  const migrationSnapshot = await getDoc(accountDoc('migrations', migrationId));
   if (!migrationSnapshot.exists()) throw new Error('Registro de migracao nao encontrado.');
-  const chunksSnapshot = await getDocs(collection(db, 'migrations', migrationId, 'legacy_chunks'));
+  const chunksSnapshot = await getDocs(accountCollection('migrations', migrationId, 'legacy_chunks'));
   const raw = chunksSnapshot.docs
     .sort((a, b) => Number(a.data().index) - Number(b.data().index))
     .map((item) => item.data().data)
@@ -1722,6 +1746,12 @@ async function restoreLegacyBackup(migrationId) {
 
 async function startRepository() {
   if (repositoryStarted || window.__babaPersistenceV2Started || !USE_BABA_SCHEMA_V2 || OFFLINE_TEST_MODE) return;
+  const accountId = resolveAccountId();
+  if (!accountId) {
+    updateStatus('offline', 'Aguardando acesso', 'Entre com Google ou informe o código do jogador.');
+    return;
+  }
+  activeAccountId = accountId;
   repositoryStarted = true;
   window.__babaPersistenceV2Started = true;
   const restoredQueue = readPendingSave();
@@ -1736,7 +1766,7 @@ async function startRepository() {
   diagnoseBabaStateSize(lastLocalState);
   updateStatus('online', 'Conectando', 'Verificando a versao dos dados do Baba.');
   try {
-    const pointerSnapshot = await getDoc(pointerRef);
+    const pointerSnapshot = await getDoc(pointerRef());
     const pointer = pointerSnapshot.data() || {};
     latestPointerData = pointer;
     if (Number(pointer.schemaVersion || 0) >= SCHEMA_VERSION) {
@@ -1771,7 +1801,7 @@ async function startRepository() {
         startV2Subscriptions();
         await startPointerListener();
       } else {
-        await setDoc(pointerRef, {
+        await setDoc(pointerRef(), {
           activeBabaId: null,
           status: 'idle',
           currentGameId: null,
@@ -1847,3 +1877,18 @@ if (!window.__babaPersistenceEventsReady) {
 }
 
 startRepository();
+
+window.addEventListener('firebase-auth-state', (event) => {
+  if (event.detail?.authenticated) startRepository();
+});
+
+window.addEventListener('baba-account-changed', (event) => {
+  const nextAccountId = resolveAccountId(event.detail?.accountId);
+  if (!nextAccountId) return;
+  if (repositoryStarted && activeAccountId !== nextAccountId) {
+    window.location.reload();
+    return;
+  }
+  activeAccountId = nextAccountId;
+  startRepository();
+});

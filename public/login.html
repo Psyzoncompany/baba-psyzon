@@ -56,29 +56,10 @@
             <div class="text-center mb-7">
                 <img src="img/logo.png" alt="Logo" class="h-14 mx-auto mb-4 drop-shadow">
                 <h2 id="form-title" class="text-2xl font-bold text-white">Entrar no sistema</h2>
-                <p id="form-subtitle" class="text-gray-400 text-sm">Use seu e-mail/senha ou continue com Google</p>
+                <p id="form-subtitle" class="text-gray-400 text-sm">Use sua conta Google. Seus dados ficam separados por conta.</p>
             </div>
 
             <form id="login-form" class="space-y-5" novalidate autocomplete="off">
-                <div>
-                    <label for="email" class="block text-sm font-medium text-gray-300 mb-2">Email</label>
-                    <input type="email" id="email" placeholder="seu@email.com"
-                        class="w-full px-4 py-3 rounded-xl bg-slate-900/75 border border-slate-700 text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition"
-                        required autocomplete="off">
-                </div>
-                <div>
-                    <label for="password" class="block text-sm font-medium text-gray-300 mb-2">Senha</label>
-                    <input type="password" id="password" placeholder="••••••"
-                        class="w-full px-4 py-3 rounded-xl bg-slate-900/75 border border-slate-700 text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition"
-                        required autocomplete="new-password">
-                </div>
-                <div id="confirm-password-field" class="hidden">
-                    <label for="confirm-password" class="block text-sm font-medium text-gray-300 mb-2">Confirmar
-                        Senha</label>
-                    <input type="password" id="confirm-password" placeholder="••••••"
-                        class="w-full px-4 py-3 rounded-xl bg-slate-900/75 border border-slate-700 text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition"
-                        autocomplete="new-password">
-                </div>
                 <label for="remember-device" class="flex items-center gap-2 cursor-pointer select-none">
                     <input type="checkbox" id="remember-device" checked disabled
                         class="w-4 h-4 rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-cyan-500 cursor-pointer">
@@ -88,23 +69,6 @@
                 <div id="error-msg"
                     class="text-red-300 text-sm text-center bg-red-950/40 border border-red-500/25 rounded-lg px-3 py-2 hidden">
                 </div>
-                <div id="success-msg"
-                    class="text-green-300 text-sm text-center bg-green-950/40 border border-green-500/25 rounded-lg px-3 py-2 hidden">
-                </div>
-
-                <button type="submit" id="login-btn"
-                    class="w-full py-3 px-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg transition disabled:opacity-60 disabled:cursor-not-allowed">
-                    Entrar
-                </button>
-
-                <div class="relative py-1">
-                    <div class="absolute inset-0 flex items-center" aria-hidden="true">
-                        <div class="w-full border-t border-slate-700"></div>
-                    </div>
-                    <div class="relative flex justify-center text-xs uppercase"><span
-                            class="bg-slate-900 px-2 text-slate-400">ou</span></div>
-                </div>
-
                 <button type="button" id="google-login-btn"
                     class="w-full py-3 px-4 bg-white hover:bg-slate-100 text-slate-900 font-semibold rounded-xl shadow transition flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="w-5 h-5" aria-hidden="true">
@@ -120,12 +84,7 @@
                     Entrar com Google
                 </button>
 
-                <p class="text-center text-sm text-gray-400 mt-2">
-                    <span id="toggle-mode-text">Não tem conta?</span>
-                    <button type="button" id="toggle-mode-btn"
-                        class="text-cyan-400 hover:text-cyan-300 font-semibold ml-1 underline underline-offset-2 cursor-pointer">Criar
-                        conta</button>
-                </p>
+                <p class="text-center text-xs text-slate-400">O login permanece salvo neste dispositivo até você escolher sair.</p>
 
             </form>
         </section>
@@ -156,80 +115,20 @@
         </a>
     </nav>
 
-    <script type="module" src="firebase-config.js?v=20260801-google-admin-1"></script>
+    <script type="module" src="firebase-config.js?v=20260801-account-save-1"></script>
 
     <script>
-        const loginForm = document.getElementById('login-form');
-        const loginBtn = document.getElementById('login-btn');
         const googleBtn = document.getElementById('google-login-btn');
         const rememberCheckbox = document.getElementById('remember-device');
-        const emailInput = document.getElementById('email');
-        const passwordInput = document.getElementById('password');
-        const confirmPasswordInput = document.getElementById('confirm-password');
-        const confirmPasswordField = document.getElementById('confirm-password-field');
         const errorMsg = document.getElementById('error-msg');
-        const successMsg = document.getElementById('success-msg');
-        const toggleModeBtn = document.getElementById('toggle-mode-btn');
-        const toggleModeText = document.getElementById('toggle-mode-text');
-        const formTitle = document.getElementById('form-title');
-        const formSubtitle = document.getElementById('form-subtitle');
 
         const GOOGLE_BUTTON_DEFAULT = googleBtn.innerHTML;
         const REMEMBER_KEY = 'psyzon_remember_device';
-        let isSignupMode = false;
-
-        // --- ALTERNAR MODO LOGIN / CRIAR CONTA ---
-        toggleModeBtn.addEventListener('click', () => {
-            isSignupMode = !isSignupMode;
-            errorMsg.classList.add('hidden');
-            successMsg.classList.add('hidden');
-
-            if (isSignupMode) {
-                formTitle.textContent = 'Criar conta';
-                formSubtitle.textContent = 'Preencha seus dados para criar uma nova conta';
-                loginBtn.textContent = 'Criar conta';
-                toggleModeText.textContent = 'Já tem conta?';
-                toggleModeBtn.textContent = 'Entrar';
-                confirmPasswordField.classList.remove('hidden');
-                confirmPasswordInput.required = true;
-            } else {
-                formTitle.textContent = 'Entrar no sistema';
-                formSubtitle.textContent = 'Use seu e-mail/senha ou continue com Google';
-                loginBtn.textContent = 'Entrar';
-                toggleModeText.textContent = 'Não tem conta?';
-                toggleModeBtn.textContent = 'Criar conta';
-                confirmPasswordField.classList.add('hidden');
-                confirmPasswordInput.required = false;
-                confirmPasswordInput.value = '';
-            }
-        });
 
         // --- LEMBRAR DISPOSITIVO ---
         const getNativeStorage = () => window.__nativeLS || window.localStorage;
 
-        const loadRememberPreference = () => {
-            try {
-                const raw = getNativeStorage().getItem(REMEMBER_KEY);
-                if (!raw) return false;
-
-                // Migra a versão antiga sem manter a senha no navegador.
-                if (raw.startsWith('{')) {
-                    const legacy = JSON.parse(raw);
-                    if (legacy?.email) emailInput.value = legacy.email;
-                    getNativeStorage().setItem(REMEMBER_KEY, 'local');
-                    return true;
-                }
-
-                return raw === 'local' || raw === 'true' || raw === '1';
-            } catch (_) {
-                return false;
-            }
-        };
-
-        const saveRememberPreference = (remember) => {
-            if (remember) getNativeStorage().setItem(REMEMBER_KEY, 'local');
-            else getNativeStorage().removeItem(REMEMBER_KEY);
-        };
+        const saveRememberPreference = () => getNativeStorage().setItem(REMEMBER_KEY, 'local');
 
         // O Firebase restaura o token. Esta chave guarda apenas a preferência visual.
         rememberCheckbox.checked = true;
@@ -248,27 +147,14 @@
             return firebaseAuth;
         }
 
-        function setLoading({ email = false, google = false } = {}) {
-            loginBtn.disabled = email || google;
-            googleBtn.disabled = email || google;
-            if (email) {
-                loginBtn.textContent = isSignupMode ? 'Criando conta...' : 'Entrando...';
-            } else {
-                loginBtn.textContent = isSignupMode ? 'Criar conta' : 'Entrar';
-            }
+        function setLoading({ google = false } = {}) {
+            googleBtn.disabled = google;
             googleBtn.innerHTML = google ? 'Conectando Google...' : GOOGLE_BUTTON_DEFAULT;
         }
 
         const showError = (message) => {
-            successMsg.classList.add('hidden');
             errorMsg.textContent = message;
             errorMsg.classList.remove('hidden');
-        };
-
-        const showSuccess = (message) => {
-            errorMsg.classList.add('hidden');
-            successMsg.textContent = message;
-            successMsg.classList.remove('hidden');
         };
 
         const friendlyError = (error) => {
@@ -277,12 +163,7 @@
                 'auth/unauthorized-domain': 'Este domínio não está autorizado no Firebase.',
                 'auth/operation-not-allowed': 'Método de login não habilitado no Firebase.',
                 'auth/popup-closed-by-user': 'Você fechou a janela do Google antes de concluir.',
-                'auth/email-already-in-use': 'Este e-mail já está cadastrado. Tente entrar.',
-                'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.',
-                'auth/invalid-email': 'O e-mail digitado não é válido.',
-                'auth/user-not-found': 'Nenhuma conta encontrada com esse e-mail.',
-                'auth/wrong-password': 'Senha incorreta. Tente novamente.',
-                'auth/invalid-credential': 'E-mail ou senha incorretos.',
+                'auth/google-login-required': 'Entre com uma conta Google para acessar o site.',
                 'auth/too-many-requests': 'Muitas tentativas. Aguarde um momento e tente de novo.',
             };
             return map[code] || error?.message || 'Algo deu errado. Tente novamente.';
@@ -295,13 +176,11 @@
 
         googleBtn.addEventListener('click', async () => {
             errorMsg.classList.add('hidden');
-            successMsg.classList.add('hidden');
             setLoading({ google: true });
-            const remember = rememberCheckbox.checked;
-            saveRememberPreference(remember);
+            saveRememberPreference();
             try {
                 const firebaseAuth = await waitForFirebaseAuth();
-                await firebaseAuth.loginWithGoogle(remember);
+                await firebaseAuth.loginWithGoogle();
             } catch (error) {
                 console.error(error);
                 showError(friendlyError(error));
@@ -309,54 +188,9 @@
             }
         });
 
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            errorMsg.classList.add('hidden');
-            successMsg.classList.add('hidden');
-            const email = emailInput.value.trim();
-            const password = passwordInput.value;
-            const remember = rememberCheckbox.checked;
-
-            if (!email || !password) {
-                return showError('Preencha e-mail e senha.');
-            }
-
-            if (isSignupMode) {
-                // --- CRIAR CONTA ---
-                if (password.length < 6) {
-                    return showError('A senha precisa ter pelo menos 6 caracteres.');
-                }
-                if (password !== confirmPasswordInput.value) {
-                    return showError('As senhas não coincidem.');
-                }
-                setLoading({ email: true });
-                try {
-                    const firebaseAuth = await waitForFirebaseAuth();
-                    saveRememberPreference(remember);
-                    await firebaseAuth.signup(email, password, remember);
-                    showSuccess('Conta criada com sucesso! Entrando...');
-                } catch (error) {
-                    console.error(error);
-                    showError(friendlyError(error));
-                    setLoading();
-                }
-            } else {
-                // --- LOGIN ---
-                setLoading({ email: true });
-                try {
-                    const firebaseAuth = await waitForFirebaseAuth();
-                    saveRememberPreference(remember);
-                    await firebaseAuth.login(email, password, remember);
-                } catch (error) {
-                    console.error(error);
-                    showError(friendlyError(error));
-                    setLoading();
-                }
-            }
-        });
     </script>
     <script src="theme-toggle.js"></script>
-    <script src="site-preloader.js" defer></script>
+    <script src="site-preloader.js?v=6.0.44" defer></script>
 </body>
 
 </html>
