@@ -134,16 +134,14 @@ test('interpreta o caso real de 31/07/2026 com dados estruturados', () => {
   assert.equal(parsed.date, '2026-07-31');
   assert.equal(parsed.totalGoalsInformed, 19);
   assert.equal(parsed.scorers.length, 10);
-  assert.equal(parsed.teams.length, 3);
-  assert.equal(parsed.ignoredTeams.length, 1);
-  assert.equal(parsed.ignoredTeams[0].name, 'Time 4');
+  assert.equal(parsed.teams.length, 4);
   assert.deepEqual(parsed.teams.map((team) => [team.name, team.calculatedPoints]), [
-    ['Time 3', undefined], ['Time 1', undefined], ['Time 2', undefined],
+    ['Time 3', undefined], ['Time 1', undefined], ['Time 2', undefined], ['Time 4', undefined],
   ]);
   const warnings = core.validateStructuredReport(parsed);
   assert.equal(parsed.calculatedTotalGoals, 19);
   assert.equal(warnings.filter((warning) => warning.severity === 'blocker').length, 0);
-  assert.ok(warnings.some((warning) => warning.code === 'IGNORED_EMPTY_TEAM'));
+  assert.ok(warnings.some((warning) => warning.code === 'EMPTY_TEAM'));
   const team3 = parsed.teams.find((team) => team.id === 'team_3');
   const team1 = parsed.teams.find((team) => team.id === 'team_1');
   const team2 = parsed.teams.find((team) => team.id === 'team_2');
@@ -214,13 +212,6 @@ test('jogador sem gols recebe zero e continua presente no elenco', () => {
   const people = core.collectPeople(parsed);
   assert.equal(people.find((person) => person.typedName === 'Nilton').goals, 0);
   assert.equal(parsed.teams.find((team) => team.id === 'team_1').players.some((person) => person.name === 'Nilton'), true);
-});
-
-test('time sem jogadores e sem participação é ignorado na criação do baba', () => {
-  const parsed = core.parseReport(`BABA 31/07/2026\nCLASSIFICAÇÃO DOS TIMES\nTIME 1 — COLETE AZUL\nVitórias: 0\nEmpates: 0\nDerrotas: 0\nPontos: 0\nGols marcados: 0\nJogadores:`);
-  assert.equal(parsed.teams.length, 0);
-  assert.equal(parsed.ignoredTeams.length, 1);
-  assert.ok(core.validateStructuredReport(parsed).some((warning) => warning.code === 'IGNORED_EMPTY_TEAM'));
 });
 
 test('jogador em dois times é inconsistência impeditiva', () => {

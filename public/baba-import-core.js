@@ -281,7 +281,6 @@
       totalGoalsInformed: null,
       topScorerInformed: null,
       teams: [],
-      ignoredTeams: [],
       scorers: [],
       zeroGoalPlayers: [],
       observations: [],
@@ -370,15 +369,6 @@
         zero.roles = mergeRoles(zero.roles, roster.roles);
         roster.roles = mergeRoles(roster.roles, zero.roles);
       }
-    });
-    result.teams = result.teams.filter((team) => {
-      const hasPlayers = Boolean(team.players?.length);
-      const hasScorers = result.scorers.some((scorer) => scorer.teamKey === team.id);
-      const hasCompetitiveData = ['wins', 'draws', 'losses', 'pointsInformed', 'goalsInformed']
-        .some((field) => Number(team[field] || 0) > 0);
-      const shouldIgnore = !hasPlayers && !hasScorers && !hasCompetitiveData;
-      if (shouldIgnore) result.ignoredTeams.push({ ...team, ignoreReason: team.emptyReported ? 'explicitly-empty' : 'empty' });
-      return !shouldIgnore;
     });
     return result;
   }
@@ -495,9 +485,6 @@
     }
     if (!parsed.date) warnings.push(makeWarning('MISSING_DATE', 'blocker', 'A data do baba não foi identificada.', 'date'));
     if (!Array.isArray(parsed.teams) || !parsed.teams.length) warnings.push(makeWarning('MISSING_TEAMS', 'blocker', 'Nenhum time foi identificado.', 'teams'));
-    (parsed.ignoredTeams || []).forEach((team) => {
-      warnings.push(makeWarning('IGNORED_EMPTY_TEAM', 'info', `${team.name || 'Time vazio'} não será criado porque foi informado sem jogadores e sem participação no baba.`, 'ignoredTeams'));
-    });
 
     const seenTeamIds = new Set();
     const playerTeams = new Map();
