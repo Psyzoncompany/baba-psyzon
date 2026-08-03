@@ -29,7 +29,7 @@ function tokenConsumer(config) {
   const db = getAdminFirestore(config);
   return async (type, jti, expiresAt) => {
     try {
-      await db.collection('baba_accounts').doc(config.accountId)
+      await db.collection('baba_accounts').doc(config.oauthLedgerAccountId || config.accountId)
         .collection('mcp_oauth_consumed').doc(`${type}_${jti}`)
         .create({ type, consumedAt: new Date(), expiresAt: new Date(expiresAt * 1000) });
     } catch (error) {
@@ -50,7 +50,7 @@ export async function POST(request) {
     const form = await request.formData();
     const credentials = clientCredentials(request, form);
     const config = loadMcpConfig({ transport: 'oauth' });
-    const options = { accountId: config.accountId, consume: tokenConsumer(config) };
+    const options = { accountId: config.accountSetId, consume: tokenConsumer(config) };
     let tokens;
     if (form.get('grant_type') === 'authorization_code') {
       tokens = await exchangeAuthorizationCode({

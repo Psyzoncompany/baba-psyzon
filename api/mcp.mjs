@@ -14,7 +14,7 @@ function routeState(allowWrites) {
     registerBabaCapabilities(server, { config });
   }, {
     serverInfo: { name: 'sitey-caixa-baba', version: '1.0.0' },
-    instructions: 'Servidor do Baba. Faça leituras antes de alterar dados. Escritas exigem prévia, confirmação humana e o token assinado retornado pela ferramenta de preparação.',
+    instructions: 'Servidor do Baba com múltiplas contas autorizadas. Comece por baba_listar_contas, informe a conta em cada operação e faça leituras antes de alterar dados. Escritas exigem prévia, confirmação humana e o token assinado retornado pela ferramenta de preparação.',
   });
   const state = { config, handler };
   cachedRoutes.set(cacheKey, state);
@@ -35,7 +35,7 @@ async function route(request) {
   let access;
   try {
     if (!match) throw new Error('Token ausente.');
-    access = verifyAccessToken(match[1], { accountId: baseConfig.accountId });
+    access = verifyAccessToken(match[1], { accountId: baseConfig.accountSetId });
   } catch {
     const metadataUrl = `${new URL(protectedResourceMetadata().resource).origin}/.well-known/oauth-protected-resource/mcp`;
     return Response.json({ error: 'Token OAuth ausente, inválido ou expirado.' }, {

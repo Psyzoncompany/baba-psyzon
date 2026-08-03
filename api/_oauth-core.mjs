@@ -175,6 +175,7 @@ export function createAuthorizationRequest(params, options = {}) {
       scopes,
       state: params.state || '',
       resource: resourceUrl(),
+      accountSetId: options.accountSetId || '',
     }, options.now), secret),
   };
 }
@@ -190,6 +191,7 @@ export function approveAuthorization(requestToken, password, options = {}) {
     codeChallenge: request.codeChallenge,
     scopes: request.scopes,
     resource: request.resource,
+    accountSetId: request.accountSetId || '',
   }, options.now), secret);
   return { request, code };
 }
@@ -227,6 +229,9 @@ export async function exchangeAuthorizationCode(params, options = {}) {
   verifyClientAuthentication(params.clientId, params.clientSecret, secret);
   if (code.clientId !== params.clientId || code.redirectUri !== params.redirectUri) {
     throw new OAuthError('invalid_grant', 'Código não pertence a este cliente ou redirect_uri.', 400);
+  }
+  if (code.accountSetId && options.accountId && code.accountSetId !== options.accountId) {
+    throw new OAuthError('invalid_grant', 'O conjunto de contas autorizado mudou; inicie a conexão novamente.');
   }
   const verifier = String(params.codeVerifier || '');
   if (!/^[A-Za-z0-9._~-]{43,128}$/.test(verifier)) throw new OAuthError('invalid_grant', 'code_verifier inválido.');

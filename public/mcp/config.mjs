@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
@@ -27,8 +27,44 @@ function safeAccountId(value) {
   return normalized;
 }
 
+function safeAccountAlias(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9_-]{0,39}$/.test(normalized)) {
+    throw new Error('Apelido de conta MCP inválido. Use letras minúsculas, números, _ ou -.');
+  }
+  return normalized;
+}
+
+function parseMcpAccounts(value, fallbackUid = '') {
+  const raw = String(value || '').trim();
+  if (!raw) return Object.freeze([{ alias: 'principal', uid: safeAccountId(fallbackUid) }]);
+  const entries = raw.split(',').map((item) => item.trim()).filter(Boolean);
+  if (!entries.length || entries.length > 20) throw new Error('BABA_MCP_ACCOUNTS deve conter entre 1 e 20 contas.');
+  const aliases = new Set();
+  const uids = new Set();
+  const accounts = entries.map((entry) => {
+    const separator = entry.indexOf(':');
+    if (separator < 1 || separator === entry.length - 1) {
+      throw new Error('BABA_MCP_ACCOUNTS deve usar o formato apelido:UID,apelido:UID.');
+    }
+    const alias = safeAccountAlias(entry.slice(0, separator));
+    const uid = safeAccountId(entry.slice(separator + 1));
+    if (aliases.has(alias)) throw new Error(`Apelido de conta MCP duplicado: ${alias}.`);
+    if (uids.has(uid)) throw new Error(`UID de conta MCP duplicado no apelido ${alias}.`);
+    aliases.add(alias);
+    uids.add(uid);
+    return Object.freeze({ alias, uid });
+  });
+  return Object.freeze(accounts);
+}
+
 export function loadMcpConfig({ transport = 'stdio' } = {}) {
-  const accountId = safeAccountId(process.env.BABA_ACCOUNT_UID);
+  const accounts = parseMcpAccounts(process.env.BABA_MCP_ACCOUNTS, process.env.BABA_ACCOUNT_UID);
+  const accountId = accounts[0].uid;
+  const accountSetId = accounts.length === 1
+    ? accountId
+    : `multi_${createHash('sha256').update(accounts.map(({ uid }) => uid).sort().join('\n')).digest('hex').slice(0, 32)}`;
+  const oauthLedgerAccountId = accounts.map(({ uid }) => uid).sort()[0];
   const accessToken = String(process.env.BABA_MCP_ACCESS_TOKEN || '').trim();
   if (transport === 'http' && accessToken.length < 32) {
     throw new Error('BABA_MCP_ACCESS_TOKEN deve ter pelo menos 32 caracteres no modo HTTP.');
@@ -58,6 +94,9 @@ export function loadMcpConfig({ transport = 'stdio' } = {}) {
 
   return Object.freeze({
     accountId,
+    accountSetId,
+    oauthLedgerAccountId,
+    accounts,
     projectId: String(process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || '').trim(),
     writesEnabled,
     accessToken,
@@ -69,4 +108,4 @@ export function loadMcpConfig({ transport = 'stdio' } = {}) {
   });
 }
 
-export { booleanFromEnv, safeAccountId };
+export { booleanFromEnv, parseMcpAccounts, safeAccountAlias, safeAccountId };

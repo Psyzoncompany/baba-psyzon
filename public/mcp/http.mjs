@@ -21,6 +21,7 @@ app.use(express.json({ limit: '1mb' }));
 app.get('/health', (_req, res) => res.status(200).json({
   ok: true,
   service: 'sitey-caixa-baba-mcp',
+  accounts: config.accounts.map(({ alias }) => alias),
   writesEnabled: config.writesEnabled,
 }));
 

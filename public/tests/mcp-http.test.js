@@ -7,6 +7,8 @@ test('servidor MCP HTTP exige token e negocia Streamable HTTP', async () => {
     FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
     BABA_MCP_ACCESS_TOKEN: process.env.BABA_MCP_ACCESS_TOKEN,
     BABA_MCP_PORT: process.env.BABA_MCP_PORT,
+    BABA_MCP_WRITE_ENABLED: process.env.BABA_MCP_WRITE_ENABLED,
+    FIREBASE_SERVICE_ACCOUNT_JSON: process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
   };
   const token = 'token_mcp_de_teste_com_mais_de_32_caracteres';
   Object.assign(process.env, {
@@ -14,6 +16,8 @@ test('servidor MCP HTTP exige token e negocia Streamable HTTP', async () => {
     FIREBASE_PROJECT_ID: 'demo-sitey-caixa',
     BABA_MCP_ACCESS_TOKEN: token,
     BABA_MCP_PORT: '0',
+    BABA_MCP_WRITE_ENABLED: 'false',
+    FIREBASE_SERVICE_ACCOUNT_JSON: ' ',
   });
 
   const { Client, StreamableHTTPClientTransport } = await import('@modelcontextprotocol/client');

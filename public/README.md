@@ -19,7 +19,7 @@ Comandos de verificação: `npm test`, `npm run lint`, `npm run typecheck` e `np
 
 ## Integração MCP
 
-O projeto inclui um servidor MCP para agentes de IA lerem e, mediante confirmação, alterarem os dados do Baba. A implantação principal expõe `https://sitey-caixa.vercel.app/mcp` com OAuth 2.1, PKCE e registro dinâmico de clientes. Consulte [MCP.md](./MCP.md) para configurar o Firebase Admin, conectar o Gemini Spark, usar o acesso local por `stdio` e consultar a auditoria de alterações.
+O projeto inclui um servidor MCP para agentes de IA lerem e, mediante confirmação, alterarem os dados de uma ou mais contas do Baba. A implantação principal expõe `https://sitey-caixa.vercel.app/mcp` com OAuth 2.1, PKCE, registro dinâmico de clientes e seleção segura de conta. Consulte [MCP.md](./MCP.md) para configurar o Firebase Admin, conectar o Gemini Spark, usar o acesso local por `stdio` e consultar a auditoria de alterações.
 
 ## Correções de produção importantes
 

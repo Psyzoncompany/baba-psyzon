@@ -22,6 +22,7 @@ Cadastre em **Vercel → Project Settings → Environment Variables** no ambient
 FIREBASE_PROJECT_ID=sitey-caixa-16e06
 FIREBASE_SERVICE_ACCOUNT_JSON={JSON_COMPLETO_DA_CONTA_DE_SERVICO}
 BABA_ACCOUNT_UID=UID_DA_CONTA_GOOGLE
+BABA_MCP_ACCOUNTS=boleiro:iFpQFs5JBXV4qeKocl9UdKl2AUL2,jessica:T8SsA6xkbUfguATSfQCmCa5RN9A3
 
 BABA_MCP_PUBLIC_URL=https://sitey-caixa.vercel.app
 BABA_MCP_OAUTH_SECRET=SEGREDO_ALEATORIO_COM_PELO_MENOS_32_CARACTERES
@@ -31,6 +32,8 @@ BABA_MCP_CONFIRMATION_SECRET=OUTRO_SEGREDO_ALEATORIO_COM_PELO_MENOS_32_CARACTERE
 ```
 
 Depois, faça um novo deploy. `BABA_MCP_OAUTH_SECRET` assina códigos e tokens; não deve ser trocado enquanto houver conexões ativas. `BABA_MCP_OAUTH_PASSWORD` é a senha digitada na tela de autorização. Use `FIREBASE_SERVICE_ACCOUNT_JSON` na Vercel, pois o caminho local de `GOOGLE_APPLICATION_CREDENTIALS` não existe no servidor.
+
+`BABA_MCP_ACCOUNTS` autoriza várias contas no formato `apelido:UID`, separadas por vírgula, e tem prioridade sobre `BABA_ACCOUNT_UID`. Depois de alterar a lista, remova e refaça a conexão no cliente MCP. A ferramenta `baba_listar_contas` mostra os apelidos e totais; as demais ferramentas recebem o campo `conta`. Para evitar alterações cruzadas, o apelido e o UID fazem parte da confirmação assinada de cada escrita.
 
 Para criar segredos aleatórios no PowerShell:
 
@@ -43,6 +46,7 @@ Execute duas vezes e use valores diferentes para `BABA_MCP_OAUTH_SECRET` e `BABA
 ## Segurança adotada
 
 - O endpoint público usa Bearer tokens emitidos pelo fluxo OAuth padrão; não usa token fixo compartilhado com o cliente.
+- O token OAuth fica vinculado ao conjunto exato de contas autorizado no servidor.
 - Todo cliente usa PKCE S256 e o callback deve corresponder exatamente ao registrado.
 - Códigos de autorização e refresh tokens são de uso único, registrados no Firestore.
 - Escritas começam desativadas e só funcionam com `BABA_MCP_WRITE_ENABLED=true` e escopo `baba.write`.
@@ -82,6 +86,7 @@ O servidor HTTP local iniciado por `npm run mcp:http` continua aceitando `Author
 ## Ferramentas disponíveis
 
 - `baba_resumo`
+- `baba_listar_contas`
 - `baba_listar_jogadores`
 - `baba_listar_eventos`
 - `baba_detalhar_evento`

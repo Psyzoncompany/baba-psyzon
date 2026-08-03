@@ -6,7 +6,7 @@ import {
   oauthErrorResponse,
   verifyToken,
 } from '../_oauth-core.mjs';
-import { booleanFromEnv } from '../../public/mcp/config.mjs';
+import { loadMcpConfig } from '../../public/mcp/config.mjs';
 
 function escapeHtml(value) {
   return String(value || '')
@@ -58,8 +58,10 @@ function redirectResult(redirectUri, values) {
 export function GET(request) {
   try {
     const params = Object.fromEntries(new URL(request.url).searchParams);
+    const config = loadMcpConfig({ transport: 'oauth' });
     const { client, requestToken } = createAuthorizationRequest(params, {
-      writesEnabled: booleanFromEnv(process.env.BABA_MCP_WRITE_ENABLED, false),
+      writesEnabled: config.writesEnabled,
+      accountSetId: config.accountSetId,
     });
     return htmlResponse(page({ requestToken, clientName: client.clientName, scopes: verifyToken(requestToken, 'auth_request').scopes }));
   } catch (error) {

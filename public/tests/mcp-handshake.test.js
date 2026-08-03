@@ -13,7 +13,9 @@ test('servidor MCP negocia stdio e anuncia ferramentas e recursos', async () => 
     env: {
       ...process.env,
       BABA_ACCOUNT_UID: 'conta_teste',
+      BABA_MCP_ACCOUNTS: '',
       FIREBASE_PROJECT_ID: 'demo-sitey-caixa',
+      FIREBASE_SERVICE_ACCOUNT_JSON: ' ',
       BABA_MCP_WRITE_ENABLED: 'false',
     },
     stderr: 'pipe',
@@ -24,6 +26,7 @@ test('servidor MCP negocia stdio e anuncia ferramentas e recursos', async () => 
     const { tools } = await client.listTools();
     const names = tools.map((tool) => tool.name);
     assert.ok(names.includes('baba_resumo'));
+    assert.ok(names.includes('baba_listar_contas'));
     assert.ok(names.includes('baba_preparar_alteracao'));
     assert.ok(names.includes('baba_salvar_documento'));
     const blockedWrite = await client.callTool({

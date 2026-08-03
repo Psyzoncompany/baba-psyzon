@@ -28,3 +28,15 @@ test('documentos MCP rejeitam payloads excessivos ou inválidos', async () => {
   assert.throws(() => validateDocumentData({ texto: 'x'.repeat(260_000) }), /limite MCP/i);
   assert.throws(() => validateDocumentData({ nested: { __segredo__: true } }), /reservados/i);
 });
+
+test('configuração MCP aceita várias contas nomeadas e rejeita duplicidades', async () => {
+  const { parseMcpAccounts } = await import('../mcp/config.mjs');
+  assert.deepEqual(parseMcpAccounts('boleiro:uid_123,jessica:uid_456'), [
+    { alias: 'boleiro', uid: 'uid_123' },
+    { alias: 'jessica', uid: 'uid_456' },
+  ]);
+  assert.deepEqual(parseMcpAccounts('', 'uid_principal'), [{ alias: 'principal', uid: 'uid_principal' }]);
+  assert.throws(() => parseMcpAccounts('boleiro:uid_1,boleiro:uid_2'), /duplicado/i);
+  assert.throws(() => parseMcpAccounts('boleiro:uid_1,outra:uid_1'), /duplicado/i);
+  assert.throws(() => parseMcpAccounts('formato-invalido'), /formato/i);
+});

@@ -124,6 +124,26 @@ test('registro dinâmico recusa callbacks inseguros', () => {
   assert.doesNotThrow(() => registerClient({ redirect_uris: ['http://localhost:4321/callback'] }, { secret }));
 });
 
+test('código OAuth não atravessa uma mudança no conjunto de contas', async () => {
+  const client = registration();
+  const verifier = 'verificador-de-conjunto-de-contas-12345678901234567890';
+  const pending = createAuthorizationRequest({
+    client_id: client.client_id,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    code_challenge: createHash('sha256').update(verifier).digest('base64url'),
+    code_challenge_method: 'S256',
+  }, { secret, accountSetId: 'conjunto_antigo' });
+  const approval = approveAuthorization(pending.requestToken, password, { secret, password });
+  await assert.rejects(() => exchangeAuthorizationCode({
+    clientId: client.client_id,
+    clientSecret: '',
+    code: approval.code,
+    redirectUri,
+    codeVerifier: verifier,
+  }, { secret, accountId: 'conjunto_novo' }), /conjunto de contas autorizado mudou/i);
+});
+
 test('endpoint MCP anuncia a descoberta OAuth ao responder 401', async () => {
   const keys = ['BABA_ACCOUNT_UID', 'BABA_MCP_OAUTH_SECRET', 'BABA_MCP_WRITE_ENABLED'];
   const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));

@@ -108,7 +108,7 @@ function asLimit(value, fallback = 50) {
   return Math.min(MAX_LIST_LIMIT, Math.max(1, Number(value || fallback)));
 }
 
-export function createBabaRepository({ db, accountId }) {
+export function createBabaRepository({ db, accountId, accountAlias = 'principal' }) {
   const accountRef = db.collection('baba_accounts').doc(accountId);
 
   function documentRef(path, options) {
@@ -210,6 +210,7 @@ export function createBabaRepository({ db, accountId }) {
     ]);
     return {
       accountId,
+      accountAlias,
       schemaVersion: Number(live?.schemaVersion || 2),
       live,
       totals: { players: playerCount, babas: babaCount, months: monthCount },
@@ -250,6 +251,7 @@ export function createBabaRepository({ db, accountId }) {
       changedFields: Object.keys(data).slice(0, 200),
       payloadSha256: digest,
       source: 'sitey-caixa-mcp',
+      accountAlias,
       createdAtMs: timestamp,
       createdAt: FieldValue.serverTimestamp(),
       schemaVersion: 1,
