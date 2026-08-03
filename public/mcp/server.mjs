@@ -36,15 +36,10 @@ function safe(handler) {
   };
 }
 
-export function createBabaMcpServer({ config, repository } = {}) {
+export function registerBabaCapabilities(server, { config, repository } = {}) {
+  if (!server) throw new Error('Instância MCP não informada.');
   if (!config) throw new Error('Configuração MCP não informada.');
   const repo = repository || createBabaRepository({ db: getAdminFirestore(config), accountId: config.accountId });
-  const server = new McpServer({
-    name: 'sitey-caixa-baba',
-    version: '1.0.0',
-  }, {
-    instructions: 'Servidor do Baba. Prefira ferramentas específicas de leitura. Antes de qualquer escrita, use baba_preparar_alteracao e peça confirmação humana; só então chame baba_salvar_documento com exatamente os mesmos dados e o token retornado.',
-  });
 
   server.registerResource('resumo-da-conta', 'baba://conta/resumo', {
     title: 'Resumo atual do Baba',
@@ -170,6 +165,16 @@ export function createBabaMcpServer({ config, repository } = {}) {
   }));
 
   return server;
+}
+
+export function createBabaMcpServer({ config, repository } = {}) {
+  const server = new McpServer({
+    name: 'sitey-caixa-baba',
+    version: '1.0.0',
+  }, {
+    instructions: 'Servidor do Baba. Prefira ferramentas específicas de leitura. Antes de qualquer escrita, use baba_preparar_alteracao e peça confirmação humana; só então chame baba_salvar_documento com exatamente os mesmos dados e o token retornado.',
+  });
+  return registerBabaCapabilities(server, { config, repository });
 }
 
 export { failure, safe, success };

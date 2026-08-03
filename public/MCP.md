@@ -67,6 +67,25 @@ npm run mcp:http
 - Saúde: `http://127.0.0.1:3001/health`
 - Cabeçalho: `Authorization: Bearer <BABA_MCP_ACCESS_TOKEN>`
 
+### Endpoint publicado na Vercel
+
+Este projeto também expõe o MCP como uma Route Handler serverless do Next.js:
+
+```text
+https://sitey-caixa.vercel.app/mcp
+```
+
+Cadastre em **Vercel → Project Settings → Environment Variables**, para o ambiente Production:
+
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_SERVICE_ACCOUNT_JSON`
+- `BABA_ACCOUNT_UID`
+- `BABA_MCP_ACCESS_TOKEN`
+- `BABA_MCP_CONFIRMATION_SECRET`
+- `BABA_MCP_WRITE_ENABLED` (`false` inicialmente)
+
+Depois faça um novo deploy. Não use `GOOGLE_APPLICATION_CREDENTIALS` na Vercel, pois lá não existe o arquivo local indicado por esse caminho. Use o JSON da conta de serviço em `FIREBASE_SERVICE_ACCOUNT_JSON`.
+
 Para expor na internet, publique esse processo Node atrás de HTTPS e mantenha o token e a credencial Firebase somente como segredos do servidor. Ao usar `BABA_MCP_HOST=0.0.0.0`, configure também `BABA_MCP_ALLOWED_HOSTS` com os domínios aceitos, separados por vírgula.
 
 ## Ferramentas disponíveis
