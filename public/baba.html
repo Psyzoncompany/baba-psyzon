@@ -14,7 +14,7 @@
   <meta name="theme-color" content="#f4f8fc">
   <title>Baba Psyzon</title>
   <link href="apple-ui-font.css?v=20260723-1" rel="stylesheet">
-  <link href="baba-ui.css?v=20260801-commission-login-1" rel="stylesheet">
+  <link href="baba-ui.css?v=20260803-baba-management-1" rel="stylesheet">
   <script>
     window.BABA_AI_ENDPOINT = window.BABA_AI_ENDPOINT || '/api/baba-import/analyze';
     if (window.location.protocol !== 'file:') {
@@ -341,7 +341,7 @@
             </div>
             <label for="player-access-code">Código de acesso</label>
             <div class="baba-password__field">
-              <input id="player-access-code" type="text" inputmode="text" autocomplete="one-time-code" maxlength="9" placeholder="ABCD-2345">
+              <input id="player-access-code" type="text" inputmode="numeric" pattern="[0-9]{4}" autocomplete="one-time-code" maxlength="4" placeholder="1234">
               <button type="submit">Entrar</button>
             </div>
             <label class="baba-password__remember" for="remember-player-code">
@@ -980,6 +980,9 @@
           const safe = record && typeof record === 'object' ? record : {};
           records[key] = {
             pagamentos: safe.pagamentos && typeof safe.pagamentos === 'object' && !Array.isArray(safe.pagamentos) ? safe.pagamentos : {},
+            paymentUpdatedAtMs: safe.paymentUpdatedAtMs && typeof safe.paymentUpdatedAtMs === 'object' && !Array.isArray(safe.paymentUpdatedAtMs)
+              ? safe.paymentUpdatedAtMs
+              : {},
             atualizadoEm: Number(safe.atualizadoEm || safe.updatedAt || Date.now()),
           };
           return records;
@@ -1372,14 +1375,14 @@
 
 
   <script src="baba-import-core.js?v=20260801-import-3"></script>
-  <script type="module" src="baba-access.js?v=20260801-commission-login-1"></script>
-  <script type="module" src="baba-import-persistence.js?v=20260801-account-save-2"></script>
-  <script type="module" src="baba-import-ui.js?v=20260801-account-save-2"></script>
-  <script type="module" src="baba-persistence.js?v=20260801-player-history-1"></script>
+  <script type="module" src="baba-access.js?v=20260803-baba-management-1"></script>
+  <script type="module" src="baba-import-persistence.js?v=20260803-baba-management-1"></script>
+  <script type="module" src="baba-import-ui.js?v=20260803-baba-management-1"></script>
+  <script type="module" src="baba-persistence.js?v=20260803-baba-management-1"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
-  <script src="pdf-report.js?v=20260731-payment-vector-1"></script>
-  <script src="baba.js?v=20260801-commission-login-1" defer></script>
-  <script src="site-version.js?v=6.0.45" defer></script>
+  <script src="pdf-report.js?v=20260803-baba-management-1"></script>
+  <script src="baba.js?v=20260803-baba-management-1" defer></script>
+  <script src="site-version.js?v=6.0.46" defer></script>
 </body>
 
 </html>

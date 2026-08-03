@@ -6242,3 +6242,337 @@ button.baba-history-item.active {
     transition-duration: .01ms !important;
   }
 }
+
+/* Atualização de gestão do Baba: estados, ranking compacto e histórico profissional. */
+[data-team-number="3"] {
+  --team-color: #b8a46f;
+  --team-color-dark: #76663c;
+  --team-soft: #f6f1e4;
+  --team-border: rgba(184, 164, 111, .34);
+  --team-surface-start: #c8b783;
+  --team-surface-end: #8f7c49;
+  --team-contrast: #241f13;
+  --team-contrast-muted: rgba(36, 31, 19, .72);
+}
+
+.baba-player-status-control {
+  display: grid;
+  gap: .25rem;
+  min-width: 8.7rem;
+}
+
+.baba-player-status-control > span {
+  color: var(--color-text-muted, #64748b);
+  font-size: .68rem;
+  font-weight: 750;
+  letter-spacing: .03em;
+}
+
+.baba-player-status-control select,
+.baba-ranking-compact-select select {
+  min-height: 2.25rem;
+  border: 1px solid var(--border-soft, rgba(148, 163, 184, .3));
+  border-radius: .7rem;
+  color: var(--color-text, #172033);
+  background: var(--surface-glass-strong, #fff);
+  font: inherit;
+  font-size: .8rem;
+  font-weight: 750;
+  padding: .35rem 2rem .35rem .65rem;
+}
+
+.baba-status-pill.is-novice,
+.baba-player-payment.is-novice .baba-player-payment__status {
+  color: #8a5b00;
+  background: #fff3c4;
+}
+
+.baba-status-pill.is-guest,
+.baba-player-payment.is-guest .baba-player-payment__status {
+  color: #5b21b6;
+  background: #f1e9ff;
+}
+
+.baba-status-pill.is-disabled,
+.baba-player-payment.is-disabled .baba-player-payment__status {
+  color: #64748b;
+  background: #edf1f5;
+}
+
+.baba-player-admin.is-guest,
+.baba-player-admin.is-disabled,
+.baba-player-admin.is-novice {
+  border-inline-start: 3px solid var(--border-soft, #cbd5e1);
+}
+
+.baba-ranking-compact-select {
+  display: none;
+}
+
+.baba-history-item__identity {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: .75rem;
+}
+
+.baba-history-item__identity > span {
+  display: grid;
+  min-width: 0;
+  gap: .18rem;
+}
+
+.baba-history-item__identity small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.baba-history-item__date {
+  display: grid;
+  place-items: center;
+  flex: 0 0 2.45rem;
+  width: 2.45rem;
+  height: 2.45rem;
+  border-radius: .85rem;
+  color: #d3ef66;
+  background: linear-gradient(145deg, #073039, #0b5960);
+  font-size: .9rem;
+  font-style: normal;
+  font-weight: 850;
+  box-shadow: 0 8px 18px rgba(3, 44, 52, .16);
+}
+
+.baba-history-detail-pro {
+  display: grid;
+  gap: 1rem;
+}
+
+.baba-history-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid rgba(132, 196, 184, .22);
+  border-radius: 1.25rem;
+  color: #f8fafc;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(211, 239, 102, .22), transparent 34%),
+    linear-gradient(135deg, #052c36, #0b5960);
+  box-shadow: 0 16px 34px rgba(4, 49, 58, .18);
+}
+
+.baba-history-hero h3 {
+  margin: .25rem 0;
+  color: #fff;
+  font-size: clamp(1.25rem, 3vw, 1.8rem);
+}
+
+.baba-history-hero p,
+.baba-history-hero small {
+  margin: 0;
+  color: rgba(235, 248, 246, .75);
+}
+
+.baba-history-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(4.4rem, 1fr));
+  gap: .55rem;
+}
+
+.baba-history-kpis span {
+  display: grid;
+  gap: .08rem;
+  padding: .65rem .8rem;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: .85rem;
+  text-align: center;
+  background: rgba(255, 255, 255, .08);
+}
+
+.baba-history-kpis b {
+  color: #d3ef66;
+  font-size: 1.15rem;
+}
+
+.baba-history-section {
+  display: grid;
+  gap: .7rem;
+  padding: 1rem;
+  border: 1px solid var(--border-soft, rgba(148, 163, 184, .22));
+  border-radius: 1.15rem;
+  background: var(--surface-glass-strong, rgba(255, 255, 255, .82));
+}
+
+.baba-history-section__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+}
+
+.baba-history-section__title small,
+.baba-history-muted {
+  color: var(--color-text-muted, #64748b);
+}
+
+.baba-history-champions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  min-width: 0;
+}
+
+.baba-history-champion-chip {
+  max-width: 100%;
+  padding: .45rem .7rem;
+  border: 1px solid rgba(184, 164, 111, .35);
+  border-radius: 999px;
+  color: #6e5c2e;
+  background: #f8f2df;
+  font-size: .78rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.baba-history-teams {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .65rem;
+}
+
+.baba-history-team {
+  overflow: hidden;
+  border: 1px solid var(--team-border);
+  border-radius: .95rem;
+  background: linear-gradient(145deg, var(--team-soft), var(--surface-glass-strong, #fff));
+}
+
+.baba-history-team header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  padding: .72rem .8rem;
+  border-bottom: 1px solid var(--team-border);
+}
+
+.baba-history-team header > b {
+  color: var(--team-color-dark);
+}
+
+.baba-history-team > div {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.baba-history-team > div span {
+  display: grid;
+  gap: .12rem;
+  padding: .6rem .35rem;
+  text-align: center;
+}
+
+.baba-history-team > div small {
+  color: var(--color-text-muted, #64748b);
+  font-size: .62rem;
+}
+
+.baba-history-matches {
+  display: grid;
+  gap: .5rem;
+}
+
+.baba-history-match {
+  display: grid;
+  grid-template-columns: 4.2rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .7rem;
+  min-width: 0;
+  padding: .7rem .8rem;
+  border: 1px solid var(--border-soft, rgba(148, 163, 184, .22));
+  border-radius: .85rem;
+  background: var(--surface-glass, rgba(248, 250, 252, .72));
+}
+
+.baba-history-match > span,
+.baba-history-match > small {
+  color: var(--color-text-muted, #64748b);
+  font-size: .72rem;
+  font-weight: 750;
+}
+
+.baba-history-match > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+  .baba-ranking-filters,
+  .baba-ranking-scope-controls {
+    width: 100%;
+  }
+
+  .baba-ranking-filters > button,
+  .baba-ranking-scope-controls > button {
+    display: none;
+  }
+
+  .baba-ranking-compact-select {
+    display: grid;
+    width: 100%;
+    gap: .3rem;
+  }
+
+  .baba-ranking-compact-select > span {
+    color: var(--color-text-muted, #64748b);
+    font-size: .7rem;
+    font-weight: 800;
+  }
+
+  .baba-ranking-compact-select select {
+    width: 100%;
+    min-height: 2.65rem;
+  }
+
+  .baba-history-hero {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .baba-history-teams {
+    grid-template-columns: 1fr;
+  }
+
+  .baba-history-match {
+    grid-template-columns: 3.7rem minmax(0, 1fr);
+  }
+
+  .baba-history-match > small {
+    grid-column: 2;
+  }
+
+  .baba-player-admin__actions {
+    align-items: stretch;
+  }
+
+  .baba-player-status-control {
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .baba-history-kpis {
+    gap: .35rem;
+  }
+
+  .baba-history-kpis span {
+    padding: .55rem .35rem;
+  }
+
+  .baba-history-item__date {
+    display: none;
+  }
+}

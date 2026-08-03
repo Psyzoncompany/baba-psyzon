@@ -399,9 +399,11 @@ function buildImportedEntities({ confirmedByAdmin = true } = {}) {
       id,
       nome: core.normalizeWhitespace(person.resolution.officialName || person.typedName),
       tipo: person.roles.goalkeeper ? 'goleiro' : 'jogador',
+      status: person.roles.guest ? 'guest' : 'novice',
       ativo: true,
-      novato: true,
-      noviceActive: true,
+      novato: !person.roles.guest,
+      convidado: Boolean(person.roles.guest),
+      noviceActive: !person.roles.guest,
       noviceSinceMs: timestamp,
       noviceReason: 'first-imported-baba',
       firstBabaId: babaId,
@@ -417,7 +419,9 @@ function buildImportedEntities({ confirmedByAdmin = true } = {}) {
     if (!existing || existing.novato) return;
     updatedPlayers.push({
       ...existing,
+      status: 'novice',
       novato: true,
+      convidado: false,
       noviceActive: true,
       noviceSinceMs: timestamp,
       noviceReason: 'confirmed-in-import',

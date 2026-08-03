@@ -14,6 +14,18 @@
   const PLAYER_BABA_PRICE = 15;
   const GOALKEEPER_BABA_PRICE = 7;
   const PAYMENT_DUE_DAY = 10;
+  const PLAYER_STATUS = Object.freeze({
+    REGULAR: 'regular',
+    NOVICE: 'novice',
+    GUEST: 'guest',
+    DISABLED: 'disabled',
+  });
+  const PLAYER_STATUS_OPTIONS = Object.freeze([
+    { id: PLAYER_STATUS.REGULAR, label: 'Regular' },
+    { id: PLAYER_STATUS.NOVICE, label: 'Novato' },
+    { id: PLAYER_STATUS.GUEST, label: 'Convidado' },
+    { id: PLAYER_STATUS.DISABLED, label: 'Desativado' },
+  ]);
   const DRAW_SOUND_KEY = 'psyzon_baba_draw_sound';
   const MATCH_MODES = {
     ONLINE: 'ONLINE',
@@ -26,7 +38,7 @@
   const TEAM_VISUALS = [
     { logo: 'img/baba-team-1-flamengo.png', accent: '#d53445' },
     { logo: 'img/baba-team-2-palmeiras.png', accent: '#148552' },
-    { logo: 'img/baba-team-3-vasco.png', accent: '#334155' },
+    { logo: 'img/baba-team-3-vasco.png', accent: '#b8a46f' },
     { logo: 'img/baba-team-4-corinthians.png', accent: '#111827' },
     { logo: 'img/baba-time-5.png', accent: '#2563a8' },
   ];
@@ -659,6 +671,9 @@
       const safe = record && typeof record === 'object' ? record : {};
       records[key] = {
         pagamentos: safe.pagamentos && typeof safe.pagamentos === 'object' && !Array.isArray(safe.pagamentos) ? safe.pagamentos : {},
+        paymentUpdatedAtMs: safe.paymentUpdatedAtMs && typeof safe.paymentUpdatedAtMs === 'object' && !Array.isArray(safe.paymentUpdatedAtMs)
+          ? safe.paymentUpdatedAtMs
+          : {},
         atualizadoEm: Number(safe.atualizadoEm || safe.updatedAt || Date.now()),
       };
       return records;
@@ -721,6 +736,7 @@
     const next = value && typeof value === 'object' ? value : createEmptyState();
     next.version = 1;
     next.players = Array.isArray(next.players) ? next.players : [];
+    next.players.forEach((player) => applyPlayerStatus(player, getPlayerStatus(player), { preserveAudit: true }));
     next.babas = Array.isArray(next.babas) ? next.babas : [];
     next.monthlyPayments = normalizeMonthlyPayments(next.monthlyPayments);
     next.playerStats = next.playerStats && typeof next.playerStats === 'object' && !Array.isArray(next.playerStats) ? next.playerStats : {};
@@ -1099,6 +1115,37 @@
     return state.players.find((player) => player.id === id) || null;
   }
 
+  function getPlayerStatus(player) {
+    if (!player) return PLAYER_STATUS.REGULAR;
+    if (Object.values(PLAYER_STATUS).includes(player.status)) return player.status;
+    if (player.ativo === false) return PLAYER_STATUS.DISABLED;
+    if (player.convidado === true || player.visitante === true || player.tipo === 'visitante') return PLAYER_STATUS.GUEST;
+    if (player.novato === true || player.noviceActive === true) return PLAYER_STATUS.NOVICE;
+    return PLAYER_STATUS.REGULAR;
+  }
+
+  function applyPlayerStatus(player, status, { preserveAudit = false } = {}) {
+    if (!player) return PLAYER_STATUS.REGULAR;
+    const safeStatus = Object.values(PLAYER_STATUS).includes(status) ? status : PLAYER_STATUS.REGULAR;
+    player.status = safeStatus;
+    player.ativo = safeStatus !== PLAYER_STATUS.DISABLED;
+    player.novato = safeStatus === PLAYER_STATUS.NOVICE;
+    player.noviceActive = player.novato;
+    player.convidado = safeStatus === PLAYER_STATUS.GUEST;
+    if (!preserveAudit) {
+      player.statusUpdatedAtMs = Date.now();
+      if (player.novato) player.noviceSinceMs = player.noviceSinceMs || Date.now();
+      player.noviceReason = player.novato ? 'manual-mark' : 'manual-removal';
+      player.noviceReasonImportId = null;
+    }
+    return safeStatus;
+  }
+
+  function playerStatusLabel(player) {
+    const status = getPlayerStatus(player);
+    return PLAYER_STATUS_OPTIONS.find((option) => option.id === status)?.label || 'Regular';
+  }
+
   function getVisitor(baba, id) {
     return (baba?.visitantes || []).find((player) => player.id === id) || null;
   }
@@ -1111,7 +1158,7 @@
     const player = getBabaPlayer(baba, playerId);
     const stored = baba?.participantFlags?.[playerId] || {};
     return {
-      guest: Boolean(stored.guest || player?.visitante || player?.tipo === 'visitante'),
+      guest: Boolean(stored.guest || getPlayerStatus(player) === PLAYER_STATUS.GUEST || player?.visitante || player?.tipo === 'visitante'),
       goalkeeper: Boolean(stored.goalkeeper || player?.tipo === 'goleiro'),
       novice: Boolean(stored.novice || player?.novato),
       typedName: stored.typedName || player?.nome || '',
@@ -1532,11 +1579,14 @@
       ? state.monthlyPayments
       : {};
     if (!state.monthlyPayments[key]) {
-      state.monthlyPayments[key] = { pagamentos: {}, atualizadoEm: Date.now() };
+      state.monthlyPayments[key] = { pagamentos: {}, paymentUpdatedAtMs: {}, atualizadoEm: Date.now() };
     }
     const record = state.monthlyPayments[key];
     record.pagamentos = record.pagamentos && typeof record.pagamentos === 'object' && !Array.isArray(record.pagamentos)
       ? record.pagamentos
+      : {};
+    record.paymentUpdatedAtMs = record.paymentUpdatedAtMs && typeof record.paymentUpdatedAtMs === 'object' && !Array.isArray(record.paymentUpdatedAtMs)
+      ? record.paymentUpdatedAtMs
       : {};
     record.atualizadoEm = Number(record.atualizadoEm || Date.now());
     return record;
@@ -1563,6 +1613,11 @@
 
   function playerPaymentState(playerId, baba = getActiveBaba(), { force = false } = {}) {
     if (!playerId) return null;
+    const player = getBabaPlayer(baba, playerId);
+    const status = getPlayerStatus(player);
+    if (status === PLAYER_STATUS.NOVICE) return 'novice';
+    if (status === PLAYER_STATUS.GUEST) return 'guest';
+    if (status === PLAYER_STATUS.DISABLED) return 'disabled';
     const key = currentPaymentMonthKey();
     if (hasMonthlyPaymentRecord(playerId, key)) return state.monthlyPayments[key].pagamentos[playerId] ? 'paid' : 'unpaid';
     if (hasPaymentRecord(baba, playerId)) return baba.pagamentos[playerId] ? 'paid' : 'unpaid';
@@ -1574,7 +1629,13 @@
     const state = playerPaymentState(playerId, baba, options);
     const team = getPlayerTeam(baba, playerId);
     if (!state) return `<span class="baba-player-identity"${teamNumberDataAttribute(team)}>${escapeHTML(name)}</span>`;
-    const label = state === 'paid' ? 'Pago' : 'Não pagou';
+    const label = ({
+      paid: 'Pago',
+      unpaid: 'Não pagou',
+      novice: 'Novato',
+      guest: 'Convidado',
+      disabled: 'Desativado',
+    })[state] || 'Não pagou';
     return `
       <span class="baba-player-payment is-${state}"${teamNumberDataAttribute(team)}>
         <span class="baba-player-payment__name">${escapeHTML(name)}</span>
@@ -2002,7 +2063,9 @@
         id: newId('visitor'),
         nome,
         tipo: 'visitante',
+        status: PLAYER_STATUS.GUEST,
         ativo: true,
+        convidado: true,
         visitante: true,
         criadoEm: Date.now(),
       };
@@ -2020,8 +2083,10 @@
       id: newId('player'),
       nome,
       tipo: type === 'goleiro' ? 'goleiro' : 'jogador',
+      status: PLAYER_STATUS.REGULAR,
       ativo: true,
       novato: false,
+      convidado: false,
       criadoEm: Date.now(),
     });
     els.playerName.value = '';
@@ -2033,9 +2098,12 @@
     if (!requireOrganizer()) return;
     const player = getPlayer(playerId);
     if (!player) return;
-    player.ativo = !player.ativo;
+    const nextStatus = getPlayerStatus(player) === PLAYER_STATUS.DISABLED
+      ? PLAYER_STATUS.REGULAR
+      : PLAYER_STATUS.DISABLED;
+    applyPlayerStatus(player, nextStatus);
 
-    if (!player.ativo) {
+    if (nextStatus === PLAYER_STATUS.DISABLED) {
       state.babas.forEach((baba) => {
         if (baba.status !== 'finalizado') {
           baba.jogadoresPresentes = baba.jogadoresPresentes.filter((id) => id !== playerId);
@@ -2050,11 +2118,10 @@
     if (!requireOrganizer()) return;
     const player = getPlayer(playerId);
     if (!player) return;
-    player.novato = !player.novato;
-    player.noviceActive = player.novato;
-    player.noviceReason = player.novato ? 'manual-mark' : 'manual-removal';
-    player.noviceReasonImportId = null;
-    if (player.novato) player.noviceSinceMs = Date.now();
+    const nextStatus = getPlayerStatus(player) === PLAYER_STATUS.NOVICE
+      ? PLAYER_STATUS.REGULAR
+      : PLAYER_STATUS.NOVICE;
+    applyPlayerStatus(player, nextStatus);
     if (window.BabaImportRepository?.currentUser?.()) {
       window.BabaImportRepository.recordPlayerStatus?.(playerId, player.novato, {
         babaId: getActiveBaba()?.id || null,
@@ -2064,6 +2131,48 @@
     saveState(player.novato ? `${player.nome} marcado como novato.` : `${player.nome} deixou de ser marcado como novato.`);
   }
 
+  function setPlayerStatus(playerId, status) {
+    if (!requireOrganizer()) return;
+    const player = getPlayer(playerId);
+    if (!player) return showToast('Jogador não encontrado.');
+    const previousStatus = getPlayerStatus(player);
+    const nextStatus = applyPlayerStatus(player, status);
+    if (nextStatus === previousStatus) return;
+
+    state.babas.forEach((baba) => {
+      baba.participantFlags = baba.participantFlags && typeof baba.participantFlags === 'object'
+        ? baba.participantFlags
+        : {};
+      if (baba.status !== 'finalizado') {
+        baba.participantFlags[playerId] = {
+          ...(baba.participantFlags[playerId] || {}),
+          guest: nextStatus === PLAYER_STATUS.GUEST,
+          novice: nextStatus === PLAYER_STATUS.NOVICE,
+          typedName: player.nome,
+        };
+      }
+      if (nextStatus === PLAYER_STATUS.DISABLED && baba.status !== 'finalizado') {
+        baba.jogadoresPresentes = (baba.jogadoresPresentes || []).filter((id) => id !== playerId);
+        (baba.teams || []).forEach((team) => {
+          team.jogadores = (team.jogadores || []).filter((id) => id !== playerId);
+        });
+        if (baba.jogoAtual) {
+          baba.jogoAtual.jogadoresTimeA = (baba.jogoAtual.jogadoresTimeA || []).filter((id) => id !== playerId);
+          baba.jogoAtual.jogadoresTimeB = (baba.jogoAtual.jogadoresTimeB || []).filter((id) => id !== playerId);
+        }
+      }
+    });
+
+    if (window.BabaImportRepository?.currentUser?.()) {
+      window.BabaImportRepository.recordPlayerStatus?.(playerId, nextStatus === PLAYER_STATUS.NOVICE, {
+        babaId: getActiveBaba()?.id || null,
+        reason: `status-${nextStatus}`,
+      }).catch((error) => console.warn('Não foi possível registrar a mudança de status:', error));
+    }
+    saveState(`${player.nome} definido como ${playerStatusLabel(player).toLowerCase()}.`);
+    window.BabaPublicSync?.flushPending?.();
+  }
+
   function deletePlayer(playerId) {
     if (!requireOrganizer()) return;
     const ok = confirm('Remover este jogador da lista fixa? O historico antigo continuara exibindo o nome quando possivel.');
@@ -2071,14 +2180,21 @@
     state.players = state.players.filter((player) => player.id !== playerId);
     state.babas.forEach((baba) => {
       if (baba.status !== 'finalizado') {
-        baba.jogadoresPresentes = baba.jogadoresPresentes.filter((id) => id !== playerId);
+        baba.jogadoresPresentes = (baba.jogadoresPresentes || []).filter((id) => id !== playerId);
         if (baba.pagamentos) delete baba.pagamentos[playerId];
-        baba.teams = [];
-        baba.filaTimes = [];
-        baba.jogoAtual = null;
+        if (baba.participantFlags) delete baba.participantFlags[playerId];
+        (baba.teams || []).forEach((team) => {
+          team.jogadores = (team.jogadores || []).filter((id) => id !== playerId);
+          if (team.manualStats?.playerGoals) delete team.manualStats.playerGoals[playerId];
+        });
+        if (baba.jogoAtual) {
+          baba.jogoAtual.jogadoresTimeA = (baba.jogoAtual.jogadoresTimeA || []).filter((id) => id !== playerId);
+          baba.jogoAtual.jogadoresTimeB = (baba.jogoAtual.jogadoresTimeB || []).filter((id) => id !== playerId);
+        }
       }
     });
     saveState('Jogador removido.');
+    window.BabaPublicSync?.flushPending?.();
   }
 
   function deleteVisitor(playerId) {
@@ -2350,7 +2466,18 @@
   }
 
   function isPaymentEligiblePlayer(player) {
-    return Boolean(player) && player.ativo !== false && player.novato !== true;
+    return Boolean(player) && getPlayerStatus(player) === PLAYER_STATUS.REGULAR;
+  }
+
+  function isNovicePlayer(player) {
+    return Boolean(player) && getPlayerStatus(player) === PLAYER_STATUS.NOVICE;
+  }
+
+  function isPlayerVisibleInRanking(playerId, baba = getActiveBaba()) {
+    const player = getBabaPlayer(baba, playerId);
+    if (!player) return true;
+    const status = getPlayerStatus(player);
+    return status !== PLAYER_STATUS.GUEST && status !== PLAYER_STATUS.DISABLED;
   }
 
   function paymentPriceForPlayer(player) {
@@ -2567,17 +2694,21 @@
     ], pdfPlayerTeam(baba, stats.jogadorId)));
   }
 
-  function paymentRowsForPdf(baba = getActiveBaba(), paidOnly = true) {
+  function paymentRowsForPdf(baba = getActiveBaba(), mode = 'paid') {
     return getPaymentPlayers(baba)
-      .filter((player) => paidOnly
-        ? isPaymentEligiblePlayer(player) && isPlayerPaidThisMonth(player.id, baba)
-        : (!isPaymentEligiblePlayer(player) || !isPlayerPaidThisMonth(player.id, baba)))
+      .filter((player) => {
+        if (mode === 'novice') return isNovicePlayer(player);
+        if (!isPaymentEligiblePlayer(player)) return false;
+        return mode === 'paid'
+          ? isPlayerPaidThisMonth(player.id, baba)
+          : !isPlayerPaidThisMonth(player.id, baba);
+      })
       .sort((a, b) => a.nome.localeCompare(b.nome))
       .map((player, index) => pdfTeamRow([
         index + 1,
         player.nome,
         playerPaymentTypeLabel(player, baba),
-        isPaymentEligiblePlayer(player) ? formatCurrency(paymentPriceForPlayer(player)) : 'ISENTO',
+        mode === 'novice' ? 'NOVATO' : formatCurrency(paymentPriceForPlayer(player)),
       ], pdfPlayerTeam(baba, player.id)));
   }
 
@@ -2658,17 +2789,26 @@
           icon: 'check-circle',
           maxRows: PDF_ROW_LIMITS.payments,
           columns: ['#', 'Jogador', 'Tipo', 'Valor'],
-          rows: paymentRowsForPdf(baba, true),
+          rows: paymentRowsForPdf(baba, 'paid'),
           empty: 'Nenhum pagamento confirmado ainda.',
         },
         {
-          title: 'Pendentes e novatos',
-          note: 'Novatos aparecem como isentos, sem alterar os cálculos',
+          title: 'Jogadores pendentes',
+          note: 'Somente jogadores regulares em cobrança',
           icon: 'alert-circle',
           maxRows: PDF_ROW_LIMITS.payments,
           columns: ['#', 'Jogador', 'Tipo', 'Valor'],
-          rows: paymentRowsForPdf(baba, false),
+          rows: paymentRowsForPdf(baba, 'pending'),
           empty: 'Nenhum pagamento pendente.',
+        },
+        {
+          title: 'Novatos',
+          note: 'Lista separada, sem cobrança',
+          icon: 'users',
+          maxRows: PDF_ROW_LIMITS.payments,
+          columns: ['#', 'Jogador', 'Tipo', 'Situação'],
+          rows: paymentRowsForPdf(baba, 'novice'),
+          empty: 'Nenhum novato cadastrado.',
         },
       ];
       return report;
@@ -3716,14 +3856,20 @@
     const baba = getActiveBaba();
     const player = getPaymentPlayers(baba).find((item) => item.id === playerId) || getPlayer(playerId);
     if (!player) return showToast('Jogador não encontrado para registrar o pagamento.');
+    if (!isPaymentEligiblePlayer(player)) {
+      return showToast(`${player.nome} está como ${playerStatusLabel(player).toLowerCase()} e não entra na cobrança.`);
+    }
     const record = getMonthlyPaymentRecord();
+    const changedAt = Date.now();
     record.pagamentos[playerId] = !isPlayerPaidThisMonth(playerId, baba);
-    record.atualizadoEm = Date.now();
+    record.paymentUpdatedAtMs[playerId] = changedAt;
+    record.atualizadoEm = changedAt;
     if (baba) {
       baba.pagamentos = baba.pagamentos && typeof baba.pagamentos === 'object' && !Array.isArray(baba.pagamentos) ? baba.pagamentos : {};
       baba.pagamentos[playerId] = record.pagamentos[playerId];
     }
     saveState(record.pagamentos[playerId] ? `${player.nome} pagou o mês atual.` : `${player.nome} ficou pendente no mês atual.`);
+    window.BabaPublicSync?.flushPending?.();
   }
 
   function drawTeams() {
@@ -4872,7 +5018,7 @@
         stats.mediaSofridos = stats.jogos ? Number((stats.golsSofridos / stats.jogos).toFixed(2)) : 0;
         return stats;
       })
-      .filter((stats) => stats.jogos > 0)
+      .filter((stats) => stats.jogos > 0 && isPlayerVisibleInRanking(stats.jogadorId))
       .sort((a, b) => (
         a.golsSofridos - b.golsSofridos ||
         a.mediaSofridos - b.mediaSofridos ||
@@ -5146,31 +5292,42 @@
       .replace(/[\u0300-\u036f]/g, '')
       .toLocaleLowerCase('pt-BR');
     const playerAdminItemHTML = (player, { visitor = false } = {}) => {
-      const paid = playerPaymentState(player.id, baba, { force: true }) === 'paid';
+      const paymentState = playerPaymentState(player.id, baba, { force: true });
+      const paid = paymentState === 'paid';
       const active = player.ativo !== false;
       const price = paymentPriceForPlayer(player);
-      const typeLabel = player.tipo === 'goleiro' ? 'Goleiro' : (visitor || player.visitante ? 'Visitante' : 'Jogador');
+      const status = visitor ? PLAYER_STATUS.GUEST : getPlayerStatus(player);
+      const typeLabel = player.tipo === 'goleiro' ? 'Goleiro' : (visitor || player.visitante ? 'Convidado' : 'Jogador');
+      const paymentLabel = paymentState === 'paid'
+        ? '<small class="baba-payment-status is-paid">Pago</small>'
+        : paymentState === 'unpaid'
+          ? '<small class="baba-payment-status is-unpaid">Não pagou</small>'
+          : `<small class="baba-status-pill is-${status}">${escapeHTML(playerStatusLabel(player))}</small>`;
       const meta = [
         `<small>${typeLabel} - ${formatCurrency(price)}</small>`,
-        paid ? '<small class="baba-payment-status is-paid">Pago</small>' : '<small class="baba-payment-status is-unpaid">Não pagou</small>',
-        player.novato ? '<small class="baba-status-pill">Novato</small>' : '',
-        active ? '' : '<small class="baba-status-pill">Inativo</small>',
+        paymentLabel,
       ].filter(Boolean).join('');
       const paymentButtonLabel = paid ? 'Pagamento pendente' : 'Pagamento pago';
+      const canCharge = isPaymentEligiblePlayer(player);
+      const statusOptions = PLAYER_STATUS_OPTIONS.map((option) => (
+        `<option value="${option.id}"${option.id === status ? ' selected' : ''}>${option.label}</option>`
+      )).join('');
 
       return `
-      <div class="baba-player-admin ${paid ? 'is-paid' : 'is-unpaid'}" data-player-filter-row data-player-name="${escapeHTML(normalizePlayerFilterText(player.nome))}" data-player-payment="${paid ? 'paid' : 'unpaid'}" data-player-status="${active ? 'active' : 'inactive'}" data-player-novice="${player.novato ? 'yes' : 'no'}">
+      <div class="baba-player-admin is-${paymentState || 'unpaid'}" data-player-filter-row data-player-name="${escapeHTML(normalizePlayerFilterText(player.nome))}" data-player-payment="${paymentState || 'unpaid'}" data-player-status="${status}" data-player-novice="${status === PLAYER_STATUS.NOVICE ? 'yes' : 'no'}">
         <div class="baba-player-admin__info">
           <strong>${playerPaymentNameHTML(player.id, baba, { name: player.nome, force: true })}</strong>
           ${meta ? `<div class="baba-player-admin__meta">${meta}</div>` : ''}
         </div>
         <div class="baba-player-admin__actions">
-          <button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}">${paymentButtonLabel}</button>
+          <button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}" ${canCharge ? '' : 'disabled'}>${canCharge ? paymentButtonLabel : playerStatusLabel(player)}</button>
           ${visitor
             ? `<button class="baba-mini-btn danger" type="button" data-action="delete-visitor" data-id="${player.id}">Remover</button>`
             : `
-              <button class="baba-mini-btn" type="button" data-action="toggle-player" data-id="${player.id}">${active ? 'Desativar' : 'Ativar'}</button>
-              <button class="baba-mini-btn" type="button" data-action="toggle-player-novice" data-id="${player.id}">${player.novato ? 'Remover novato' : 'Novato'}</button>
+              <label class="baba-player-status-control">
+                <span>Definir jogador</span>
+                <select data-player-status-id="${player.id}" aria-label="Definir situação de ${escapeHTML(player.nome)}">${statusOptions}</select>
+              </label>
               <button class="baba-mini-btn danger" type="button" data-action="delete-player" data-id="${player.id}">Excluir</button>
             `}
         </div>
@@ -5207,8 +5364,10 @@
           </select>
           <select data-player-list-filter="status" aria-label="Filtrar por situação">
             <option value="all"${playerPaymentFilters.status === 'all' ? ' selected' : ''}>Situação: todos</option>
-            <option value="active"${playerPaymentFilters.status === 'active' ? ' selected' : ''}>Ativos</option>
-            <option value="inactive"${playerPaymentFilters.status === 'inactive' ? ' selected' : ''}>Inativos</option>
+            <option value="regular"${playerPaymentFilters.status === 'regular' ? ' selected' : ''}>Regulares</option>
+            <option value="novice"${playerPaymentFilters.status === 'novice' ? ' selected' : ''}>Novatos</option>
+            <option value="guest"${playerPaymentFilters.status === 'guest' ? ' selected' : ''}>Convidados</option>
+            <option value="disabled"${playerPaymentFilters.status === 'disabled' ? ' selected' : ''}>Desativados</option>
           </select>
         </div>
         ${playersHTML || '<div class="baba-empty">Cadastre jogadores para controlar a lista e os pagamentos mensais.</div>'}
@@ -5401,6 +5560,47 @@
     if (els.paymentList) setHTML(els.paymentList, '');
   }
 
+  function exportTeamsTxt() {
+    if (!requireOrganizer()) return;
+    const baba = getActiveBaba();
+    if (!baba?.teams?.length) return showToast('Sorteie os times antes de exportar.');
+    const lines = [
+      'BABA PSYZON - TIMES E JOGADORES',
+      `Data: ${reportContextLabel(baba)}`,
+      '',
+    ];
+    (baba.teams || []).forEach((team) => {
+      lines.push(String(team.name || 'Time').toUpperCase());
+      const names = (team.jogadores || [])
+        .map((playerId) => getBabaPlayer(baba, playerId)?.nome || playerName(playerId, baba))
+        .filter(Boolean);
+      if (names.length) names.forEach((name) => lines.push(`- ${name}`));
+      else lines.push('- Sem jogadores');
+      lines.push('');
+    });
+    const assigned = new Set((baba.teams || []).flatMap((team) => team.jogadores || []));
+    const unassigned = [...(baba.jogadoresPresentes || []), ...(baba.visitantes || []).map((player) => player.id)]
+      .filter((playerId, index, list) => !assigned.has(playerId) && list.indexOf(playerId) === index)
+      .map((playerId) => getBabaPlayer(baba, playerId)?.nome || playerName(playerId, baba));
+    if (unassigned.length) {
+      lines.push('SEM TIME');
+      unassigned.forEach((name) => lines.push(`- ${name}`));
+      lines.push('');
+    }
+    lines.push('Formato preparado para identificação por IA em ficha manual.');
+
+    const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `times-baba-${baba.dataISO || todayISO()}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast('Arquivo TXT dos times exportado.');
+  }
+
   function renderTeams(baba) {
     if (!baba?.teams?.length) {
       setHTML(els.teamsGrid, '<div class="baba-card"><div class="baba-empty">Nenhum time sorteado ainda.</div></div>');
@@ -5411,6 +5611,7 @@
     const fullyRevealed = index >= baba.teams.length - 1;
     const lateArrivalCount = getUnassignedPresentPlayers(baba).length;
     const createLateTeamHTML = isOrganizer() ? `
+      <button class="baba-secondary" type="button" data-action="export-teams-txt" title="Exportar nomes e times em TXT para identificação por IA">Exportar times em TXT</button>
       <button class="baba-secondary" type="button" data-action="create-late-team" ${lateArrivalCount ? '' : 'disabled'} title="${lateArrivalCount ? `${lateArrivalCount} jogador${lateArrivalCount === 1 ? '' : 'es'} presente${lateArrivalCount === 1 ? '' : 's'} e sem time` : 'Marque os jogadores que chegaram depois como presentes'}">
         Adicionar novo time${lateArrivalCount ? ` (${lateArrivalCount})` : ''}
       </button>
@@ -6743,12 +6944,14 @@
   function renderRankingScopeControls() {
     if (!els.rankingScopeControls) return;
     if (!RANKING_SCOPES.some((item) => item.id === rankingScope)) rankingScope = 'monthly';
-    setHTML(els.rankingScopeControls, RANKING_SCOPES.map((scope) => `
+    const buttons = RANKING_SCOPES.map((scope) => `
       <button class="${rankingScope === scope.id ? 'active' : ''}" type="button" data-ranking-scope="${scope.id}" aria-pressed="${rankingScope === scope.id ? 'true' : 'false'}">
         <svg aria-hidden="true" focusable="false"><use href="#${scope.icon}"></use></svg>
         <span>${scope.label}</span>
       </button>
-    `).join(''));
+    `).join('');
+    const select = `<label class="baba-ranking-compact-select"><span>Exibir</span><select data-ranking-scope-select>${RANKING_SCOPES.map((scope) => `<option value="${scope.id}"${rankingScope === scope.id ? ' selected' : ''}>${scope.label}</option>`).join('')}</select></label>`;
+    setHTML(els.rankingScopeControls, `${select}${buttons}`);
     $$('[data-ranking-card]').forEach((card) => {
       card.classList.toggle('hidden', card.dataset.rankingCard !== rankingScope);
     });
@@ -6783,12 +6986,14 @@
 
   function renderRankingFilters() {
     if (!els.rankingFilterControls) return;
-    setHTML(els.rankingFilterControls, RANKING_MODES.map((modeOption) => `
+    const buttons = RANKING_MODES.map((modeOption) => `
       <button class="${rankingMode === modeOption.id ? 'active' : ''}" type="button" data-ranking-mode="${modeOption.id}" aria-pressed="${rankingMode === modeOption.id ? 'true' : 'false'}">
         <svg aria-hidden="true" focusable="false"><use href="#${modeOption.icon}"></use></svg>
         <span>${modeOption.label}</span>
       </button>
-    `).join(''));
+    `).join('');
+    const select = `<label class="baba-ranking-compact-select"><span>Ordenar por</span><select data-ranking-mode-select>${RANKING_MODES.map((option) => `<option value="${option.id}"${rankingMode === option.id ? ' selected' : ''}>${option.label}</option>`).join('')}</select></label>`;
+    setHTML(els.rankingFilterControls, `${select}${buttons}`);
   }
 
   function rankingMetricValue(stats, metric = 'goals') {
@@ -6821,7 +7026,7 @@
 
   function sortRanking(ranking, metric = 'goals') {
     return Object.values(ranking || {})
-      .filter((stats) => hasRankingMetric(stats, metric))
+      .filter((stats) => isPlayerVisibleInRanking(stats.jogadorId) && hasRankingMetric(stats, metric))
       .sort((a, b) => {
         if (metric === 'wins') {
           return b.totalVitorias - a.totalVitorias || b.totalGols - a.totalGols || b.aproveitamento - a.aproveitamento || a.nome.localeCompare(b.nome);
@@ -6961,9 +7166,12 @@
 
     const historyItems = finished.map((baba) => `
       <button class="baba-history-item ${baba.id === selectedHistoryId ? 'active' : ''}" type="button" data-history-id="${baba.id}">
-        <span>
+        <span class="baba-history-item__identity">
+          <i class="baba-history-item__date">${escapeHTML(String(baba.dia || '').padStart(2, '0'))}</i>
+          <span>
           <strong>${escapeHTML(baba.dataCompleta)}</strong>
           <small>${escapeHTML(baba.campeaoDoBaba?.nomes?.join(', ') || 'Sem campeão')}</small>
+          </span>
         </span>
         <span class="baba-history-actions">
           <b>${baba.jogos?.length || 0} jogos</b>
@@ -6994,29 +7202,63 @@
     if (!baba) return;
     els.historyDetailLabel.textContent = baba.dataCompleta;
     const championNames = baba.campeaoDoBaba?.nomes?.join(', ') || 'Sem campeão';
-    const championPlayers = (baba.campeaoDoBaba?.jogadores || []).map((id) => playerPaymentNameHTML(id, baba)).join(', ') || '-';
+    const championPlayerNames = (baba.campeaoDoBaba?.jogadores || []).map((id) => (
+      getBabaPlayer(baba, id)?.nome
+      || baba.rankingDoBaba?.[id]?.nome
+      || state.playerStats?.[id]?.nome
+      || 'Jogador removido'
+    ));
+    const championPlayers = championPlayerNames.length
+      ? championPlayerNames.map((name) => `<span class="baba-history-champion-chip">${escapeHTML(name)}</span>`).join('')
+      : '<span class="baba-history-muted">Nenhum jogador informado</span>';
+    const teams = (baba.teams || []).map((team) => `
+      <article class="baba-history-team"${teamNumberDataAttribute(team)}>
+        <header>
+          <strong>${teamDetailButton(baba, team)}</strong>
+          <b>${Number(team.pontos || 0)} pts</b>
+        </header>
+        <div>
+          <span><small>Vitórias</small><b>${Number(team.vitorias || 0)}</b></span>
+          <span><small>Empates</small><b>${Number(team.empates || 0)}</b></span>
+          <span><small>Derrotas</small><b>${Number(team.derrotas || 0)}</b></span>
+          <span><small>Saldo</small><b>${Number(team.golsPro || 0) - Number(team.golsContra || 0)}</b></span>
+        </div>
+      </article>
+    `).join('');
+    const games = (baba.jogos || []).map((game) => `
+      <article class="baba-history-match">
+        <span>Jogo ${game.numeroJogo}</span>
+        <strong>${matchLineHTML(baba, getTeam(baba, game.timeA), game.placarA, game.placarB, getTeam(baba, game.timeB), true)}</strong>
+        <small>${escapeHTML(resultStatusLabel(game))}</small>
+      </article>
+    `).join('');
 
     setHTML(els.historyDetail, `
-      <div class="baba-stack">
-        <div class="baba-row"><span>Campeão do baba</span><b>${escapeHTML(championNames)}</b></div>
-        <div class="baba-row"><span>Jogadores campeões</span><b>${championPlayers}</b></div>
-        <div class="baba-row"><span>Presentes</span><b>${baba.jogadoresPresentes?.length || 0}</b></div>
-        <div class="baba-row"><span>Finalizado</span><b>${formatTime(baba.finalizadoEm)}</b></div>
-        ${(baba.teams || []).map((team) => `
-          <div class="baba-row"${teamNumberDataAttribute(team)}>
-            <div>
-              <strong>${teamDetailButton(baba, team)} - ${team.pontos} pts</strong>
-              <small>V:${team.vitorias} E:${team.empates} D:${team.derrotas} GP:${team.golsPro} GC:${team.golsContra}</small>
-            </div>
+      <div class="baba-history-detail-pro">
+        <section class="baba-history-hero">
+          <div>
+            <small>Campeão do baba</small>
+            <h3>${escapeHTML(championNames)}</h3>
+            <p>${escapeHTML(baba.dataCompleta)} · finalizado às ${formatTime(baba.finalizadoEm)}</p>
           </div>
-        `).join('')}
-        ${(baba.jogos || []).map((game) => `
-          <div class="baba-row">
-            <div>
-              <strong>Jogo ${game.numeroJogo}: ${matchLineHTML(baba, getTeam(baba, game.timeA), game.placarA, game.placarB, getTeam(baba, game.timeB), true)}</strong>
-            </div>
+          <div class="baba-history-kpis">
+            <span><b>${baba.jogadoresPresentes?.length || 0}</b><small>presentes</small></span>
+            <span><b>${baba.teams?.length || 0}</b><small>times</small></span>
+            <span><b>${baba.jogos?.length || 0}</b><small>jogos</small></span>
           </div>
-        `).join('')}
+        </section>
+        <section class="baba-history-section">
+          <div class="baba-history-section__title"><strong>Jogadores campeões</strong><small>${championPlayerNames.length} jogadores</small></div>
+          <div class="baba-history-champions">${championPlayers}</div>
+        </section>
+        <section class="baba-history-section">
+          <div class="baba-history-section__title"><strong>Desempenho dos times</strong><small>Tabela final</small></div>
+          <div class="baba-history-teams">${teams || '<div class="baba-empty">Nenhum time salvo.</div>'}</div>
+        </section>
+        <section class="baba-history-section">
+          <div class="baba-history-section__title"><strong>Partidas</strong><small>Ordem dos jogos</small></div>
+          <div class="baba-history-matches">${games || '<div class="baba-empty">Nenhuma partida salva.</div>'}</div>
+        </section>
       </div>
     `);
   }
@@ -7558,8 +7800,7 @@
     const playerAsked = assistantFindPlayers(question)[0] || (/\bele\b|\bela\b/.test(normalized) ? getPlayer(babaAssistant.context.players[0]) : null);
     if (playerAsked) {
       if (!isPaymentEligiblePlayer(playerAsked)) {
-        const reason = playerAsked.ativo === false ? 'está inativo' : 'é novato';
-        return `${playerAsked.nome} ${reason} e não entra nos cálculos de pagamento deste mês.`;
+        return `${playerAsked.nome} está como ${playerStatusLabel(playerAsked).toLowerCase()} e não entra nos cálculos de pagamento deste mês.`;
       }
       const paid = isPlayerPaidThisMonth(playerAsked.id, baba);
       const value = formatCurrency(paymentPriceForPlayer(playerAsked));
@@ -7969,6 +8210,22 @@
     window.addEventListener('scroll', positionMoreMenu, { passive: true });
 
     document.addEventListener('change', (event) => {
+      const rankingModeSelect = event.target.closest('[data-ranking-mode-select]');
+      if (rankingModeSelect) {
+        rankingMode = RANKING_MODES.some((item) => item.id === rankingModeSelect.value) ? rankingModeSelect.value : 'goals';
+        expandedRankingKeys.clear();
+        render();
+        return;
+      }
+      const rankingScopeSelect = event.target.closest('[data-ranking-scope-select]');
+      if (rankingScopeSelect) {
+        rankingScope = RANKING_SCOPES.some((item) => item.id === rankingScopeSelect.value) ? rankingScopeSelect.value : 'monthly';
+        expandedRankingKeys.clear();
+        render();
+        return;
+      }
+      const playerStatusSelect = event.target.closest('[data-player-status-id]');
+      if (playerStatusSelect) return setPlayerStatus(playerStatusSelect.dataset.playerStatusId, playerStatusSelect.value);
       const playerFilter = event.target.closest('[data-player-list-filter]');
       if (playerFilter) {
         playerPaymentFilters[playerFilter.dataset.playerListFilter] = playerFilter.value;
@@ -8041,6 +8298,7 @@
         return window.requestAnimationFrame(() => els.presentModal.querySelector('input, button')?.focus({ preventScroll: true }));
       }
       if (actionButton?.dataset.action === 'open-team-management') return openTeamDetail(actionButton.dataset.teamId);
+      if (actionButton?.dataset.action === 'export-teams-txt') return exportTeamsTxt();
       if (actionButton?.dataset.action === 'advance-draw-experience') return advanceDrawExperience();
       if (actionButton?.dataset.action === 'finish-draw-experience') return finalizeDrawExperience();
       if (actionButton?.dataset.action === 'toggle-player') return togglePlayerActive(actionButton.dataset.id);
@@ -8154,8 +8412,7 @@
     const deactivateNovice = new Set(noviceDeactivatedPlayerIds);
     state.players.forEach((player) => {
       if (!deactivateNovice.has(player.id)) return;
-      player.novato = false;
-      player.noviceActive = false;
+      applyPlayerStatus(player, PLAYER_STATUS.REGULAR);
       player.noviceReason = 'import-reverted';
       player.noviceReasonImportId = null;
     });

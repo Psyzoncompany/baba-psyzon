@@ -854,7 +854,10 @@ async function persistGlobalData(state, previousState = null) {
       if (previousRecord && Object.prototype.hasOwnProperty.call(previousRecord.pagamentos || {}, playerId)
         && Boolean(previousPaid) === Boolean(paid)) return;
       operations.push(setOperation(accountDoc('months', safeId(monthKey), 'payments', safeId(playerId)), {
-        playerId, paid: Boolean(paid), updatedAtMs: Number(record.atualizadoEm || timestamp), schemaVersion: SCHEMA_VERSION,
+        playerId,
+        paid: Boolean(paid),
+        updatedAtMs: Number(record.paymentUpdatedAtMs?.[playerId] || record.atualizadoEm || timestamp),
+        schemaVersion: SCHEMA_VERSION,
       }));
     });
   });
@@ -1259,8 +1262,20 @@ function mergeRemoteIntoLocal() {
       const localRecord = localMonthlyPayments[monthKey] || {};
       const localPayments = localRecord.pagamentos && typeof localRecord.pagamentos === 'object' ? localRecord.pagamentos : {};
       const remotePayments = remoteRecord?.pagamentos && typeof remoteRecord.pagamentos === 'object' ? remoteRecord.pagamentos : {};
+      const localTimes = localRecord.paymentUpdatedAtMs && typeof localRecord.paymentUpdatedAtMs === 'object' ? localRecord.paymentUpdatedAtMs : {};
+      const remoteTimes = remoteRecord?.paymentUpdatedAtMs && typeof remoteRecord.paymentUpdatedAtMs === 'object' ? remoteRecord.paymentUpdatedAtMs : {};
+      const pagamentos = {};
+      const paymentUpdatedAtMs = {};
+      new Set([...Object.keys(localPayments), ...Object.keys(remotePayments)]).forEach((playerId) => {
+        const localTime = Number(localTimes[playerId] || localRecord.atualizadoEm || 0);
+        const remoteTime = Number(remoteTimes[playerId] || remoteRecord?.atualizadoEm || 0);
+        const useLocal = Object.prototype.hasOwnProperty.call(localPayments, playerId) && localTime > remoteTime;
+        pagamentos[playerId] = Boolean(useLocal ? localPayments[playerId] : remotePayments[playerId]);
+        paymentUpdatedAtMs[playerId] = Math.max(localTime, remoteTime);
+      });
       next.monthlyPayments[monthKey] = {
-        pagamentos: { ...localPayments, ...remotePayments },
+        pagamentos,
+        paymentUpdatedAtMs,
         atualizadoEm: Math.max(Number(localRecord.atualizadoEm || 0), Number(remoteRecord?.atualizadoEm || 0)),
       };
     });
@@ -1432,6 +1447,7 @@ async function loadMonthPayments(monthKey) {
   const activePayments = snapshot.docs.map((item) => item.data()).filter((item) => !item.deleted);
   const record = {
     pagamentos: Object.fromEntries(activePayments.map((item) => [item.playerId || item.id, Boolean(item.paid)])),
+    paymentUpdatedAtMs: Object.fromEntries(activePayments.map((item) => [item.playerId || item.id, Number(item.updatedAtMs || 0)])),
     atualizadoEm: Math.max(0, ...activePayments.map((item) => Number(item.updatedAtMs || 0))),
   };
   monthPaymentsCache.set(id, record);
@@ -1443,6 +1459,28 @@ async function loadMonthPayments(monthKey) {
   return record;
 }
 
+function startMonthPaymentsSubscription(monthKey) {
+  const id = safeId(monthKey);
+  if (!id) return;
+  subscribe(`month:${id}:payments`, query(
+    accountCollection('months', id, 'payments'),
+    limit(QUERY_LIMITS.payments),
+  ), (snapshot) => {
+    const activePayments = snapshot.docs.map((item) => item.data()).filter((item) => !item.deleted);
+    const record = {
+      pagamentos: Object.fromEntries(activePayments.map((item) => [item.playerId || item.id, Boolean(item.paid)])),
+      paymentUpdatedAtMs: Object.fromEntries(activePayments.map((item) => [item.playerId || item.id, Number(item.updatedAtMs || 0)])),
+      atualizadoEm: Math.max(0, ...activePayments.map((item) => Number(item.updatedAtMs || 0))),
+    };
+    monthPaymentsCache.set(id, record);
+    window.__babaRemoteMonthlyPayments = {
+      ...(window.__babaRemoteMonthlyPayments || {}),
+      [id]: record,
+    };
+    scheduleRemoteFlush();
+  }, `de pagamentos de ${id}`);
+}
+
 function startPlayersSubscription() {
   subscribe('global:players', query(accountCollection('players'), limit(QUERY_LIMITS.players)), (snapshot) => {
     window.__babaRemotePlayers = snapshot.docs.map((item) => item.data()).filter((item) => !item.deleted).map((item) => ({
@@ -1450,6 +1488,8 @@ function startPlayersSubscription() {
       nome: item.nome || item.name,
       tipo: item.tipo || item.type || 'jogador',
       ativo: item.ativo !== false,
+      status: item.status || '',
+      convidado: item.convidado === true,
       novato: item.novato === true,
       noviceActive: item.noviceActive === true || item.novato === true,
       noviceSinceMs: item.noviceSinceMs || null,
@@ -1520,9 +1560,9 @@ function startMonthsSubscription() {
     const months = snapshot.docs.map((item) => item.id);
     const currentMonth = new Date().toISOString().slice(0, 7);
     window.__babaRemoteMonthKeys = months;
+    startMonthPaymentsSubscription(currentMonth);
     if (months.includes(currentMonth)) {
       loadMonthStats(currentMonth).catch((error) => console.warn('Falha ao carregar ranking do mes atual:', error));
-      loadMonthPayments(currentMonth).catch((error) => console.warn('Falha ao carregar pagamentos do mes atual:', error));
     }
   }, 'dos meses');
 }
@@ -1888,7 +1928,15 @@ function resumePendingSave() {
   scheduleQueuedSave(SAVE_DEBOUNCE_MS);
 }
 
-window.BabaPublicSync = { scheduleSave, retryPending: resumePendingSave };
+function flushPendingSave() {
+  if (!queuedSave || saveInFlight) return;
+  clearTimeout(backoffTimer);
+  backoffTimer = null;
+  backoffUntil = 0;
+  scheduleQueuedSave(0);
+}
+
+window.BabaPublicSync = { scheduleSave, retryPending: resumePendingSave, flushPending: flushPendingSave };
 
 if (!window.__babaPersistenceEventsReady) {
   window.__babaPersistenceEventsReady = true;

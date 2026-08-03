@@ -489,7 +489,7 @@ export async function revertImport(importId, { removablePlayerIds = [] } = {}) {
       active: false, deleted: true, deactivatedByReversal: importId, updatedAtMs: timestamp,
     }, { merge: true }));
     playersToRemove.forEach((playerId) => transaction.set(accountDoc('players', safeId(playerId)), {
-      deleted: true, active: false, ativo: false, deletedByImportReversal: importId, updatedAtMs: timestamp,
+      deleted: true, active: false, ativo: false, status: 'disabled', deletedByImportReversal: importId, updatedAtMs: timestamp,
     }, { merge: true }));
     (record.newPlayerNameKeys || []).forEach((nameKey) => transaction.set(accountDoc('player_name_keys', safeId(nameKey)), {
       active: false, deactivatedByReversal: importId, updatedAtMs: timestamp,
@@ -499,7 +499,7 @@ export async function revertImport(importId, { removablePlayerIds = [] } = {}) {
       const player = aggregateSnapshots[noviceSnapshotOffset + index]?.data() || {};
       if (player.noviceReasonImportId !== importId) return;
       transaction.set(playerRef, {
-        novato: false, noviceActive: false, noviceReason: 'import-reverted',
+        status: 'regular', novato: false, convidado: false, noviceActive: false, noviceReason: 'import-reverted',
         noviceReasonImportId: null, updatedAtMs: timestamp,
       }, { merge: true });
     });

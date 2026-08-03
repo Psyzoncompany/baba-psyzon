@@ -20,7 +20,7 @@
   const TEAM_COLORS = {
     1: [213, 52, 69],
     2: [20, 133, 82],
-    3: [51, 65, 85],
+    3: [184, 164, 111],
     4: [17, 24, 39],
     5: [37, 99, 168],
   };
@@ -289,10 +289,10 @@
       doc.text(cleanText(item?.[1]), x + 14.2, summaryY + 11.7);
     });
 
-    const sections = (report.sections || []).slice(0, 2);
+    const sections = (report.sections || []).slice(0, 3);
     const sectionTop = summaryY + cardHeight + 2.4;
     const sectionGap = 2.6;
-    const sectionWidth = (contentWidth - sectionGap) / 2;
+    const sectionWidth = (contentWidth - (sectionGap * Math.max(0, sections.length - 1))) / Math.max(1, sections.length);
     const footerY = pageHeight - 10.5;
     const tableBottom = footerY - 4;
 
@@ -318,7 +318,7 @@
         doc,
         x + 3.2,
         sectionTop + 2.3,
-        sectionIndex === 0 ? 'check' : 'pending',
+        sectionIndex === 0 ? 'check' : (sectionIndex === 1 ? 'pending' : 'wallet'),
       );
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9.7);
@@ -399,11 +399,182 @@
     return doc;
   }
 
+  function createStandingsReport(report, JsPdf) {
+    const doc = new JsPdf({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+      putOnlyUsedFonts: true,
+    });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 10;
+    const contentWidth = pageWidth - (margin * 2);
+
+    doc.setProperties({
+      title: cleanText(report.title),
+      subject: cleanText(report.subtitle),
+      author: cleanText(report.brand || 'Baba Psyzon'),
+      creator: 'Psyzon PDF',
+      keywords: 'tabela, times, baba, classificacao',
+    });
+    doc.setLanguage?.('pt-BR');
+
+    setColor(doc, 'setFillColor', [3, 19, 29]);
+    doc.roundedRect(margin, 8, contentWidth, 35, 3.5, 3.5, 'F');
+    setColor(doc, 'setDrawColor', [184, 164, 111]);
+    doc.setLineWidth(.8);
+    doc.line(margin + 1, 9, margin + contentWidth - 1, 9);
+    setColor(doc, 'setFillColor', [18, 74, 75]);
+    doc.circle(pageWidth - margin - 20, 25, 22, 'F');
+    setColor(doc, 'setDrawColor', [205, 230, 88]);
+    doc.setLineWidth(.8);
+    doc.roundedRect(pageWidth - margin - 47, 14, 31, 21, 2.5, 2.5, 'S');
+    doc.line(pageWidth - margin - 47, 21, pageWidth - margin - 16, 21);
+    doc.line(pageWidth - margin - 37, 14, pageWidth - margin - 37, 35);
+    doc.line(pageWidth - margin - 27, 14, pageWidth - margin - 27, 35);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.2);
+    setColor(doc, 'setTextColor', [205, 230, 88]);
+    doc.text(cleanText(report.eyebrow || report.brand || 'Baba Psyzon').toUpperCase(), margin + 6, 17);
+    doc.setFontSize(18);
+    setColor(doc, 'setTextColor', COLORS.white);
+    doc.text(cleanText(report.title), margin + 6, 28);
+    doc.setFontSize(7.5);
+    setColor(doc, 'setTextColor', [218, 226, 232]);
+    doc.text(`${cleanText(report.subtitle)} - gerado em ${cleanText(report.generatedAt)}`, margin + 6, 35);
+
+    const summaries = (report.summary || []).slice(0, 5);
+    const summaryGap = 2.2;
+    const summaryTop = 46;
+    const summaryHeight = 14;
+    const summaryWidth = (contentWidth - (summaryGap * Math.max(0, summaries.length - 1))) / Math.max(1, summaries.length);
+    summaries.forEach((item, index) => {
+      const x = margin + (index * (summaryWidth + summaryGap));
+      setColor(doc, 'setFillColor', [248, 251, 253]);
+      setColor(doc, 'setDrawColor', [210, 225, 238]);
+      doc.setLineWidth(.4);
+      doc.roundedRect(x, summaryTop, summaryWidth, summaryHeight, 2.3, 2.3, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(5.7);
+      setColor(doc, 'setTextColor', COLORS.muted);
+      doc.text(cleanText(item?.[0]).toUpperCase(), x + 4, summaryTop + 5.2);
+      doc.setFontSize(8.5);
+      setColor(doc, 'setTextColor', COLORS.text);
+      doc.text(doc.splitTextToSize(cleanText(item?.[1]), summaryWidth - 8)[0] || '-', x + 4, summaryTop + 10.5);
+    });
+
+    const sections = (report.sections || []).slice(0, 4);
+    const panelGap = 3;
+    const panelTop = 63;
+    const footerY = pageHeight - 7;
+    const panelWidth = (contentWidth - panelGap) / 2;
+    const panelHeight = ((footerY - panelTop - 4) - panelGap) / 2;
+
+    sections.forEach((section, index) => {
+      const column = index % 2;
+      const rowIndex = Math.floor(index / 2);
+      const x = margin + (column * (panelWidth + panelGap));
+      const y = panelTop + (rowIndex * (panelHeight + panelGap));
+      const columns = Array.isArray(section.columns) ? section.columns.map(cleanText) : [];
+      const sourceRows = Array.isArray(section.rows) ? section.rows : [];
+      const rows = sourceRows.slice(0, Math.min(Number(section.maxRows || 12), 12));
+      const widths = calculateColumnWidths(columns, panelWidth - 1);
+
+      setColor(doc, 'setFillColor', COLORS.white);
+      setColor(doc, 'setDrawColor', [210, 225, 238]);
+      doc.setLineWidth(.45);
+      doc.roundedRect(x, y, panelWidth, panelHeight, 2.8, 2.8, 'FD');
+      setColor(doc, 'setFillColor', [7, 45, 57]);
+      doc.roundedRect(x + .2, y + .2, panelWidth - .4, 10, 2.6, 2.6, 'F');
+      setColor(doc, 'setFillColor', index === 0 ? [205, 230, 88] : [184, 164, 111]);
+      doc.roundedRect(x + 3, y + 2.3, 5.5, 5.5, 1.4, 1.4, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.2);
+      setColor(doc, 'setTextColor', COLORS.white);
+      doc.text(cleanText(section.title), x + 11, y + 6.8);
+      if (section.note) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(5.4);
+        setColor(doc, 'setTextColor', [188, 217, 220]);
+        doc.text(doc.splitTextToSize(cleanText(section.note), 48)[0] || '', x + panelWidth - 3, y + 6.7, { align: 'right' });
+      }
+
+      const tableY = y + 11;
+      const headerHeight = 5.5;
+      setColor(doc, 'setFillColor', [235, 242, 249]);
+      doc.rect(x + .4, tableY, panelWidth - .8, headerHeight, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(columns.length >= 7 ? 4.5 : 5.1);
+      setColor(doc, 'setTextColor', [75, 96, 125]);
+      let cellX = x + .5;
+      columns.forEach((columnLabel, columnIndex) => {
+        const numeric = isNumericColumn(columnLabel);
+        doc.text(
+          cleanText(columnLabel).toUpperCase(),
+          numeric ? cellX + widths[columnIndex] - 1.5 : cellX + 1.5,
+          tableY + 3.7,
+          { align: numeric ? 'right' : 'left' },
+        );
+        cellX += widths[columnIndex];
+      });
+
+      if (!rows.length) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.3);
+        setColor(doc, 'setTextColor', COLORS.muted);
+        doc.text(cleanText(section.empty || 'Nenhum registro.'), x + 4, tableY + 12);
+        return;
+      }
+
+      const availableHeight = panelHeight - 10 - headerHeight - 1;
+      const rowHeight = Math.min(6.1, Math.max(4.35, availableHeight / rows.length));
+      let currentY = tableY + headerHeight;
+      rows.forEach((sourceRow, sourceIndex) => {
+        const row = Array.isArray(sourceRow) ? sourceRow : [];
+        setColor(doc, 'setFillColor', sourceIndex % 2 ? [249, 251, 253] : COLORS.white);
+        doc.rect(x + .4, currentY, panelWidth - .8, rowHeight, 'F');
+        const teamNumber = teamNumberFromRow(sourceRow);
+        if (teamNumber) {
+          setColor(doc, 'setFillColor', TEAM_COLORS[teamNumber]);
+          doc.rect(x + .4, currentY, 1.2, rowHeight, 'F');
+        }
+        cellX = x + .5;
+        row.slice(0, columns.length).forEach((cell, cellIndex) => {
+          const numeric = isNumericColumn(columns[cellIndex]);
+          const maxWidth = Math.max(3, widths[cellIndex] - 3);
+          const value = doc.splitTextToSize(cleanText(cell), maxWidth)[0] || '-';
+          doc.setFont('helvetica', cellIndex === 0 ? 'bold' : 'normal');
+          doc.setFontSize(columns.length >= 7 ? 4.7 : (rowHeight < 5 ? 4.8 : 5.4));
+          setColor(doc, 'setTextColor', COLORS.text);
+          doc.text(
+            value,
+            numeric ? cellX + widths[cellIndex] - 1.5 : cellX + 1.8,
+            currentY + (rowHeight * .66),
+            { align: numeric ? 'right' : 'left' },
+          );
+          cellX += widths[cellIndex];
+        });
+        currentY += rowHeight;
+      });
+    });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    setColor(doc, 'setTextColor', COLORS.muted);
+    doc.text(cleanText(report.brand || 'Baba Psyzon'), margin, footerY);
+    doc.text('Tabela completa em uma página', pageWidth - margin, footerY, { align: 'right' });
+    return doc;
+  }
+
   function createReport(report) {
     const JsPdf = window.jspdf?.jsPDF;
     if (!JsPdf) throw new Error('O gerador de PDF não foi carregado. Atualize a página e tente novamente.');
     if (!report || !Array.isArray(report.sections)) throw new Error('Os dados do relatório estão incompletos.');
     if (report.type === 'payments') return createPaymentReport(report, JsPdf);
+    if (report.type === 'standings') return createStandingsReport(report, JsPdf);
 
     const doc = new JsPdf({
       orientation: 'portrait',
