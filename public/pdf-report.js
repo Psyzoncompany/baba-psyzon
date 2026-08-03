@@ -289,10 +289,10 @@
       doc.text(cleanText(item?.[1]), x + 14.2, summaryY + 11.7);
     });
 
-    const sections = (report.sections || []).slice(0, 2);
+    const sections = (report.sections || []).slice(0, 3);
     const sectionTop = summaryY + cardHeight + 2.4;
     const sectionGap = 2.6;
-    const sectionWidth = (contentWidth - sectionGap) / 2;
+    const sectionWidth = (contentWidth - (sectionGap * Math.max(0, sections.length - 1))) / Math.max(1, sections.length);
     const footerY = pageHeight - 10.5;
     const tableBottom = footerY - 4;
 
@@ -318,7 +318,7 @@
         doc,
         x + 3.2,
         sectionTop + 2.3,
-        sectionIndex === 0 ? 'check' : 'pending',
+        sectionIndex === 0 ? 'check' : (sectionIndex === 1 ? 'pending' : 'wallet'),
       );
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9.7);

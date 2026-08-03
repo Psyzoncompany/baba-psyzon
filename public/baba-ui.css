@@ -6242,3 +6242,49 @@ button.baba-history-item.active {
     transition-duration: .01ms !important;
   }
 }
+
+/* Ajustes Baba: filtros compactos, histórico responsivo e cor caqui do Vasco. */
+[data-team-number="3"] {
+  --team-color: #b8a46f;
+  --team-color-rgb: 184, 164, 111;
+}
+
+.baba-row--wrap {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.baba-row--wrap > b {
+  min-width: min(100%, 16rem);
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .baba-ranking-toolbar {
+    align-items: stretch;
+  }
+
+  .baba-ranking-filters,
+  .baba-ranking-scope-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: .45rem;
+  }
+
+  .baba-ranking-filters button,
+  .baba-ranking-scope-controls button {
+    width: 100%;
+    min-height: 2.35rem;
+    padding: .4rem .5rem;
+    font-size: .76rem;
+  }
+
+  .baba-history-item,
+  .baba-row {
+    border-radius: 1rem;
+  }
+}
