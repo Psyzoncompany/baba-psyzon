@@ -17,6 +17,10 @@ Cada conta Google possui um espaço isolado em `baba_accounts/{uid}` para jogado
 
 Comandos de verificação: `npm test`, `npm run lint`, `npm run typecheck` e `npm run build`.
 
+## Integração MCP
+
+O projeto inclui um servidor MCP para agentes de IA lerem e, mediante confirmação, alterarem os dados do Baba. Consulte [MCP.md](./MCP.md) para configurar o Firebase Admin, acesso local por `stdio`, acesso remoto por Streamable HTTP, proteção por token e auditoria de alterações.
+
 ## Correções de produção importantes
 
 ### 1) Domínio OAuth autorizado (erro `domain not authorized`)

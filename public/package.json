@@ -7,13 +7,18 @@
     "build": "next build",
     "start": "next start",
     "api": "node server.js",
-    "lint": "next lint && node --check baba-import-core.js && node --check baba-import-ui.js && node --check site-version.js && node --check site-preloader.js && node --input-type=module --check < baba-import-persistence.js && node --input-type=module --check < baba-persistence.js && node --input-type=module --check < baba-access.js && node --input-type=module --check < firebase-config.js && node --check scripts/migrate-baba-import-schema.mjs && node --check server.js",
+    "mcp": "node mcp/stdio.mjs",
+    "mcp:http": "node mcp/http.mjs",
+    "lint": "next lint && node --check baba-import-core.js && node --check baba-import-ui.js && node --check site-version.js && node --check site-preloader.js && node --input-type=module --check < baba-import-persistence.js && node --input-type=module --check < baba-persistence.js && node --input-type=module --check < baba-access.js && node --input-type=module --check < firebase-config.js && node --check scripts/migrate-baba-import-schema.mjs && node --check server.js && node --check mcp/config.mjs && node --check mcp/firebase-admin.mjs && node --check mcp/confirmation.mjs && node --check mcp/repository.mjs && node --check mcp/server.mjs && node --check mcp/stdio.mjs && node --check mcp/http.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.js",
     "migrate:baba-import": "node scripts/migrate-baba-import-schema.mjs",
     "migrate:baba-import:down": "node scripts/migrate-baba-import-schema.mjs --down --confirm-down"
   },
   "dependencies": {
+    "@modelcontextprotocol/express": "^2.0.0",
+    "@modelcontextprotocol/node": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.0.0",
     "autoprefixer": "^10.4.24",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
@@ -25,9 +30,11 @@
     "postcss": "^8.5.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "tailwindcss": "^4.2.0"
+    "tailwindcss": "^4.2.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@modelcontextprotocol/client": "^2.0.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^20.17.19",
@@ -38,7 +45,7 @@
     "eslint-config-next": "14.2.30",
     "typescript": "^5.7.3"
   },
-  "description": "Se usar login Google popup/redirect:",
+  "description": "Sitey Caixa e gestão do Baba com integração MCP",
   "main": "server.js",
   "repository": {
     "type": "git",
@@ -48,6 +55,9 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
   "bugs": {
     "url": "https://github.com/Psyzoncompany/sitey-caixa/issues"
   },
