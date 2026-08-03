@@ -1,0 +1,6 @@
+# Dependências instaladas na raiz para as Vercel Functions.
+node_modules/
+
+# Artefatos locais.
+.vercel/
+firebase-debug.log

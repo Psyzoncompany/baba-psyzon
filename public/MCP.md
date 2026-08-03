@@ -69,7 +69,7 @@ npm run mcp:http
 
 ### Endpoint publicado na Vercel
 
-Este projeto também expõe o MCP como uma Route Handler serverless do Next.js:
+Este projeto também expõe o MCP por uma Vercel Function serverless, com `/mcp` reescrito internamente para `/api/mcp`:
 
 ```text
 https://sitey-caixa.vercel.app/mcp

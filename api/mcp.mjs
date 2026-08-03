@@ -1,32 +1,20 @@
 import { timingSafeEqual } from 'node:crypto';
-import type { McpServer } from '@modelcontextprotocol/server';
 import { createMcpHandler } from 'mcp-handler';
-// @ts-expect-error Os módulos MCP do servidor são JavaScript ESM e executam somente no runtime Node.
-import { loadMcpConfig } from '../../mcp/config.mjs';
-// @ts-expect-error Os módulos MCP do servidor são JavaScript ESM e executam somente no runtime Node.
-import { registerBabaCapabilities } from '../../mcp/server.mjs';
+import { loadMcpConfig } from '../public/mcp/config.mjs';
+import { registerBabaCapabilities } from '../public/mcp/server.mjs';
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+let cachedRoute = null;
 
-type RouteState = {
-  config: { accessToken: string };
-  handler: (request: Request) => Promise<Response>;
-};
-
-let cachedRoute: RouteState | null = null;
-
-function tokenMatches(received: string, expected: string) {
-  const receivedBuffer = Buffer.from(received);
-  const expectedBuffer = Buffer.from(expected);
+function tokenMatches(received, expected) {
+  const receivedBuffer = Buffer.from(String(received || ''));
+  const expectedBuffer = Buffer.from(String(expected || ''));
   return receivedBuffer.length === expectedBuffer.length && timingSafeEqual(receivedBuffer, expectedBuffer);
 }
 
-function routeState(): RouteState {
+function routeState() {
   if (cachedRoute) return cachedRoute;
   const config = loadMcpConfig({ transport: 'http' });
-  const handler = createMcpHandler((server: McpServer) => {
+  const handler = createMcpHandler((server) => {
     registerBabaCapabilities(server, { config });
   }, {
     serverInfo: { name: 'sitey-caixa-baba', version: '1.0.0' },
@@ -36,13 +24,14 @@ function routeState(): RouteState {
   return cachedRoute;
 }
 
-async function route(request: Request) {
-  let state: RouteState;
+async function route(request) {
+  let state;
   try {
     state = routeState();
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return Response.json({ error: `MCP não configurado no servidor: ${message}` }, { status: 503 });
+    return Response.json({
+      error: `MCP não configurado no servidor: ${error instanceof Error ? error.message : String(error)}`,
+    }, { status: 503 });
   }
 
   const match = String(request.headers.get('authorization') || '').match(/^Bearer\s+(.+)$/i);
