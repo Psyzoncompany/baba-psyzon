@@ -26,7 +26,7 @@
   const TEAM_VISUALS = [
     { logo: 'img/baba-team-1-flamengo.png', accent: '#d53445' },
     { logo: 'img/baba-team-2-palmeiras.png', accent: '#148552' },
-    { logo: 'img/baba-team-3-vasco.png', accent: '#334155' },
+    { logo: 'img/baba-team-3-vasco.png', accent: '#b8a46f' },
     { logo: 'img/baba-team-4-corinthians.png', accent: '#111827' },
     { logo: 'img/baba-time-5.png', accent: '#2563a8' },
   ];
@@ -1111,7 +1111,7 @@
     const player = getBabaPlayer(baba, playerId);
     const stored = baba?.participantFlags?.[playerId] || {};
     return {
-      guest: Boolean(stored.guest || player?.visitante || player?.tipo === 'visitante'),
+      guest: Boolean(stored.guest || player?.convidado || player?.visitante || player?.tipo === 'visitante'),
       goalkeeper: Boolean(stored.goalkeeper || player?.tipo === 'goleiro'),
       novice: Boolean(stored.novice || player?.novato),
       typedName: stored.typedName || player?.nome || '',
@@ -2064,6 +2064,20 @@
     saveState(player.novato ? `${player.nome} marcado como novato.` : `${player.nome} deixou de ser marcado como novato.`);
   }
 
+  function togglePlayerGuest(playerId) {
+    if (!requireOrganizer()) return;
+    const player = getPlayer(playerId);
+    if (!player) return;
+    player.convidado = !player.convidado;
+    if (player.convidado) {
+      player.novato = false;
+      state.babas.forEach((baba) => {
+        if (baba.status !== 'finalizado' && baba.pagamentos) delete baba.pagamentos[playerId];
+      });
+    }
+    saveState(player.convidado ? `${player.nome} marcado como convidado.` : `${player.nome} voltou para a lista do baba.`);
+  }
+
   function deletePlayer(playerId) {
     if (!requireOrganizer()) return;
     const ok = confirm('Remover este jogador da lista fixa? O historico antigo continuara exibindo o nome quando possivel.');
@@ -2350,7 +2364,15 @@
   }
 
   function isPaymentEligiblePlayer(player) {
-    return Boolean(player) && player.ativo !== false && player.novato !== true;
+    return Boolean(player) && player.ativo !== false && player.novato !== true && player.convidado !== true && player.visitante !== true && player.tipo !== 'visitante';
+  }
+
+  function isRankingEligiblePlayer(player) {
+    return Boolean(player) && player.ativo !== false && player.convidado !== true && player.visitante !== true && player.tipo !== 'visitante';
+  }
+
+  function isPlayerVisibleInRanking(playerId, baba = getActiveBaba()) {
+    return isRankingEligiblePlayer(getBabaPlayer(baba, playerId) || getPlayer(playerId));
   }
 
   function paymentPriceForPlayer(player) {
@@ -2380,7 +2402,7 @@
     const flags = getParticipantFlags(baba, player?.id);
     const labels = [];
     if (flags.novice) labels.push('NOVATO');
-    if (flags.guest) labels.push('CONVIDADO');
+    if (flags.guest || player?.convidado) labels.push('CONVIDADO');
     if (flags.goalkeeper) labels.push('GOLEIRO');
     return labels.length ? labels.join(' · ') : 'JOGADOR';
   }
@@ -2567,17 +2589,19 @@
     ], pdfPlayerTeam(baba, stats.jogadorId)));
   }
 
-  function paymentRowsForPdf(baba = getActiveBaba(), paidOnly = true) {
+  function paymentRowsForPdf(baba = getActiveBaba(), mode = 'paid') {
     return getPaymentPlayers(baba)
-      .filter((player) => paidOnly
-        ? isPaymentEligiblePlayer(player) && isPlayerPaidThisMonth(player.id, baba)
-        : (!isPaymentEligiblePlayer(player) || !isPlayerPaidThisMonth(player.id, baba)))
+      .filter((player) => {
+        if (mode === 'novice') return player?.novato === true && player?.ativo !== false && player?.convidado !== true && player?.visitante !== true;
+        if (!isPaymentEligiblePlayer(player)) return false;
+        return mode === 'paid' ? isPlayerPaidThisMonth(player.id, baba) : !isPlayerPaidThisMonth(player.id, baba);
+      })
       .sort((a, b) => a.nome.localeCompare(b.nome))
       .map((player, index) => pdfTeamRow([
         index + 1,
         player.nome,
         playerPaymentTypeLabel(player, baba),
-        isPaymentEligiblePlayer(player) ? formatCurrency(paymentPriceForPlayer(player)) : 'ISENTO',
+        player.novato ? 'NOVATO' : formatCurrency(paymentPriceForPlayer(player)),
       ], pdfPlayerTeam(baba, player.id)));
   }
 
@@ -2658,17 +2682,26 @@
           icon: 'check-circle',
           maxRows: PDF_ROW_LIMITS.payments,
           columns: ['#', 'Jogador', 'Tipo', 'Valor'],
-          rows: paymentRowsForPdf(baba, true),
+          rows: paymentRowsForPdf(baba, 'paid'),
           empty: 'Nenhum pagamento confirmado ainda.',
         },
         {
-          title: 'Pendentes e novatos',
-          note: 'Novatos aparecem como isentos, sem alterar os cálculos',
+          title: 'Jogadores pendentes',
+          note: 'Apenas jogadores ativos que ainda não pagaram',
           icon: 'alert-circle',
           maxRows: PDF_ROW_LIMITS.payments,
           columns: ['#', 'Jogador', 'Tipo', 'Valor'],
-          rows: paymentRowsForPdf(baba, false),
+          rows: paymentRowsForPdf(baba, 'unpaid'),
           empty: 'Nenhum pagamento pendente.',
+        },
+        {
+          title: 'Novatos',
+          note: 'Lista separada dos presentes; não entram como pago ou não pago',
+          icon: 'user-plus',
+          maxRows: PDF_ROW_LIMITS.payments,
+          columns: ['#', 'Jogador', 'Tipo', 'Status'],
+          rows: paymentRowsForPdf(baba, 'novice'),
+          empty: 'Nenhum novato cadastrado.',
         },
       ];
       return report;
@@ -5154,9 +5187,11 @@
         `<small>${typeLabel} - ${formatCurrency(price)}</small>`,
         paid ? '<small class="baba-payment-status is-paid">Pago</small>' : '<small class="baba-payment-status is-unpaid">Não pagou</small>',
         player.novato ? '<small class="baba-status-pill">Novato</small>' : '',
-        active ? '' : '<small class="baba-status-pill">Inativo</small>',
+        player.convidado || player.visitante ? '<small class="baba-status-pill">Convidado</small>' : '',
+        active ? '' : '<small class="baba-status-pill">Desativado</small>',
       ].filter(Boolean).join('');
-      const paymentButtonLabel = paid ? 'Pagamento pendente' : 'Pagamento pago';
+      const paymentBlocked = !isPaymentEligiblePlayer(player);
+      const paymentButtonLabel = player.novato ? 'Novato' : (paid ? 'Pagamento pendente' : 'Pagamento pago');
 
       return `
       <div class="baba-player-admin ${paid ? 'is-paid' : 'is-unpaid'}" data-player-filter-row data-player-name="${escapeHTML(normalizePlayerFilterText(player.nome))}" data-player-payment="${paid ? 'paid' : 'unpaid'}" data-player-status="${active ? 'active' : 'inactive'}" data-player-novice="${player.novato ? 'yes' : 'no'}">
@@ -5165,12 +5200,13 @@
           ${meta ? `<div class="baba-player-admin__meta">${meta}</div>` : ''}
         </div>
         <div class="baba-player-admin__actions">
-          <button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}">${paymentButtonLabel}</button>
+          <button class="baba-mini-btn" type="button" data-action="toggle-payment" data-id="${player.id}" ${paymentBlocked ? 'disabled' : ''}>${paymentButtonLabel}</button>
           ${visitor
             ? `<button class="baba-mini-btn danger" type="button" data-action="delete-visitor" data-id="${player.id}">Remover</button>`
             : `
               <button class="baba-mini-btn" type="button" data-action="toggle-player" data-id="${player.id}">${active ? 'Desativar' : 'Ativar'}</button>
               <button class="baba-mini-btn" type="button" data-action="toggle-player-novice" data-id="${player.id}">${player.novato ? 'Remover novato' : 'Novato'}</button>
+              <button class="baba-mini-btn" type="button" data-action="toggle-player-guest" data-id="${player.id}">${player.convidado ? 'Remover convidado' : 'Convidado'}</button>
               <button class="baba-mini-btn danger" type="button" data-action="delete-player" data-id="${player.id}">Excluir</button>
             `}
         </div>
@@ -5401,6 +5437,31 @@
     if (els.paymentList) setHTML(els.paymentList, '');
   }
 
+
+  function exportTeamsTxt() {
+    const baba = getActiveBaba();
+    if (!baba?.teams?.length) return showToast('Sorteie os times antes de exportar.');
+    const lines = [
+      `Baba ${baba.dataCompleta || formatDate(baba.dataISO)}`,
+      'Times e jogadores:',
+      '',
+      ...(baba.teams || []).map((team) => {
+        const players = (team.jogadores || []).map((id) => playerName(id, baba)).filter(Boolean).join(', ') || 'Sem jogadores';
+        return `${team.name}: ${players}`;
+      }),
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `baba-times-${baba.dataISO || todayISO()}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast('TXT dos times exportado.');
+  }
+
   function renderTeams(baba) {
     if (!baba?.teams?.length) {
       setHTML(els.teamsGrid, '<div class="baba-card"><div class="baba-empty">Nenhum time sorteado ainda.</div></div>');
@@ -5411,6 +5472,7 @@
     const fullyRevealed = index >= baba.teams.length - 1;
     const lateArrivalCount = getUnassignedPresentPlayers(baba).length;
     const createLateTeamHTML = isOrganizer() ? `
+      <button class="baba-secondary" type="button" data-action="export-teams-txt" title="Exportar nomes dos jogadores por time em TXT">Exportar TXT para IA</button>
       <button class="baba-secondary" type="button" data-action="create-late-team" ${lateArrivalCount ? '' : 'disabled'} title="${lateArrivalCount ? `${lateArrivalCount} jogador${lateArrivalCount === 1 ? '' : 'es'} presente${lateArrivalCount === 1 ? '' : 's'} e sem time` : 'Marque os jogadores que chegaram depois como presentes'}">
         Adicionar novo time${lateArrivalCount ? ` (${lateArrivalCount})` : ''}
       </button>
@@ -6821,7 +6883,7 @@
 
   function sortRanking(ranking, metric = 'goals') {
     return Object.values(ranking || {})
-      .filter((stats) => hasRankingMetric(stats, metric))
+      .filter((stats) => isPlayerVisibleInRanking(stats.jogadorId) && hasRankingMetric(stats, metric))
       .sort((a, b) => {
         if (metric === 'wins') {
           return b.totalVitorias - a.totalVitorias || b.totalGols - a.totalGols || b.aproveitamento - a.aproveitamento || a.nome.localeCompare(b.nome);
@@ -6999,7 +7061,7 @@
     setHTML(els.historyDetail, `
       <div class="baba-stack">
         <div class="baba-row"><span>Campeão do baba</span><b>${escapeHTML(championNames)}</b></div>
-        <div class="baba-row"><span>Jogadores campeões</span><b>${championPlayers}</b></div>
+        <div class="baba-row baba-row--wrap"><span>Jogadores campeões</span><b>${championPlayers}</b></div>
         <div class="baba-row"><span>Presentes</span><b>${baba.jogadoresPresentes?.length || 0}</b></div>
         <div class="baba-row"><span>Finalizado</span><b>${formatTime(baba.finalizadoEm)}</b></div>
         ${(baba.teams || []).map((team) => `
@@ -8041,10 +8103,12 @@
         return window.requestAnimationFrame(() => els.presentModal.querySelector('input, button')?.focus({ preventScroll: true }));
       }
       if (actionButton?.dataset.action === 'open-team-management') return openTeamDetail(actionButton.dataset.teamId);
+      if (actionButton?.dataset.action === 'export-teams-txt') return exportTeamsTxt();
       if (actionButton?.dataset.action === 'advance-draw-experience') return advanceDrawExperience();
       if (actionButton?.dataset.action === 'finish-draw-experience') return finalizeDrawExperience();
       if (actionButton?.dataset.action === 'toggle-player') return togglePlayerActive(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'toggle-player-novice') return togglePlayerNovice(actionButton.dataset.id);
+      if (actionButton?.dataset.action === 'toggle-player-guest') return togglePlayerGuest(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-player') return deletePlayer(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-visitor') return deleteVisitor(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'create-late-team') return createLateArrivalTeam();

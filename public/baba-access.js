@@ -7,8 +7,8 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 const PLAYER_ACCESS_KEY = 'psyzon_baba_player_access_v1';
-const CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-const CODE_LENGTH = 8;
+const CODE_ALPHABET = '0123456789';
+const CODE_LENGTH = 4;
 const CODE_LIFETIME_MS = 365 * 24 * 60 * 60 * 1000;
 let verifiedAccountId = '';
 
@@ -62,12 +62,12 @@ function saveAccess(code, accountId) {
 }
 
 function normalizeCode(value) {
-  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_LENGTH);
+  return String(value || '').replace(/\D/g, '').slice(0, CODE_LENGTH);
 }
 
 function formatCode(value) {
   const code = normalizeCode(value);
-  return code.length > 4 ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
+  return code;
 }
 
 async function hashCode(value) {
@@ -126,7 +126,7 @@ async function generatePlayerCode() {
 
 async function verifyPlayerCode(value, { remember = true } = {}) {
   const code = normalizeCode(value);
-  if (code.length !== CODE_LENGTH) return { valid: false, reason: 'Digite o código completo de 8 caracteres.' };
+  if (code.length !== CODE_LENGTH) return { valid: false, reason: 'Digite o código completo de 4 dígitos.' };
   const codeHash = await hashCode(code);
   const snapshot = await getDoc(accessCodeRef(codeHash));
   if (!snapshot.exists()) return { valid: false, reason: 'O organizador ainda não gerou um código para jogadores.' };
