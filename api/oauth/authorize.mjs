@@ -31,13 +31,19 @@ ${error ? `<p class="error">${escapeHtml(error)}</p>` : ''}
 <small>Esta senha é verificada somente pelo servidor do Baba e não é enviada ao Gemini.</small></main></body></html>`;
 }
 
-function htmlResponse(html, status = 200) {
+function htmlResponse(html, status = 200, redirectUri = '') {
+  let redirectOrigin = '';
+  try {
+    redirectOrigin = new URL(redirectUri).origin;
+  } catch {
+    // A requisição OAuth validada sempre fornece uma URI; sem ela, só aceitamos o próprio servidor.
+  }
   return new Response(html, {
     status,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store',
-      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+      'Content-Security-Policy': `default-src 'none'; style-src 'unsafe-inline'; form-action 'self'${redirectOrigin ? ` ${redirectOrigin}` : ''}; base-uri 'none'; frame-ancestors 'none'`,
       'X-Content-Type-Options': 'nosniff',
     },
   });
@@ -55,7 +61,11 @@ export function GET(request) {
     const { client, requestToken } = createAuthorizationRequest(params, {
       writesEnabled: booleanFromEnv(process.env.BABA_MCP_WRITE_ENABLED, false),
     });
-    return htmlResponse(page({ requestToken, clientName: client.clientName, scopes: verifyToken(requestToken, 'auth_request').scopes }));
+    return htmlResponse(
+      page({ requestToken, clientName: client.clientName, scopes: verifyToken(requestToken, 'auth_request').scopes }),
+      200,
+      params.redirect_uri,
+    );
   } catch (error) {
     return oauthErrorResponse(error);
   }
@@ -75,7 +85,11 @@ export async function POST(request) {
     } catch (error) {
       if (error instanceof OAuthError && error.code === 'access_denied') {
         const client = verifyToken(String(pending.clientId).slice(5), 'client');
-        return htmlResponse(page({ requestToken, clientName: client.clientName, scopes: pending.scopes, error: error.message }), 401);
+        return htmlResponse(
+          page({ requestToken, clientName: client.clientName, scopes: pending.scopes, error: error.message }),
+          401,
+          pending.redirectUri,
+        );
       }
       throw error;
     }

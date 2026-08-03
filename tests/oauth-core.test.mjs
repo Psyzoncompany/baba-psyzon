@@ -148,3 +148,39 @@ test('endpoint MCP anuncia a descoberta OAuth ao responder 401', async () => {
     }
   }
 });
+
+test('página de autorização permite o callback validado na política CSP', async () => {
+  const keys = ['BABA_MCP_OAUTH_SECRET', 'BABA_MCP_WRITE_ENABLED'];
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  Object.assign(process.env, {
+    BABA_MCP_OAUTH_SECRET: secret,
+    BABA_MCP_WRITE_ENABLED: 'true',
+  });
+  try {
+    const callback = 'https://oauth-redirect.googleusercontent.com/r/sitey-caixa';
+    const client = registerClient({
+      redirect_uris: [callback],
+      client_name: 'Google',
+      token_endpoint_auth_method: 'none',
+    });
+    const query = new URLSearchParams({
+      response_type: 'code',
+      client_id: client.client_id,
+      redirect_uri: callback,
+      scope: 'baba.read baba.write',
+      resource: 'https://sitey-caixa.vercel.app/mcp',
+      code_challenge: 'a'.repeat(43),
+      code_challenge_method: 'S256',
+      state: 'estado',
+    });
+    const { GET } = await import('../api/oauth/authorize.mjs');
+    const response = GET(new Request(`https://sitey-caixa.vercel.app/oauth/authorize?${query}`));
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-security-policy'), /form-action 'self' https:\/\/oauth-redirect\.googleusercontent\.com/);
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
