@@ -1,33 +1,30 @@
-import { timingSafeEqual } from 'node:crypto';
 import { createMcpHandler } from 'mcp-handler';
 import { loadMcpConfig } from '../public/mcp/config.mjs';
 import { registerBabaCapabilities } from '../public/mcp/server.mjs';
+import { protectedResourceMetadata, verifyAccessToken } from './_oauth-core.mjs';
 
-let cachedRoute = null;
+const cachedRoutes = new Map();
 
-function tokenMatches(received, expected) {
-  const receivedBuffer = Buffer.from(String(received || ''));
-  const expectedBuffer = Buffer.from(String(expected || ''));
-  return receivedBuffer.length === expectedBuffer.length && timingSafeEqual(receivedBuffer, expectedBuffer);
-}
-
-function routeState() {
-  if (cachedRoute) return cachedRoute;
-  const config = loadMcpConfig({ transport: 'http' });
+function routeState(allowWrites) {
+  const cacheKey = allowWrites ? 'write' : 'read';
+  if (cachedRoutes.has(cacheKey)) return cachedRoutes.get(cacheKey);
+  const baseConfig = loadMcpConfig({ transport: 'oauth' });
+  const config = Object.freeze({ ...baseConfig, writesEnabled: baseConfig.writesEnabled && allowWrites });
   const handler = createMcpHandler((server) => {
     registerBabaCapabilities(server, { config });
   }, {
     serverInfo: { name: 'sitey-caixa-baba', version: '1.0.0' },
     instructions: 'Servidor do Baba. Faça leituras antes de alterar dados. Escritas exigem prévia, confirmação humana e o token assinado retornado pela ferramenta de preparação.',
   });
-  cachedRoute = { config, handler };
-  return cachedRoute;
+  const state = { config, handler };
+  cachedRoutes.set(cacheKey, state);
+  return state;
 }
 
 async function route(request) {
-  let state;
+  let baseConfig;
   try {
-    state = routeState();
+    baseConfig = loadMcpConfig({ transport: 'oauth' });
   } catch (error) {
     return Response.json({
       error: `MCP não configurado no servidor: ${error instanceof Error ? error.message : String(error)}`,
@@ -35,12 +32,21 @@ async function route(request) {
   }
 
   const match = String(request.headers.get('authorization') || '').match(/^Bearer\s+(.+)$/i);
-  if (!match || !tokenMatches(match[1], state.config.accessToken)) {
-    return Response.json({ error: 'Token MCP ausente ou inválido.' }, {
+  let access;
+  try {
+    if (!match) throw new Error('Token ausente.');
+    access = verifyAccessToken(match[1], { accountId: baseConfig.accountId });
+  } catch {
+    const metadataUrl = `${new URL(protectedResourceMetadata().resource).origin}/.well-known/oauth-protected-resource/mcp`;
+    return Response.json({ error: 'Token OAuth ausente, inválido ou expirado.' }, {
       status: 401,
-      headers: { 'WWW-Authenticate': 'Bearer realm="sitey-caixa-baba-mcp"' },
+      headers: {
+        'WWW-Authenticate': `Bearer realm="sitey-caixa-baba-mcp", resource_metadata="${metadataUrl}"`,
+        'Cache-Control': 'no-store',
+      },
     });
   }
+  const state = routeState(access.scopes.includes('baba.write'));
   return state.handler(request);
 }
 

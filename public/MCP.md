@@ -1,37 +1,59 @@
 # Acesso MCP ao Baba
 
-Este servidor permite que agentes de IA consultem e, quando explicitamente habilitado, alterem os dados do Baba no Firestore. Ele sempre fica preso à conta definida em `BABA_ACCOUNT_UID`.
+Este servidor permite que agentes de IA consultem e, quando explicitamente habilitado, alterem os dados do Baba no Firestore. O acesso sempre fica limitado à conta definida em `BABA_ACCOUNT_UID`.
 
-## Segurança adotada
+## Conectar ao Gemini Spark
 
-- O modo HTTP exige `Authorization: Bearer <BABA_MCP_ACCESS_TOKEN>`.
-- Escritas começam desativadas e só funcionam com `BABA_MCP_WRITE_ENABLED=true`.
-- Toda escrita exige duas chamadas: `baba_preparar_alteracao` e `baba_salvar_documento` com confirmação assinada válida por cinco minutos.
-- Alterações geram um registro em `baba_accounts/{uid}/mcp_audit`.
-- Não há exclusão física. Para remover algo, grave `{ "deleted": true }` por mesclagem.
-- Migrações, chaves de importação e auditoria são somente leitura pelo MCP.
+Informe somente esta URL ao criar a conexão MCP:
 
-## Configuração
+```text
+https://sitey-caixa.vercel.app/mcp
+```
 
-Requer Node.js 20 ou superior e uma credencial Firebase Admin. Copie `.env.example` para `.env` e preencha:
+O Gemini descobre o OAuth automaticamente, registra o cliente e abre a página **Autorizar acesso ao Baba**. Nessa página, digite a senha definida em `BABA_MCP_OAUTH_PASSWORD`. Não envie essa senha, a conta de serviço Firebase ou outros segredos no chat do Gemini.
+
+O servidor implementa OAuth 2.1 Authorization Code, PKCE S256, descoberta do recurso protegido, descoberta do servidor de autorização, registro dinâmico de clientes e rotação de refresh tokens.
+
+## Configuração na Vercel
+
+Cadastre em **Vercel → Project Settings → Environment Variables** no ambiente Production:
 
 ```env
 FIREBASE_PROJECT_ID=sitey-caixa-16e06
-GOOGLE_APPLICATION_CREDENTIALS=C:\caminho\service-account.json
+FIREBASE_SERVICE_ACCOUNT_JSON={JSON_COMPLETO_DA_CONTA_DE_SERVICO}
 BABA_ACCOUNT_UID=UID_DA_CONTA_GOOGLE
 
+BABA_MCP_PUBLIC_URL=https://sitey-caixa.vercel.app
+BABA_MCP_OAUTH_SECRET=SEGREDO_ALEATORIO_COM_PELO_MENOS_32_CARACTERES
+BABA_MCP_OAUTH_PASSWORD=SENHA_FORTE_COM_PELO_MENOS_12_CARACTERES
 BABA_MCP_WRITE_ENABLED=false
-BABA_MCP_ACCESS_TOKEN=gere-um-segredo-aleatorio-com-ao-menos-32-caracteres
-BABA_MCP_CONFIRMATION_SECRET=outro-segredo-longo-e-aleatorio
-BABA_MCP_HOST=127.0.0.1
-BABA_MCP_PORT=3001
+BABA_MCP_CONFIRMATION_SECRET=OUTRO_SEGREDO_ALEATORIO_COM_PELO_MENOS_32_CARACTERES
 ```
 
-Em hospedagens onde não há arquivo de credencial, use `FIREBASE_SERVICE_ACCOUNT_JSON` com o JSON completo da conta de serviço, armazenado como segredo do provedor.
+Depois, faça um novo deploy. `BABA_MCP_OAUTH_SECRET` assina códigos e tokens; não deve ser trocado enquanto houver conexões ativas. `BABA_MCP_OAUTH_PASSWORD` é a senha digitada na tela de autorização. Use `FIREBASE_SERVICE_ACCOUNT_JSON` na Vercel, pois o caminho local de `GOOGLE_APPLICATION_CREDENTIALS` não existe no servidor.
+
+Para criar segredos aleatórios no PowerShell:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Execute duas vezes e use valores diferentes para `BABA_MCP_OAUTH_SECRET` e `BABA_MCP_CONFIRMATION_SECRET`.
+
+## Segurança adotada
+
+- O endpoint público usa Bearer tokens emitidos pelo fluxo OAuth padrão; não usa token fixo compartilhado com o cliente.
+- Todo cliente usa PKCE S256 e o callback deve corresponder exatamente ao registrado.
+- Códigos de autorização e refresh tokens são de uso único, registrados no Firestore.
+- Escritas começam desativadas e só funcionam com `BABA_MCP_WRITE_ENABLED=true` e escopo `baba.write`.
+- Toda escrita exige duas chamadas: `baba_preparar_alteracao` e `baba_salvar_documento`, com confirmação assinada válida por cinco minutos.
+- Alterações geram registro em `baba_accounts/{uid}/mcp_audit`.
+- Não há exclusão física. Para remover algo, grave `{ "deleted": true }` por mesclagem.
+- Migrações, chaves de importação e auditoria são somente leitura pelo MCP.
 
 ## Uso local por stdio
 
-No diretório `public`:
+Requer Node.js 20 ou superior e uma credencial Firebase Admin. No diretório `public`, execute:
 
 ```powershell
 npm run mcp
@@ -55,38 +77,7 @@ Configuração genérica de um cliente MCP local:
 }
 ```
 
-Para liberar alterações nesse cliente, acrescente `"BABA_MCP_WRITE_ENABLED": "true"`. O transporte stdio é indicado para Codex, Claude Desktop, VS Code e outras ferramentas que iniciam o processo localmente.
-
-## Uso remoto por Streamable HTTP
-
-```powershell
-npm run mcp:http
-```
-
-- URL MCP: `http://127.0.0.1:3001/mcp`
-- Saúde: `http://127.0.0.1:3001/health`
-- Cabeçalho: `Authorization: Bearer <BABA_MCP_ACCESS_TOKEN>`
-
-### Endpoint publicado na Vercel
-
-Este projeto também expõe o MCP por uma Vercel Function serverless, com `/mcp` reescrito internamente para `/api/mcp`:
-
-```text
-https://sitey-caixa.vercel.app/mcp
-```
-
-Cadastre em **Vercel → Project Settings → Environment Variables**, para o ambiente Production:
-
-- `FIREBASE_PROJECT_ID`
-- `FIREBASE_SERVICE_ACCOUNT_JSON`
-- `BABA_ACCOUNT_UID`
-- `BABA_MCP_ACCESS_TOKEN`
-- `BABA_MCP_CONFIRMATION_SECRET`
-- `BABA_MCP_WRITE_ENABLED` (`false` inicialmente)
-
-Depois faça um novo deploy. Não use `GOOGLE_APPLICATION_CREDENTIALS` na Vercel, pois lá não existe o arquivo local indicado por esse caminho. Use o JSON da conta de serviço em `FIREBASE_SERVICE_ACCOUNT_JSON`.
-
-Para expor na internet, publique esse processo Node atrás de HTTPS e mantenha o token e a credencial Firebase somente como segredos do servidor. Ao usar `BABA_MCP_HOST=0.0.0.0`, configure também `BABA_MCP_ALLOWED_HOSTS` com os domínios aceitos, separados por vírgula.
+O servidor HTTP local iniciado por `npm run mcp:http` continua aceitando `Authorization: Bearer <BABA_MCP_ACCESS_TOKEN>` em `http://127.0.0.1:3001/mcp`. Esse modo é apenas para desenvolvimento local; o endpoint da Vercel usa OAuth.
 
 ## Ferramentas disponíveis
 

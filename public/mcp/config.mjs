@@ -45,12 +45,23 @@ export function loadMcpConfig({ transport = 'stdio' } = {}) {
     throw new Error('Ao expor o MCP fora do computador local, configure BABA_MCP_ALLOWED_HOSTS.');
   }
 
+  const confirmationSecret = String(
+    process.env.BABA_MCP_CONFIRMATION_SECRET
+      || accessToken
+      || process.env.BABA_MCP_OAUTH_SECRET
+      || '',
+  ).trim();
+  const writesEnabled = booleanFromEnv(process.env.BABA_MCP_WRITE_ENABLED, false);
+  if (writesEnabled && confirmationSecret.length < 32) {
+    throw new Error('BABA_MCP_CONFIRMATION_SECRET deve ter pelo menos 32 caracteres quando escritas estiverem ativadas.');
+  }
+
   return Object.freeze({
     accountId,
     projectId: String(process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || '').trim(),
-    writesEnabled: booleanFromEnv(process.env.BABA_MCP_WRITE_ENABLED, false),
+    writesEnabled,
     accessToken,
-    confirmationSecret: String(process.env.BABA_MCP_CONFIRMATION_SECRET || accessToken || randomBytes(32).toString('hex')),
+    confirmationSecret: confirmationSecret || randomBytes(32).toString('hex'),
     host,
     port,
     allowedHosts,
