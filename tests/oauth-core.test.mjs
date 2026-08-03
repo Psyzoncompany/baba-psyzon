@@ -149,11 +149,12 @@ test('endpoint MCP anuncia a descoberta OAuth ao responder 401', async () => {
   }
 });
 
-test('página de autorização permite o callback validado na política CSP', async () => {
-  const keys = ['BABA_MCP_OAUTH_SECRET', 'BABA_MCP_WRITE_ENABLED'];
+test('página de autorização conclui o POST antes de navegar ao callback', async () => {
+  const keys = ['BABA_MCP_OAUTH_SECRET', 'BABA_MCP_OAUTH_PASSWORD', 'BABA_MCP_WRITE_ENABLED'];
   const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
   Object.assign(process.env, {
     BABA_MCP_OAUTH_SECRET: secret,
+    BABA_MCP_OAUTH_PASSWORD: password,
     BABA_MCP_WRITE_ENABLED: 'true',
   });
   try {
@@ -173,10 +174,28 @@ test('página de autorização permite o callback validado na política CSP', as
       code_challenge_method: 'S256',
       state: 'estado',
     });
-    const { GET } = await import('../api/oauth/authorize.mjs');
+    const { GET, POST } = await import('../api/oauth/authorize.mjs');
     const response = GET(new Request(`https://sitey-caixa.vercel.app/oauth/authorize?${query}`));
     assert.equal(response.status, 200);
-    assert.match(response.headers.get('content-security-policy'), /form-action 'self' https:\/\/oauth-redirect\.googleusercontent\.com/);
+    assert.match(response.headers.get('content-security-policy'), /form-action 'self'/);
+    const page = await response.text();
+    assert.match(page, /action="\/oauth\/authorize"/);
+    const requestToken = page.match(/name="request_token" value="([^"]+)"/)?.[1];
+    assert.ok(requestToken);
+
+    const form = new FormData();
+    form.set('request_token', requestToken);
+    form.set('password', password);
+    form.set('decision', 'allow');
+    const result = await POST(new Request('https://sitey-caixa.vercel.app/oauth/authorize', {
+      method: 'POST',
+      body: form,
+    }));
+    assert.equal(result.status, 200);
+    assert.match(result.headers.get('content-security-policy'), /script-src 'nonce-[A-Za-z0-9_-]+'/);
+    const resultPage = await result.text();
+    assert.match(resultPage, /location\.replace\(/);
+    assert.match(resultPage, /https:\/\/oauth-redirect\.googleusercontent\.com\/r\/sitey-caixa/);
   } finally {
     for (const [key, value] of Object.entries(previous)) {
       if (value === undefined) delete process.env[key];

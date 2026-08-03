@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import {
   OAuthError,
   approveAuthorization,
@@ -27,23 +28,18 @@ function page({ requestToken, clientName, scopes, error = '' }) {
 <body><main class="card"><h1>Autorizar acesso ao Baba</h1><p>O aplicativo <span class="client">${escapeHtml(clientName)}</span> quer se conectar ao seu servidor MCP.</p>
 ${error ? `<p class="error">${escapeHtml(error)}</p>` : ''}
 <div class="permissions"><strong>Permissões</strong><ul>${scopeLabels.map((label) => `<li>${escapeHtml(label)}</li>`).join('')}</ul></div>
-<form method="post" autocomplete="off"><input type="hidden" name="request_token" value="${escapeHtml(requestToken)}"><label for="password">Senha de autorização MCP</label><input id="password" name="password" type="password" required autofocus><button name="decision" value="allow" type="submit">Autorizar conexão</button><button class="deny" name="decision" value="deny" type="submit" formnovalidate>Cancelar</button></form>
+<form method="post" action="/oauth/authorize" autocomplete="off"><input type="hidden" name="request_token" value="${escapeHtml(requestToken)}"><label for="password">Senha de autorização MCP</label><input id="password" name="password" type="password" required autofocus><button name="decision" value="allow" type="submit">Autorizar conexão</button><button class="deny" name="decision" value="deny" type="submit" formnovalidate>Cancelar</button></form>
 <small>Esta senha é verificada somente pelo servidor do Baba e não é enviada ao Gemini.</small></main></body></html>`;
 }
 
-function htmlResponse(html, status = 200, redirectUri = '') {
-  let redirectOrigin = '';
-  try {
-    redirectOrigin = new URL(redirectUri).origin;
-  } catch {
-    // A requisição OAuth validada sempre fornece uma URI; sem ela, só aceitamos o próprio servidor.
-  }
+function htmlResponse(html, status = 200, scriptNonce = '') {
+  const scriptPolicy = scriptNonce ? `; script-src 'nonce-${scriptNonce}'` : '';
   return new Response(html, {
     status,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store',
-      'Content-Security-Policy': `default-src 'none'; style-src 'unsafe-inline'; form-action 'self'${redirectOrigin ? ` ${redirectOrigin}` : ''}; base-uri 'none'; frame-ancestors 'none'`,
+      'Content-Security-Policy': `default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'${scriptPolicy}`,
       'X-Content-Type-Options': 'nosniff',
     },
   });
@@ -52,7 +48,11 @@ function htmlResponse(html, status = 200, redirectUri = '') {
 function redirectResult(redirectUri, values) {
   const target = new URL(redirectUri);
   for (const [key, value] of Object.entries(values)) if (value) target.searchParams.set(key, value);
-  return Response.redirect(target, 302);
+  // Um redirect HTTP iniciado pelo POST continua sujeito a form-action em toda a cadeia
+  // no Chrome. Finalizamos o POST no próprio domínio e navegamos em um novo documento.
+  const nonce = randomBytes(18).toString('base64url');
+  const destination = JSON.stringify(target.href).replaceAll('<', '\\u003c');
+  return htmlResponse(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Conexão autorizada</title></head><body><p>Autorização concluída. Retornando ao aplicativo…</p><p><a href="${escapeHtml(target.href)}">Continuar</a></p><script nonce="${nonce}">location.replace(${destination});</script></body></html>`, 200, nonce);
 }
 
 export function GET(request) {
@@ -61,11 +61,7 @@ export function GET(request) {
     const { client, requestToken } = createAuthorizationRequest(params, {
       writesEnabled: booleanFromEnv(process.env.BABA_MCP_WRITE_ENABLED, false),
     });
-    return htmlResponse(
-      page({ requestToken, clientName: client.clientName, scopes: verifyToken(requestToken, 'auth_request').scopes }),
-      200,
-      params.redirect_uri,
-    );
+    return htmlResponse(page({ requestToken, clientName: client.clientName, scopes: verifyToken(requestToken, 'auth_request').scopes }));
   } catch (error) {
     return oauthErrorResponse(error);
   }
@@ -85,11 +81,7 @@ export async function POST(request) {
     } catch (error) {
       if (error instanceof OAuthError && error.code === 'access_denied') {
         const client = verifyToken(String(pending.clientId).slice(5), 'client');
-        return htmlResponse(
-          page({ requestToken, clientName: client.clientName, scopes: pending.scopes, error: error.message }),
-          401,
-          pending.redirectUri,
-        );
+        return htmlResponse(page({ requestToken, clientName: client.clientName, scopes: pending.scopes, error: error.message }), 401);
       }
       throw error;
     }
