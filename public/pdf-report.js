@@ -577,15 +577,17 @@
     if (report.type === 'standings') return createStandingsReport(report, JsPdf);
 
     const doc = new JsPdf({
-      orientation: 'portrait',
+      orientation: 'landscape',
       unit: 'mm',
       format: 'a4',
       compress: true,
       putOnlyUsedFonts: true,
     });
     const pageWidth = doc.internal.pageSize.getWidth();
-    const contentWidth = pageWidth - (PAGE.marginX * 2);
-    let cursorY = PAGE.top;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 14;
+    const contentWidth = pageWidth - (margin * 2);
+    let cursorY = margin;
 
     doc.setProperties({
       title: cleanText(report.title),
@@ -596,77 +598,52 @@
     });
     doc.setLanguage?.('pt-BR');
 
-    const drawContinuationHeader = () => {
-      setColor(doc, 'setFillColor', COLORS.navy);
-      doc.rect(0, 0, pageWidth, 11, 'F');
-      setColor(doc, 'setFillColor', COLORS.emerald);
-      doc.rect(0, 0, pageWidth, 1.3, 'F');
-      setColor(doc, 'setTextColor', COLORS.white);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.5);
-      doc.text(cleanText(report.brand || report.eyebrow || 'Psyzon'), PAGE.marginX, 7.2);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.text(cleanText(report.title), pageWidth - PAGE.marginX, 7.2, { align: 'right' });
-      cursorY = 17;
-    };
-
-    const addPage = () => {
-      doc.addPage();
-      drawContinuationHeader();
-    };
-
-    const ensureSpace = (height) => {
-      if (cursorY + height <= PAGE.bottom) return false;
-      addPage();
-      return true;
-    };
-
     const drawHero = () => {
-      setColor(doc, 'setFillColor', COLORS.navy);
-      doc.rect(0, 0, pageWidth, 45, 'F');
-      setColor(doc, 'setFillColor', COLORS.emerald);
-      doc.rect(0, 0, pageWidth, 2.5, 'F');
-      doc.circle(pageWidth - 17, 18, 20, 'F');
-      setColor(doc, 'setDrawColor', COLORS.white);
-      doc.setLineWidth(.55);
-      doc.circle(24, 20, 8, 'S');
-      doc.circle(24, 20, 5.1, 'S');
-      doc.line(20.3, 20, 27.7, 20);
-      doc.line(24, 16.3, 24, 23.7);
+      const heroHeight = 35;
+      setColor(doc, 'setFillColor', [3, 19, 29]);
+      doc.roundedRect(margin, cursorY, contentWidth, heroHeight, 3.5, 3.5, 'F');
+      setColor(doc, 'setDrawColor', [78, 99, 106]);
+      doc.setLineWidth(.65);
+      doc.roundedRect(margin, cursorY, contentWidth, heroHeight, 3.5, 3.5, 'S');
 
-      setColor(doc, 'setTextColor', COLORS.emerald);
+      setColor(doc, 'setFillColor', [17, 35, 40]);
+      setColor(doc, 'setDrawColor', [74, 91, 92]);
+      doc.roundedRect(margin + 5, cursorY + 4.5, 9, 9, 2.2, 2.2, 'FD');
+      setColor(doc, 'setDrawColor', [222, 193, 25]);
+      doc.setLineWidth(.65);
+      doc.roundedRect(margin + 7.6, cursorY + 7.1, 4.4, 3.7, .6, .6, 'S');
+      doc.line(margin + 8.2, cursorY + 7.8, margin + 11.25, cursorY + 7.8);
+
+      setColor(doc, 'setTextColor', [20, 200, 160]);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.text(cleanText(report.eyebrow || report.brand || 'Relatório'), 38, 12.5);
+      doc.setFontSize(7.5);
+      doc.text(cleanText(report.eyebrow || report.brand || 'Relatório').toUpperCase(), margin + 16, cursorY + 8);
 
       setColor(doc, 'setTextColor', COLORS.white);
-      doc.setFontSize(18);
-      const titleLines = doc.splitTextToSize(cleanText(report.title), 140).slice(0, 2);
-      doc.text(titleLines, 38, 21.5);
+      doc.setFontSize(16);
+      doc.text(cleanText(report.title), margin + 16, cursorY + 16.5);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8.5);
-      const titleOffset = titleLines.length > 1 ? 5 : 0;
-      doc.text(doc.splitTextToSize(cleanText(report.subtitle), 145).slice(0, 2), 38, 29 + titleOffset);
+      doc.setFontSize(9);
+      doc.text(doc.splitTextToSize(cleanText(report.subtitle), 145).slice(0, 2), margin + 16, cursorY + 23);
       doc.setFontSize(7);
       setColor(doc, 'setTextColor', [190, 210, 226]);
-      doc.text(`Atualizado em ${cleanText(report.generatedAt || new Date().toLocaleString('pt-BR'))}`, 38, 40);
-      cursorY = 51;
+      doc.text(`Atualizado em ${cleanText(report.generatedAt || new Date().toLocaleString('pt-BR'))}`, margin + 16, cursorY + 31);
+      cursorY += heroHeight + 6;
     };
 
     const drawSummary = () => {
       const items = Array.isArray(report.summary) ? report.summary : [];
       if (!items.length) return;
-      const columns = Math.min(4, Math.max(1, items.length));
+      const columns = Math.min(6, Math.max(1, items.length));
       const gap = 3;
       const cardWidth = (contentWidth - (gap * (columns - 1))) / columns;
-      const cardHeight = 18;
+      const cardHeight = 16;
 
       items.forEach((item, index) => {
         if (index > 0 && index % columns === 0) cursorY += cardHeight + gap;
         const column = index % columns;
-        const x = PAGE.marginX + (column * (cardWidth + gap));
+        const x = margin + (column * (cardWidth + gap));
         setColor(doc, 'setFillColor', COLORS.surface);
         setColor(doc, 'setDrawColor', COLORS.line);
         doc.setLineWidth(.25);
@@ -677,150 +654,143 @@
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(6.7);
         setColor(doc, 'setTextColor', COLORS.muted);
-        doc.text(cleanText(item?.[0]).toUpperCase(), x + 6, cursorY + 6);
+        doc.text(cleanText(item?.[0]).toUpperCase(), x + 5, cursorY + 5.5);
 
-        doc.setFontSize(10.5);
+        doc.setFontSize(9.5);
         setColor(doc, 'setTextColor', COLORS.text);
-        const valueLines = doc.splitTextToSize(cleanText(item?.[1]), cardWidth - 10).slice(0, 2);
-        doc.text(valueLines, x + 6, cursorY + 12.4);
+        const valueLines = doc.splitTextToSize(cleanText(item?.[1]), cardWidth - 8).slice(0, 2);
+        doc.text(valueLines, x + 5, cursorY + 11.5);
       });
-      cursorY += cardHeight + 7;
+      cursorY += cardHeight + 5;
     };
 
-    const drawSectionHeader = (section, continuation = false) => {
-      ensureSpace(16);
-      const title = `${cleanText(section.title)}${continuation ? ' - continuação' : ''}`;
+    const drawSectionHeader = (section, index, width, x, y) => {
+      const title = cleanText(section.title);
       setColor(doc, 'setFillColor', COLORS.emeraldSoft);
       setColor(doc, 'setDrawColor', [197, 230, 218]);
       doc.setLineWidth(.25);
-      doc.roundedRect(PAGE.marginX, cursorY, contentWidth, 11, 2.2, 2.2, 'FD');
+      doc.roundedRect(x, y, width, 9, 2.2, 2.2, 'FD');
       setColor(doc, 'setFillColor', COLORS.emerald);
-      doc.roundedRect(PAGE.marginX + 3, cursorY + 2.2, 6.5, 6.5, 1.7, 1.7, 'F');
+      doc.roundedRect(x + 2.5, y + 1.8, 5.4, 5.4, 1.4, 1.4, 'F');
       setColor(doc, 'setTextColor', COLORS.white);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.3);
-      doc.text(String(section.index || ''), PAGE.marginX + 6.25, cursorY + 6.6, { align: 'center' });
+      doc.setFontSize(6.5);
+      doc.text(String(index), x + 5.2, y + 5.5, { align: 'center' });
       setColor(doc, 'setTextColor', COLORS.text);
-      doc.setFontSize(10);
-      doc.text(title, PAGE.marginX + 12, cursorY + 7);
+      doc.setFontSize(9);
+      doc.text(title, x + 10, y + 5.8);
       if (section.note) {
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7);
+        doc.setFontSize(6.5);
         setColor(doc, 'setTextColor', COLORS.muted);
-        doc.text(cleanText(section.note), pageWidth - PAGE.marginX - 3, cursorY + 7, { align: 'right' });
+        doc.text(cleanText(section.note), x + width - 3, y + 5.8, { align: 'right' });
       }
-      cursorY += 14;
     };
 
-    const drawTableHeader = (columns, widths) => {
+    const drawTableHeader = (columns, widths, width, x, y) => {
       setColor(doc, 'setFillColor', COLORS.navy);
-      doc.roundedRect(PAGE.marginX, cursorY, contentWidth, 8.5, 2, 2, 'F');
+      doc.roundedRect(x, y, width, 7, 2, 2, 'F');
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(6.6);
+      doc.setFontSize(6.2);
       setColor(doc, 'setTextColor', COLORS.white);
-      let x = PAGE.marginX;
-      columns.forEach((column, index) => {
+      let curX = x;
+      columns.forEach((column, i) => {
         const alignRight = isNumericColumn(column) || /valor|saldo/i.test(cleanText(column));
         doc.text(
           cleanText(column).toUpperCase(),
-          alignRight ? x + widths[index] - 2.5 : x + 2.5,
-          cursorY + 5.5,
+          alignRight ? curX + widths[i] - 2 : curX + 2,
+          y + 4.6,
           { align: alignRight ? 'right' : 'left' },
         );
-        x += widths[index];
+        curX += widths[i];
       });
-      cursorY += 9.5;
-    };
-
-    const drawEmpty = (message) => {
-      ensureSpace(18);
-      setColor(doc, 'setFillColor', COLORS.surface);
-      setColor(doc, 'setDrawColor', COLORS.line);
-      doc.roundedRect(PAGE.marginX, cursorY, contentWidth, 15, 2.5, 2.5, 'FD');
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8.5);
-      setColor(doc, 'setTextColor', COLORS.muted);
-      doc.text(cleanText(message || 'Nenhum dado disponível.'), PAGE.marginX + 5, cursorY + 9);
-      cursorY += 19;
-    };
-
-    const drawSection = (section, sectionIndex) => {
-      const normalized = { ...section, index: sectionIndex + 1 };
-      const columns = Array.isArray(section.columns) ? section.columns.map(cleanText) : [];
-      const rows = Array.isArray(section.rows) ? section.rows : [];
-      drawSectionHeader(normalized);
-      if (!columns.length || !rows.length) {
-        drawEmpty(section.empty);
-        return;
-      }
-
-      const widths = calculateColumnWidths(columns, contentWidth);
-      drawTableHeader(columns, widths);
-      rows.forEach((sourceRow, rowIndex) => {
-        const row = Array.isArray(sourceRow) ? sourceRow : [];
-        const lines = row.map((cell, cellIndex) => doc.splitTextToSize(cleanText(cell), Math.max(7, widths[cellIndex] - 5)));
-        const maxLines = Math.max(1, ...lines.map((cellLines) => cellLines.length));
-        const rowHeight = Math.max(8.2, (maxLines * 3.5) + 4.1);
-
-        if (cursorY + rowHeight > PAGE.bottom) {
-          addPage();
-          drawSectionHeader(normalized, true);
-          drawTableHeader(columns, widths);
-        }
-
-        const isTop = Boolean(section.highlightTop && rowIndex === 0);
-        setColor(doc, 'setFillColor', isTop ? COLORS.goldSoft : (rowIndex % 2 ? COLORS.surface : COLORS.white));
-        setColor(doc, 'setDrawColor', COLORS.line);
-        doc.setLineWidth(.2);
-        doc.roundedRect(PAGE.marginX, cursorY, contentWidth, rowHeight, 1.3, 1.3, 'FD');
-
-        const teamNumber = teamNumberFromRow(sourceRow);
-        if (teamNumber) {
-          setColor(doc, 'setFillColor', TEAM_COLORS[teamNumber]);
-          doc.roundedRect(PAGE.marginX, cursorY, 1.8, rowHeight, .9, .9, 'F');
-        } else if (isTop) {
-          setColor(doc, 'setFillColor', COLORS.gold);
-          doc.roundedRect(PAGE.marginX, cursorY, 1.8, rowHeight, .9, .9, 'F');
-        }
-
-        let x = PAGE.marginX;
-        row.forEach((cell, cellIndex) => {
-          const label = columns[cellIndex];
-          const alignRight = isNumericColumn(label) || /valor|saldo/i.test(cleanText(label));
-          const text = cleanText(cell);
-          doc.setFont('helvetica', cellIndex === 0 || (section.highlightTop && rowIndex === 0) ? 'bold' : 'normal');
-          doc.setFontSize(columns.length >= 8 ? 7.1 : 7.7);
-          setColor(doc, 'setTextColor', /^-\s*(R\$)?/i.test(text) ? COLORS.danger : COLORS.text);
-          const textY = cursorY + 3.2 + Math.max(0, (rowHeight - (lines[cellIndex].length * 3.5)) / 2);
-          doc.text(
-            lines[cellIndex],
-            alignRight ? x + widths[cellIndex] - 2.5 : x + 2.8,
-            textY,
-            { align: alignRight ? 'right' : 'left', lineHeightFactor: 1.15 },
-          );
-          x += widths[cellIndex];
-        });
-        cursorY += rowHeight + 1.2;
-      });
-      cursorY += 5;
     };
 
     drawHero();
     drawSummary();
-    report.sections.forEach(drawSection);
 
-    const totalPages = doc.getNumberOfPages();
-    for (let page = 1; page <= totalPages; page += 1) {
-      doc.setPage(page);
-      setColor(doc, 'setDrawColor', COLORS.line);
-      doc.setLineWidth(.25);
-      doc.line(PAGE.marginX, 285, pageWidth - PAGE.marginX, 285);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(6.8);
-      setColor(doc, 'setTextColor', COLORS.muted);
-      doc.text(cleanText(report.footer || report.brand || report.eyebrow || 'Psyzon'), PAGE.marginX, PAGE.footerY);
-      doc.text(`Página ${page} de ${totalPages}`, pageWidth - PAGE.marginX, PAGE.footerY, { align: 'right' });
-    }
+    const sections = report.sections.filter(s => s.columns && s.columns.length && s.rows && s.rows.length);
+    if (!sections.length) return doc;
+
+    const availableHeight = pageHeight - margin - 5 - cursorY;
+    const numSections = sections.length;
+    const gapX = 4;
+    const cols = numSections > 1 ? 2 : 1;
+    const sectionWidth = (contentWidth - (gapX * (cols - 1))) / cols;
+    const sectionHeight = availableHeight / Math.ceil(numSections / cols) - 4;
+    
+    sections.forEach((section, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = margin + (col * (sectionWidth + gapX));
+      const y = cursorY + (row * (sectionHeight + 4));
+      let currentY = y;
+
+      drawSectionHeader(section, i + 1, sectionWidth, x, currentY);
+      currentY += 10;
+
+      const columns = section.columns.map(cleanText);
+      const rows = section.rows;
+      const widths = calculateColumnWidths(columns, sectionWidth);
+      
+      drawTableHeader(columns, widths, sectionWidth, x, currentY);
+      currentY += 8;
+
+      const rowHeight = 6.5;
+      const maxRows = Math.floor((sectionHeight - 18) / (rowHeight + 0.8));
+      const visibleRows = rows.slice(0, maxRows);
+      const omitted = rows.length - visibleRows.length;
+
+      visibleRows.forEach((sourceRow, rowIndex) => {
+        const isTop = Boolean(section.highlightTop && rowIndex === 0);
+        setColor(doc, 'setFillColor', isTop ? COLORS.goldSoft : (rowIndex % 2 ? COLORS.surface : COLORS.white));
+        setColor(doc, 'setDrawColor', COLORS.line);
+        doc.setLineWidth(.2);
+        doc.roundedRect(x, currentY, sectionWidth, rowHeight, 1.3, 1.3, 'FD');
+
+        const teamNumber = teamNumberFromRow(sourceRow);
+        if (teamNumber) {
+          setColor(doc, 'setFillColor', TEAM_COLORS[teamNumber]);
+          doc.roundedRect(x, currentY, 1.6, rowHeight, .8, .8, 'F');
+        } else if (isTop) {
+          setColor(doc, 'setFillColor', COLORS.gold);
+          doc.roundedRect(x, currentY, 1.6, rowHeight, .8, .8, 'F');
+        }
+
+        let curX = x;
+        sourceRow.forEach((cell, cellIndex) => {
+          const label = columns[cellIndex];
+          const alignRight = isNumericColumn(label) || /valor|saldo/i.test(cleanText(label));
+          const text = cleanText(cell);
+          doc.setFont('helvetica', cellIndex === 0 || (section.highlightTop && rowIndex === 0) ? 'bold' : 'normal');
+          doc.setFontSize(columns.length >= 6 ? 6.5 : 7);
+          setColor(doc, 'setTextColor', /^-\s*(R\$)?/i.test(text) ? COLORS.danger : COLORS.text);
+          doc.text(
+            doc.splitTextToSize(text, Math.max(7, widths[cellIndex] - 4)).slice(0, 1),
+            alignRight ? curX + widths[cellIndex] - 2 : curX + 2.5,
+            currentY + 4.3,
+            { align: alignRight ? 'right' : 'left' },
+          );
+          curX += widths[cellIndex];
+        });
+        currentY += rowHeight + 0.8;
+      });
+
+      if (omitted > 0) {
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(6.5);
+        setColor(doc, 'setTextColor', COLORS.muted);
+        doc.text(`+ ${omitted} linha${omitted > 1 ? 's' : ''} omitida${omitted > 1 ? 's' : ''}`, x + (sectionWidth / 2), currentY + 3, { align: 'center' });
+      }
+    });
+
+    setColor(doc, 'setDrawColor', COLORS.line);
+    doc.setLineWidth(.25);
+    doc.line(margin, pageHeight - margin - 4, pageWidth - margin, pageHeight - margin - 4);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    setColor(doc, 'setTextColor', COLORS.muted);
+    doc.text(cleanText(report.footer || report.brand || report.eyebrow || 'Psyzon'), margin, pageHeight - margin);
 
     return doc;
   }

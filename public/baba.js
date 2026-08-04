@@ -787,6 +787,54 @@
     finalizeStats(target);
   }
 
+  function addStatsToRanking(ranking, stats) {
+    const playerId = stats?.jogadorId || stats?.playerId;
+    if (!playerId) return;
+    if (!ranking[playerId]) {
+      ranking[playerId] = {
+        jogadorId: playerId,
+        nome: stats.nome || playerName(playerId),
+        totalGols: 0, totalVitorias: 0, totalEmpates: 0, totalDerrotas: 0,
+        totalJogos: 0, totalBabas: 0, totalTitulosBaba: 0,
+        goalkeeperGames: 0, goalsConceded: 0,
+      };
+    }
+    const target = ranking[playerId];
+    [
+      'totalGols', 'totalVitorias', 'totalEmpates', 'totalDerrotas',
+      'totalJogos', 'totalBabas', 'totalTitulosBaba',
+      'goalkeeperGames', 'goalsConceded',
+    ].forEach((field) => {
+      target[field] = Number(target[field] || 0) + Number(stats[field] || 0);
+    });
+    finalizeStats(target);
+  }
+
+  function applyFinishedBabaToPersistedStats(baba) {
+    const monthKey = monthKeyFromISO(baba?.dataISO);
+    if (!state.playerStats) state.playerStats = {};
+    if (monthKey) {
+      if (!state.monthlyStats) state.monthlyStats = {};
+      if (!state.monthlyStats[monthKey]) state.monthlyStats[monthKey] = {};
+    }
+    const monthlyStats = monthKey ? state.monthlyStats[monthKey] : null;
+    Object.values(calculateDailyRanking(baba)).forEach((stats) => {
+      addStatsToRanking(state.playerStats, stats);
+      if (monthlyStats) addStatsToRanking(monthlyStats, stats);
+    });
+    const goalkeeperRanking = {};
+    collectGoalkeeperRankingFromBaba(goalkeeperRanking, baba);
+    Object.values(goalkeeperRanking).forEach((stats) => {
+      const mapped = {
+        jogadorId: stats.jogadorId,
+        goalkeeperGames: Number(stats.jogos || 0),
+        goalsConceded: Number(stats.golsSofridos || 0),
+      };
+      addStatsToRanking(state.playerStats, mapped);
+      if (monthlyStats) addStatsToRanking(monthlyStats, mapped);
+    });
+  }
+
   function applyDeletedBabaToPersistedStats(baba) {
     const monthKey = monthKeyFromISO(baba?.dataISO);
     const hasGeneralStats = state.playerStats && Object.keys(state.playerStats).length;
@@ -2195,6 +2243,7 @@
     });
     saveState('Jogador removido.');
     window.BabaPublicSync?.flushPending?.();
+    window.BabaRepository?.softDeletePlayer?.(playerId)?.catch?.(() => {});
   }
 
   function deleteVisitor(playerId) {
@@ -2473,11 +2522,23 @@
     return Boolean(player) && getPlayerStatus(player) === PLAYER_STATUS.NOVICE;
   }
 
-  function isPlayerVisibleInRanking(playerId, baba = getActiveBaba()) {
-    const player = getBabaPlayer(baba, playerId);
-    if (!player) return true;
-    const status = getPlayerStatus(player);
-    return status !== PLAYER_STATUS.GUEST && status !== PLAYER_STATUS.DISABLED;
+  function isPlayerVisibleInRanking(playerId) {
+    const fixedPlayer = getPlayer(playerId);
+    if (fixedPlayer) {
+      const status = getPlayerStatus(fixedPlayer);
+      if (status === PLAYER_STATUS.GUEST || status === PLAYER_STATUS.DISABLED) return false;
+    }
+    const activeBaba = getActiveBaba();
+    if (activeBaba) {
+      const babaPlayer = getBabaPlayer(activeBaba, playerId);
+      if (babaPlayer) {
+        const status = getPlayerStatus(babaPlayer);
+        if (status === PLAYER_STATUS.GUEST || status === PLAYER_STATUS.DISABLED) return false;
+      }
+      const flags = activeBaba.participantFlags?.[playerId];
+      if (flags?.guest) return false;
+    }
+    return true;
   }
 
   function paymentPriceForPlayer(player) {
@@ -4711,6 +4772,54 @@
     };
   }
 
+  function editFinishedGame(gameNumber, targetBabaId = null) {
+    if (!requireOrganizer()) return;
+    const baba = targetBabaId ? getBabaById(targetBabaId) : getActiveBaba();
+    if (!baba) return showToast('Baba nao encontrado.');
+    const game = (baba.jogos || []).find((item) => String(item.numeroJogo) === String(gameNumber));
+    if (!game) return showToast('Partida nao encontrada.');
+    const teamA = getTeam(baba, game.timeA);
+    const teamB = getTeam(baba, game.timeB);
+    const newScoreA = prompt(`Placar ${teamA?.name || 'Time A'} (atual: ${game.placarA || 0}):`, String(game.placarA || 0));
+    if (newScoreA === null) return;
+    const newScoreB = prompt(`Placar ${teamB?.name || 'Time B'} (atual: ${game.placarB || 0}):`, String(game.placarB || 0));
+    if (newScoreB === null) return;
+    const scoreA = Math.max(0, parseInt(newScoreA, 10) || 0);
+    const scoreB = Math.max(0, parseInt(newScoreB, 10) || 0);
+    if (scoreA === Number(game.placarA || 0) && scoreB === Number(game.placarB || 0)) return showToast('Placar sem alteracao.');
+    const isFinalized = baba.status === 'finalizado';
+    if (isFinalized) applyDeletedBabaToPersistedStats(baba);
+    game.placarA = scoreA;
+    game.placarB = scoreB;
+    game.empate = scoreA === scoreB;
+    game.resultado = scoreA === scoreB ? 'empate' : 'vitoria';
+    game.vencedor = scoreA > scoreB ? game.timeA : (scoreB > scoreA ? game.timeB : null);
+    game.perdedor = scoreA > scoreB ? game.timeB : (scoreA < scoreB ? game.timeA : null);
+    const goalEvents = game.goalEvents || [];
+    const teamAGoals = goalEvents.filter((e) => e.time === game.timeA).length;
+    const teamBGoals = goalEvents.filter((e) => e.time === game.timeB).length;
+    if (teamAGoals > scoreA || teamBGoals > scoreB) {
+      game.goalEvents = [];
+      game.gols = [];
+    } else {
+      game.gols = aggregateGoalEvents(goalEvents);
+    }
+    rebuildTeamStatsFromGames(baba);
+    baba.rankingDoBaba = calculateDailyRanking(baba);
+    baba.lastResult = lastResultFromGame(baba, baba.jogos[baba.jogos.length - 1]);
+    if (isFinalized) {
+      const champions = calculateChampions(baba);
+      baba.campeaoDoBaba = {
+        times: champions.map((t) => t.id),
+        nomes: champions.map((t) => t.name),
+        jogadores: champions.flatMap((t) => t.jogadores),
+        definidoEm: Date.now(),
+      };
+      applyFinishedBabaToPersistedStats(baba);
+    }
+    saveState(`Jogo ${game.numeroJogo} editado. Placar atualizado para ${scoreA} x ${scoreB}.`);
+  }
+
   function deleteCurrentGame(gameNumber) {
     if (!requireOrganizer()) return;
     const baba = getActiveBaba();
@@ -4786,6 +4895,74 @@
     }
     applyDeletedBabaToPersistedStats(baba);
     saveState('Baba removido do historico.');
+  }
+
+  function editHistoryGame(babaId, gameNumber) {
+    return editFinishedGame(gameNumber, babaId);
+  }
+
+  function editHistoryTeamRoster(babaId, teamId) {
+    if (!requireOrganizer()) return;
+    const baba = getBabaById(babaId);
+    if (!baba) return showToast('Baba nao encontrado.');
+    const team = getTeam(baba, teamId);
+    if (!team) return showToast('Time nao encontrado.');
+    const currentNames = (team.jogadores || []).map((id) => getBabaPlayer(baba, id)?.nome || playerName(id, baba)).join(', ');
+    const action = prompt(`Elenco atual de ${team.name}:\n${currentNames}\n\nDigite:\n- "add Nome" para adicionar\n- "rem Nome" para remover\n- "cancelar" para sair`);
+    if (!action || action.trim().toLowerCase() === 'cancelar') return;
+    const isFinalized = baba.status === 'finalizado';
+    const parts = action.trim().split(/\s+/);
+    const command = parts[0].toLowerCase();
+    const targetName = parts.slice(1).join(' ').trim();
+    if (!targetName) return showToast('Informe o nome do jogador.');
+    if (command === 'add') {
+      const allPlayers = [...state.players, ...(baba.visitantes || [])];
+      const found = allPlayers.find((p) => p.nome.toLowerCase().includes(targetName.toLowerCase()));
+      if (!found) return showToast(`Jogador "${targetName}" nao encontrado.`);
+      if (team.jogadores.includes(found.id)) return showToast(`${found.nome} ja esta no ${team.name}.`);
+      if (isFinalized) applyDeletedBabaToPersistedStats(baba);
+      team.jogadores.push(found.id);
+      if (!baba.jogadoresPresentes?.includes(found.id)) {
+        baba.jogadoresPresentes = [...(baba.jogadoresPresentes || []), found.id];
+      }
+      rebuildTeamStatsFromGames(baba);
+      baba.rankingDoBaba = calculateDailyRanking(baba);
+      if (isFinalized) {
+        const champions = calculateChampions(baba);
+        baba.campeaoDoBaba = {
+          times: champions.map((t) => t.id),
+          nomes: champions.map((t) => t.name),
+          jogadores: champions.flatMap((t) => t.jogadores),
+          definidoEm: Date.now(),
+        };
+        applyFinishedBabaToPersistedStats(baba);
+      }
+      saveState(`${found.nome} adicionado ao ${team.name}.`);
+    } else if (command === 'rem') {
+      const playerId = team.jogadores.find((id) => {
+        const name = getBabaPlayer(baba, id)?.nome || playerName(id, baba);
+        return name.toLowerCase().includes(targetName.toLowerCase());
+      });
+      if (!playerId) return showToast(`Jogador "${targetName}" nao encontrado no ${team.name}.`);
+      if (isFinalized) applyDeletedBabaToPersistedStats(baba);
+      team.jogadores = team.jogadores.filter((id) => id !== playerId);
+      rebuildTeamStatsFromGames(baba);
+      baba.rankingDoBaba = calculateDailyRanking(baba);
+      if (isFinalized) {
+        const champions = calculateChampions(baba);
+        baba.campeaoDoBaba = {
+          times: champions.map((t) => t.id),
+          nomes: champions.map((t) => t.name),
+          jogadores: champions.flatMap((t) => t.jogadores),
+          definidoEm: Date.now(),
+        };
+        applyFinishedBabaToPersistedStats(baba);
+      }
+      const removedName = getBabaPlayer(baba, playerId)?.nome || playerName(playerId, baba);
+      saveState(`${removedName} removido do ${team.name}.`);
+    } else {
+      showToast('Use "add Nome" ou "rem Nome".');
+    }
   }
 
   function calculateChampions(baba) {
@@ -6437,7 +6614,7 @@
           <button class="baba-mini-btn" type="button" data-current-game="${game.numeroJogo}">
             <svg class="baba-btn-icon" aria-hidden="true" focusable="false"><use href="#baba-ball"></use></svg>Gols
           </button>
-          ${isOrganizer() ? `<button class="baba-mini-btn danger" type="button" data-action="delete-current-game" data-game-number="${game.numeroJogo}">Excluir</button>` : ''}
+          ${isOrganizer() ? `<button class="baba-mini-btn" type="button" data-action="edit-current-game" data-game-number="${game.numeroJogo}">Editar</button><button class="baba-mini-btn danger" type="button" data-action="delete-current-game" data-game-number="${game.numeroJogo}">Excluir</button>` : ''}
         </div>
       </div>
     `).join(''));
@@ -7216,6 +7393,7 @@
         <header>
           <strong>${teamDetailButton(baba, team)}</strong>
           <b>${Number(team.pontos || 0)} pts</b>
+          ${isOrganizer() ? `<button class="baba-mini-btn" type="button" data-action="edit-history-roster" data-baba-id="${baba.id}" data-team-id="${team.id}">Editar elenco</button>` : ''}
         </header>
         <div>
           <span><small>Vitórias</small><b>${Number(team.vitorias || 0)}</b></span>
@@ -7230,6 +7408,7 @@
         <span>Jogo ${game.numeroJogo}</span>
         <strong>${matchLineHTML(baba, getTeam(baba, game.timeA), game.placarA, game.placarB, getTeam(baba, game.timeB), true)}</strong>
         <small>${escapeHTML(resultStatusLabel(game))}</small>
+        ${isOrganizer() ? `<button class="baba-mini-btn" type="button" data-action="edit-history-game" data-baba-id="${baba.id}" data-game-number="${game.numeroJogo}">Editar</button>` : ''}
       </article>
     `).join('');
 
@@ -8328,6 +8507,9 @@
       }
       if (actionButton?.dataset.action === 'toggle-payment') return toggleBabaPayment(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-history') return deleteHistoryBaba(actionButton.dataset.id);
+      if (actionButton?.dataset.action === 'edit-current-game') return editFinishedGame(actionButton.dataset.gameNumber);
+      if (actionButton?.dataset.action === 'edit-history-game') return editHistoryGame(actionButton.dataset.babaId, actionButton.dataset.gameNumber);
+      if (actionButton?.dataset.action === 'edit-history-roster') return editHistoryTeamRoster(actionButton.dataset.babaId, actionButton.dataset.teamId);
       if (actionButton?.dataset.action === 'delete-current-game') return deleteCurrentGame(actionButton.dataset.gameNumber);
       if (actionButton?.dataset.action === 'reset-mode') return resetMode();
       if (actionButton?.dataset.action === 'logout') return logout();

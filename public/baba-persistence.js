@@ -1896,6 +1896,20 @@ async function startRepository() {
   }
 }
 
+async function softDeletePlayer(playerId) {
+  try {
+    const ref = accountDoc('players', safeId(playerId));
+    return await setDoc(ref, {
+      playerId,
+      deleted: true,
+      schemaVersion: SCHEMA_VERSION,
+      updatedAtMs: now()
+    }, { merge: true });
+  } catch (error) {
+    console.error('Falha ao marcar jogador como removido no Firestore:', error);
+  }
+}
+
 window.BabaRepository = {
   schemaVersion: SCHEMA_VERSION,
   loadBaba,
@@ -1906,6 +1920,7 @@ window.BabaRepository = {
   activateView,
   migrateLegacyState,
   restoreLegacyBackup,
+  softDeletePlayer,
   diagnoseStateSize: diagnoseBabaStateSize,
   estimateJsonSize,
   isApplyingRemote: () => applyingRemote,
