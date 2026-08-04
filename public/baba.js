@@ -4965,6 +4965,41 @@
     }
   }
 
+  function editHistoryPlayerGoals(babaId) {
+    if (!requireOrganizer()) return;
+    const baba = getBabaById(babaId);
+    if (!baba) return showToast('Baba nao encontrado.');
+    const isFinalized = baba.status === 'finalizado';
+    
+    const playerNameInput = prompt('Nome do jogador para editar os gols neste baba:');
+    if (!playerNameInput) return;
+    const allPlayers = [...state.players, ...(baba.visitantes || [])];
+    const found = allPlayers.find((p) => p.nome.toLowerCase().includes(playerNameInput.trim().toLowerCase()));
+    if (!found) return showToast(`Jogador "${playerNameInput}" nao encontrado.`);
+    
+    const currentRanking = baba.rankingDoBaba || calculateDailyRanking(baba);
+    const currentGoals = currentRanking[found.id]?.totalGols || 0;
+    
+    const newGoals = prompt(`Gols de ${found.nome} neste baba (atual: ${currentGoals}):`, String(currentGoals));
+    if (newGoals === null) return;
+    const goalsCount = Math.max(0, parseInt(newGoals, 10) || 0);
+    
+    if (goalsCount === currentGoals) return showToast('Nenhuma alteracao feita.');
+    
+    if (isFinalized) applyDeletedBabaToPersistedStats(baba);
+    
+    if (!baba.golOverrides) baba.golOverrides = {};
+    baba.golOverrides[found.id] = goalsCount;
+    
+    baba.rankingDoBaba = calculateDailyRanking(baba);
+    
+    if (isFinalized) {
+      applyFinishedBabaToPersistedStats(baba);
+    }
+    
+    saveState(`Gols de ${found.nome} atualizados para ${goalsCount}.`);
+  }
+
   function calculateChampions(baba) {
     const teams = [...(baba.teams || [])];
     if (!teams.length) return [];
@@ -5039,6 +5074,12 @@
 
     if (baba.campeaoDoBaba?.jogadores) {
       baba.campeaoDoBaba.jogadores.forEach((id) => ensureStats(ranking, id, baba).totalTitulosBaba += 1);
+    }
+
+    if (baba.golOverrides) {
+      Object.entries(baba.golOverrides).forEach(([id, overrideGols]) => {
+        ensureStats(ranking, id, baba).totalGols = Number(overrideGols);
+      });
     }
 
     Object.values(ranking).forEach(finalizeStats);
@@ -7431,7 +7472,10 @@
           <div class="baba-history-champions">${championPlayers}</div>
         </section>
         <section class="baba-history-section">
-          <div class="baba-history-section__title"><strong>Desempenho dos times</strong><small>Tabela final</small></div>
+          <div class="baba-history-section__title" style="display: flex; justify-content: space-between; align-items: center;">
+            <div><strong>Desempenho dos times</strong><small>Tabela final</small></div>
+            ${isOrganizer() ? `<button class="baba-mini-btn" type="button" data-action="edit-history-player-goals" data-baba-id="${baba.id}">Editar Gols</button>` : ''}
+          </div>
           <div class="baba-history-teams">${teams || '<div class="baba-empty">Nenhum time salvo.</div>'}</div>
         </section>
         <section class="baba-history-section">
@@ -8510,6 +8554,7 @@
       if (actionButton?.dataset.action === 'edit-current-game') return editFinishedGame(actionButton.dataset.gameNumber);
       if (actionButton?.dataset.action === 'edit-history-game') return editHistoryGame(actionButton.dataset.babaId, actionButton.dataset.gameNumber);
       if (actionButton?.dataset.action === 'edit-history-roster') return editHistoryTeamRoster(actionButton.dataset.babaId, actionButton.dataset.teamId);
+      if (actionButton?.dataset.action === 'edit-history-player-goals') return editHistoryPlayerGoals(actionButton.dataset.babaId);
       if (actionButton?.dataset.action === 'delete-current-game') return deleteCurrentGame(actionButton.dataset.gameNumber);
       if (actionButton?.dataset.action === 'reset-mode') return resetMode();
       if (actionButton?.dataset.action === 'logout') return logout();
