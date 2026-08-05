@@ -113,29 +113,15 @@
     });
 
     if (target < occurrences.length) {
-      occurrences.slice(target).forEach(({ event }) => {
-        event.jogadorId = null;
-        event.jogadorNome = 'Jogador de fora';
-        event.external = true;
+      occurrences.slice(target).forEach(({ game, event }) => {
+        const eventIndex = game.goalEvents.indexOf(event);
+        if (eventIndex >= 0) game.goalEvents.splice(eventIndex, 1);
+        if (event.time === game.timeA) game.placarA = Math.max(0, Number(game.placarA || 0) - 1);
+        if (event.time === game.timeB) game.placarB = Math.max(0, Number(game.placarB || 0) - 1);
       });
     }
 
     let remaining = Math.max(0, target - occurrences.length);
-    if (remaining) {
-      for (const game of games) {
-        for (const event of game.goalEvents || []) {
-          if (!remaining) break;
-          const roster = gameRosterForTeam(game, event.time);
-          if (!event.external || event.jogadorId || !roster.includes(playerId)) continue;
-          event.jogadorId = playerId;
-          event.jogadorNome = playerName;
-          event.external = false;
-          remaining -= 1;
-        }
-        if (!remaining) break;
-      }
-    }
-
     while (remaining) {
       const game = [...games].reverse().find((item) => (
         gameRosterForTeam(item, item.timeA).includes(playerId)

@@ -69,7 +69,7 @@ test('edicao de gols historicos mantem autoria, placar e resultado consistentes'
       jogadoresTimeB: ['p2'],
       placarA: 1,
       placarB: 0,
-      goalEvents: [{ id: 'old', jogadorId: null, external: true, time: 'team_1', timeNome: 'Time 1' }],
+      goalEvents: [{ id: 'old', jogadorId: 'p1', jogadorNome: 'Ana', external: false, time: 'team_1', timeNome: 'Time 1' }],
       gols: [],
     }],
   };
@@ -84,9 +84,10 @@ test('edicao de gols historicos mantem autoria, placar e resultado consistentes'
   assert.equal(baba.jogos[0].goalEvents.filter((goal) => goal.jogadorId === 'p1').length, 3);
 
   core.setHistoricalPlayerGoals({ baba, playerId: 'p1', playerName: 'Ana', targetGoals: 1, createId: ids });
-  assert.equal(baba.jogos[0].placarA, 3);
+  assert.equal(baba.jogos[0].placarA, 1);
   assert.equal(baba.jogos[0].goalEvents.filter((goal) => goal.jogadorId === 'p1').length, 1);
-  assert.equal(baba.jogos[0].goalEvents.filter((goal) => goal.external).length, 2);
+  assert.equal(baba.jogos[0].goalEvents.length, 1);
+  assert.equal(baba.jogos[0].vencedor, 'team_1');
 });
 
 test('melhor goleiro prioriza menos derrotas e depois mais vitorias', () => {
@@ -110,6 +111,9 @@ test('interface usa modais canonicos e persistencia idempotente nas seis correco
   assert.match(html, /id="history-edit-modal"/);
   assert.match(app, /function saveHistorySummaryEdit/);
   assert.match(app, /function getDisplayedBaba/);
+  assert.match(app, /Carregando o ultimo baba/);
+  assert.match(app, /openFinishedGameEditor\(actionButton\.dataset\.gameNumber, actionButton\.dataset\.babaId \|\| null\)/);
+  assert.match(app, /if \(baba\.__detailLoaded\) return calculateDailyRanking\(baba\)/);
   assert.match(app, /columns: \['Pos', 'Goleiro', 'Derrotas', 'Vitórias', 'Jogos', 'Babas'\]/);
   assert.doesNotMatch(app, /melhor goleiro pelo criterio de menos gols sofridos/);
   assert.match(persistence, /const deletedPlayerIds = new Set\(\)/);

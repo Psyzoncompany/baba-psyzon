@@ -5251,6 +5251,7 @@
 
   function getFinishedBabaRanking(baba) {
     if (!baba || baba.status !== 'finalizado') return {};
+    if (baba.__detailLoaded) return calculateDailyRanking(baba);
     const saved = baba.rankingDoBaba && typeof baba.rankingDoBaba === 'object' && !Array.isArray(baba.rankingDoBaba)
       ? baba.rankingDoBaba
       : null;
@@ -6795,6 +6796,16 @@
     if (els.currentGamesTitleLabel) {
       els.currentGamesTitleLabel.textContent = baba?.status === 'finalizado' ? 'Histórico do último baba' : 'Histórico do baba atual';
     }
+    if (baba?.status === 'finalizado' && !baba.__detailLoaded && window.BabaRepository?.loadBaba) {
+      setHTML(els.currentGamesList, '<div class="baba-empty">Carregando o ultimo baba...</div>');
+      if (!loadingHistoryIds.has(baba.id)) {
+        loadingHistoryIds.add(baba.id);
+        window.BabaRepository.loadBaba(baba.id)
+          .catch((error) => showToast(error.message || 'Nao foi possivel carregar o ultimo baba.'))
+          .finally(() => loadingHistoryIds.delete(baba.id));
+      }
+      return;
+    }
     if (isManualMode(baba)) {
       ensureManualStats(baba);
       const teams = baba?.teams || [];
@@ -6835,7 +6846,8 @@
           <button class="baba-mini-btn" type="button" data-current-game="${game.numeroJogo}">
             <svg class="baba-btn-icon" aria-hidden="true" focusable="false"><use href="#baba-ball"></use></svg>Gols
           </button>
-          ${isOrganizer() && baba?.status !== 'finalizado' && baba?.id === state.activeBabaId ? `<button class="baba-mini-btn" type="button" data-action="edit-current-game" data-game-number="${game.numeroJogo}">Editar</button><button class="baba-mini-btn danger" type="button" data-action="delete-current-game" data-game-number="${game.numeroJogo}">Excluir</button>` : ''}
+          ${isOrganizer() && (baba?.status === 'finalizado' || baba?.id === state.activeBabaId) ? `<button class="baba-mini-btn" type="button" data-action="edit-current-game" data-game-number="${game.numeroJogo}" data-baba-id="${escapeHTML(baba.id)}">Editar</button>` : ''}
+          ${isOrganizer() && baba?.status !== 'finalizado' && baba?.id === state.activeBabaId ? `<button class="baba-mini-btn danger" type="button" data-action="delete-current-game" data-game-number="${game.numeroJogo}">Excluir</button>` : ''}
         </div>
       </div>
     `).join(''));
@@ -7110,9 +7122,9 @@
                   <b>${totalGoals} gol${totalGoals === 1 ? '' : 's'}</b>
                 </header>
                 <div class="baba-manual-team-stats">
-                  ${manualCounterHTML({ teamId: team.id, field: 'wins', value: stats.wins, label: 'Vitorias' })}
-                  ${manualCounterHTML({ teamId: team.id, field: 'draws', value: stats.draws, label: 'Empates' })}
-                  ${manualCounterHTML({ teamId: team.id, field: 'losses', value: stats.losses, label: 'Derrotas' })}
+                  ${manualCounterHTML({ teamId: team.id, babaId: baba.id, field: 'wins', value: stats.wins, label: 'Vitorias' })}
+                  ${manualCounterHTML({ teamId: team.id, babaId: baba.id, field: 'draws', value: stats.draws, label: 'Empates' })}
+                  ${manualCounterHTML({ teamId: team.id, babaId: baba.id, field: 'losses', value: stats.losses, label: 'Derrotas' })}
                 </div>
                 <div class="baba-manual-player-list">
                   <span>Jogadores</span>
@@ -7122,7 +7134,7 @@
                     return `
                       <div class="baba-manual-player-row">
                         <strong>${playerPaymentNameHTML(playerId, baba, { name, force: true })}</strong>
-                        ${manualCounterHTML({ teamId: team.id, field: 'goals', playerId, value: stats.playerGoals[playerId] || 0, label: 'Gols' })}
+                        ${manualCounterHTML({ teamId: team.id, babaId: baba.id, field: 'goals', playerId, value: stats.playerGoals[playerId] || 0, label: 'Gols' })}
                       </div>
                     `;
                   }).join('') || '<div class="baba-empty">Sem jogadores neste time.</div>'}
@@ -8776,7 +8788,7 @@
       if (actionButton?.dataset.action === 'toggle-payment') return toggleBabaPayment(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-history') return deleteHistoryBaba(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'edit-history-summary') return openHistorySummaryEditor(actionButton.dataset.babaId);
-      if (actionButton?.dataset.action === 'edit-current-game') return openFinishedGameEditor(actionButton.dataset.gameNumber);
+      if (actionButton?.dataset.action === 'edit-current-game') return openFinishedGameEditor(actionButton.dataset.gameNumber, actionButton.dataset.babaId || null);
       if (actionButton?.dataset.action === 'edit-history-game') return openFinishedGameEditor(actionButton.dataset.gameNumber, actionButton.dataset.babaId);
       if (actionButton?.dataset.action === 'edit-history-roster') return editHistoryTeamRoster(actionButton.dataset.babaId, actionButton.dataset.teamId);
       if (actionButton?.dataset.action === 'cancel-game-edit') return closeGameEditModal();

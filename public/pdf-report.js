@@ -321,13 +321,13 @@
         sectionIndex === 0 ? 'check' : (sectionIndex === 1 ? 'pending' : 'wallet'),
       );
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9.7);
+      doc.setFontSize(8.6);
       setColor(doc, 'setTextColor', [26, 37, 57]);
-      doc.text(cleanText(section.title), x + 13.5, sectionTop + 8.4);
+      doc.text(doc.splitTextToSize(cleanText(section.title), sectionWidth - 17)[0] || '-', x + 13.5, sectionTop + 5.7);
       if (section.note) {
         doc.setFontSize(6.2);
         setColor(doc, 'setTextColor', [91, 109, 137]);
-        doc.text(cleanText(section.note), x + sectionWidth - 3.5, sectionTop + 8.1, { align: 'right' });
+        doc.text(doc.splitTextToSize(cleanText(section.note), sectionWidth - 17)[0] || '', x + 13.5, sectionTop + 10.3);
       }
 
       const columns = Array.isArray(section.columns) ? section.columns.map(cleanText) : [];
@@ -488,21 +488,21 @@
       doc.setLineWidth(.45);
       doc.roundedRect(x, y, panelWidth, panelHeight, 2.8, 2.8, 'FD');
       setColor(doc, 'setFillColor', [7, 45, 57]);
-      doc.roundedRect(x + .2, y + .2, panelWidth - .4, 10, 2.6, 2.6, 'F');
+      doc.roundedRect(x + .2, y + .2, panelWidth - .4, 13, 2.6, 2.6, 'F');
       setColor(doc, 'setFillColor', index === 0 ? [205, 230, 88] : [184, 164, 111]);
       doc.roundedRect(x + 3, y + 2.3, 5.5, 5.5, 1.4, 1.4, 'F');
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.2);
       setColor(doc, 'setTextColor', COLORS.white);
-      doc.text(cleanText(section.title), x + 11, y + 6.8);
+      doc.text(doc.splitTextToSize(cleanText(section.title), panelWidth - 15)[0] || '-', x + 11, y + 5.5);
       if (section.note) {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(5.4);
         setColor(doc, 'setTextColor', [188, 217, 220]);
-        doc.text(doc.splitTextToSize(cleanText(section.note), 48)[0] || '', x + panelWidth - 3, y + 6.7, { align: 'right' });
+        doc.text(doc.splitTextToSize(cleanText(section.note), panelWidth - 15)[0] || '', x + 11, y + 10);
       }
 
-      const tableY = y + 11;
+      const tableY = y + 14;
       const headerHeight = 5.5;
       setColor(doc, 'setFillColor', [235, 242, 249]);
       doc.rect(x + .4, tableY, panelWidth - .8, headerHeight, 'F');
@@ -669,7 +669,7 @@
       setColor(doc, 'setFillColor', COLORS.emeraldSoft);
       setColor(doc, 'setDrawColor', [197, 230, 218]);
       doc.setLineWidth(.25);
-      doc.roundedRect(x, y, width, 9, 2.2, 2.2, 'FD');
+      doc.roundedRect(x, y, width, 12, 2.2, 2.2, 'FD');
       setColor(doc, 'setFillColor', COLORS.emerald);
       doc.roundedRect(x + 2.5, y + 1.8, 5.4, 5.4, 1.4, 1.4, 'F');
       setColor(doc, 'setTextColor', COLORS.white);
@@ -678,12 +678,12 @@
       doc.text(String(index), x + 5.2, y + 5.5, { align: 'center' });
       setColor(doc, 'setTextColor', COLORS.text);
       doc.setFontSize(width < 95 ? 7.2 : 9);
-      doc.text(doc.splitTextToSize(title, width - 14)[0] || '-', x + 10, y + 5.8);
-      if (section.note && width >= 120) {
+      doc.text(doc.splitTextToSize(title, width - 14)[0] || '-', x + 10, y + 5.1);
+      if (section.note) {
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(6.5);
+        doc.setFontSize(width < 95 ? 5.2 : 6.2);
         setColor(doc, 'setTextColor', COLORS.muted);
-        doc.text(cleanText(section.note), x + width - 3, y + 5.8, { align: 'right' });
+        doc.text(doc.splitTextToSize(cleanText(section.note), width - 14)[0] || '', x + 10, y + 9.6);
       }
     };
 
@@ -728,7 +728,7 @@
       let currentY = y;
 
       drawSectionHeader(section, i + 1, sectionWidth, x, currentY);
-      currentY += 10;
+      currentY += 13;
 
       const columns = Array.isArray(section.columns) ? section.columns.map(cleanText) : [];
       const sourceRows = Array.isArray(section.rows) ? section.rows : [];
@@ -742,7 +742,7 @@
       if (!columns.length || !rows.length) {
         setColor(doc, 'setFillColor', COLORS.surface);
         setColor(doc, 'setDrawColor', COLORS.line);
-        doc.roundedRect(x, currentY, sectionWidth, Math.max(12, sectionHeight - 12), 1.8, 1.8, 'FD');
+        doc.roundedRect(x, currentY, sectionWidth, Math.max(12, sectionHeight - 15), 1.8, 1.8, 'FD');
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(6.5);
         setColor(doc, 'setTextColor', COLORS.muted);
@@ -750,7 +750,7 @@
         return;
       }
 
-      const availableRowsHeight = Math.max(4, sectionHeight - 18);
+      const availableRowsHeight = Math.max(4, sectionHeight - 21);
       const minRowHeight = 3.25;
       const maxRows = Math.max(1, Math.floor(availableRowsHeight / (minRowHeight + 0.35)));
       const visibleRows = rows.slice(0, maxRows);
