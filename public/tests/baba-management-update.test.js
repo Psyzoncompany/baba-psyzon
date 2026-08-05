@@ -10,7 +10,8 @@ const read = (file) => fs.readFileSync(path.join(publicRoot, file), 'utf8');
 test('código do jogador usa exatamente quatro dígitos numéricos', () => {
   const access = read('baba-access.js');
   const html = read('baba.html');
-  assert.match(access, /const CODE_ALPHABET = '0123456789'/);
+  assert.match(access, /10 \*\* CODE_LENGTH/);
+  assert.match(access, /padStart\(CODE_LENGTH, '0'\)/);
   assert.match(access, /const CODE_LENGTH = 4/);
   assert.match(access, /replace\(\/\\D\/g, ''\)/);
   assert.match(access, /código completo de 4 dígitos/);

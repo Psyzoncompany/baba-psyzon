@@ -54,13 +54,16 @@ test('acesso administrativo nao usa mais senha fixa e restaura a ultima tela', (
   assert.match(source, /restorePlayerAccess/);
 });
 
-test('codigo de jogador e aleatorio, salvo somente como hash e revogavel', () => {
+test('codigo de jogador e fixo por conta, salvo somente como hash e sem expiracao operacional', () => {
   const source = readPublic('baba-access.js');
 
-  assert.match(source, /crypto\.getRandomValues/);
+  assert.match(source, /async function createAccountCode\(accountId, attempt = 0\)/);
+  assert.match(source, /`\$\{safeAccountId\(accountId\)\}:\$\{attempt\}`/);
   assert.match(source, /crypto\.subtle\.digest\('SHA-256'/);
+  assert.match(source, /CODE_EXPIRES_AT_MS = 253402300799000/);
   assert.match(source, /currentCodeHash: codeHash/);
   assert.match(source, /active: true/);
+  assert.doesNotMatch(source, /crypto\.getRandomValues/);
   assert.doesNotMatch(source, /currentCode:\s*code/);
   assert.match(source, /nativeStorage\(\)\.setItem\(PLAYER_ACCESS_KEY, JSON\.stringify\(saved\)\)/);
   assert.match(source, /parseSavedAccess\(playerAccessStorageKey\(accountId\)\) \|\| pointer/);

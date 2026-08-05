@@ -56,6 +56,39 @@ test('movimentacao no historico reescreve os elencos congelados sem alterar gols
   assert.equal(baba.jogos[0].gols[0].jogadorId, 'p1');
 });
 
+test('edicao de gols historicos mantem autoria, placar e resultado consistentes', () => {
+  const ids = (() => { let index = 0; return () => `goal_${++index}`; })();
+  const baba = {
+    jogos: [{
+      numeroJogo: 1,
+      timeA: 'team_1',
+      timeB: 'team_2',
+      timeANome: 'Time 1',
+      timeBNome: 'Time 2',
+      jogadoresTimeA: ['p1'],
+      jogadoresTimeB: ['p2'],
+      placarA: 1,
+      placarB: 0,
+      goalEvents: [{ id: 'old', jogadorId: null, external: true, time: 'team_1', timeNome: 'Time 1' }],
+      gols: [],
+    }],
+  };
+
+  core.setHistoricalPlayerGoals({ baba, playerId: 'p1', playerName: 'Ana', targetGoals: 1, createId: ids });
+  assert.equal(baba.jogos[0].goalEvents[0].jogadorId, 'p1');
+  assert.equal(baba.jogos[0].placarA, 1);
+
+  core.setHistoricalPlayerGoals({ baba, playerId: 'p1', playerName: 'Ana', targetGoals: 3, createId: ids });
+  assert.equal(baba.jogos[0].placarA, 3);
+  assert.equal(baba.jogos[0].vencedor, 'team_1');
+  assert.equal(baba.jogos[0].goalEvents.filter((goal) => goal.jogadorId === 'p1').length, 3);
+
+  core.setHistoricalPlayerGoals({ baba, playerId: 'p1', playerName: 'Ana', targetGoals: 1, createId: ids });
+  assert.equal(baba.jogos[0].placarA, 3);
+  assert.equal(baba.jogos[0].goalEvents.filter((goal) => goal.jogadorId === 'p1').length, 1);
+  assert.equal(baba.jogos[0].goalEvents.filter((goal) => goal.external).length, 2);
+});
+
 test('interface usa modais canonicos e persistencia idempotente nas seis correcoes', () => {
   const app = read('baba.js');
   const html = read('baba.html');
@@ -65,7 +98,13 @@ test('interface usa modais canonicos e persistencia idempotente nas seis correco
   assert.match(app, /rewriteHistoricalRosters/);
   assert.doesNotMatch(app, /function editHistoryPlayerGoals/);
   assert.match(html, /id="game-edit-modal"/);
+  assert.match(html, /id="history-edit-modal"/);
+  assert.match(app, /function saveHistorySummaryEdit/);
+  assert.match(app, /function getDisplayedBaba/);
   assert.match(persistence, /const deletedPlayerIds = new Set\(\)/);
+  assert.match(persistence, /const remotePlayerDocumentIds = new Map\(\)/);
+  assert.match(persistence, /item\.playerId \|\| item\.id \|\| snapshotItem\.id/);
+  assert.match(persistence, /remotePlayerDocumentIds\.get\(originalId\)/);
   assert.match(persistence, /statsRevisionSignature/);
   assert.match(persistence, /game\.placarA \?\? game\.scoreA/);
 });

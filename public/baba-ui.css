@@ -4518,6 +4518,82 @@ button.baba-history-item.active {
   width: min(100%, 50rem);
 }
 
+.baba-history-edit-modal__panel {
+  width: min(100%, 42rem);
+  max-height: min(90vh, 48rem);
+  overflow: auto;
+}
+
+.baba-history-edit-date {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  font-weight: var(--font-weight-semibold);
+}
+
+.baba-history-edit-date input {
+  width: min(100%, 15rem);
+}
+
+.baba-history-edit-heading {
+  display: grid;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.baba-history-edit-heading small {
+  color: var(--color-text-muted);
+}
+
+.baba-history-edit-goals {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.baba-history-edit-player {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6rem;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 3.75rem;
+  padding: var(--space-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+}
+
+.baba-history-edit-player > span {
+  display: grid;
+  min-width: 0;
+}
+
+.baba-history-edit-player strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.baba-history-edit-player small {
+  color: var(--color-text-muted);
+}
+
+.baba-history-edit-player input {
+  width: 100%;
+  min-height: 2.75rem;
+  text-align: center;
+  font-weight: var(--font-weight-bold);
+}
+
+.baba-history-hero__copy {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.baba-history-hero__edit {
+  justify-self: start;
+}
+
 .baba-game-edit-help {
   margin: 0 0 var(--space-4);
   color: var(--color-text-muted);

@@ -148,6 +148,7 @@
     tableTopScorers: $('#table-top-scorers'),
     dailyTopScorers: $('#daily-top-scorers'),
     currentGamesList: $('#current-games-list'),
+    currentGamesTitleLabel: $('#current-games-title-label'),
     lastResultPill: $('#last-result-pill'),
     lastResultPanel: $('#last-result-panel'),
     teamsGrid: $('#teams-grid'),
@@ -233,6 +234,11 @@
     gameEditTitle: $('#game-edit-title'),
     gameEditContent: $('#game-edit-content'),
     closeGameEditModal: $('#close-game-edit-modal'),
+    historyEditModal: $('#history-edit-modal'),
+    historyEditForm: $('#history-edit-form'),
+    historyEditDate: $('#history-edit-date'),
+    historyEditGoals: $('#history-edit-goals'),
+    closeHistoryEditModal: $('#close-history-edit-modal'),
   };
   const moreMenuHome = els.moreMenu?.parentElement || null;
 
@@ -267,6 +273,7 @@
   let selectedTeamDetail = null;
   let selectedPlayerDetail = null;
   let selectedGameEdit = null;
+  let selectedHistoryEdit = null;
   const playerPaymentFilters = { query: '', payment: 'all', status: 'all', novice: 'all' };
   let drawExperience = null;
   let drawSequenceToken = 0;
@@ -1092,6 +1099,19 @@
 
   function getActiveBaba() {
     return state.babas.find((baba) => baba.id === state.activeBabaId) || null;
+  }
+
+  function getLatestFinishedBaba() {
+    return state.babas
+      .filter((baba) => baba.status === 'finalizado')
+      .sort((a, b) => (
+        String(b.dataISO || '').localeCompare(String(a.dataISO || ''))
+        || Number(b.finalizadoEm || b.criadoEm || 0) - Number(a.finalizadoEm || a.criadoEm || 0)
+      ))[0] || null;
+  }
+
+  function getDisplayedBaba() {
+    return getActiveBaba() || getLatestFinishedBaba();
   }
 
   function hasBabaStartedMatch(baba) {
@@ -1928,7 +1948,7 @@
       els.playerAccessCodeOutput.textContent = result.code;
       els.playerAccessCodeOutput.dataset.code = result.code;
       els.copyPlayerCode.disabled = false;
-      els.playerAccessAdminFeedback.textContent = 'Novo código ativo. Qualquer código anterior foi revogado.';
+      els.playerAccessAdminFeedback.textContent = 'Código fixo da conta ativo. Ele não muda em novas consultas.';
     } catch (error) {
       els.playerAccessAdminFeedback.textContent = error?.message || 'Não foi possível gerar o código.';
     } finally {
@@ -5013,6 +5033,119 @@
     saveState('Baba removido do historico.');
   }
 
+  function historyEditablePlayers(baba) {
+    const ids = new Set([...(baba?.jogadoresPresentes || [])]);
+    (baba?.teams || []).forEach((team) => {
+      (team.jogadores || []).forEach((id) => ids.add(id));
+      Object.keys(team.manualStats?.playerGoals || {}).forEach((id) => ids.add(id));
+    });
+    (baba?.visitantes || []).forEach((player) => ids.add(player.id));
+    (baba?.jogos || []).forEach((game) => {
+      (game.goalEvents || []).forEach((goal) => { if (goal?.jogadorId) ids.add(goal.jogadorId); });
+      (game.gols || []).forEach((goal) => { if (goal?.jogadorId) ids.add(goal.jogadorId); });
+    });
+    return [...ids]
+      .map((id) => getBabaPlayer(baba, id) || { id, nome: playerName(id, baba) })
+      .filter((player) => player?.id)
+      .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+  }
+
+  function openHistorySummaryEditor(babaId) {
+    if (!requireOrganizer()) return;
+    const baba = getBabaById(babaId);
+    if (!baba || baba.status !== 'finalizado') return showToast('Baba finalizado nao encontrado.');
+    const ranking = calculateDailyRanking(baba);
+    selectedHistoryEdit = { babaId: baba.id, opener: document.activeElement };
+    els.historyEditDate.value = baba.dataISO || '';
+    setHTML(els.historyEditGoals, historyEditablePlayers(baba).map((player) => {
+      const team = getPlayerTeam(baba, player.id);
+      const goals = Number(ranking[player.id]?.totalGols || 0);
+      return `
+        <label class="baba-history-edit-player"${teamNumberDataAttribute(team)}>
+          <span><strong>${escapeHTML(player.nome)}</strong><small>${escapeHTML(team?.name || 'Sem time')}</small></span>
+          <input type="number" min="0" max="99" step="1" inputmode="numeric" value="${goals}" data-history-player-goals="${escapeHTML(player.id)}" aria-label="Gols de ${escapeHTML(player.nome)}">
+        </label>
+      `;
+    }).join('') || '<div class="baba-empty">Nenhum jogador registrado neste baba.</div>');
+    els.historyEditModal.classList.remove('hidden');
+    window.requestAnimationFrame(() => els.historyEditDate?.focus({ preventScroll: true }));
+  }
+
+  function closeHistorySummaryEditor() {
+    const opener = selectedHistoryEdit?.opener;
+    selectedHistoryEdit = null;
+    els.historyEditModal?.classList.add('hidden');
+    window.requestAnimationFrame(() => opener?.isConnected && opener.focus({ preventScroll: true }));
+  }
+
+  function validBabaDate(value) {
+    const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    const [, year, month, day] = match.map(Number);
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+    return { iso: value, year, month, day };
+  }
+
+  function setManualHistoricalGoals(baba, playerId, goals, playerNameValue) {
+    const team = (baba.teams || []).find((item) => (item.jogadores || []).includes(playerId))
+      || (baba.teams || []).find((item) => Object.prototype.hasOwnProperty.call(item.manualStats?.playerGoals || {}, playerId));
+    if (!team) {
+      if (goals) throw new Error(`${playerNameValue} precisa estar em um time para receber gols.`);
+      return;
+    }
+    const stats = getManualTeamStats(team);
+    stats.playerGoals[playerId] = goals;
+    team.manualStats = stats;
+  }
+
+  function saveHistorySummaryEdit(event) {
+    event.preventDefault();
+    if (!selectedHistoryEdit || !requireOrganizer()) return;
+    const source = getBabaById(selectedHistoryEdit.babaId);
+    if (!source || source.status !== 'finalizado') return closeHistorySummaryEditor();
+    const date = validBabaDate(els.historyEditDate?.value);
+    if (!date) return showToast('Informe uma data valida para o baba.');
+    const edited = JSON.parse(JSON.stringify(source));
+    const goalInputs = Array.from(els.historyEditGoals.querySelectorAll('[data-history-player-goals]'));
+    try {
+      goalInputs.forEach((input) => {
+        const playerId = input.dataset.historyPlayerGoals;
+        const player = getBabaPlayer(edited, playerId) || { id: playerId, nome: playerName(playerId, edited) };
+        const goals = window.BabaManagementCore.parseScore(input.value);
+        if (isManualMode(edited)) {
+          setManualHistoricalGoals(edited, playerId, goals, player.nome);
+        } else {
+          window.BabaManagementCore.setHistoricalPlayerGoals({
+            baba: edited,
+            playerId,
+            playerName: player.nome,
+            targetGoals: goals,
+            createId: () => newId('goal'),
+          });
+        }
+      });
+    } catch (error) {
+      return showToast(error.message || 'Nao foi possivel atualizar os gols.');
+    }
+    Object.assign(edited, {
+      dataISO: date.iso,
+      dataCompleta: formatDate(date.iso),
+      dia: date.day,
+      mes: date.month,
+      ano: date.year,
+    });
+    (edited.jogos || []).forEach((game) => {
+      if (Array.isArray(game.goalEvents)) game.gols = aggregateGoalEvents(game.goalEvents);
+    });
+    refreshBabaDerivedData(edited);
+    const index = state.babas.findIndex((baba) => baba.id === edited.id);
+    if (index < 0) return closeHistorySummaryEditor();
+    state.babas[index] = edited;
+    closeHistorySummaryEditor();
+    saveState(`Historico de ${edited.dataCompleta} atualizado.`);
+  }
+
   function editHistoryTeamRoster(babaId, teamId) {
     if (!requireOrganizer()) return;
     const baba = getBabaById(babaId);
@@ -5310,7 +5443,7 @@
 
   function render() {
     const scrollPosition = { x: window.scrollX, y: window.scrollY };
-    const baba = getActiveBaba();
+    const baba = getDisplayedBaba();
     const activeBase = baba ? {
       id: baba.id,
       dataISO: baba.dataISO,
@@ -5354,7 +5487,7 @@
       monthlyPayments: state.monthlyPayments,
       month: currentPaymentMonthKey(),
       activeBabaId: state.activeBabaId,
-    }, renderPlayersAdmin);
+    }, () => renderPlayersAdmin(baba));
     renderComponent('present-list', {
       players: state.players,
       presentes: baba?.jogadoresPresentes,
@@ -5524,8 +5657,7 @@
     els.metricNextTeam.textContent = nextTeam?.name || '-';
   }
 
-  function renderPlayersAdmin() {
-    const baba = getActiveBaba();
+  function renderPlayersAdmin(baba = getActiveBaba()) {
     const visitors = baba?.visitantes || [];
     const normalizePlayerFilterText = (value) => String(value || '')
       .normalize('NFD')
@@ -6601,7 +6733,7 @@
         ${top.map((stats, index) => `
           <div class="baba-table-scorer ${index === 0 ? 'is-first baba-gold-leader' : ''}"${teamNumberDataAttribute(getPlayerTeam(baba, stats.jogadorId))}>
             <span>${index + 1}º lugar</span>
-            <strong>${playerPaymentNameHTML(stats.jogadorId, getActiveBaba(), { name: stats.nome, force: Boolean(getActiveBaba()) })}</strong>
+            <strong>${playerPaymentNameHTML(stats.jogadorId, baba, { name: stats.nome, force: Boolean(baba) })}</strong>
             <span>${stats.totalGols} gol${stats.totalGols === 1 ? '' : 's'}</span>
           </div>
         `).join('')}
@@ -6645,6 +6777,9 @@
   }
 
   function renderCurrentGames(baba) {
+    if (els.currentGamesTitleLabel) {
+      els.currentGamesTitleLabel.textContent = baba?.status === 'finalizado' ? 'Histórico do último baba' : 'Histórico do baba atual';
+    }
     if (isManualMode(baba)) {
       ensureManualStats(baba);
       const teams = baba?.teams || [];
@@ -6685,7 +6820,7 @@
           <button class="baba-mini-btn" type="button" data-current-game="${game.numeroJogo}">
             <svg class="baba-btn-icon" aria-hidden="true" focusable="false"><use href="#baba-ball"></use></svg>Gols
           </button>
-          ${isOrganizer() ? `<button class="baba-mini-btn" type="button" data-action="edit-current-game" data-game-number="${game.numeroJogo}">Editar</button><button class="baba-mini-btn danger" type="button" data-action="delete-current-game" data-game-number="${game.numeroJogo}">Excluir</button>` : ''}
+          ${isOrganizer() && baba?.status !== 'finalizado' && baba?.id === state.activeBabaId ? `<button class="baba-mini-btn" type="button" data-action="edit-current-game" data-game-number="${game.numeroJogo}">Editar</button><button class="baba-mini-btn danger" type="button" data-action="delete-current-game" data-game-number="${game.numeroJogo}">Excluir</button>` : ''}
         </div>
       </div>
     `).join(''));
@@ -6889,7 +7024,7 @@
   }
 
   function openCurrentGameDetail(gameNumber) {
-    const baba = getActiveBaba();
+    const baba = getDisplayedBaba();
     const game = (baba?.jogos || []).find((item) => String(item.numeroJogo) === String(gameNumber));
     if (!game) return;
 
@@ -7032,10 +7167,10 @@
       `);
     } else if (!match || !teamA || !teamB) {
       els.currentMatchPanel.className = 'baba-current-match-panel';
-      const canStart = isOrganizer() && getRotationTeams(baba).length >= 2;
+      const canStart = isOrganizer() && baba?.status !== 'finalizado' && getRotationTeams(baba).length >= 2;
       const startLabel = baba?.jogos?.length ? 'Iniciar partida' : 'Iniciar primeiro jogo';
       setHTML(els.currentMatchPanel, `
-        <div class="baba-empty">Nenhum jogo iniciado.</div>
+        <div class="baba-empty">${baba?.status === 'finalizado' ? 'Baba finalizado. O último resultado permanece disponível abaixo.' : 'Nenhum jogo iniciado.'}</div>
         ${canStart ? `<div class="baba-live-actions baba-live-actions--single"><button class="baba-primary baba-start-game-btn" type="button" data-action="start-first-live">${startLabel}</button></div>` : ''}
       `);
     } else {
@@ -7330,6 +7465,7 @@
     if (!items.length) return `<div class="baba-empty">${escapeHTML(emptyMessage)}</div>`;
     const { visibleItems, limit, expanded } = getRankingVisibleItems(items, options);
     const metric = options.metric || 'goals';
+    const contextBaba = options.baba || getDisplayedBaba();
     const stat = (iconId, label) => `
       <span>
         <svg aria-hidden="true" focusable="false"><use href="#${iconId}"></use></svg>
@@ -7342,7 +7478,7 @@
       const lastClass = items.length > 1 && index === items.length - 1 ? ' baba-ranking-card--last' : '';
       const icon = position === 1 ? 'baba-trophy' : 'baba-ball';
       const score = rankingMetricDisplay(stats, metric);
-      const playerTeam = getPlayerTeam(getActiveBaba(), stats.jogadorId);
+      const playerTeam = getPlayerTeam(contextBaba, stats.jogadorId);
       return `
         <div class="baba-ranking-card${topClass}${lastClass}"${teamNumberDataAttribute(playerTeam)}>
           <div class="baba-ranking-card__main">
@@ -7350,7 +7486,7 @@
             <div>
               <div class="baba-ranking-title">
                 <svg aria-hidden="true" focusable="false"><use href="#${icon}"></use></svg>
-                <strong>${playerPaymentNameHTML(stats.jogadorId, getActiveBaba(), { name: stats.nome, force: Boolean(getActiveBaba()) })}</strong>
+                <strong>${playerPaymentNameHTML(stats.jogadorId, contextBaba, { name: stats.nome, force: Boolean(contextBaba) })}</strong>
               </div>
               <div class="stats">
                 ${stat('baba-ball', `${stats.totalGols} gols`)}
@@ -7377,11 +7513,12 @@
   function renderGoalkeeperRankingList(items, emptyMessage, options = {}) {
     if (!items.length) return `<div class="baba-empty">${escapeHTML(emptyMessage)}</div>`;
     const { visibleItems, limit, expanded } = getRankingVisibleItems(items, options);
+    const contextBaba = options.baba || getDisplayedBaba();
     const cards = visibleItems.map((stats, index) => {
       const position = index + 1;
       const topClass = position <= 3 ? ` baba-ranking-card--top${position}` : '';
       const lastClass = items.length > 1 && index === items.length - 1 ? ' baba-ranking-card--last' : '';
-      const playerTeam = getPlayerTeam(getActiveBaba(), stats.jogadorId);
+      const playerTeam = getPlayerTeam(contextBaba, stats.jogadorId);
       return `
         <div class="baba-ranking-card baba-goalkeeper-card${topClass}${lastClass}"${teamNumberDataAttribute(playerTeam)}>
           <div class="baba-ranking-card__main">
@@ -7389,7 +7526,7 @@
             <div>
               <div class="baba-ranking-title">
                 <svg aria-hidden="true" focusable="false"><use href="#${position === 1 ? 'baba-trophy' : 'baba-save'}"></use></svg>
-                <strong>${playerPaymentNameHTML(stats.jogadorId, getActiveBaba(), { name: stats.nome, force: Boolean(getActiveBaba()) })}</strong>
+                <strong>${playerPaymentNameHTML(stats.jogadorId, contextBaba, { name: stats.nome, force: Boolean(contextBaba) })}</strong>
               </div>
               <div class="stats">
                 <span><svg aria-hidden="true" focusable="false"><use href="#baba-x"></use></svg>${stats.golsSofridos} sofridos</span>
@@ -7410,7 +7547,12 @@
   }
 
   function renderHistory() {
-    const finished = state.babas.filter((baba) => baba.status === 'finalizado');
+    const finished = state.babas
+      .filter((baba) => baba.status === 'finalizado')
+      .sort((a, b) => (
+        String(b.dataISO || '').localeCompare(String(a.dataISO || ''))
+        || Number(b.finalizadoEm || b.criadoEm || 0) - Number(a.finalizadoEm || a.criadoEm || 0)
+      ));
     els.historyCountLabel.textContent = `${finished.length} salvos`;
     if (!finished.length) {
       setHTML(els.historyList, '<div class="baba-empty">Nenhum baba finalizado ainda.</div>');
@@ -7496,10 +7638,11 @@
     setHTML(els.historyDetail, `
       <div class="baba-history-detail-pro">
         <section class="baba-history-hero">
-          <div>
+          <div class="baba-history-hero__copy">
             <small>Campeão do baba</small>
             <h3>${escapeHTML(championNames)}</h3>
             <p>${escapeHTML(baba.dataCompleta)} · finalizado às ${formatTime(baba.finalizadoEm)}</p>
+            ${isOrganizer() ? `<button class="baba-secondary baba-history-hero__edit" type="button" data-action="edit-history-summary" data-baba-id="${baba.id}">Editar data e gols</button>` : ''}
           </div>
           <div class="baba-history-kpis">
             <span><b>${baba.jogadoresPresentes?.length || 0}</b><small>presentes</small></span>
@@ -7569,7 +7712,7 @@
     closeMoreMenu();
     $$('.baba-view').forEach((view) => view.classList.toggle('active', view.dataset.view === safeTab));
     window.BabaRepository?.activateView?.(safeTab);
-    if (safeTab === 'teams') renderDrawTeams(getActiveBaba());
+    if (safeTab === 'teams') renderDrawTeams(getDisplayedBaba());
   }
 
   function focusableElements(container) {
@@ -7598,6 +7741,11 @@
   }
 
   function handleDialogKeydown(event) {
+    if (!els.historyEditModal?.classList.contains('hidden')) {
+      if (event.key === 'Escape') { event.preventDefault(); closeHistorySummaryEditor(); return; }
+      trapDialogFocus(event, els.historyEditModal);
+      return;
+    }
     if (!els.playerCodeForm?.classList.contains('hidden')) {
       if (event.key === 'Escape') { event.preventDefault(); closePlayerCode(); return; }
       trapDialogFocus(event, els.playerCodeForm);
@@ -8412,6 +8560,8 @@
     els.closeGameDetailModal.addEventListener('click', () => els.gameDetailModal.classList.add('hidden'));
     els.closeGameEditModal?.addEventListener('click', closeGameEditModal);
     els.gameEditForm?.addEventListener('submit', saveFinishedGameEdit);
+    els.closeHistoryEditModal?.addEventListener('click', closeHistorySummaryEditor);
+    els.historyEditForm?.addEventListener('submit', saveHistorySummaryEdit);
     els.drawSkipButton?.addEventListener('click', skipDrawAnimation);
     els.drawCloseButton?.addEventListener('click', closeDrawExperience);
     els.drawSoundToggle?.addEventListener('click', toggleDrawSound);
@@ -8433,6 +8583,9 @@
     });
     els.gameEditModal?.addEventListener('click', (event) => {
       if (event.target === els.gameEditModal) closeGameEditModal();
+    });
+    els.historyEditModal?.addEventListener('click', (event) => {
+      if (event.target === els.historyEditModal) closeHistorySummaryEditor();
     });
 
     $$('.baba-tabs [data-tab]').forEach((button) => {
@@ -8605,10 +8758,12 @@
       }
       if (actionButton?.dataset.action === 'toggle-payment') return toggleBabaPayment(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-history') return deleteHistoryBaba(actionButton.dataset.id);
+      if (actionButton?.dataset.action === 'edit-history-summary') return openHistorySummaryEditor(actionButton.dataset.babaId);
       if (actionButton?.dataset.action === 'edit-current-game') return openFinishedGameEditor(actionButton.dataset.gameNumber);
       if (actionButton?.dataset.action === 'edit-history-game') return openFinishedGameEditor(actionButton.dataset.gameNumber, actionButton.dataset.babaId);
       if (actionButton?.dataset.action === 'edit-history-roster') return editHistoryTeamRoster(actionButton.dataset.babaId, actionButton.dataset.teamId);
       if (actionButton?.dataset.action === 'cancel-game-edit') return closeGameEditModal();
+      if (actionButton?.dataset.action === 'cancel-history-edit') return closeHistorySummaryEditor();
       if (actionButton?.dataset.action === 'change-game-edit-score') {
         const side = actionButton.dataset.side;
         const current = Number(selectedGameEdit?.[`score${side}`] || 0);

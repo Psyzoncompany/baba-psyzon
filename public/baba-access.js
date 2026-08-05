@@ -7,9 +7,8 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 const PLAYER_ACCESS_KEY = 'psyzon_baba_player_access_v1';
-const CODE_ALPHABET = '0123456789';
 const CODE_LENGTH = 4;
-const CODE_LIFETIME_MS = 365 * 24 * 60 * 60 * 1000;
+const CODE_EXPIRES_AT_MS = 253402300799000;
 let verifiedAccountId = '';
 
 function nativeStorage() {
@@ -75,31 +74,34 @@ async function hashCode(value) {
   return Array.from(new Uint8Array(digest)).map((item) => item.toString(16).padStart(2, '0')).join('');
 }
 
-function createCode() {
-  const bytes = crypto.getRandomValues(new Uint8Array(CODE_LENGTH));
-  return Array.from(bytes, (byte) => CODE_ALPHABET[byte % CODE_ALPHABET.length]).join('');
+async function createAccountCode(accountId, attempt = 0) {
+  const bytes = new TextEncoder().encode(`${safeAccountId(accountId)}:${attempt}`);
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  const value = new DataView(digest.buffer).getUint32(0, false) % (10 ** CODE_LENGTH);
+  return String(value).padStart(CODE_LENGTH, '0');
 }
 
 async function generatePlayerCode() {
   const user = auth.currentUser;
   if (!user) throw new Error('Entre com o Google para gerar o código dos jogadores.');
   const accountId = safeAccountId(user.uid);
+  const configRef = accessConfigRef(accountId);
+  const previousConfig = await getDoc(configRef);
+  const previousHash = previousConfig.data()?.currentCodeHash;
   let code = '';
   let codeHash = '';
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    code = createCode();
-    codeHash = await hashCode(code);
-    const candidate = await getDoc(accessCodeRef(codeHash));
-    if (!candidate.exists() || candidate.data()?.accountId === accountId) break;
-    code = '';
-    codeHash = '';
+  for (let attempt = 0; !codeHash && attempt < (10 ** CODE_LENGTH); attempt += 1) {
+    const candidateCode = await createAccountCode(accountId, attempt);
+    const candidateHash = await hashCode(candidateCode);
+    const candidate = await getDoc(accessCodeRef(candidateHash));
+    if (!candidate.exists() || candidate.data()?.accountId === accountId) {
+      code = candidateCode;
+      codeHash = candidateHash;
+    }
   }
   if (!codeHash) throw new Error('Não foi possível reservar um código agora. Tente novamente.');
   const timestamp = Date.now();
   const batch = writeBatch(db);
-  const configRef = accessConfigRef(accountId);
-  const previousConfig = await getDoc(configRef);
-  const previousHash = previousConfig.data()?.currentCodeHash;
   if (previousHash && previousHash !== codeHash) {
     batch.set(accessCodeRef(previousHash), {
       accountId,
@@ -112,7 +114,7 @@ async function generatePlayerCode() {
   batch.set(configRef, {
     currentCodeHash: codeHash,
     active: true,
-    expiresAtMs: timestamp + CODE_LIFETIME_MS,
+    expiresAtMs: CODE_EXPIRES_AT_MS,
     updatedAtMs: timestamp,
     updatedAt: serverTimestamp(),
     updatedBy: user.uid,
@@ -122,14 +124,14 @@ async function generatePlayerCode() {
   batch.set(accessCodeRef(codeHash), {
     accountId,
     active: true,
-    expiresAtMs: timestamp + CODE_LIFETIME_MS,
+    expiresAtMs: CODE_EXPIRES_AT_MS,
     createdAtMs: timestamp,
     updatedAtMs: timestamp,
     schemaVersion: 1,
   });
   await batch.commit();
   saveAccess(code, accountId);
-  return { code: formatCode(code), accountId, expiresAtMs: timestamp + CODE_LIFETIME_MS };
+  return { code: formatCode(code), accountId, expiresAtMs: CODE_EXPIRES_AT_MS };
 }
 
 async function verifyPlayerCode(value, { remember = true } = {}) {

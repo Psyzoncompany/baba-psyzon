@@ -50,6 +50,7 @@ const monthStatsCache = new Map();
 const monthPaymentsCache = new Map();
 const finishedBabaStatsCache = new Map();
 const deletedPlayerIds = new Set();
+const remotePlayerDocumentIds = new Map();
 let saveTimer = null;
 let backoffTimer = null;
 let flushTimer = null;
@@ -1556,7 +1557,14 @@ function startMonthPaymentsSubscription(monthKey) {
 
 function startPlayersSubscription() {
   subscribe('global:players', query(accountCollection('players'), limit(QUERY_LIMITS.players)), (snapshot) => {
-    window.__babaRemotePlayers = snapshot.docs.map((item) => item.data()).filter((item) => (
+    remotePlayerDocumentIds.clear();
+    window.__babaRemotePlayers = snapshot.docs.map((snapshotItem) => {
+      const item = snapshotItem.data() || {};
+      const canonicalId = item.playerId || item.id || snapshotItem.id;
+      remotePlayerDocumentIds.set(String(canonicalId), snapshotItem.id);
+      remotePlayerDocumentIds.set(safeId(canonicalId, ''), snapshotItem.id);
+      return { ...item, id: canonicalId };
+    }).filter((item) => (
       !item.deleted
       && !deletedPlayerIds.has(String(item.playerId || item.id || '').trim())
       && !deletedPlayerIds.has(safeId(item.playerId || item.id, ''))
@@ -1975,10 +1983,12 @@ async function startRepository() {
 
 async function softDeletePlayer(playerId) {
   const originalId = String(playerId || '').trim();
-  const id = safeId(playerId);
+  const id = safeId(playerId, '');
   if (!id) throw new Error('Jogador invalido.');
+  const documentId = safeId(remotePlayerDocumentIds.get(originalId) || remotePlayerDocumentIds.get(id) || id, '');
   deletedPlayerIds.add(originalId);
   deletedPlayerIds.add(id);
+  deletedPlayerIds.add(documentId);
   if (Array.isArray(window.__babaRemotePlayers)) {
     window.__babaRemotePlayers = window.__babaRemotePlayers.filter((player) => {
       const remoteId = String(player?.id || player?.playerId || '').trim();
@@ -1986,7 +1996,7 @@ async function softDeletePlayer(playerId) {
     });
   }
   try {
-    const ref = accountDoc('players', id);
+    const ref = accountDoc('players', documentId);
     return await setDoc(ref, {
       playerId: id,
       deleted: true,
