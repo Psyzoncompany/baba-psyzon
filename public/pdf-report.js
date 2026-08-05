@@ -677,9 +677,9 @@
       doc.setFontSize(6.5);
       doc.text(String(index), x + 5.2, y + 5.5, { align: 'center' });
       setColor(doc, 'setTextColor', COLORS.text);
-      doc.setFontSize(9);
-      doc.text(title, x + 10, y + 5.8);
-      if (section.note) {
+      doc.setFontSize(width < 95 ? 7.2 : 9);
+      doc.text(doc.splitTextToSize(title, width - 14)[0] || '-', x + 10, y + 5.8);
+      if (section.note && width >= 120) {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(6.5);
         setColor(doc, 'setTextColor', COLORS.muted);
@@ -691,7 +691,7 @@
       setColor(doc, 'setFillColor', COLORS.navy);
       doc.roundedRect(x, y, width, 7, 2, 2, 'F');
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(6.2);
+      doc.setFontSize(columns.length >= 7 ? 4.2 : (width < 95 ? 4.8 : 6.2));
       setColor(doc, 'setTextColor', COLORS.white);
       let curX = x;
       columns.forEach((column, i) => {
@@ -709,15 +709,16 @@
     drawHero();
     drawSummary();
 
-    const sections = report.sections.filter(s => s.columns && s.columns.length && s.rows && s.rows.length);
+    const sections = report.sections.slice(0, 6);
     if (!sections.length) return doc;
 
     const availableHeight = pageHeight - margin - 5 - cursorY;
     const numSections = sections.length;
     const gapX = 4;
-    const cols = numSections > 1 ? 2 : 1;
+    const cols = numSections === 1 ? 1 : (numSections <= 3 ? numSections : (numSections <= 4 ? 2 : 3));
     const sectionWidth = (contentWidth - (gapX * (cols - 1))) / cols;
-    const sectionHeight = availableHeight / Math.ceil(numSections / cols) - 4;
+    const sectionRows = Math.ceil(numSections / cols);
+    const sectionHeight = (availableHeight - (4 * (sectionRows - 1))) / sectionRows;
     
     sections.forEach((section, i) => {
       const col = i % cols;
@@ -729,17 +730,33 @@
       drawSectionHeader(section, i + 1, sectionWidth, x, currentY);
       currentY += 10;
 
-      const columns = section.columns.map(cleanText);
-      const rows = section.rows;
+      const columns = Array.isArray(section.columns) ? section.columns.map(cleanText) : [];
+      const sourceRows = Array.isArray(section.rows) ? section.rows : [];
+      const requestedLimit = Number(section.maxRows || sourceRows.length);
+      const rows = sourceRows.slice(0, requestedLimit > 0 ? requestedLimit : sourceRows.length);
       const widths = calculateColumnWidths(columns, sectionWidth);
       
       drawTableHeader(columns, widths, sectionWidth, x, currentY);
       currentY += 8;
 
-      const rowHeight = 6.5;
-      const maxRows = Math.floor((sectionHeight - 18) / (rowHeight + 0.8));
+      if (!columns.length || !rows.length) {
+        setColor(doc, 'setFillColor', COLORS.surface);
+        setColor(doc, 'setDrawColor', COLORS.line);
+        doc.roundedRect(x, currentY, sectionWidth, Math.max(12, sectionHeight - 12), 1.8, 1.8, 'FD');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        setColor(doc, 'setTextColor', COLORS.muted);
+        doc.text(cleanText(section.empty || 'Nenhum registro.'), x + 3, currentY + 7);
+        return;
+      }
+
+      const availableRowsHeight = Math.max(4, sectionHeight - 18);
+      const minRowHeight = 3.25;
+      const maxRows = Math.max(1, Math.floor(availableRowsHeight / (minRowHeight + 0.35)));
       const visibleRows = rows.slice(0, maxRows);
-      const omitted = rows.length - visibleRows.length;
+      const omitted = sourceRows.length - visibleRows.length;
+      const omissionSpace = omitted > 0 ? 3.5 : 0;
+      const rowHeight = Math.min(6.5, Math.max(minRowHeight, (availableRowsHeight - omissionSpace) / visibleRows.length - 0.35));
 
       visibleRows.forEach((sourceRow, rowIndex) => {
         const isTop = Boolean(section.highlightTop && rowIndex === 0);
@@ -763,22 +780,22 @@
           const alignRight = isNumericColumn(label) || /valor|saldo/i.test(cleanText(label));
           const text = cleanText(cell);
           doc.setFont('helvetica', cellIndex === 0 || (section.highlightTop && rowIndex === 0) ? 'bold' : 'normal');
-          doc.setFontSize(columns.length >= 6 ? 6.5 : 7);
+          doc.setFontSize(Math.min(columns.length >= 6 ? 5.8 : 6.4, Math.max(4, rowHeight * 1.05)));
           setColor(doc, 'setTextColor', /^-\s*(R\$)?/i.test(text) ? COLORS.danger : COLORS.text);
           doc.text(
             doc.splitTextToSize(text, Math.max(7, widths[cellIndex] - 4)).slice(0, 1),
             alignRight ? curX + widths[cellIndex] - 2 : curX + 2.5,
-            currentY + 4.3,
+            currentY + (rowHeight * .68),
             { align: alignRight ? 'right' : 'left' },
           );
           curX += widths[cellIndex];
         });
-        currentY += rowHeight + 0.8;
+        currentY += rowHeight + 0.35;
       });
 
       if (omitted > 0) {
         doc.setFont('helvetica', 'italic');
-        doc.setFontSize(6.5);
+        doc.setFontSize(5.2);
         setColor(doc, 'setTextColor', COLORS.muted);
         doc.text(`+ ${omitted} linha${omitted > 1 ? 's' : ''} omitida${omitted > 1 ? 's' : ''}`, x + (sectionWidth / 2), currentY + 3, { align: 'center' });
       }
@@ -791,6 +808,7 @@
     doc.setFontSize(6.5);
     setColor(doc, 'setTextColor', COLORS.muted);
     doc.text(cleanText(report.footer || report.brand || report.eyebrow || 'Psyzon'), margin, pageHeight - margin);
+    doc.text('Relatorio completo em uma pagina', pageWidth - margin, pageHeight - margin, { align: 'right' });
 
     return doc;
   }

@@ -14,7 +14,7 @@
   <meta name="theme-color" content="#f4f8fc">
   <title>Baba Psyzon</title>
   <link href="apple-ui-font.css?v=20260723-1" rel="stylesheet">
-  <link href="baba-ui.css?v=20260803-baba-management-1" rel="stylesheet">
+  <link href="baba-ui.css?v=20260805-baba-management-2" rel="stylesheet">
   <script>
     window.BABA_AI_ENDPOINT = window.BABA_AI_ENDPOINT || '/api/baba-import/analyze';
     if (window.location.protocol !== 'file:') {
@@ -874,6 +874,23 @@
     </div>
   </div>
 
+  <div id="game-edit-modal" class="baba-modal hidden" role="dialog" aria-modal="true" aria-labelledby="game-edit-title">
+    <form id="game-edit-form" class="baba-modal__panel baba-game-edit-modal__panel">
+      <div class="baba-card__head">
+        <div><span class="baba-draw-eyebrow">Corrigir partida</span><h2 id="game-edit-title">Editar jogo</h2></div>
+        <button id="close-game-edit-modal" class="baba-icon-button" type="button" aria-label="Fechar edicao da partida" title="Fechar">
+          <svg class="baba-btn-icon" aria-hidden="true" focusable="false"><use href="#baba-x"></use></svg>
+        </button>
+      </div>
+      <p class="baba-game-edit-help">A quantidade de artilheiros acompanha o placar. Use "Sem artilheiro" quando o autor do gol nao for conhecido.</p>
+      <div id="game-edit-content" class="baba-game-edit-content"></div>
+      <div class="baba-game-edit-actions">
+        <button class="baba-secondary" type="button" data-action="cancel-game-edit">Cancelar</button>
+        <button class="baba-primary" type="submit">Salvar correcao</button>
+      </div>
+    </form>
+  </div>
+
   <button id="baba-share-fab" class="baba-share-fab" type="button" aria-label="Compartilhar link do Baba"
     title="Compartilhar Baba">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" aria-hidden="true" focusable="false">
@@ -1378,10 +1395,11 @@
   <script type="module" src="baba-access.js?v=20260803-baba-management-1"></script>
   <script type="module" src="baba-import-persistence.js?v=20260803-baba-management-1"></script>
   <script type="module" src="baba-import-ui.js?v=20260803-baba-management-1"></script>
-  <script type="module" src="baba-persistence.js?v=20260803-baba-management-1"></script>
+  <script type="module" src="baba-persistence.js?v=20260805-baba-management-2"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
-  <script src="pdf-report.js?v=20260803-baba-management-1"></script>
-  <script src="baba.js?v=20260803-baba-management-1" defer></script>
+  <script src="pdf-report.js?v=20260805-baba-management-2"></script>
+  <script src="baba-management-core.js?v=20260805-baba-management-2"></script>
+  <script src="baba.js?v=20260805-baba-management-2" defer></script>
   <script src="site-version.js?v=6.0.46" defer></script>
 </body>
 

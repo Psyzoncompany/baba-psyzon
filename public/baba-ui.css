@@ -4514,6 +4514,105 @@ button.baba-history-item.active {
   width: min(100%, 30rem);
 }
 
+.baba-game-edit-modal__panel {
+  width: min(100%, 50rem);
+}
+
+.baba-game-edit-help {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.baba-game-edit-content {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.baba-game-edit-team {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--team-border);
+  border-radius: var(--radius-md);
+  background: var(--team-soft);
+}
+
+.baba-game-edit-team > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.baba-game-edit-score {
+  width: 4.5rem;
+  min-height: 2.75rem;
+  text-align: center;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+.baba-game-edit-score-control {
+  display: grid;
+  grid-template-columns: 2.5rem 4.5rem 2.5rem;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.baba-game-edit-score-control > button {
+  width: 2.5rem;
+  min-height: 2.75rem;
+  padding: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+.baba-game-edit-goals {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.baba-game-edit-goal {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.baba-game-edit-goal > span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-align: center;
+}
+
+.baba-game-edit-empty {
+  padding: var(--space-3);
+  color: var(--color-text-muted);
+  background: var(--surface-subtle);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+.baba-game-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+
+.baba-history-team-edit {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 640px) {
+  .baba-game-edit-content { grid-template-columns: 1fr; }
+  .baba-game-edit-actions > button { flex: 1 1 0; }
+}
+
 .baba-goal-player-list,
 .baba-present-grid {
   display: grid;

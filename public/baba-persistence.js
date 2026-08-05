@@ -49,6 +49,7 @@ const loadedBabas = new Map();
 const monthStatsCache = new Map();
 const monthPaymentsCache = new Map();
 const finishedBabaStatsCache = new Map();
+const deletedPlayerIds = new Set();
 let saveTimer = null;
 let backoffTimer = null;
 let flushTimer = null;
@@ -930,7 +931,71 @@ async function applyBabaStatsDelta(state, baba, direction) {
     transaction.set(accountDoc('months', safeId(monthKey)), {
       id: monthKey, monthKey, schemaVersion: SCHEMA_VERSION, updatedAtMs: now(), deleted: false,
     }, { merge: true });
-    transaction.set(babaRef, { statsApplied: direction > 0, updatedAtMs: now() }, { merge: true });
+    transaction.set(babaRef, {
+      statsApplied: direction > 0,
+      statsRevisionSignature: direction > 0 ? stableSignature(stats) : null,
+      updatedAtMs: now(),
+    }, { merge: true });
+  });
+}
+
+async function applyFinishedBabaStatsRevision(previousState, previousBaba, nextState, nextBaba) {
+  if (previousBaba?.status !== 'finalizado' || nextBaba?.status !== 'finalizado') return;
+  const previousPlayers = new Map((previousState?.players || []).map((player) => [player.id, player]));
+  const nextPlayers = new Map((nextState?.players || []).map((player) => [player.id, player]));
+  const previousStats = computeBabaStats(previousBaba, previousPlayers);
+  const nextStats = computeBabaStats(nextBaba, nextPlayers);
+  const previousMonth = monthKeyFromBaba(previousBaba);
+  const nextMonth = monthKeyFromBaba(nextBaba);
+  const revisionSignature = stableSignature({ monthKey: nextMonth, stats: nextStats });
+  if (stableSignature({ monthKey: previousMonth, stats: previousStats }) === revisionSignature) return;
+
+  const numericFields = [
+    'totalGols', 'totalVitorias', 'totalEmpates', 'totalDerrotas', 'totalJogos',
+    'totalBabas', 'totalTitulosBaba', 'goalkeeperGames', 'goalsConceded',
+  ];
+  const deltas = new Map();
+  const addDelta = (ref, playerId, item, direction) => {
+    const key = ref.path;
+    const row = deltas.get(key) || { ref, playerId, nome: item.nome || item.name || 'Jogador', values: {} };
+    numericFields.forEach((field) => {
+      row.values[field] = Number(row.values[field] || 0) + direction * Number(item[field] || 0);
+    });
+    deltas.set(key, row);
+  };
+  Object.entries(previousStats).forEach(([playerId, item]) => {
+    addDelta(accountDoc('player_stats', safeId(playerId)), playerId, item, -1);
+    addDelta(accountDoc('months', safeId(previousMonth), 'stats', safeId(playerId)), playerId, item, -1);
+  });
+  Object.entries(nextStats).forEach(([playerId, item]) => {
+    addDelta(accountDoc('player_stats', safeId(playerId)), playerId, item, 1);
+    addDelta(accountDoc('months', safeId(nextMonth), 'stats', safeId(playerId)), playerId, item, 1);
+  });
+
+  const babaRef = accountDoc('babas', safeId(nextBaba.id));
+  await runTransaction(db, async (transaction) => {
+    const babaSnapshot = await transaction.get(babaRef);
+    if (babaSnapshot.data()?.statsRevisionSignature === revisionSignature) return;
+    const rows = [];
+    for (const row of deltas.values()) rows.push({ ...row, snapshot: await transaction.get(row.ref) });
+    rows.forEach(({ ref, playerId, nome, values, snapshot }) => {
+      const current = snapshot.data() || {};
+      const next = { ...current, jogadorId: playerId, playerId, nome: nome || current.nome || 'Jogador' };
+      numericFields.forEach((field) => {
+        next[field] = Math.max(0, Number(current[field] || 0) + Number(values[field] || 0));
+      });
+      const points = next.totalVitorias * 3 + next.totalEmpates;
+      next.aproveitamento = next.totalJogos ? Math.round((points / (next.totalJogos * 3)) * 100) : 0;
+      next.schemaVersion = SCHEMA_VERSION;
+      next.updatedAtMs = now();
+      transaction.set(ref, compact(next), { merge: true });
+    });
+    [previousMonth, nextMonth].filter(Boolean).forEach((monthKey) => transaction.set(
+      accountDoc('months', safeId(monthKey)),
+      { id: monthKey, monthKey, schemaVersion: SCHEMA_VERSION, updatedAtMs: now(), deleted: false },
+      { merge: true },
+    ));
+    transaction.set(babaRef, { statsApplied: true, statsRevisionSignature: revisionSignature, updatedAtMs: now() }, { merge: true });
   });
 }
 
@@ -970,6 +1035,9 @@ async function persistState(nextState, previousState = lastLocalState, { migrati
     const previousBaba = previousById.get(baba.id);
     if (migration || !previousBaba || signature(previousBaba) !== signature(baba)) {
       await persistBaba(nextState, baba, previousBaba, previousState);
+      if (!migration && previousBaba?.status === 'finalizado' && baba.status === 'finalizado') {
+        await applyFinishedBabaStatsRevision(previousState, previousBaba, nextState, baba);
+      }
     }
     if (!migration && baba.status === 'finalizado' && previousBaba?.status !== 'finalizado') {
       await applyBabaStatsDelta(nextState, baba, 1);
@@ -1133,16 +1201,21 @@ function restoreGameShape(game, goals) {
       minuto: goal.minute,
       registradoEm: goal.createdAtMs,
     }));
+  const teamAId = game.timeA || game.teamAId;
+  const teamBId = game.timeB || game.teamBId;
+  const scoreA = Number(game.placarA ?? game.scoreA ?? events.filter((goal) => goal.time === teamAId).length);
+  const scoreB = Number(game.placarB ?? game.scoreB ?? events.filter((goal) => goal.time === teamBId).length);
   const restored = {
     ...game,
     numeroJogo: Number(game.numeroJogo || game.sequence || 1),
-    timeA: game.timeA || game.teamAId,
-    timeB: game.timeB || game.teamBId,
-    placarA: events.filter((goal) => goal.time === (game.timeA || game.teamAId)).length,
-    placarB: events.filter((goal) => goal.time === (game.timeB || game.teamBId)).length,
-    vencedor: game.vencedor || game.winnerTeamId || null,
-    perdedor: game.perdedor || game.loserTeamId || null,
-    empate: game.empate ?? game.draw ?? false,
+    timeA: teamAId,
+    timeB: teamBId,
+    placarA: scoreA,
+    placarB: scoreB,
+    vencedor: scoreA === scoreB ? null : (game.vencedor || game.winnerTeamId || (scoreA > scoreB ? teamAId : teamBId)),
+    perdedor: scoreA === scoreB ? null : (game.perdedor || game.loserTeamId || (scoreA > scoreB ? teamBId : teamAId)),
+    empate: scoreA === scoreB,
+    resultado: scoreA === scoreB ? 'empate' : 'vitoria',
     goalEvents: events,
     gols: aggregateGoals(events),
   };
@@ -1483,7 +1556,11 @@ function startMonthPaymentsSubscription(monthKey) {
 
 function startPlayersSubscription() {
   subscribe('global:players', query(accountCollection('players'), limit(QUERY_LIMITS.players)), (snapshot) => {
-    window.__babaRemotePlayers = snapshot.docs.map((item) => item.data()).filter((item) => !item.deleted).map((item) => ({
+    window.__babaRemotePlayers = snapshot.docs.map((item) => item.data()).filter((item) => (
+      !item.deleted
+      && !deletedPlayerIds.has(String(item.playerId || item.id || '').trim())
+      && !deletedPlayerIds.has(safeId(item.playerId || item.id, ''))
+    )).map((item) => ({
       id: item.playerId || item.id,
       nome: item.nome || item.name,
       tipo: item.tipo || item.type || 'jogador',
@@ -1897,16 +1974,28 @@ async function startRepository() {
 }
 
 async function softDeletePlayer(playerId) {
+  const originalId = String(playerId || '').trim();
+  const id = safeId(playerId);
+  if (!id) throw new Error('Jogador invalido.');
+  deletedPlayerIds.add(originalId);
+  deletedPlayerIds.add(id);
+  if (Array.isArray(window.__babaRemotePlayers)) {
+    window.__babaRemotePlayers = window.__babaRemotePlayers.filter((player) => {
+      const remoteId = String(player?.id || player?.playerId || '').trim();
+      return remoteId !== originalId && safeId(remoteId) !== id;
+    });
+  }
   try {
-    const ref = accountDoc('players', safeId(playerId));
+    const ref = accountDoc('players', id);
     return await setDoc(ref, {
-      playerId,
+      playerId: id,
       deleted: true,
       schemaVersion: SCHEMA_VERSION,
       updatedAtMs: now()
     }, { merge: true });
   } catch (error) {
     console.error('Falha ao marcar jogador como removido no Firestore:', error);
+    throw error;
   }
 }
 

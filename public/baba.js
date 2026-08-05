@@ -228,6 +228,11 @@
     gameDetailTitle: $('#game-detail-title'),
     gameDetailList: $('#game-detail-list'),
     closeGameDetailModal: $('#close-game-detail-modal'),
+    gameEditModal: $('#game-edit-modal'),
+    gameEditForm: $('#game-edit-form'),
+    gameEditTitle: $('#game-edit-title'),
+    gameEditContent: $('#game-edit-content'),
+    closeGameEditModal: $('#close-game-edit-modal'),
   };
   const moreMenuHome = els.moreMenu?.parentElement || null;
 
@@ -261,6 +266,7 @@
   let babaAudioContext = null;
   let selectedTeamDetail = null;
   let selectedPlayerDetail = null;
+  let selectedGameEdit = null;
   const playerPaymentFilters = { query: '', payment: 'all', status: 'all', novice: 'all' };
   let drawExperience = null;
   let drawSequenceToken = 0;
@@ -787,54 +793,6 @@
     finalizeStats(target);
   }
 
-  function addStatsToRanking(ranking, stats) {
-    const playerId = stats?.jogadorId || stats?.playerId;
-    if (!playerId) return;
-    if (!ranking[playerId]) {
-      ranking[playerId] = {
-        jogadorId: playerId,
-        nome: stats.nome || playerName(playerId),
-        totalGols: 0, totalVitorias: 0, totalEmpates: 0, totalDerrotas: 0,
-        totalJogos: 0, totalBabas: 0, totalTitulosBaba: 0,
-        goalkeeperGames: 0, goalsConceded: 0,
-      };
-    }
-    const target = ranking[playerId];
-    [
-      'totalGols', 'totalVitorias', 'totalEmpates', 'totalDerrotas',
-      'totalJogos', 'totalBabas', 'totalTitulosBaba',
-      'goalkeeperGames', 'goalsConceded',
-    ].forEach((field) => {
-      target[field] = Number(target[field] || 0) + Number(stats[field] || 0);
-    });
-    finalizeStats(target);
-  }
-
-  function applyFinishedBabaToPersistedStats(baba) {
-    const monthKey = monthKeyFromISO(baba?.dataISO);
-    if (!state.playerStats) state.playerStats = {};
-    if (monthKey) {
-      if (!state.monthlyStats) state.monthlyStats = {};
-      if (!state.monthlyStats[monthKey]) state.monthlyStats[monthKey] = {};
-    }
-    const monthlyStats = monthKey ? state.monthlyStats[monthKey] : null;
-    Object.values(calculateDailyRanking(baba)).forEach((stats) => {
-      addStatsToRanking(state.playerStats, stats);
-      if (monthlyStats) addStatsToRanking(monthlyStats, stats);
-    });
-    const goalkeeperRanking = {};
-    collectGoalkeeperRankingFromBaba(goalkeeperRanking, baba);
-    Object.values(goalkeeperRanking).forEach((stats) => {
-      const mapped = {
-        jogadorId: stats.jogadorId,
-        goalkeeperGames: Number(stats.jogos || 0),
-        goalsConceded: Number(stats.golsSofridos || 0),
-      };
-      addStatsToRanking(state.playerStats, mapped);
-      if (monthlyStats) addStatsToRanking(monthlyStats, mapped);
-    });
-  }
-
   function applyDeletedBabaToPersistedStats(baba) {
     const monthKey = monthKeyFromISO(baba?.dataISO);
     const hasGeneralStats = state.playerStats && Object.keys(state.playerStats).length;
@@ -1199,7 +1157,18 @@
   }
 
   function getBabaPlayer(baba, id) {
-    return getPlayer(id) || getVisitor(baba, id);
+    const player = getPlayer(id) || getVisitor(baba, id);
+    if (player) return player;
+    const snapshot = baba?.participantFlags?.[id];
+    if (!snapshot?.typedName) return null;
+    return {
+      id,
+      nome: snapshot.typedName,
+      tipo: snapshot.goalkeeper ? 'goleiro' : 'jogador',
+      visitante: Boolean(snapshot.guest),
+      convidado: Boolean(snapshot.guest),
+      ativo: true,
+    };
   }
 
   function getParticipantFlags(baba, playerId) {
@@ -2071,11 +2040,11 @@
     setActiveTab('teams');
   }
 
-  function updateManualStat(teamId, field, delta, playerId = '') {
+  function updateManualStat(teamId, field, delta, playerId = '', babaId = null) {
     if (!requireOrganizer()) return;
-    const baba = getActiveBaba();
+    const baba = babaId ? getBabaById(babaId) : getActiveBaba();
     if (!baba || !isManualMode(baba)) return;
-    if (baba.status === 'finalizado') return showToast('Este baba ja foi finalizado.');
+    if (baba.status === 'finalizado' && !babaId) return showToast('Abra o historico para corrigir este baba.');
     const team = getTeam(baba, teamId);
     if (!team) return;
     const stats = getManualTeamStats(team);
@@ -2091,8 +2060,9 @@
     }
     team.manualStats = stats;
     applyManualStatsToTeam(team);
-    baba.rankingDoBaba = calculateDailyRanking(baba);
-    scheduleManualStatsSave();
+    refreshBabaDerivedData(baba);
+    if (baba.status === 'finalizado') saveState('Estatisticas do historico atualizadas.');
+    else scheduleManualStatsSave();
   }
 
   function addPlayer(event) {
@@ -2242,8 +2212,9 @@
       }
     });
     saveState('Jogador removido.');
+    const deletion = window.BabaRepository?.softDeletePlayer?.(playerId);
+    deletion?.catch?.((error) => console.error('Falha ao excluir jogador sincronizado:', error));
     window.BabaPublicSync?.flushPending?.();
-    window.BabaRepository?.softDeletePlayer?.(playerId)?.catch?.(() => {});
   }
 
   function deleteVisitor(playerId) {
@@ -2526,19 +2497,12 @@
     const fixedPlayer = getPlayer(playerId);
     if (fixedPlayer) {
       const status = getPlayerStatus(fixedPlayer);
-      if (status === PLAYER_STATUS.GUEST || status === PLAYER_STATUS.DISABLED) return false;
+      return status !== PLAYER_STATUS.GUEST && status !== PLAYER_STATUS.DISABLED;
     }
-    const activeBaba = getActiveBaba();
-    if (activeBaba) {
-      const babaPlayer = getBabaPlayer(activeBaba, playerId);
-      if (babaPlayer) {
-        const status = getPlayerStatus(babaPlayer);
-        if (status === PLAYER_STATUS.GUEST || status === PLAYER_STATUS.DISABLED) return false;
-      }
-      const flags = activeBaba.participantFlags?.[playerId];
-      if (flags?.guest) return false;
-    }
-    return true;
+    return !state.babas.some((baba) => (
+      Boolean(getVisitor(baba, playerId))
+      || Boolean(baba.participantFlags?.[playerId]?.guest)
+    ));
   }
 
   function paymentPriceForPlayer(player) {
@@ -4057,20 +4021,30 @@
     setActiveTab('teams');
   }
 
-  function assignPlayerToTeam(playerId, teamId) {
+  function assignPlayerToTeam(playerId, teamId, babaId = null) {
     if (!requireOrganizer()) return;
-    const baba = getActiveBaba();
+    const baba = babaId ? getBabaById(babaId) : getActiveBaba();
     const targetTeam = getTeam(baba, teamId);
     const player = getBabaPlayer(baba, playerId);
-    if (!baba || baba.status === 'finalizado') return showToast('Este baba nao pode mais ser alterado.');
+    const editingHistory = Boolean(babaId && baba?.status === 'finalizado');
+    if (!baba || (baba.status === 'finalizado' && !editingHistory)) return showToast('Este baba nao pode mais ser alterado.');
     if (!targetTeam || !player) return showToast('Jogador ou time nao encontrado.');
 
     const previousTeam = getPlayerTeam(baba, playerId);
-    preserveStartedMatchRosters(baba);
+    if (editingHistory) window.BabaManagementCore.rewriteHistoricalRosters(baba, playerId, targetTeam.id);
+    else preserveStartedMatchRosters(baba);
+    let preservedManualGoals = 0;
     (baba.teams || []).forEach((team) => {
+      preservedManualGoals += Number(team.manualStats?.playerGoals?.[playerId] || 0);
+      if (team.manualStats?.playerGoals) delete team.manualStats.playerGoals[playerId];
       team.jogadores = (team.jogadores || []).filter((id) => id !== playerId);
     });
     targetTeam.jogadores = [...(targetTeam.jogadores || []), playerId];
+    if (isManualMode(baba) && preservedManualGoals) {
+      const stats = getManualTeamStats(targetTeam);
+      stats.playerGoals[playerId] = preservedManualGoals;
+      targetTeam.manualStats = stats;
+    }
 
     if (getPlayer(playerId)) {
       baba.jogadoresPresentes = Array.from(new Set([...(baba.jogadoresPresentes || []), playerId]));
@@ -4080,8 +4054,11 @@
       player.foraDoBaba = false;
     }
     if (isManualMode(baba)) ensureManualStats(baba);
-    refreshPreparedMatchRosters(baba);
-    baba.rankingDoBaba = calculateDailyRanking(baba);
+    if (editingHistory) refreshBabaDerivedData(baba);
+    else {
+      refreshPreparedMatchRosters(baba);
+      baba.rankingDoBaba = calculateDailyRanking(baba);
+    }
     const message = previousTeam && previousTeam.id !== targetTeam.id
       ? `${player.nome} movido de ${previousTeam.name} para ${targetTeam.name}.`
       : `${player.nome} adicionado ao ${targetTeam.name}.`;
@@ -4106,20 +4083,25 @@
     match.jogadoresTimeB = [...(getTeam(baba, match.timeB)?.jogadores || [])];
   }
 
-  function removePlayerFromTeam(playerId) {
+  function removePlayerFromTeam(playerId, babaId = null) {
     if (!requireOrganizer()) return;
-    const baba = getActiveBaba();
+    const baba = babaId ? getBabaById(babaId) : getActiveBaba();
     const player = getBabaPlayer(baba, playerId);
     const team = getPlayerTeam(baba, playerId);
-    if (!baba || baba.status === 'finalizado') return showToast('Este baba nao pode mais ser alterado.');
+    const editingHistory = Boolean(babaId && baba?.status === 'finalizado');
+    if (!baba || (baba.status === 'finalizado' && !editingHistory)) return showToast('Este baba nao pode mais ser alterado.');
     if (!player || !team) return showToast('Jogador nao encontrado em um time.');
     if (!window.confirm(`Retirar ${player.nome} do ${team.name}? A presenca no baba sera mantida.`)) return;
 
-    preserveStartedMatchRosters(baba);
+    if (editingHistory) window.BabaManagementCore.rewriteHistoricalRosters(baba, playerId, null);
+    else preserveStartedMatchRosters(baba);
     team.jogadores = (team.jogadores || []).filter((id) => id !== playerId);
     if (isManualMode(baba)) ensureManualStats(baba);
-    refreshPreparedMatchRosters(baba);
-    baba.rankingDoBaba = calculateDailyRanking(baba);
+    if (editingHistory) refreshBabaDerivedData(baba);
+    else {
+      refreshPreparedMatchRosters(baba);
+      baba.rankingDoBaba = calculateDailyRanking(baba);
+    }
     selectedPlayerDetail = null;
     els.playerDetailModal?.classList.add('hidden');
     saveState(`${player.nome} retirado do ${team.name}. Ele continua disponivel para outro time.`);
@@ -4772,52 +4754,186 @@
     };
   }
 
-  function editFinishedGame(gameNumber, targetBabaId = null) {
+  function refreshBabaDerivedData(baba) {
+    if (!baba) return;
+    if (isManualMode(baba)) {
+      (baba.teams || []).forEach(applyManualStatsToTeam);
+    } else {
+      rebuildTeamStatsFromGames(baba);
+    }
+    if (baba.status === 'finalizado') {
+      const champions = calculateChampions(baba);
+      baba.campeaoDoBaba = {
+        times: champions.map((team) => team.id),
+        nomes: champions.map((team) => team.name),
+        jogadores: champions.flatMap((team) => team.jogadores || []),
+        definidoEm: Date.now(),
+      };
+    }
+    delete baba.golOverrides;
+    baba.rankingDoBaba = calculateDailyRanking(baba);
+    const games = baba.jogos || [];
+    baba.lastResult = lastResultFromGame(baba, games[games.length - 1]);
+    baba.importedTotalGoals = (baba.jogos || []).reduce(
+      (total, game) => total + Number(game.placarA || 0) + Number(game.placarB || 0),
+      0,
+    );
+    baba.undoStack = [];
+  }
+
+  function gameEditPlayerOptions(baba, game, teamId, selectedId) {
+    const ids = new Set(gameTeamPlayers(baba, game, teamId));
+    if (selectedId && selectedId !== EXTERNAL_GOAL_SCORER_ID) ids.add(selectedId);
+    const players = [...ids]
+      .map((id) => getBabaPlayer(baba, id))
+      .filter(Boolean)
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+    return `
+      <option value="${EXTERNAL_GOAL_SCORER_ID}"${selectedId === EXTERNAL_GOAL_SCORER_ID ? ' selected' : ''}>Sem artilheiro</option>
+      ${players.map((player) => `<option value="${escapeHTML(player.id)}"${selectedId === player.id ? ' selected' : ''}>${escapeHTML(player.nome)}</option>`).join('')}
+    `;
+  }
+
+  function gameEditTeamHTML(baba, game, side) {
+    const isA = side === 'A';
+    const teamId = isA ? game.timeA : game.timeB;
+    const team = getTeam(baba, teamId);
+    const score = selectedGameEdit[`score${side}`];
+    const scorers = selectedGameEdit[`scorers${side}`];
+    const goals = scorers.length
+      ? scorers.map((playerId, index) => `
+        <label class="baba-game-edit-goal">
+          <span>${index + 1}</span>
+          <select data-game-edit-scorer="${side}" aria-label="Artilheiro do gol ${index + 1} do ${escapeHTML(team?.name || `Time ${side}`)}">
+            ${gameEditPlayerOptions(baba, game, teamId, playerId)}
+          </select>
+        </label>
+      `).join('')
+      : '<div class="baba-game-edit-empty">Nenhum gol neste placar.</div>';
+    return `
+      <section class="baba-game-edit-team"${teamNumberDataAttribute(team)}>
+        <header>
+          <strong>${escapeHTML(team?.name || `Time ${side}`)}</strong>
+          <div class="baba-game-edit-score-control">
+            <button type="button" data-action="change-game-edit-score" data-side="${side}" data-delta="-1" aria-label="Diminuir placar do ${escapeHTML(team?.name || `Time ${side}`)}">-</button>
+            <input class="baba-game-edit-score" type="number" min="0" max="99" step="1" required data-game-edit-score="${side}" value="${score}" aria-label="Placar do ${escapeHTML(team?.name || `Time ${side}`)}">
+            <button type="button" data-action="change-game-edit-score" data-side="${side}" data-delta="1" aria-label="Aumentar placar do ${escapeHTML(team?.name || `Time ${side}`)}">+</button>
+          </div>
+        </header>
+        <div class="baba-game-edit-goals">${goals}</div>
+      </section>
+    `;
+  }
+
+  function renderGameEditModal() {
+    if (!selectedGameEdit) return;
+    const baba = getBabaById(selectedGameEdit.babaId);
+    const game = (baba?.jogos || []).find((item) => String(item.numeroJogo) === String(selectedGameEdit.gameNumber));
+    if (!baba || !game) return closeGameEditModal();
+    els.gameEditTitle.textContent = `Editar jogo ${game.numeroJogo}`;
+    setHTML(els.gameEditContent, `${gameEditTeamHTML(baba, game, 'A')}${gameEditTeamHTML(baba, game, 'B')}`);
+  }
+
+  function openFinishedGameEditor(gameNumber, targetBabaId = null) {
     if (!requireOrganizer()) return;
     const baba = targetBabaId ? getBabaById(targetBabaId) : getActiveBaba();
     if (!baba) return showToast('Baba nao encontrado.');
+    if (baba.status !== 'finalizado' && baba.id !== state.activeBabaId) return showToast('Este baba nao pode ser alterado.');
+    if (isManualMode(baba)) return showToast('Edite as estatisticas manuais pelo elenco do time.');
     const game = (baba.jogos || []).find((item) => String(item.numeroJogo) === String(gameNumber));
     if (!game) return showToast('Partida nao encontrada.');
+    const scoreA = Number(game.placarA || 0);
+    const scoreB = Number(game.placarB || 0);
+    selectedGameEdit = {
+      babaId: baba.id,
+      gameNumber: game.numeroJogo,
+      opener: document.activeElement,
+      scoreA,
+      scoreB,
+      scorersA: window.BabaManagementCore.scorerSelections(game.goalEvents, game.timeA, scoreA, EXTERNAL_GOAL_SCORER_ID),
+      scorersB: window.BabaManagementCore.scorerSelections(game.goalEvents, game.timeB, scoreB, EXTERNAL_GOAL_SCORER_ID),
+    };
+    els.gameEditModal.classList.remove('hidden');
+    renderGameEditModal();
+    window.requestAnimationFrame(() => els.gameEditModal.querySelector('input')?.focus({ preventScroll: true }));
+  }
+
+  function closeGameEditModal() {
+    const opener = selectedGameEdit?.opener;
+    selectedGameEdit = null;
+    els.gameEditModal?.classList.add('hidden');
+    window.requestAnimationFrame(() => opener?.isConnected && opener.focus({ preventScroll: true }));
+  }
+
+  function updateGameEditScore(side, value) {
+    if (!selectedGameEdit || !['A', 'B'].includes(side)) return;
+    try {
+      const score = window.BabaManagementCore.parseScore(value);
+      const current = Array.from(els.gameEditContent.querySelectorAll(`[data-game-edit-scorer="${side}"]`)).map((select) => select.value);
+      selectedGameEdit[`score${side}`] = score;
+      selectedGameEdit[`scorers${side}`] = Array.from(
+        { length: score },
+        (_, index) => current[index] || selectedGameEdit[`scorers${side}`][index] || EXTERNAL_GOAL_SCORER_ID,
+      );
+      renderGameEditModal();
+    } catch (error) {
+      showToast(error.message);
+    }
+  }
+
+  function saveFinishedGameEdit(event) {
+    event.preventDefault();
+    if (!selectedGameEdit || !requireOrganizer()) return;
+    const baba = getBabaById(selectedGameEdit.babaId);
+    const game = (baba?.jogos || []).find((item) => String(item.numeroJogo) === String(selectedGameEdit.gameNumber));
+    if (!baba || !game) return closeGameEditModal();
+    let scoreA;
+    let scoreB;
+    try {
+      scoreA = window.BabaManagementCore.parseScore(els.gameEditContent.querySelector('[data-game-edit-score="A"]')?.value);
+      scoreB = window.BabaManagementCore.parseScore(els.gameEditContent.querySelector('[data-game-edit-score="B"]')?.value);
+    } catch (error) {
+      return showToast(error.message);
+    }
+    const scorerIds = (side, score) => Array.from(els.gameEditContent.querySelectorAll(`[data-game-edit-scorer="${side}"]`))
+      .map((select) => select.value)
+      .slice(0, score)
+      .concat(Array(Math.max(0, score - els.gameEditContent.querySelectorAll(`[data-game-edit-scorer="${side}"]`).length)).fill(EXTERNAL_GOAL_SCORER_ID));
+    const existingEvents = game.goalEvents || [];
+    const historicalIds = new Set([
+      ...gameTeamPlayers(baba, game, game.timeA),
+      ...gameTeamPlayers(baba, game, game.timeB),
+      ...existingEvents.map((goal) => goal.jogadorId).filter(Boolean),
+    ]);
+    const playersById = Object.fromEntries([
+      ...state.players,
+      ...(baba.visitantes || []),
+      ...[...historicalIds].map((id) => getBabaPlayer(baba, id)).filter(Boolean),
+    ].map((player) => [player.id, player]));
     const teamA = getTeam(baba, game.timeA);
     const teamB = getTeam(baba, game.timeB);
-    const newScoreA = prompt(`Placar ${teamA?.name || 'Time A'} (atual: ${game.placarA || 0}):`, String(game.placarA || 0));
-    if (newScoreA === null) return;
-    const newScoreB = prompt(`Placar ${teamB?.name || 'Time B'} (atual: ${game.placarB || 0}):`, String(game.placarB || 0));
-    if (newScoreB === null) return;
-    const scoreA = Math.max(0, parseInt(newScoreA, 10) || 0);
-    const scoreB = Math.max(0, parseInt(newScoreB, 10) || 0);
-    if (scoreA === Number(game.placarA || 0) && scoreB === Number(game.placarB || 0)) return showToast('Placar sem alteracao.');
-    const isFinalized = baba.status === 'finalizado';
-    if (isFinalized) applyDeletedBabaToPersistedStats(baba);
+    game.goalEvents = [
+      ...window.BabaManagementCore.buildGoalEvents({
+        existingEvents, teamId: game.timeA, teamName: teamA?.name || game.timeANome || 'Time A',
+        scorerIds: scorerIds('A', scoreA), externalScorerId: EXTERNAL_GOAL_SCORER_ID,
+        playersById, createId: () => newId('goal'),
+      }),
+      ...window.BabaManagementCore.buildGoalEvents({
+        existingEvents, teamId: game.timeB, teamName: teamB?.name || game.timeBNome || 'Time B',
+        scorerIds: scorerIds('B', scoreB), externalScorerId: EXTERNAL_GOAL_SCORER_ID,
+        playersById, createId: () => newId('goal'),
+      }),
+    ];
     game.placarA = scoreA;
     game.placarB = scoreB;
+    game.gols = aggregateGoalEvents(game.goalEvents);
     game.empate = scoreA === scoreB;
-    game.resultado = scoreA === scoreB ? 'empate' : 'vitoria';
-    game.vencedor = scoreA > scoreB ? game.timeA : (scoreB > scoreA ? game.timeB : null);
-    game.perdedor = scoreA > scoreB ? game.timeB : (scoreA < scoreB ? game.timeA : null);
-    const goalEvents = game.goalEvents || [];
-    const teamAGoals = goalEvents.filter((e) => e.time === game.timeA).length;
-    const teamBGoals = goalEvents.filter((e) => e.time === game.timeB).length;
-    if (teamAGoals > scoreA || teamBGoals > scoreB) {
-      game.goalEvents = [];
-      game.gols = [];
-    } else {
-      game.gols = aggregateGoalEvents(goalEvents);
-    }
-    rebuildTeamStatsFromGames(baba);
-    baba.rankingDoBaba = calculateDailyRanking(baba);
-    baba.lastResult = lastResultFromGame(baba, baba.jogos[baba.jogos.length - 1]);
-    if (isFinalized) {
-      const champions = calculateChampions(baba);
-      baba.campeaoDoBaba = {
-        times: champions.map((t) => t.id),
-        nomes: champions.map((t) => t.name),
-        jogadores: champions.flatMap((t) => t.jogadores),
-        definidoEm: Date.now(),
-      };
-      applyFinishedBabaToPersistedStats(baba);
-    }
-    saveState(`Jogo ${game.numeroJogo} editado. Placar atualizado para ${scoreA} x ${scoreB}.`);
+    game.resultado = game.empate ? 'empate' : 'vitoria';
+    game.vencedor = game.empate ? null : (scoreA > scoreB ? game.timeA : game.timeB);
+    game.perdedor = game.empate ? null : (scoreA > scoreB ? game.timeB : game.timeA);
+    refreshBabaDerivedData(baba);
+    closeGameEditModal();
+    saveState(`Jogo ${game.numeroJogo} corrigido para ${scoreA} x ${scoreB}.`);
   }
 
   function deleteCurrentGame(gameNumber) {
@@ -4897,107 +5013,11 @@
     saveState('Baba removido do historico.');
   }
 
-  function editHistoryGame(babaId, gameNumber) {
-    return editFinishedGame(gameNumber, babaId);
-  }
-
   function editHistoryTeamRoster(babaId, teamId) {
     if (!requireOrganizer()) return;
     const baba = getBabaById(babaId);
-    if (!baba) return showToast('Baba nao encontrado.');
-    const team = getTeam(baba, teamId);
-    if (!team) return showToast('Time nao encontrado.');
-    const currentNames = (team.jogadores || []).map((id) => getBabaPlayer(baba, id)?.nome || playerName(id, baba)).join(', ');
-    const action = prompt(`Elenco atual de ${team.name}:\n${currentNames}\n\nDigite:\n- "add Nome" para adicionar\n- "rem Nome" para remover\n- "cancelar" para sair`);
-    if (!action || action.trim().toLowerCase() === 'cancelar') return;
-    const isFinalized = baba.status === 'finalizado';
-    const parts = action.trim().split(/\s+/);
-    const command = parts[0].toLowerCase();
-    const targetName = parts.slice(1).join(' ').trim();
-    if (!targetName) return showToast('Informe o nome do jogador.');
-    if (command === 'add') {
-      const allPlayers = [...state.players, ...(baba.visitantes || [])];
-      const found = allPlayers.find((p) => p.nome.toLowerCase().includes(targetName.toLowerCase()));
-      if (!found) return showToast(`Jogador "${targetName}" nao encontrado.`);
-      if (team.jogadores.includes(found.id)) return showToast(`${found.nome} ja esta no ${team.name}.`);
-      if (isFinalized) applyDeletedBabaToPersistedStats(baba);
-      team.jogadores.push(found.id);
-      if (!baba.jogadoresPresentes?.includes(found.id)) {
-        baba.jogadoresPresentes = [...(baba.jogadoresPresentes || []), found.id];
-      }
-      rebuildTeamStatsFromGames(baba);
-      baba.rankingDoBaba = calculateDailyRanking(baba);
-      if (isFinalized) {
-        const champions = calculateChampions(baba);
-        baba.campeaoDoBaba = {
-          times: champions.map((t) => t.id),
-          nomes: champions.map((t) => t.name),
-          jogadores: champions.flatMap((t) => t.jogadores),
-          definidoEm: Date.now(),
-        };
-        applyFinishedBabaToPersistedStats(baba);
-      }
-      saveState(`${found.nome} adicionado ao ${team.name}.`);
-    } else if (command === 'rem') {
-      const playerId = team.jogadores.find((id) => {
-        const name = getBabaPlayer(baba, id)?.nome || playerName(id, baba);
-        return name.toLowerCase().includes(targetName.toLowerCase());
-      });
-      if (!playerId) return showToast(`Jogador "${targetName}" nao encontrado no ${team.name}.`);
-      if (isFinalized) applyDeletedBabaToPersistedStats(baba);
-      team.jogadores = team.jogadores.filter((id) => id !== playerId);
-      rebuildTeamStatsFromGames(baba);
-      baba.rankingDoBaba = calculateDailyRanking(baba);
-      if (isFinalized) {
-        const champions = calculateChampions(baba);
-        baba.campeaoDoBaba = {
-          times: champions.map((t) => t.id),
-          nomes: champions.map((t) => t.name),
-          jogadores: champions.flatMap((t) => t.jogadores),
-          definidoEm: Date.now(),
-        };
-        applyFinishedBabaToPersistedStats(baba);
-      }
-      const removedName = getBabaPlayer(baba, playerId)?.nome || playerName(playerId, baba);
-      saveState(`${removedName} removido do ${team.name}.`);
-    } else {
-      showToast('Use "add Nome" ou "rem Nome".');
-    }
-  }
-
-  function editHistoryPlayerGoals(babaId) {
-    if (!requireOrganizer()) return;
-    const baba = getBabaById(babaId);
-    if (!baba) return showToast('Baba nao encontrado.');
-    const isFinalized = baba.status === 'finalizado';
-    
-    const playerNameInput = prompt('Nome do jogador para editar os gols neste baba:');
-    if (!playerNameInput) return;
-    const allPlayers = [...state.players, ...(baba.visitantes || [])];
-    const found = allPlayers.find((p) => p.nome.toLowerCase().includes(playerNameInput.trim().toLowerCase()));
-    if (!found) return showToast(`Jogador "${playerNameInput}" nao encontrado.`);
-    
-    const currentRanking = baba.rankingDoBaba || calculateDailyRanking(baba);
-    const currentGoals = currentRanking[found.id]?.totalGols || 0;
-    
-    const newGoals = prompt(`Gols de ${found.nome} neste baba (atual: ${currentGoals}):`, String(currentGoals));
-    if (newGoals === null) return;
-    const goalsCount = Math.max(0, parseInt(newGoals, 10) || 0);
-    
-    if (goalsCount === currentGoals) return showToast('Nenhuma alteracao feita.');
-    
-    if (isFinalized) applyDeletedBabaToPersistedStats(baba);
-    
-    if (!baba.golOverrides) baba.golOverrides = {};
-    baba.golOverrides[found.id] = goalsCount;
-    
-    baba.rankingDoBaba = calculateDailyRanking(baba);
-    
-    if (isFinalized) {
-      applyFinishedBabaToPersistedStats(baba);
-    }
-    
-    saveState(`Gols de ${found.nome} atualizados para ${goalsCount}.`);
+    if (!baba || baba.status !== 'finalizado') return showToast('Baba finalizado nao encontrado.');
+    openTeamDetail(teamId, babaId);
   }
 
   function calculateChampions(baba) {
@@ -5024,12 +5044,17 @@
     const ranking = {};
     if (isManualMode(baba)) {
       ensureManualStats(baba);
+      const playerIds = new Set([...(baba?.jogadoresPresentes || [])]);
+      (baba?.teams || []).forEach((team) => (team.jogadores || []).forEach((id) => playerIds.add(id)));
+      (baba?.visitantes || []).forEach((player) => playerIds.add(player.id));
+      playerIds.forEach((playerId) => {
+        ranking[playerId] = makeEmptyPlayerStats(playerId, playerName(playerId, baba));
+        ranking[playerId].totalBabas = 1;
+      });
       (baba?.teams || []).forEach((team) => {
         const teamStats = getManualTeamStats(team);
         (team.jogadores || []).forEach((playerId) => {
-          const stats = ranking[playerId] || makeEmptyPlayerStats(playerId, playerName(playerId, baba));
-          stats.totalBabas = 1;
-          stats.totalGols += Number(teamStats.playerGoals[playerId] || 0);
+          const stats = ensureStats(ranking, playerId, baba);
           stats.totalVitorias += Number(teamStats.wins || 0);
           stats.totalEmpates += Number(teamStats.draws || 0);
           stats.totalDerrotas += Number(teamStats.losses || 0);
@@ -5037,6 +5062,9 @@
             stats.goalkeeperGames += Number(teamStats.wins || 0) + Number(teamStats.draws || 0) + Number(teamStats.losses || 0);
           }
           ranking[playerId] = stats;
+        });
+        Object.entries(teamStats.playerGoals || {}).forEach(([playerId, goals]) => {
+          ensureStats(ranking, playerId, baba).totalGols += Number(goals || 0);
         });
       });
       if (baba?.campeaoDoBaba?.jogadores) {
@@ -5074,12 +5102,6 @@
 
     if (baba.campeaoDoBaba?.jogadores) {
       baba.campeaoDoBaba.jogadores.forEach((id) => ensureStats(ranking, id, baba).totalTitulosBaba += 1);
-    }
-
-    if (baba.golOverrides) {
-      Object.entries(baba.golOverrides).forEach(([id, overrideGols]) => {
-        ensureStats(ranking, id, baba).totalGols = Number(overrideGols);
-      });
     }
 
     Object.values(ranking).forEach(finalizeStats);
@@ -5843,7 +5865,7 @@
     const playerCardHTML = (team, playerId) => {
       const player = getBabaPlayer(baba, playerId);
       const typeLabel = player?.tipo === 'goleiro' ? 'Goleiro' : (player?.visitante ? 'Visitante' : 'Jogador');
-      return `
+      const playerCard = `
         <button class="baba-team-player-card" type="button" data-player-detail-id="${playerId}" data-player-detail-team-id="${team.id}" data-player-detail-baba-id="${baba.id}"${teamNumberDataAttribute(team)}>
           <span class="baba-team-player-card__identity">
             <strong>${escapeHTML(player?.nome || playerName(playerId, baba))}</strong>
@@ -5851,6 +5873,14 @@
           </span>
           <span class="baba-team-player-card__hint">${isOrganizer() ? 'Ver e gerenciar' : 'Ver desempenho'} ›</span>
         </button>
+      `;
+      if (!canManage || !isManualMode(baba)) return playerCard;
+      const stats = getManualTeamStats(team);
+      return `
+        <div class="baba-manual-player-row">
+          ${playerCard}
+          ${manualCounterHTML({ teamId: team.id, babaId: baba.id, field: 'goals', playerId, value: stats.playerGoals[playerId] || 0, label: 'Gols' })}
+        </div>
       `;
     };
     const addPlayerHTML = (team) => isOrganizer() ? `
@@ -6692,13 +6722,14 @@
     const general = getSortedGeneralRanking();
     const position = new Map(general.map((stats, index) => [stats.jogadorId, index + 1]));
     const generalById = new Map(general.map((stats) => [stats.jogadorId, stats]));
-    const canManage = isOrganizer() && baba.id === state.activeBabaId && baba.status !== 'finalizado';
-    const canManageTeam = canManage && team.id !== VISITOR_TEAM_ID && team.tipo !== 'visitante';
+    const editingHistory = baba.status === 'finalizado';
+    const canManage = isOrganizer() && (editingHistory || (baba.id === state.activeBabaId && baba.status !== 'finalizado'));
+    const canManageActiveTeam = canManage && !editingHistory && team.id !== VISITOR_TEAM_ID && team.tipo !== 'visitante';
     const teamManagementBlocked = teamHasActiveRoute(baba, team.id);
     const assignedIds = new Set((baba.teams || []).flatMap((item) => item.jogadores || []));
     const availablePlayers = [
-      ...state.players.filter((player) => player.ativo && !assignedIds.has(player.id)),
-      ...(baba.visitantes || []).filter((player) => player.ativo && !player.foraDoBaba && !assignedIds.has(player.id)),
+      ...state.players.filter((player) => (editingHistory || player.ativo) && !assignedIds.has(player.id)),
+      ...(baba.visitantes || []).filter((player) => (editingHistory || (player.ativo && !player.foraDoBaba)) && !assignedIds.has(player.id)),
     ];
 
     els.teamDetailTitle.textContent = team.name;
@@ -6732,6 +6763,13 @@
         <span><small>Vitórias</small><b>${Number(team.vitorias || 0)}</b></span>
         <span><small>Saldo</small><b>${Number(team.golsPro || 0) - Number(team.golsContra || 0)}</b></span>
       </div>
+      ${canManage && isManualMode(baba) ? `
+        <div class="baba-manual-team-stats">
+          ${manualCounterHTML({ teamId: team.id, babaId: baba.id, field: 'wins', value: getManualTeamStats(team).wins, label: 'Vitorias' })}
+          ${manualCounterHTML({ teamId: team.id, babaId: baba.id, field: 'draws', value: getManualTeamStats(team).draws, label: 'Empates' })}
+          ${manualCounterHTML({ teamId: team.id, babaId: baba.id, field: 'losses', value: getManualTeamStats(team).losses, label: 'Derrotas' })}
+        </div>
+      ` : ''}
       ${canManage ? `
         <div class="baba-roster-add">
           <strong>Adicionar jogador ao ${escapeHTML(team.name)}</strong>
@@ -6741,11 +6779,11 @@
               <option value="">${availablePlayers.length ? 'Selecione um jogador...' : 'Nenhum jogador disponivel'}</option>
               ${availablePlayers.map((player) => `<option value="${player.id}">${escapeHTML(player.nome)}</option>`).join('')}
             </select>
-            <button class="baba-primary" type="button" data-action="add-player-to-team" data-team-id="${team.id}" ${availablePlayers.length ? '' : 'disabled'}>Adicionar</button>
+            <button class="baba-primary" type="button" data-action="add-player-to-team" data-team-id="${team.id}" data-baba-id="${baba.id}" ${availablePlayers.length ? '' : 'disabled'}>Adicionar</button>
           </div>
         </div>
       ` : ''}
-      ${canManageTeam ? `
+      ${canManageActiveTeam ? `
         <div class="baba-drawer-management">
           <div class="baba-drawer-management__heading">
             <strong>Gerenciar time</strong>
@@ -6798,7 +6836,8 @@
     const team = getPlayerTeam(baba, player.id);
     const today = calculateCurrentBabaRanking(baba)[player.id] || makeEmptyPlayerStats(player.id, player.nome);
     const general = calculateGeneralRanking()[player.id] || makeEmptyPlayerStats(player.id, player.nome);
-    const canManage = isOrganizer() && baba.id === state.activeBabaId && baba.status !== 'finalizado';
+    const editingHistory = baba.status === 'finalizado';
+    const canManage = isOrganizer() && (editingHistory || (baba.id === state.activeBabaId && baba.status !== 'finalizado'));
     const teamOptions = (baba.teams || []).filter((item) => item.id !== team?.id).map((item) => (
       `<option value="${item.id}">${escapeHTML(item.name)}</option>`
     )).join('');
@@ -6833,11 +6872,11 @@
               <option value="">${teamOptions ? 'Mover para outro time...' : 'Não há outro time disponível'}</option>
               ${teamOptions}
             </select>
-            <button class="baba-primary" type="button" data-action="move-player-from-card" data-id="${player.id}" ${teamOptions ? '' : 'disabled'}>Mover jogador</button>
+            <button class="baba-primary" type="button" data-action="move-player-from-card" data-id="${player.id}" data-baba-id="${baba.id}" ${teamOptions ? '' : 'disabled'}>Mover jogador</button>
           </div>
           <div class="baba-player-management__actions">
-            ${team ? `<button class="baba-secondary" type="button" data-action="remove-player-from-team" data-id="${player.id}">Retirar do time</button>` : ''}
-            <button class="baba-mini-btn danger" type="button" data-action="remove-player-from-baba" data-id="${player.id}">Saiu do baba</button>
+            ${team ? `<button class="baba-secondary" type="button" data-action="remove-player-from-team" data-id="${player.id}" data-baba-id="${baba.id}">Retirar do time</button>` : ''}
+            ${editingHistory ? '' : `<button class="baba-mini-btn danger" type="button" data-action="remove-player-from-baba" data-id="${player.id}">Saiu do baba</button>`}
           </div>
         </div>
       ` : ''}
@@ -6880,15 +6919,16 @@
     els.gameDetailModal.classList.remove('hidden');
   }
 
-  function manualCounterHTML({ teamId, field, value, playerId = '', label }) {
+  function manualCounterHTML({ teamId, field, value, playerId = '', label, babaId = '' }) {
     const playerAttr = playerId ? ` data-player-id="${escapeHTML(playerId)}"` : '';
+    const babaAttr = babaId ? ` data-baba-id="${escapeHTML(babaId)}"` : '';
     return `
       <div class="baba-manual-counter">
         <span>${escapeHTML(label)}</span>
         <div class="baba-manual-stepper" aria-label="${escapeHTML(label)}">
-          <button type="button" data-action="manual-stat" data-team-id="${escapeHTML(teamId)}" data-manual-field="${escapeHTML(field)}" data-delta="-1"${playerAttr} aria-label="Diminuir ${escapeHTML(label)}">-</button>
+          <button type="button" data-action="manual-stat" data-team-id="${escapeHTML(teamId)}" data-manual-field="${escapeHTML(field)}" data-delta="-1"${playerAttr}${babaAttr} aria-label="Diminuir ${escapeHTML(label)}">-</button>
           <strong>${Number(value || 0)}</strong>
-          <button type="button" data-action="manual-stat" data-team-id="${escapeHTML(teamId)}" data-manual-field="${escapeHTML(field)}" data-delta="1"${playerAttr} aria-label="Aumentar ${escapeHTML(label)}">+</button>
+          <button type="button" data-action="manual-stat" data-team-id="${escapeHTML(teamId)}" data-manual-field="${escapeHTML(field)}" data-delta="1"${playerAttr}${babaAttr} aria-label="Aumentar ${escapeHTML(label)}">+</button>
         </div>
       </div>
     `;
@@ -7434,7 +7474,7 @@
         <header>
           <strong>${teamDetailButton(baba, team)}</strong>
           <b>${Number(team.pontos || 0)} pts</b>
-          ${isOrganizer() ? `<button class="baba-mini-btn" type="button" data-action="edit-history-roster" data-baba-id="${baba.id}" data-team-id="${team.id}">Editar elenco</button>` : ''}
+          ${isOrganizer() ? `<button class="baba-mini-btn baba-history-team-edit" type="button" data-action="edit-history-roster" data-baba-id="${baba.id}" data-team-id="${team.id}">Editar elenco</button>` : ''}
         </header>
         <div>
           <span><small>Vitórias</small><b>${Number(team.vitorias || 0)}</b></span>
@@ -7472,10 +7512,7 @@
           <div class="baba-history-champions">${championPlayers}</div>
         </section>
         <section class="baba-history-section">
-          <div class="baba-history-section__title" style="display: flex; justify-content: space-between; align-items: center;">
-            <div><strong>Desempenho dos times</strong><small>Tabela final</small></div>
-            ${isOrganizer() ? `<button class="baba-mini-btn" type="button" data-action="edit-history-player-goals" data-baba-id="${baba.id}">Editar Gols</button>` : ''}
-          </div>
+          <div class="baba-history-section__title"><strong>Desempenho dos times</strong><small>Tabela final</small></div>
           <div class="baba-history-teams">${teams || '<div class="baba-empty">Nenhum time salvo.</div>'}</div>
         </section>
         <section class="baba-history-section">
@@ -8373,6 +8410,8 @@
     els.closeTeamDetailModal.addEventListener('click', closeTeamDetail);
     els.closePlayerDetailModal?.addEventListener('click', closePlayerDetail);
     els.closeGameDetailModal.addEventListener('click', () => els.gameDetailModal.classList.add('hidden'));
+    els.closeGameEditModal?.addEventListener('click', closeGameEditModal);
+    els.gameEditForm?.addEventListener('submit', saveFinishedGameEdit);
     els.drawSkipButton?.addEventListener('click', skipDrawAnimation);
     els.drawCloseButton?.addEventListener('click', closeDrawExperience);
     els.drawSoundToggle?.addEventListener('click', toggleDrawSound);
@@ -8391,6 +8430,9 @@
     });
     els.gameDetailModal.addEventListener('click', (event) => {
       if (event.target === els.gameDetailModal) els.gameDetailModal.classList.add('hidden');
+    });
+    els.gameEditModal?.addEventListener('click', (event) => {
+      if (event.target === els.gameEditModal) closeGameEditModal();
     });
 
     $$('.baba-tabs [data-tab]').forEach((button) => {
@@ -8427,12 +8469,23 @@
 
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && !els.moreMenu?.classList.contains('hidden')) closeMoreMenu({ restoreFocus: true });
+      if (event.key === 'Escape' && !els.gameEditModal?.classList.contains('hidden')) closeGameEditModal();
     });
 
     window.addEventListener('resize', positionMoreMenu);
     window.addEventListener('scroll', positionMoreMenu, { passive: true });
 
     document.addEventListener('change', (event) => {
+      const gameScore = event.target.closest('[data-game-edit-score]');
+      if (gameScore) return updateGameEditScore(gameScore.dataset.gameEditScore, gameScore.value);
+      const gameScorer = event.target.closest('[data-game-edit-scorer]');
+      if (gameScorer && selectedGameEdit) {
+        const side = gameScorer.dataset.gameEditScorer;
+        selectedGameEdit[`scorers${side}`] = Array.from(
+          els.gameEditContent.querySelectorAll(`[data-game-edit-scorer="${side}"]`),
+        ).map((select) => select.value);
+        return;
+      }
       const rankingModeSelect = event.target.closest('[data-ranking-mode-select]');
       if (rankingModeSelect) {
         rankingMode = RANKING_MODES.some((item) => item.id === rankingModeSelect.value) ? rankingModeSelect.value : 'goals';
@@ -8510,6 +8563,7 @@
           actionButton.dataset.manualField,
           Number(actionButton.dataset.delta || 0),
           actionButton.dataset.playerId || '',
+          actionButton.dataset.babaId || null,
         );
       }
       if (actionButton?.dataset.action === 'open-dashboard') return setActiveTab('dashboard');
@@ -8534,14 +8588,14 @@
       if (actionButton?.dataset.action === 'add-player-to-team') {
         const select = actionButton.closest('.baba-roster-add')?.querySelector(`[data-team-add-select="${CSS.escape(actionButton.dataset.teamId)}"]`);
         if (!select?.value) return showToast('Selecione um jogador para adicionar.');
-        return assignPlayerToTeam(select.value, actionButton.dataset.teamId);
+        return assignPlayerToTeam(select.value, actionButton.dataset.teamId, actionButton.dataset.babaId || null);
       }
       if (actionButton?.dataset.action === 'move-player-from-card') {
         const select = document.getElementById('player-detail-team-select');
         if (!select?.value) return showToast('Selecione o time de destino.');
-        return assignPlayerToTeam(actionButton.dataset.id, select.value);
+        return assignPlayerToTeam(actionButton.dataset.id, select.value, actionButton.dataset.babaId || null);
       }
-      if (actionButton?.dataset.action === 'remove-player-from-team') return removePlayerFromTeam(actionButton.dataset.id);
+      if (actionButton?.dataset.action === 'remove-player-from-team') return removePlayerFromTeam(actionButton.dataset.id, actionButton.dataset.babaId || null);
       if (actionButton?.dataset.action === 'remove-player-from-baba') return removePlayerFromCurrentBaba(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'edit-goal') return editPurchaseGoal(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-goal') return deletePurchaseGoal(actionButton.dataset.id);
@@ -8551,10 +8605,15 @@
       }
       if (actionButton?.dataset.action === 'toggle-payment') return toggleBabaPayment(actionButton.dataset.id);
       if (actionButton?.dataset.action === 'delete-history') return deleteHistoryBaba(actionButton.dataset.id);
-      if (actionButton?.dataset.action === 'edit-current-game') return editFinishedGame(actionButton.dataset.gameNumber);
-      if (actionButton?.dataset.action === 'edit-history-game') return editHistoryGame(actionButton.dataset.babaId, actionButton.dataset.gameNumber);
+      if (actionButton?.dataset.action === 'edit-current-game') return openFinishedGameEditor(actionButton.dataset.gameNumber);
+      if (actionButton?.dataset.action === 'edit-history-game') return openFinishedGameEditor(actionButton.dataset.gameNumber, actionButton.dataset.babaId);
       if (actionButton?.dataset.action === 'edit-history-roster') return editHistoryTeamRoster(actionButton.dataset.babaId, actionButton.dataset.teamId);
-      if (actionButton?.dataset.action === 'edit-history-player-goals') return editHistoryPlayerGoals(actionButton.dataset.babaId);
+      if (actionButton?.dataset.action === 'cancel-game-edit') return closeGameEditModal();
+      if (actionButton?.dataset.action === 'change-game-edit-score') {
+        const side = actionButton.dataset.side;
+        const current = Number(selectedGameEdit?.[`score${side}`] || 0);
+        return updateGameEditScore(side, Math.max(0, Math.min(99, current + Number(actionButton.dataset.delta || 0))));
+      }
       if (actionButton?.dataset.action === 'delete-current-game') return deleteCurrentGame(actionButton.dataset.gameNumber);
       if (actionButton?.dataset.action === 'reset-mode') return resetMode();
       if (actionButton?.dataset.action === 'logout') return logout();
