@@ -164,11 +164,24 @@
     return target;
   }
 
+  function sortGoalkeeperRanking(items = []) {
+    return [...items].sort((a, b) => (
+      Number(a.derrotas || 0) - Number(b.derrotas || 0)
+      || Number(b.vitorias || 0) - Number(a.vitorias || 0)
+      || Number(b.empates || 0) - Number(a.empates || 0)
+      || Number(a.golsSofridos || 0) - Number(b.golsSofridos || 0)
+      || Number(a.mediaSofridos || 0) - Number(b.mediaSofridos || 0)
+      || Number(b.jogos || 0) - Number(a.jogos || 0)
+      || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR')
+    ));
+  }
+
   return Object.freeze({
     parseScore,
     scorerSelections,
     buildGoalEvents,
     rewriteHistoricalRosters,
     setHistoricalPlayerGoals,
+    sortGoalkeeperRanking,
   });
 });

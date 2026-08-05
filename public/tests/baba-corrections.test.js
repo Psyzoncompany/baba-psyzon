@@ -89,6 +89,15 @@ test('edicao de gols historicos mantem autoria, placar e resultado consistentes'
   assert.equal(baba.jogos[0].goalEvents.filter((goal) => goal.external).length, 2);
 });
 
+test('melhor goleiro prioriza menos derrotas e depois mais vitorias', () => {
+  const sorted = core.sortGoalkeeperRanking([
+    { nome: 'A', derrotas: 0, vitorias: 1, golsSofridos: 1, jogos: 2 },
+    { nome: 'B', derrotas: 1, vitorias: 10, golsSofridos: 0, jogos: 11 },
+    { nome: 'C', derrotas: 0, vitorias: 3, golsSofridos: 4, jogos: 4 },
+  ]);
+  assert.deepEqual(sorted.map((item) => item.nome), ['C', 'A', 'B']);
+});
+
 test('interface usa modais canonicos e persistencia idempotente nas seis correcoes', () => {
   const app = read('baba.js');
   const html = read('baba.html');
@@ -101,6 +110,8 @@ test('interface usa modais canonicos e persistencia idempotente nas seis correco
   assert.match(html, /id="history-edit-modal"/);
   assert.match(app, /function saveHistorySummaryEdit/);
   assert.match(app, /function getDisplayedBaba/);
+  assert.match(app, /columns: \['Pos', 'Goleiro', 'Derrotas', 'Vitórias', 'Jogos', 'Babas'\]/);
+  assert.doesNotMatch(app, /melhor goleiro pelo criterio de menos gols sofridos/);
   assert.match(persistence, /const deletedPlayerIds = new Set\(\)/);
   assert.match(persistence, /const remotePlayerDocumentIds = new Map\(\)/);
   assert.match(persistence, /item\.playerId \|\| item\.id \|\| snapshotItem\.id/);

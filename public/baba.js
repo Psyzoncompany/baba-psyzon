@@ -2676,9 +2676,9 @@
     return items.map((stats, index) => pdfTeamRow([
       index + 1,
       stats.nome || playerName(stats.jogadorId),
+      stats.derrotas || 0,
+      stats.vitorias || 0,
       stats.jogos || 0,
-      stats.golsSofridos || 0,
-      stats.mediaSofridos || '0.0',
       stats.totalBabas || 0,
     ], pdfPlayerTeam(baba, stats.jogadorId)));
   }
@@ -2965,7 +2965,7 @@
       report.sections = [
         {
           title: `Mês - ${monthLabel(currentMonth)}`,
-          note: 'Tabela completa',
+          note: 'Menos derrotas, depois mais vitórias',
           icon: 'calendar',
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
@@ -2999,7 +2999,7 @@
           icon: 'shield',
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.goalkeeper,
-          columns: ['Pos', 'Goleiro', 'Jogos', 'Sofridos', 'Media', 'Babas'],
+          columns: ['Pos', 'Goleiro', 'Derrotas', 'Vitórias', 'Jogos', 'Babas'],
           rows: goalkeeperRowsForPdf(calculateGoalkeeperRanking({ includeActive: false })),
           empty: 'Sem jogos com goleiros ainda.',
         },
@@ -5309,6 +5309,9 @@
         jogadorId: player.id,
         nome: player.nome || playerName(player.id, baba),
         jogos: 0,
+        vitorias: 0,
+        empates: 0,
+        derrotas: 0,
         golsSofridos: 0,
         mediaSofridos: 0,
         totalBabas: 0,
@@ -5320,7 +5323,7 @@
     return ranking[player.id];
   }
 
-  function addGoalkeeperGameStats(ranking, baba, team, goalsAgainst) {
+  function addGoalkeeperGameStats(ranking, baba, team, goalsAgainst, result = 'draw') {
     (team?.jogadores || []).forEach((playerId) => {
       const player = getBabaPlayer(baba, playerId);
       if (!isBabaGoalkeeper(baba, playerId)) return;
@@ -5328,7 +5331,18 @@
       if (!stats) return;
       stats.jogos += 1;
       stats.golsSofridos += Number(goalsAgainst || 0);
+      if (result === 'win') stats.vitorias += 1;
+      else if (result === 'loss') stats.derrotas += 1;
+      else stats.empates += 1;
     });
+  }
+
+  function goalkeeperTeamResult(game, teamId) {
+    const scoreA = Number(game?.placarA || 0);
+    const scoreB = Number(game?.placarB || 0);
+    if (scoreA === scoreB || game?.empate) return 'draw';
+    const winnerId = game?.vencedor || (scoreA > scoreB ? game.timeA : game.timeB);
+    return winnerId === teamId ? 'win' : 'loss';
   }
 
   function collectGoalkeeperRankingFromBaba(ranking, baba, { includeLive = false } = {}) {
@@ -5336,8 +5350,8 @@
       const teamA = getTeam(baba, game.timeA);
       const teamB = getTeam(baba, game.timeB);
       if (!teamA || !teamB) return;
-      addGoalkeeperGameStats(ranking, baba, teamA, game.placarB);
-      addGoalkeeperGameStats(ranking, baba, teamB, game.placarA);
+      addGoalkeeperGameStats(ranking, baba, teamA, game.placarB, goalkeeperTeamResult(game, teamA.id));
+      addGoalkeeperGameStats(ranking, baba, teamB, game.placarA, goalkeeperTeamResult(game, teamB.id));
     });
 
     const match = includeLive ? baba?.jogoAtual : null;
@@ -5346,8 +5360,8 @@
     const teamA = getTeam(baba, match.timeA);
     const teamB = getTeam(baba, match.timeB);
     if (!teamA || !teamB) return;
-    addGoalkeeperGameStats(ranking, baba, teamA, match.placarB);
-    addGoalkeeperGameStats(ranking, baba, teamB, match.placarA);
+    addGoalkeeperGameStats(ranking, baba, teamA, match.placarB, goalkeeperTeamResult(match, teamA.id));
+    addGoalkeeperGameStats(ranking, baba, teamB, match.placarA, goalkeeperTeamResult(match, teamB.id));
   }
 
   function calculateGoalkeeperRanking({ includeActive = false } = {}) {
@@ -5368,12 +5382,18 @@
               jogadorId: playerId,
               nome: stats.nome || stats.name || playerName(playerId, baba),
               jogos: 0,
+              vitorias: 0,
+              empates: 0,
+              derrotas: 0,
               golsSofridos: 0,
               totalBabas: 0,
               _babas: new Set(),
             };
           }
           ranking[playerId].jogos += Number(stats.goalkeeperGames || 0);
+          ranking[playerId].vitorias += Number(stats.totalVitorias || 0);
+          ranking[playerId].empates += Number(stats.totalEmpates || 0);
+          ranking[playerId].derrotas += Number(stats.totalDerrotas || 0);
           ranking[playerId].golsSofridos += Number(stats.goalsConceded || 0);
           ranking[playerId]._babas.add(baba.id);
         });
@@ -5384,20 +5404,15 @@
       collectGoalkeeperRankingFromBaba(ranking, active, { includeLive: true });
     }
 
-    return Object.values(ranking)
+    const eligible = Object.values(ranking)
       .map((stats) => {
         stats.totalBabas = stats._babas?.size || 0;
         delete stats._babas;
         stats.mediaSofridos = stats.jogos ? Number((stats.golsSofridos / stats.jogos).toFixed(2)) : 0;
         return stats;
       })
-      .filter((stats) => stats.jogos > 0 && isPlayerVisibleInRanking(stats.jogadorId))
-      .sort((a, b) => (
-        a.golsSofridos - b.golsSofridos ||
-        a.mediaSofridos - b.mediaSofridos ||
-        b.jogos - a.jogos ||
-        a.nome.localeCompare(b.nome)
-      ));
+      .filter((stats) => stats.jogos > 0 && isPlayerVisibleInRanking(stats.jogadorId));
+    return window.BabaManagementCore.sortGoalkeeperRanking(eligible);
   }
 
   function getAvailableMonthKeys() {
@@ -7529,16 +7544,18 @@
                 <strong>${playerPaymentNameHTML(stats.jogadorId, contextBaba, { name: stats.nome, force: Boolean(contextBaba) })}</strong>
               </div>
               <div class="stats">
-                <span><svg aria-hidden="true" focusable="false"><use href="#baba-x"></use></svg>${stats.golsSofridos} sofridos</span>
+                <span><svg aria-hidden="true" focusable="false"><use href="#baba-x"></use></svg>${stats.derrotas} derrotas</span>
+                <span><svg aria-hidden="true" focusable="false"><use href="#baba-check"></use></svg>${stats.vitorias} vitórias</span>
+                <span><svg aria-hidden="true" focusable="false"><use href="#baba-dash"></use></svg>${stats.empates} empates</span>
                 <span><svg aria-hidden="true" focusable="false"><use href="#baba-play"></use></svg>${stats.jogos} jogos</span>
-                <span><svg aria-hidden="true" focusable="false"><use href="#baba-chart"></use></svg>${stats.mediaSofridos} media</span>
+                <span><svg aria-hidden="true" focusable="false"><use href="#baba-save"></use></svg>${stats.golsSofridos} sofridos</span>
                 <span><svg aria-hidden="true" focusable="false"><use href="#baba-calendar"></use></svg>${stats.totalBabas} babas</span>
               </div>
             </div>
           </div>
           <div class="baba-ranking-score">
-            <strong>${stats.golsSofridos}</strong>
-            <span>sofridos</span>
+            <strong>${stats.derrotas}</strong>
+            <span>${stats.derrotas === 1 ? 'derrota' : 'derrotas'}</span>
           </div>
         </div>
       `;
@@ -8391,7 +8408,7 @@
       const goalkeepers = calculateGoalkeeperRanking({ includeActive: true });
       if (!goalkeepers.length) return 'Ainda nao encontrei jogos suficientes com goleiros para montar esse ranking.';
       const top = goalkeepers[0];
-      return `${top.nome} aparece como melhor goleiro pelo criterio de menos gols sofridos: ${top.golsSofridos} sofridos em ${top.jogos} jogos, media ${top.mediaSofridos}.`;
+      return `${top.nome} aparece como melhor goleiro pelo critério de menos derrotas e mais vitórias: ${top.derrotas} derrotas e ${top.vitorias} vitórias em ${top.jogos} jogos.`;
     }
     if (normalized.includes('gol') || normalized.includes('artilheiro') || normalized.includes('marcou')) {
       const items = sortRanking(ranking, 'goals');
