@@ -6133,7 +6133,13 @@
     }
     const number = getTeamNumber(team) || 1;
     const visual = TEAM_VISUALS[(number - 1) % TEAM_VISUALS.length];
-    return { number, logo: team?.logo || visual.logo, accent: visual.accent, visitor: false };
+    const custom = window.BabaTeamTheme?.getTeam?.(number);
+    return {
+      number,
+      logo: custom?.logo || team?.logo || visual.logo,
+      accent: custom?.color || visual.accent,
+      visitor: false,
+    };
   }
 
   function teamShieldHTML(team, className = 'baba-team-result__shield') {
@@ -7725,6 +7731,7 @@
     els.moreMenu.classList.add('is-floating');
     const headerRect = document.querySelector('.baba-unified-header')?.getBoundingClientRect();
     const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = window.visualViewport?.height || document.documentElement.clientHeight;
     const margin = 8;
     const menuWidth = Math.min(240, viewportWidth - (margin * 2));
     const toggleRect = els.moreToggle.getBoundingClientRect();
@@ -7733,7 +7740,9 @@
       viewportWidth - menuWidth - margin,
       Math.max(margin, preferredLeft),
     );
-    const top = Math.max(margin, (headerRect?.bottom || els.moreToggle.getBoundingClientRect().bottom) + 8);
+    const preferredTop = (headerRect?.bottom || els.moreToggle.getBoundingClientRect().bottom) + 8;
+    const menuHeight = Math.min(els.moreMenu.scrollHeight, viewportHeight - (margin * 2));
+    const top = Math.max(margin, Math.min(preferredTop, viewportHeight - menuHeight - margin));
     els.moreMenu.style.setProperty('--baba-more-menu-top', `${top}px`);
     els.moreMenu.style.setProperty('--baba-more-menu-left', `${left}px`);
   }
@@ -8663,6 +8672,7 @@
 
     window.addEventListener('resize', positionMoreMenu);
     window.addEventListener('scroll', positionMoreMenu, { passive: true });
+    window.visualViewport?.addEventListener('resize', positionMoreMenu);
 
     document.addEventListener('change', (event) => {
       const gameScore = event.target.closest('[data-game-edit-score]');
@@ -8916,6 +8926,10 @@
     const savedTheme = window.ThemeProvider?.getResolvedMode?.() || localStorage.getItem(BABA_THEME_KEY) || 'light';
     applyBabaTheme(savedTheme);
     window.ThemeProvider?.subscribe?.(({ resolvedMode }) => applyBabaTheme(resolvedMode));
+    window.BabaTeamTheme?.subscribe?.(() => {
+      render();
+      window.BabaHtmlTools?.polishDom?.();
+    });
     document.body.dataset.babaView = document.querySelector('.baba-view.active')?.dataset.view || 'dashboard';
     window.BabaRepository?.activateView?.(document.body.dataset.babaView);
     wireEvents();

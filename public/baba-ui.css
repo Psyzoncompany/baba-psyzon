@@ -6501,6 +6501,40 @@ button.baba-history-item.active {
   --team-contrast-muted: rgba(36, 31, 19, .72);
 }
 
+[data-team-number="1"] {
+  --team-color: var(--team-1-custom-color, #e12a3f);
+  --team-contrast: var(--team-1-custom-contrast, #fff);
+}
+
+[data-team-number="2"] {
+  --team-color: var(--team-2-custom-color, #078b56);
+  --team-contrast: var(--team-2-custom-contrast, #fff);
+}
+
+[data-team-number="3"] {
+  --team-color: var(--team-3-custom-color, #b8a46f);
+  --team-contrast: var(--team-3-custom-contrast, #111827);
+}
+
+[data-team-number="4"] {
+  --team-color: var(--team-4-custom-color, #111827);
+  --team-contrast: var(--team-4-custom-contrast, #fff);
+}
+
+[data-team-number="5"] {
+  --team-color: var(--team-5-custom-color, #2563a8);
+  --team-contrast: var(--team-5-custom-contrast, #fff);
+}
+
+[data-team-number]:not([data-team-number="visitor"]) {
+  --team-color-dark: color-mix(in srgb, var(--team-color) 76%, var(--text));
+  --team-soft: color-mix(in srgb, var(--team-color) 10%, var(--card));
+  --team-border: color-mix(in srgb, var(--team-color) 28%, var(--border));
+  --team-surface-start: var(--team-color);
+  --team-surface-end: var(--team-color);
+  --team-contrast-muted: color-mix(in srgb, var(--team-contrast) 76%, transparent);
+}
+
 .baba-player-status-control {
   display: grid;
   gap: .25rem;

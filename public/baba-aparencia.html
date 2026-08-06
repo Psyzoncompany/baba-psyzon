@@ -7,10 +7,11 @@
   <link rel="icon" type="image/png" href="icons/baba-icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/baba-icon-180.png">
   <title>Aparência - Baba Psyzon</title>
-  <link href="theme-system.css?v=20260806-theme-3" rel="stylesheet">
+  <link href="theme-system.css?v=20260806-theme-4" rel="stylesheet">
   <link href="baba-aparencia.css?v=20260806-1" rel="stylesheet">
   <script src="vendor/lucide.min.js?v=1.29.0" defer></script>
-  <script src="theme-provider.js?v=20260806-theme-3"></script>
+  <script src="theme-provider.js?v=20260806-theme-4"></script>
+  <script src="baba-team-theme.js?v=20260806-1"></script>
 </head>
 <body class="baba-appearance-page">
   <header class="appearance-topbar">
@@ -81,8 +82,18 @@
         <button class="secondary" type="button" data-theme-reset><i data-lucide="rotate-ccw"></i><span>Restaurar padrão</span></button>
       </div>
     </section>
+
+    <section class="appearance-team-section" aria-labelledby="team-theme-title">
+      <header class="appearance-team-section__heading">
+        <span><i data-lucide="shield"></i><span><strong id="team-theme-title">Identidade dos times</strong><small>Cores e escudos</small></span></span>
+        <button class="secondary" type="button" data-team-reset-all>Restaurar todos</button>
+      </header>
+      <div class="team-theme-grid" data-team-theme-grid></div>
+      <p class="team-theme-status" data-team-theme-status role="status" aria-live="polite"></p>
+    </section>
   </main>
 
-  <script src="site-version.js?v=6.1.2" defer></script>
+  <script src="baba-team-appearance.js?v=20260806-1" defer></script>
+  <script src="site-version.js?v=6.1.3" defer></script>
 </body>
 </html>

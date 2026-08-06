@@ -84,3 +84,23 @@ test('desktop exibe navegacao completa e historico remove o estado vazio', () =>
   assert.match(app, /historyDetail\.classList\.remove\('baba-empty'\)/);
   assert.match(read('baba-ui.css'), /\.baba-standings-table \{[\s\S]*gap: 0;/);
 });
+
+test('mobile preserva o menu Mais e aparencia personaliza cores e escudos', () => {
+  const css = read('theme-system.css');
+  const html = read('baba-aparencia.html');
+  const teamTheme = read('baba-team-theme.js');
+  const teamAppearance = read('baba-team-appearance.js');
+  assert.match(css, /@media \(max-width: 1099px\)[\s\S]*\.baba-more-nav \{ display: block !important; \}/);
+  assert.match(css, /\.baba-more-menu\.is-floating[\s\S]*max-height:/);
+  assert.match(css, /\.dashboard-grid:has\(\.baba-manual-live\)/);
+  assert.match(css, /\.baba-card__head \{[\s\S]*margin: 0 0 var\(--space-5\) !important/);
+  assert.match(css, /\.baba-card-icon[\s\S]*background: color-mix\(in srgb, var\(--primary\) 10%, var\(--card\)\) !important/);
+  assert.match(html, /data-team-theme-grid/);
+  assert.match(html, /baba-team-theme\.js/);
+  assert.match(teamTheme, /psyzon_baba_team_theme_v1/);
+  assert.match(teamTheme, /--team-\$\{team\.number\}-custom-color/);
+  assert.match(teamAppearance, /data-team-color/);
+  assert.match(teamAppearance, /data-team-logo/);
+  assert.match(teamAppearance, /data-team-upload/);
+  assert.match(read('baba.js'), /BabaTeamTheme\?\.getTeam/);
+});

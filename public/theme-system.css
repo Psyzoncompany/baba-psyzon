@@ -147,7 +147,9 @@ h1, h2, h3, h4, h5, h6, strong, b { color: inherit; letter-spacing: 0 !important
   .glass-card, .glass-card-fullscreen, .glass-surface, .card, .card--glass, .panel, .widget, .box,
   .baba-card, .baba-gateway, .baba-draw-status-bar, .baba-draw-progress, .baba-draw-ready,
   .baba-draw-results, .baba-ranking-toolbar, .baba-backup-card, .baba-modal__panel,
-  .tactical-card, .tactical-panel
+  .baba-ranking-card, .baba-history-item, .baba-row, .baba-table-scorer, .baba-player-admin,
+  .baba-present-item, .baba-team-player-card, .baba-goal-player, .baba-history-section,
+  .baba-history-match, .baba-game-edit-team, .tactical-card, .tactical-panel
 ) {
   border: 1px solid var(--border) !important;
   border-radius: var(--card-radius) !important;
@@ -280,6 +282,26 @@ tbody tr:hover, .baba-table__row:not(.baba-table__head):hover { background: colo
 .tactical-page .tactical-tool:hover { color: var(--text) !important; border-color: color-mix(in srgb, var(--primary) 35%, var(--border)) !important; }
 .tactical-page .tactical-tool[aria-pressed="true"] { color: var(--primary) !important; border-color: var(--primary) !important; background: color-mix(in srgb, var(--primary) 8%, var(--card)) !important; }
 
+body.baba-app-mode .baba-grid { gap: var(--space-5) !important; }
+body.baba-app-mode .baba-card__head {
+  min-height: 52px;
+  margin: 0 0 var(--space-5) !important;
+  padding: 0 0 var(--space-4) !important;
+}
+body.baba-app-mode .baba-card__head h2 { margin: 0; }
+body.baba-app-mode :is(.baba-card-icon, .section-header__icon, .baba-metric-icon) {
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border)) !important;
+  color: var(--primary) !important;
+  background: color-mix(in srgb, var(--primary) 10%, var(--card)) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+body.baba-app-mode :is(.baba-manual-team-card, .baba-manual-stepper, .baba-manual-player-row) {
+  background: var(--card) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
 /* Solid surfaces for modules that still expose legacy visual class names. */
 :root[data-theme="minimal"] :is(.btn-shine, [class*="bg-gradient-"])::before { display: none !important; }
 :root[data-theme="minimal"] [class*="bg-gradient-"] { background-image: none !important; }
@@ -411,6 +433,20 @@ tbody tr:hover, .baba-table__row:not(.baba-table__head):hover { background: colo
 
 @media (max-width: 1099px) {
   body.baba-app-mode .baba-tabs { border-top: 1px solid var(--border) !important; background: var(--card) !important; }
+  body.baba-app-mode .baba-desktop-nav-item { display: none !important; }
+  body.baba-app-mode .baba-more-nav { display: block !important; }
+  body.baba-app-mode .baba-more-menu.is-floating {
+    max-height: calc(100dvh - var(--baba-more-menu-top, 80px) - 12px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+@media (min-width: 901px) {
+  body.baba-app-mode .dashboard-grid:has(.baba-manual-live) > .baba-card:nth-of-type(1),
+  body.baba-app-mode .dashboard-grid:has(.baba-manual-live) > .baba-card:nth-of-type(2) {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 768px) {
@@ -418,6 +454,8 @@ tbody tr:hover, .baba-table__row:not(.baba-table__head):hover { background: colo
   .theme-settings-card { padding: var(--space-4) !important; }
   .desktop-topbar-inner { padding-inline: 12px !important; }
   .glass-card, .baba-card { padding: var(--density-space) !important; }
+  body.baba-app-mode .baba-grid { gap: var(--space-4) !important; }
+  body.baba-app-mode .baba-card__head { min-height: 44px; margin-bottom: var(--space-4) !important; padding-bottom: var(--space-3) !important; }
   table { min-width: 0 !important; }
   th, td { padding-inline: 8px !important; }
 }

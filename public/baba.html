@@ -14,10 +14,11 @@
   <meta name="theme-color" content="#f4f8fc">
   <title>Baba Psyzon</title>
   <link href="apple-ui-font.css?v=20260723-1" rel="stylesheet">
-  <link href="baba-ui.css?v=20260806-baba-visual-1" rel="stylesheet">
-  <link href="theme-system.css?v=20260806-theme-3" rel="stylesheet">
+  <link href="baba-ui.css?v=20260806-baba-visual-2" rel="stylesheet">
+  <link href="theme-system.css?v=20260806-theme-4" rel="stylesheet">
   <script src="vendor/lucide.min.js?v=1.29.0" defer></script>
-  <script src="theme-provider.js?v=20260806-theme-3"></script>
+  <script src="theme-provider.js?v=20260806-theme-4"></script>
+  <script src="baba-team-theme.js?v=20260806-1"></script>
   <script>
     window.BABA_AI_ENDPOINT = window.BABA_AI_ENDPOINT || '/api/baba-import/analyze';
     if (window.location.protocol !== 'file:') {
@@ -958,7 +959,10 @@
       }
 
       function assetForTeamNumber(number) {
-        return TEAM_ASSETS[(Math.max(1, Number(number) || 1) - 1) % TEAM_ASSETS.length];
+        const safeNumber = Math.max(1, Number(number) || 1);
+        const fallback = TEAM_ASSETS[(safeNumber - 1) % TEAM_ASSETS.length];
+        const custom = window.BabaTeamTheme?.getTeam?.(safeNumber);
+        return custom ? { ...fallback, ...custom } : fallback;
       }
 
       function replaceLegacyText(value) {
@@ -1052,7 +1056,7 @@
                   return;
                 }
                 const number = normalizeTeamNumber(team, index);
-                const asset = assetForTeamNumber(number);
+                const asset = TEAM_ASSETS[(number - 1) % TEAM_ASSETS.length];
                 team.name = `Time ${number}`;
                 team.logo = asset.logo;
               });
@@ -1447,7 +1451,7 @@
   <script src="pdf-report.js?v=20260805-baba-management-5"></script>
   <script src="baba-management-core.js?v=20260805-baba-management-5"></script>
   <script src="baba.js?v=20260805-baba-management-5" defer></script>
-  <script src="site-version.js?v=6.1.2" defer></script>
+  <script src="site-version.js?v=6.1.3" defer></script>
 </body>
 
 </html>
