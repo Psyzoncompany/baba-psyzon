@@ -33,12 +33,14 @@ test('estados de jogador controlam cobrança e visibilidade sem apagar estatíst
   assert.doesNotMatch(app, /function setPlayerStatus[\s\S]*?delete state\.playerStats/);
 });
 
-test('PDF de pagamento separa pagos, pendentes e novatos e omite isentos das cobranças', () => {
+test('PDF de pagamento separa pagos, pendentes, novatos e desativados', () => {
   const app = read('baba.js');
   assert.match(app, /title: 'Jogadores que pagaram'/);
   assert.match(app, /title: 'Jogadores pendentes'/);
   assert.match(app, /title: 'Novatos'/);
+  assert.match(app, /title: 'Jogadores desativados'/);
   assert.match(app, /if \(mode === 'novice'\) return isNovicePlayer\(player\)/);
+  assert.match(app, /if \(mode === 'disabled'\) return isDisabledPlayer\(player\)/);
   assert.match(app, /if \(!isPaymentEligiblePlayer\(player\)\) return false/);
 });
 
@@ -74,6 +76,7 @@ test('PDF de tabela e PDF de pagamento permanecem em uma página', () => {
       { title: 'Pagos', columns: ['#', 'Jogador', 'Tipo', 'Valor'], rows: [['1', 'Ana', 'JOGADOR', 'R$ 15']] },
       { title: 'Pendentes', columns: ['#', 'Jogador', 'Tipo', 'Valor'], rows: [['1', 'Beto', 'GOLEIRO', 'R$ 7']] },
       { title: 'Novatos', columns: ['#', 'Jogador', 'Tipo', 'Situação'], rows: [['1', 'Caio', 'NOVATO', 'NOVATO']] },
+      { title: 'Desativados', columns: ['#', 'Jogador', 'Tipo', 'Situação'], rows: [['1', 'Davi', 'JOGADOR', 'DESATIVADO']] },
     ],
   });
   assert.equal(payment.getNumberOfPages(), 1);

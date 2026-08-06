@@ -111,14 +111,18 @@
   }
 
   function drawPaymentIcon(doc, x, y, kind = 'check') {
-    setColor(doc, 'setFillColor', COLORS.emeraldSoft);
-    setColor(doc, 'setDrawColor', [177, 224, 207]);
+    const disabled = kind === 'disabled';
+    setColor(doc, 'setFillColor', disabled ? [254, 242, 242] : COLORS.emeraldSoft);
+    setColor(doc, 'setDrawColor', disabled ? [254, 202, 202] : [177, 224, 207]);
     doc.setLineWidth(.35);
     doc.roundedRect(x, y, 8.5, 8.5, 2, 2, 'FD');
-    setColor(doc, 'setDrawColor', kind === 'pending' ? COLORS.emeraldDark : COLORS.emerald);
+    setColor(doc, 'setDrawColor', disabled ? [220, 38, 38] : (kind === 'pending' ? COLORS.emeraldDark : COLORS.emerald));
     doc.setLineWidth(.55);
     doc.circle(x + 4.25, y + 4.25, 2.25, 'S');
-    if (kind === 'pending') {
+    if (disabled) {
+      doc.line(x + 2.8, y + 2.8, x + 5.7, y + 5.7);
+      doc.line(x + 5.7, y + 2.8, x + 2.8, y + 5.7);
+    } else if (kind === 'pending') {
       doc.line(x + 4.25, y + 2.7, x + 4.25, y + 4.8);
       doc.circle(x + 4.25, y + 6.05, .18, 'F');
     } else if (kind === 'wallet') {
@@ -289,52 +293,67 @@
       doc.text(cleanText(item?.[1]), x + 14.2, summaryY + 11.7);
     });
 
-    const sections = (report.sections || []).slice(0, 3);
+    const sections = (report.sections || []).slice(0, 4);
     const sectionTop = summaryY + cardHeight + 2.4;
     const sectionGap = 2.6;
-    const sectionWidth = (contentWidth - (sectionGap * Math.max(0, sections.length - 1))) / Math.max(1, sections.length);
     const footerY = pageHeight - 10.5;
     const tableBottom = footerY - 4;
+    const gridColumns = sections.length > 3 ? 2 : Math.max(1, sections.length);
+    const gridRows = Math.ceil(sections.length / gridColumns);
+    const sectionWidth = (contentWidth - (sectionGap * Math.max(0, gridColumns - 1))) / gridColumns;
+    const sectionHeight = (tableBottom - sectionTop - (sectionGap * Math.max(0, gridRows - 1))) / Math.max(1, gridRows);
 
     sections.forEach((section, sectionIndex) => {
-      const x = margin + (sectionIndex * (sectionWidth + sectionGap));
-      const rows = Array.isArray(section.rows) ? section.rows : [];
+      const gridColumn = sectionIndex % gridColumns;
+      const gridRow = Math.floor(sectionIndex / gridColumns);
+      const x = margin + (gridColumn * (sectionWidth + sectionGap));
+      const y = sectionTop + (gridRow * (sectionHeight + sectionGap));
+      const sourceRows = Array.isArray(section.rows) ? section.rows : [];
       const headerHeight = 13.2;
       const columnHeight = 6;
-      const availableRowsHeight = tableBottom - (sectionTop + headerHeight + columnHeight);
+      const availableRowsHeight = sectionHeight - headerHeight - columnHeight - .6;
+      const maxRowSlots = Math.max(1, Math.floor(availableRowsHeight / 3.7));
+      const configuredLimit = Math.max(1, Number(section.maxRows || sourceRows.length || 1));
+      const isTruncated = sourceRows.length > Math.min(configuredLimit, maxRowSlots);
+      const visibleLimit = Math.max(1, Math.min(configuredLimit, maxRowSlots - (isTruncated ? 1 : 0)));
+      const rows = sourceRows.slice(0, visibleLimit);
+      const omittedRows = Math.max(0, sourceRows.length - rows.length);
+      const occupiedSlots = Math.max(1, rows.length + (omittedRows ? 1 : 0));
       const rowHeight = rows.length
-        ? Math.min(6.2, Math.max(4.45, availableRowsHeight / rows.length))
+        ? Math.min(5.8, availableRowsHeight / occupiedSlots)
         : 8;
-      const tableHeight = headerHeight + columnHeight + Math.max(rowHeight, rows.length * rowHeight);
 
       setColor(doc, 'setFillColor', COLORS.white);
       setColor(doc, 'setDrawColor', [210, 225, 238]);
       doc.setLineWidth(.5);
-      doc.roundedRect(x, sectionTop, sectionWidth, tableHeight, 2.8, 2.8, 'FD');
+      doc.roundedRect(x, y, sectionWidth, sectionHeight, 2.8, 2.8, 'FD');
 
       setColor(doc, 'setFillColor', [247, 250, 253]);
-      doc.roundedRect(x + .3, sectionTop + .3, sectionWidth - .6, headerHeight, 2.5, 2.5, 'F');
+      doc.roundedRect(x + .3, y + .3, sectionWidth - .6, headerHeight, 2.5, 2.5, 'F');
+      const sectionLabel = `${cleanText(section.icon)} ${cleanText(section.title)}`;
       drawPaymentIcon(
         doc,
         x + 3.2,
-        sectionTop + 2.3,
-        sectionIndex === 0 ? 'check' : (sectionIndex === 1 ? 'pending' : 'wallet'),
+        y + 2.3,
+        /desativ|user-x/i.test(sectionLabel)
+          ? 'disabled'
+          : (sectionIndex === 0 ? 'check' : (sectionIndex === 1 ? 'pending' : 'wallet')),
       );
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.6);
       setColor(doc, 'setTextColor', [26, 37, 57]);
-      doc.text(doc.splitTextToSize(cleanText(section.title), sectionWidth - 17)[0] || '-', x + 13.5, sectionTop + 5.7);
+      doc.text(doc.splitTextToSize(cleanText(section.title), sectionWidth - 17)[0] || '-', x + 13.5, y + 5.7);
       if (section.note) {
         doc.setFontSize(6.2);
         setColor(doc, 'setTextColor', [91, 109, 137]);
-        doc.text(doc.splitTextToSize(cleanText(section.note), sectionWidth - 17)[0] || '', x + 13.5, sectionTop + 10.3);
+        doc.text(doc.splitTextToSize(cleanText(section.note), sectionWidth - 17)[0] || '', x + 13.5, y + 10.3);
       }
 
       const columns = Array.isArray(section.columns) ? section.columns.map(cleanText) : [];
       const widths = [9, sectionWidth * .43, sectionWidth * .28, sectionWidth * .22];
       const widthsTotal = widths.reduce((sum, width) => sum + width, 0);
       widths[1] += sectionWidth - widthsTotal;
-      let currentY = sectionTop + headerHeight;
+      let currentY = y + headerHeight;
       setColor(doc, 'setFillColor', [235, 242, 249]);
       doc.rect(x + .3, currentY, sectionWidth - .6, columnHeight, 'F');
       doc.setFont('helvetica', 'bold');
@@ -388,6 +407,14 @@
           });
           currentY += rowHeight;
         });
+        if (omittedRows) {
+          setColor(doc, 'setFillColor', [247, 250, 253]);
+          doc.rect(x + .3, currentY, sectionWidth - .6, rowHeight, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(5.5);
+          setColor(doc, 'setTextColor', [75, 96, 125]);
+          doc.text(`+ ${omittedRows} jogador${omittedRows === 1 ? '' : 'es'} nao exibido${omittedRows === 1 ? '' : 's'}`, x + 3, currentY + (rowHeight * .67));
+        }
       }
     });
 

@@ -2517,6 +2517,10 @@
     return Boolean(player) && getPlayerStatus(player) === PLAYER_STATUS.NOVICE;
   }
 
+  function isDisabledPlayer(player) {
+    return Boolean(player) && getPlayerStatus(player) === PLAYER_STATUS.DISABLED;
+  }
+
   function isPlayerVisibleInRanking(playerId) {
     const fixedPlayer = getPlayer(playerId);
     if (fixedPlayer) {
@@ -2747,6 +2751,7 @@
     return getPaymentPlayers(baba)
       .filter((player) => {
         if (mode === 'novice') return isNovicePlayer(player);
+        if (mode === 'disabled') return isDisabledPlayer(player);
         if (!isPaymentEligiblePlayer(player)) return false;
         return mode === 'paid'
           ? isPlayerPaidThisMonth(player.id, baba)
@@ -2757,7 +2762,9 @@
         index + 1,
         player.nome,
         playerPaymentTypeLabel(player, baba),
-        mode === 'novice' ? 'NOVATO' : formatCurrency(paymentPriceForPlayer(player)),
+        mode === 'novice'
+          ? 'NOVATO'
+          : (mode === 'disabled' ? 'DESATIVADO' : formatCurrency(paymentPriceForPlayer(player))),
       ], pdfPlayerTeam(baba, player.id)));
   }
 
@@ -2858,6 +2865,15 @@
           columns: ['#', 'Jogador', 'Tipo', 'Situação'],
           rows: paymentRowsForPdf(baba, 'novice'),
           empty: 'Nenhum novato cadastrado.',
+        },
+        {
+          title: 'Jogadores desativados',
+          note: 'Fora da cobranca mensal',
+          icon: 'user-x',
+          maxRows: PDF_ROW_LIMITS.payments,
+          columns: ['#', 'Jogador', 'Tipo', 'Situacao'],
+          rows: paymentRowsForPdf(baba, 'disabled'),
+          empty: 'Nenhum jogador desativado.',
         },
       ];
       return report;

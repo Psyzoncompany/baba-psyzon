@@ -30,6 +30,17 @@ test('gera PDF de pagamento com etiquetas independentes de novato, convidado e g
         columns: ['#', 'Jogador', 'Tipo', 'Valor'],
         rows: [['2', 'Wesley', 'NOVATO · CONVIDADO · GOLEIRO', 'ISENTO']],
       },
+      {
+        title: 'Jogadores desativados',
+        icon: 'user-x',
+        columns: ['#', 'Jogador', 'Tipo', 'Situação'],
+        rows: [['3', 'Carlos', 'JOGADOR', 'DESATIVADO']],
+      },
+      {
+        title: 'Outro grupo',
+        columns: ['#', 'Jogador', 'Tipo', 'Situação'],
+        rows: [['4', 'Rui', 'JOGADOR', 'ATIVO']],
+      },
     ],
   };
 

@@ -90,7 +90,7 @@ test('mobile preserva o menu Mais e aparencia personaliza cores e escudos', () =
   const html = read('baba-aparencia.html');
   const teamTheme = read('baba-team-theme.js');
   const teamAppearance = read('baba-team-appearance.js');
-  assert.match(css, /@media \(max-width: 1099px\)[\s\S]*\.baba-more-nav \{ display: block !important; \}/);
+  assert.match(css, /@media \(max-width: 1100px\)[\s\S]*\.baba-more-nav \{ display: block !important; \}/);
   assert.match(css, /\.baba-more-menu\.is-floating[\s\S]*max-height:/);
   assert.match(css, /\.dashboard-grid:has\(\.baba-manual-live\)/);
   assert.match(css, /\.baba-card__head \{[\s\S]*margin: 0 0 var\(--space-5\) !important/);
@@ -103,4 +103,12 @@ test('mobile preserva o menu Mais e aparencia personaliza cores e escudos', () =
   assert.match(teamAppearance, /data-team-logo/);
   assert.match(teamAppearance, /data-team-upload/);
   assert.match(read('baba.js'), /BabaTeamTheme\?\.getTeam/);
+});
+
+test('sidebar desktop reserva espaco e nao cobre o cabecalho ou os cards', () => {
+  const css = read('theme-system.css');
+  assert.match(css, /@media \(min-width: 1101px\)/);
+  assert.match(css, /body\.baba-app-mode \.baba-tabs \{[\s\S]*top: 100px;[\s\S]*left: 24px;/);
+  assert.match(css, /body\.baba-app-mode \.baba-shell \{[\s\S]*margin-right: 24px;[\s\S]*margin-left: 256px;/);
+  assert.match(css, /overflow-y: auto !important;/);
 });

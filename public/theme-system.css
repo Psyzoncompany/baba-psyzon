@@ -378,14 +378,14 @@ body.baba-app-mode :is(.baba-manual-team-card, .baba-manual-stepper, .baba-manua
 .theme-segmented input:checked + span { color: var(--primary); background: var(--card); box-shadow: 0 1px 3px rgba(15, 23, 42, .1); }
 .theme-settings-actions { display: flex; justify-content: flex-end; margin-top: var(--space-5); }
 
-@media (min-width: 1100px) {
+@media (min-width: 1101px) {
   body.baba-app-mode .baba-tabs {
     display: flex !important;
     position: fixed !important;
     z-index: 850;
-    top: 88px;
+    top: 100px;
     bottom: 20px;
-    left: 16px;
+    left: 24px;
     width: 212px;
     max-width: none;
     grid-template-columns: none !important;
@@ -398,7 +398,9 @@ body.baba-app-mode :is(.baba-manual-team-card, .baba-manual-stepper, .baba-manua
     border-radius: var(--card-radius) !important;
     background: var(--card) !important;
     box-shadow: var(--shadow-card-token) !important;
-    overflow: visible !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
   }
   body.baba-app-mode .baba-tabs > button,
   body.baba-app-mode .baba-more-nav > button { display: flex !important; width: 100%; min-height: 44px; flex: 0 0 auto; justify-content: flex-start; border: 0 !important; border-radius: 8px !important; color: var(--text-secondary) !important; background: transparent !important; box-shadow: none !important; }
@@ -428,10 +430,16 @@ body.baba-app-mode :is(.baba-manual-team-card, .baba-manual-stepper, .baba-manua
   body.baba-app-mode .baba-tabs > button.active::before { content: ""; position: absolute; top: 9px; bottom: 9px; left: -8px; width: 3px; border-radius: 3px; background: var(--primary); }
   body.baba-app-mode .baba-more-nav { display: none !important; }
   body.baba-app-mode .baba-more-menu { left: calc(100% + 8px); bottom: 0; width: 210px; }
-  body.baba-app-mode .baba-shell { width: auto; max-width: none; margin-left: 240px; padding-right: 24px; }
+  body.baba-app-mode .baba-shell {
+    width: auto;
+    max-width: none;
+    margin-right: 24px;
+    margin-left: 256px;
+    padding-right: 0;
+  }
 }
 
-@media (max-width: 1099px) {
+@media (max-width: 1100px) {
   body.baba-app-mode .baba-tabs { border-top: 1px solid var(--border) !important; background: var(--card) !important; }
   body.baba-app-mode .baba-desktop-nav-item { display: none !important; }
   body.baba-app-mode .baba-more-nav { display: block !important; }
