@@ -2829,7 +2829,8 @@
     if (type === 'payments') {
       const stats = getPaymentStats(baba);
       const pending = Math.max(0, stats.expected - stats.paid);
-      report.title = 'Lista de pagamentos';
+      report.title = 'Lista de pagamento';
+      report.fileName = 'Lista de pagamento.pdf';
       report.subtitle = `${paymentMonthLabel()} - vencimento ${paymentDueDateLabel()}`;
       report.icon = 'wallet';
       report.summary = [

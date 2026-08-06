@@ -35,6 +35,8 @@ test('estados de jogador controlam cobrança e visibilidade sem apagar estatíst
 
 test('PDF de pagamento separa pagos, pendentes, novatos e desativados', () => {
   const app = read('baba.js');
+  assert.match(app, /report\.title = 'Lista de pagamento'/);
+  assert.match(app, /report\.fileName = 'Lista de pagamento\.pdf'/);
   assert.match(app, /title: 'Jogadores que pagaram'/);
   assert.match(app, /title: 'Jogadores pendentes'/);
   assert.match(app, /title: 'Novatos'/);
@@ -71,7 +73,7 @@ test('PDF de tabela e PDF de pagamento permanecem em uma página', () => {
   require('../pdf-report.js');
 
   const payment = window.PsyzonPdf.createReport({
-    type: 'payments', title: 'Pagamentos', subtitle: 'Agosto', generatedAt: '03/08/2026', brand: 'Baba Psyzon', summary: [],
+    type: 'payments', title: 'Lista de pagamento', subtitle: 'Agosto', generatedAt: '03/08/2026', brand: 'Baba Psyzon', summary: [],
     sections: [
       { title: 'Pagos', columns: ['#', 'Jogador', 'Tipo', 'Valor'], rows: [['1', 'Ana', 'JOGADOR', 'R$ 15']] },
       { title: 'Pendentes', columns: ['#', 'Jogador', 'Tipo', 'Valor'], rows: [['1', 'Beto', 'GOLEIRO', 'R$ 7']] },

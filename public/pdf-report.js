@@ -134,47 +134,6 @@
     }
   }
 
-  function drawPaymentHeroVector(doc, x, y, width, height) {
-    // Ilustracao vetorial leve: substitui o banner PNG no PDF de pagamentos.
-    setColor(doc, 'setFillColor', [7, 45, 57]);
-    doc.roundedRect(x, y, width, height, 3.5, 3.5, 'F');
-    setColor(doc, 'setFillColor', [12, 90, 88]);
-    doc.circle(x + width - 14, y + 13, 20, 'F');
-    setColor(doc, 'setFillColor', [16, 122, 111]);
-    doc.circle(x + width - 42, y + height - 6, 25, 'F');
-    setColor(doc, 'setDrawColor', [138, 221, 191]);
-    doc.setLineWidth(.55);
-    for (let index = 0; index < 5; index += 1) {
-      const offset = index * 8;
-      doc.line(x + 10 + offset, y + height - 8, x + 29 + offset, y + 8);
-    }
-
-    const walletX = x + width - 75;
-    const walletY = y + 14;
-    setColor(doc, 'setFillColor', [3, 27, 35]);
-    setColor(doc, 'setDrawColor', [205, 230, 88]);
-    doc.setLineWidth(1.05);
-    doc.roundedRect(walletX, walletY, 42, 25, 3, 3, 'FD');
-    doc.roundedRect(walletX + 28, walletY + 8, 16, 10, 2, 2, 'FD');
-    setColor(doc, 'setFillColor', [205, 230, 88]);
-    doc.circle(walletX + 36, walletY + 13, 1.4, 'F');
-    setColor(doc, 'setDrawColor', [138, 221, 191]);
-    doc.setLineWidth(.6);
-    doc.line(walletX + 6, walletY + 7, walletX + 27, walletY + 7);
-    doc.line(walletX + 6, walletY + 12, walletX + 21, walletY + 12);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    setColor(doc, 'setTextColor', [205, 230, 88]);
-    doc.text('CONTROLE', x + 12, y + 16);
-    doc.setFontSize(11);
-    setColor(doc, 'setTextColor', COLORS.white);
-    doc.text('EM DIA', x + 12, y + 26);
-    doc.setFontSize(6.2);
-    setColor(doc, 'setTextColor', [188, 217, 220]);
-    doc.text('PAGAMENTOS DO BABA', x + 12, y + 34);
-  }
-
   function drawPaymentClassificationBadges(doc, value, x, y, width, rowHeight) {
     const labels = cleanText(value).split(/\s*[·|-]\s*/).map((label) => label.trim().toUpperCase()).filter(Boolean);
     const palette = {
@@ -224,8 +183,7 @@
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 14;
     const contentWidth = pageWidth - (margin * 2);
-    const heroY = 11;
-    const heroHeight = 49;
+    const headerY = 10;
 
     doc.setProperties({
       title: cleanText(report.title),
@@ -236,38 +194,26 @@
     });
     doc.setLanguage?.('pt-BR');
 
-    setColor(doc, 'setFillColor', [3, 19, 29]);
-    doc.roundedRect(margin, heroY, contentWidth, heroHeight, 3.5, 3.5, 'F');
-    drawPaymentHeroVector(doc, margin + contentWidth - 132, heroY, 132, heroHeight);
-    setColor(doc, 'setDrawColor', [78, 99, 106]);
-    doc.setLineWidth(.65);
-    doc.roundedRect(margin, heroY, contentWidth, heroHeight, 3.5, 3.5, 'S');
-
-    setColor(doc, 'setFillColor', [17, 35, 40]);
-    setColor(doc, 'setDrawColor', [74, 91, 92]);
-    doc.roundedRect(margin + 5, heroY + 4.5, 9, 9, 2.2, 2.2, 'FD');
-    setColor(doc, 'setDrawColor', [222, 193, 25]);
-    doc.setLineWidth(.65);
-    doc.roundedRect(margin + 7.6, heroY + 7.1, 4.4, 3.7, .6, .6, 'S');
-    doc.line(margin + 8.2, heroY + 7.8, margin + 11.25, heroY + 7.8);
-
     doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.8);
+    setColor(doc, 'setTextColor', COLORS.emerald);
+    doc.text(cleanText(report.eyebrow || report.brand || 'Baba Psyzon').toUpperCase(), margin, headerY);
+    doc.setFontSize(16);
+    setColor(doc, 'setTextColor', COLORS.text);
+    doc.text(cleanText(report.title), margin, headerY + 8);
     doc.setFontSize(7.2);
-    setColor(doc, 'setTextColor', [205, 230, 88]);
-    doc.text(cleanText(report.eyebrow || report.brand || 'Baba Psyzon').toUpperCase(), margin + 17, heroY + 10);
-    doc.setFontSize(20);
-    setColor(doc, 'setTextColor', COLORS.white);
-    doc.text(cleanText(report.title), margin + 5, heroY + 23);
-    doc.setFontSize(8.3);
-    doc.setFont('helvetica', 'bold');
-    setColor(doc, 'setTextColor', [218, 226, 232]);
+    doc.setFont('helvetica', 'normal');
+    setColor(doc, 'setTextColor', COLORS.muted);
     doc.text(
       `${cleanText(report.subtitle)} - gerado em ${cleanText(report.generatedAt || new Date().toLocaleString('pt-BR'))}`,
-      margin + 5,
-      heroY + 31,
+      margin,
+      headerY + 14,
     );
+    setColor(doc, 'setDrawColor', [210, 225, 238]);
+    doc.setLineWidth(.45);
+    doc.line(margin, headerY + 17, pageWidth - margin, headerY + 17);
 
-    const summaryY = heroY + heroHeight + 2.5;
+    const summaryY = headerY + 20;
     const summaryGap = 2.6;
     const cardWidth = (contentWidth - (summaryGap * 3)) / 4;
     const cardHeight = 15.5;
@@ -312,7 +258,7 @@
       const headerHeight = 13.2;
       const columnHeight = 6;
       const availableRowsHeight = sectionHeight - headerHeight - columnHeight - .6;
-      const maxRowSlots = Math.max(1, Math.floor(availableRowsHeight / 3.7));
+      const maxRowSlots = Math.max(1, Math.floor(availableRowsHeight / 2.9));
       const configuredLimit = Math.max(1, Number(section.maxRows || sourceRows.length || 1));
       const isTruncated = sourceRows.length > Math.min(configuredLimit, maxRowSlots);
       const visibleLimit = Math.max(1, Math.min(configuredLimit, maxRowSlots - (isTruncated ? 1 : 0)));

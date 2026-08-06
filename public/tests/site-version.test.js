@@ -8,7 +8,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 
 test('versao global possui um unico valor e abre o historico', () => {
   const component = read('site-version.js');
-  assert.match(component, /const SITE_VERSION = '6\.1\.4'/);
+  assert.match(component, /const SITE_VERSION = '6\.1\.5'/);
   assert.match(component, /new URL\('versoes\.html', scriptUrl\)/);
   assert.match(component, /data\.siteVersionFooter|dataset\.siteVersionFooter/);
   assert.match(component, /Ver atualizações/);
@@ -16,17 +16,17 @@ test('versao global possui um unico valor e abre o historico', () => {
 
 test('rodape global e carregado nas paginas comuns, Baba e mesa tatica', () => {
   const preloader = read('site-preloader.js');
-  assert.match(preloader, /site-version\.js\?v=6\.1\.4/);
-  assert.match(read('baba.html'), /site-version\.js\?v=6\.1\.4/);
-  assert.match(read('mesa-tatica.html'), /site-version\.js\?v=6\.1\.4/);
+  assert.match(preloader, /site-version\.js\?v=6\.1\.5/);
+  assert.match(read('baba.html'), /site-version\.js\?v=6\.1\.5/);
+  assert.match(read('mesa-tatica.html'), /site-version\.js\?v=6\.1\.5/);
   assert.doesNotMatch(read('index.html'), /Versão 6\.0\.11/);
   assert.doesNotMatch(read('processos.html'), /Versão 6\.0\.27/);
 });
 
 test('pagina de versoes apresenta a atualizacao atual e seu conteudo', () => {
   const versions = read('versoes.html');
-  assert.match(versions, /id="version-6-1-4"/);
-  assert.match(versions, /Versão 6\.1\.4/);
-  assert.match(versions, /Jogadores desativados/);
-  assert.match(versions, /sidebar/);
+  assert.match(versions, /id="version-6-1-5"/);
+  assert.match(versions, /Versão 6\.1\.5/);
+  assert.match(versions, /banner grande/);
+  assert.match(versions, /Lista de pagamento/);
 });
