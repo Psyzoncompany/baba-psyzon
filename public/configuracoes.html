@@ -17,6 +17,9 @@
   <script src="https://cdn.tailwindcss.com"></script>
 <link href="apple-ui-font.css?v=20260723-1" rel="stylesheet">
 <link href="style.css" rel="stylesheet">
+<link href="theme-system.css?v=20260806-theme-1" rel="stylesheet">
+<script src="vendor/lucide.min.js?v=1.29.0"></script>
+<script src="theme-provider.js?v=20260806-theme-1"></script>
   <!-- Firebase Config -->
   <script type="module" src="firebase-config.js"></script>
   <style>
@@ -111,6 +114,62 @@
         <h1 class="text-2xl md:text-3xl font-bold">Configurações do Sistema</h1>
       </div>
       <div class="space-y-8 max-w-4xl mx-auto">
+
+        <section class="glass-card theme-settings-card" data-theme-settings aria-labelledby="appearance-title">
+          <div class="theme-settings-heading">
+            <span><i data-lucide="palette"></i><h2 id="appearance-title">Aparência</h2></span>
+            <small class="theme-settings-current" data-theme-current>Claro</small>
+          </div>
+          <div class="theme-settings-grid">
+            <div class="theme-setting">
+              <span>Tema</span>
+              <div class="theme-segmented" style="--segments: 2">
+                <label><input type="radio" name="theme" value="minimal"><span>Minimalista</span></label>
+                <label><input type="radio" name="theme" value="glass"><span>Glassmorphism</span></label>
+              </div>
+            </div>
+            <div class="theme-setting">
+              <span>Modo</span>
+              <div class="theme-segmented" style="--segments: 3">
+                <label><input type="radio" name="mode" value="system"><span>Sistema</span></label>
+                <label><input type="radio" name="mode" value="light"><span>Claro</span></label>
+                <label><input type="radio" name="mode" value="dark"><span>Escuro</span></label>
+              </div>
+            </div>
+            <div class="theme-setting">
+              <span>Densidade</span>
+              <div class="theme-segmented" style="--segments: 3">
+                <label><input type="radio" name="density" value="compact"><span>Compacta</span></label>
+                <label><input type="radio" name="density" value="normal"><span>Normal</span></label>
+                <label><input type="radio" name="density" value="comfortable"><span>Confortável</span></label>
+              </div>
+            </div>
+            <div class="theme-setting">
+              <span>Raio dos componentes</span>
+              <div class="theme-segmented" style="--segments: 3">
+                <label><input type="radio" name="radius" value="small"><span>Pequeno</span></label>
+                <label><input type="radio" name="radius" value="medium"><span>Médio</span></label>
+                <label><input type="radio" name="radius" value="large"><span>Grande</span></label>
+              </div>
+            </div>
+            <div class="theme-setting">
+              <span>Animações</span>
+              <div class="theme-segmented" style="--segments: 2">
+                <label><input type="radio" name="motion" value="full"><span>Ativadas</span></label>
+                <label><input type="radio" name="motion" value="reduced"><span>Reduzidas</span></label>
+              </div>
+            </div>
+            <label class="theme-setting">
+              <span>Idioma</span>
+              <select name="language" aria-label="Idioma da interface">
+                <option value="pt-BR">Português (Brasil)</option>
+              </select>
+            </label>
+          </div>
+          <div class="theme-settings-actions">
+            <button class="secondary" type="button" data-theme-reset><i data-lucide="rotate-ccw"></i>Restaurar padrão</button>
+          </div>
+        </section>
 
         <!-- ========================================================================= -->
         <!-- 3. CONFIGURAÇÕES: METAS E ORÇAMENTO (Usados nos gráficos da tela inicial) -->
@@ -311,7 +370,7 @@
     }, 100);
   </script>
   <script src="theme-toggle.js"></script>
-  <script src="site-preloader.js?v=6.0.45" defer></script>
+  <script src="site-preloader.js?v=6.1.0" defer></script>
 </body>
 
 </html>

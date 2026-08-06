@@ -15,6 +15,9 @@
   <title>Baba Psyzon</title>
   <link href="apple-ui-font.css?v=20260723-1" rel="stylesheet">
   <link href="baba-ui.css?v=20260805-baba-management-3" rel="stylesheet">
+  <link href="theme-system.css?v=20260806-theme-1" rel="stylesheet">
+  <script src="vendor/lucide.min.js?v=1.29.0"></script>
+  <script src="theme-provider.js?v=20260806-theme-1"></script>
   <script>
     window.BABA_AI_ENDPOINT = window.BABA_AI_ENDPOINT || '/api/baba-import/analyze';
     if (window.location.protocol !== 'file:') {
@@ -244,40 +247,35 @@
 
       <nav class="baba-nav baba-header-actions" aria-label="Ações da conta">
         <button class="baba-manage-button organizer-only" type="button" data-header-tab="organizer">
-          <svg aria-hidden="true" focusable="false"><use href="#baba-shield"></use></svg>
+          <i data-lucide="settings-2"></i>
           <span>Gerenciar baba</span>
         </button>
         <button id="baba-theme-toggle" class="baba-icon-button" type="button" title="Ativar tema escuro" aria-label="Ativar tema escuro" aria-pressed="false">
-          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
-            <path class="baba-theme-icon-moon" d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-            <g class="baba-theme-icon-sun">
-              <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
-              <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </g>
-          </svg>
+          <i data-lucide="sun-moon"></i>
         </button>
         <button id="mode-reset-btn" class="baba-icon-button" type="button" title="Trocar modo" aria-label="Trocar modo">
-          <svg aria-hidden="true" focusable="false"><use href="#baba-refresh"></use></svg>
+          <i data-lucide="refresh-cw"></i>
         </button>
       </nav>
     </div>
 
     <nav class="baba-tabs" aria-label="Áreas do Baba">
-      <button class="active" type="button" data-tab="dashboard"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-play"></use></svg><span>Ao vivo</span></button>
-      <button type="button" data-tab="table"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-table-icon"></use></svg><span>Tabela</span></button>
-      <button type="button" data-tab="ranking"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-chart"></use></svg><span>Ranking</span></button>
-      <button type="button" data-tab="history"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-history-icon"></use></svg><span>Histórico</span></button>
+      <button class="active" type="button" data-tab="dashboard"><i class="baba-tab-icon" data-lucide="radio"></i><span>Ao vivo</span></button>
+      <button type="button" data-tab="table"><i class="baba-tab-icon" data-lucide="table-2"></i><span>Tabela</span></button>
+      <button type="button" data-tab="ranking"><i class="baba-tab-icon" data-lucide="chart-no-axes-column-increasing"></i><span>Ranking</span></button>
+      <button type="button" data-tab="history"><i class="baba-tab-icon" data-lucide="history"></i><span>Histórico</span></button>
       <div class="baba-more-nav">
         <button id="baba-more-toggle" type="button" aria-haspopup="true" aria-controls="baba-more-menu" aria-expanded="false">
-          <svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-dots"></use></svg><span>Mais</span>
-          <svg class="baba-tab-chevron" aria-hidden="true" focusable="false"><use href="#baba-chevron"></use></svg>
+          <i class="baba-tab-icon" data-lucide="ellipsis"></i><span>Mais</span>
+          <i class="baba-tab-chevron" data-lucide="chevron-down"></i>
         </button>
         <div id="baba-more-menu" class="baba-more-menu hidden" role="menu">
-          <button type="button" data-tab="teams" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-users"></use></svg><span>Times</span></button>
-          <button type="button" data-tab="goals" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-target"></use></svg><span>Metas</span></button>
-          <button class="organizer-only" type="button" data-tab="organizer" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-shield"></use></svg><span>Organizador</span></button>
-          <button type="button" data-action="reset-mode" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-refresh"></use></svg><span>Trocar acesso</span></button>
-          <button type="button" data-action="logout" role="menuitem"><svg class="baba-tab-icon" aria-hidden="true" focusable="false"><use href="#baba-exit"></use></svg><span>Sair</span></button>
+          <button type="button" data-tab="teams" role="menuitem"><i class="baba-tab-icon" data-lucide="users"></i><span>Times</span></button>
+          <button type="button" data-tab="goals" role="menuitem"><i class="baba-tab-icon" data-lucide="target"></i><span>Metas</span></button>
+          <button class="organizer-only" type="button" data-tab="organizer" role="menuitem"><i class="baba-tab-icon" data-lucide="shield-check"></i><span>Organizador</span></button>
+          <a href="configuracoes.html#appearance-title" role="menuitem"><i class="baba-tab-icon" data-lucide="palette"></i><span>Aparência</span></a>
+          <button type="button" data-action="reset-mode" role="menuitem"><i class="baba-tab-icon" data-lucide="refresh-cw"></i><span>Trocar acesso</span></button>
+          <button type="button" data-action="logout" role="menuitem"><i class="baba-tab-icon" data-lucide="log-out"></i><span>Sair</span></button>
         </div>
       </div>
     </nav>
@@ -1424,7 +1422,7 @@
   <script src="pdf-report.js?v=20260805-baba-management-5"></script>
   <script src="baba-management-core.js?v=20260805-baba-management-5"></script>
   <script src="baba.js?v=20260805-baba-management-5" defer></script>
-  <script src="site-version.js?v=6.0.46" defer></script>
+  <script src="site-version.js?v=6.1.0" defer></script>
 </body>
 
 </html>

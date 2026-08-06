@@ -1129,6 +1129,10 @@
 
   function toggleBabaTheme() {
     const nextTheme = document.body.classList.contains('baba-dark-theme') ? 'light' : 'dark';
+    if (window.ThemeProvider) {
+      window.ThemeProvider.setPreferences({ mode: nextTheme });
+      return;
+    }
     localStorage.setItem(BABA_THEME_KEY, nextTheme);
     applyBabaTheme(nextTheme);
   }
@@ -8906,8 +8910,9 @@
   async function boot() {
     if (hasBooted) return;
     hasBooted = true;
-    const savedTheme = localStorage.getItem(BABA_THEME_KEY);
-    applyBabaTheme(savedTheme || 'light');
+    const savedTheme = window.ThemeProvider?.getResolvedMode?.() || localStorage.getItem(BABA_THEME_KEY) || 'light';
+    applyBabaTheme(savedTheme);
+    window.ThemeProvider?.subscribe?.(({ resolvedMode }) => applyBabaTheme(resolvedMode));
     document.body.dataset.babaView = document.querySelector('.baba-view.active')?.dataset.view || 'dashboard';
     window.BabaRepository?.activateView?.(document.body.dataset.babaView);
     wireEvents();
