@@ -233,9 +233,9 @@ input::placeholder, textarea::placeholder { color: var(--text-secondary) !import
 table, .baba-table { width: 100%; border-collapse: separate; border-spacing: 0; color: var(--text); }
 thead, .baba-table__head { background: var(--surface-subtle-token) !important; }
 th, .baba-table__head > * { color: var(--text-secondary) !important; font-weight: 600 !important; letter-spacing: 0 !important; }
-td, th, .baba-table__row > * { border-bottom: 1px solid var(--border) !important; }
+td, th { border-bottom: 1px solid var(--border) !important; }
 tbody tr, .baba-table__row { transition: background-color 160ms ease; }
-tbody tr:hover, .baba-table__row:hover { background: color-mix(in srgb, var(--primary) 5%, var(--card)) !important; }
+tbody tr:hover, .baba-table__row:not(.baba-table__head):hover { background: color-mix(in srgb, var(--primary) 5%, var(--card)) !important; }
 
 .bottom-nav {
   border-top: 1px solid var(--border) !important;
@@ -312,7 +312,8 @@ tbody tr:hover, .baba-table__row:hover { background: color-mix(in srgb, var(--pr
 :root[data-theme="minimal"] .baba-choice--tactical .baba-choice-icon { background: var(--color-info-soft) !important; }
 :root[data-theme="minimal"] .baba-google-access,
 :root[data-theme="minimal"] .baba-timer { background: var(--primary) !important; background-image: none !important; }
-:root[data-theme="minimal"] .baba-table__row.is-last:not(.is-first) { background: var(--color-danger-soft) !important; }
+:root[data-theme="minimal"] .baba-table__row.is-last:not(.is-first) { background: var(--card) !important; }
+:root[data-theme="minimal"] .baba-standings-table .baba-table__row { background: var(--card); }
 :root[data-theme="minimal"] .baba-organizer-intro > div:first-child > span { color: var(--primary) !important; letter-spacing: 0 !important; }
 :root[data-theme="minimal"] .baba-organizer-intro h1 { color: var(--text) !important; }
 :root[data-theme="minimal"] .baba-organizer-intro p { color: var(--text-secondary) !important; }
@@ -328,7 +329,11 @@ tbody tr:hover, .baba-table__row:hover { background: color-mix(in srgb, var(--pr
 }
 :root[data-theme="minimal"] .baba-skeleton { background: var(--surface-muted-token) !important; background-image: none !important; }
 :root[data-theme="minimal"] .baba-history-item__date,
-:root[data-theme="minimal"] .baba-history-hero { color: #fff !important; background: var(--primary) !important; background-image: none !important; box-shadow: none !important; }
+:root[data-theme="minimal"] .baba-history-item__date { color: #fff !important; background: var(--primary) !important; background-image: none !important; box-shadow: none !important; }
+:root[data-theme="minimal"] .baba-history-hero { color: var(--text) !important; background: var(--card) !important; background-image: none !important; box-shadow: var(--shadow-card-token) !important; }
+:root[data-theme="minimal"] .baba-history-hero :is(p, small) { color: var(--text-secondary) !important; }
+:root[data-theme="minimal"] .baba-history-item { border-color: var(--border) !important; background: var(--card) !important; box-shadow: none !important; }
+:root[data-theme="minimal"] button.baba-history-item.active { border-color: color-mix(in srgb, var(--primary) 32%, var(--border)) !important; background: color-mix(in srgb, var(--primary) 6%, var(--card)) !important; box-shadow: inset 3px 0 0 var(--primary) !important; }
 :root[data-theme="minimal"] :is(#force-logout-all-btn, #clear-data-btn) { color: #fff !important; background: var(--danger) !important; background-image: none !important; }
 :root[data-theme="minimal"] :is(.brand-icon, .stat-icon, .progress-fill, .btn-primary) { background: var(--primary) !important; background-image: none !important; }
 :root[data-theme="minimal"] .tactical-page .tactical-court-frame { background: #166534 !important; background-image: none !important; }
@@ -375,9 +380,31 @@ tbody tr:hover, .baba-table__row:hover { background: color-mix(in srgb, var(--pr
   }
   body.baba-app-mode .baba-tabs > button,
   body.baba-app-mode .baba-more-nav > button { display: flex !important; width: 100%; min-height: 44px; flex: 0 0 auto; justify-content: flex-start; border: 0 !important; border-radius: 8px !important; color: var(--text-secondary) !important; background: transparent !important; box-shadow: none !important; }
+  body.baba-app-mode .baba-desktop-nav-item {
+    display: flex;
+    width: 100%;
+    min-height: 44px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    background: transparent;
+    font-size: .82rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  body.baba-app-mode .baba-desktop-nav-item:hover { color: var(--text); background: var(--secondary-hover); }
+  body.baba-app-mode .baba-desktop-nav-item--utility { margin-top: auto; border-top: 1px solid var(--border); border-radius: 0 0 8px 8px; }
+  body.baba-app-mode .baba-desktop-nav-item--danger { color: var(--danger); }
+  body.baba-player-mode .baba-tabs > .organizer-only,
+  body.baba-locked-viewer .baba-tabs > .organizer-only { display: none !important; }
   body.baba-app-mode .baba-tabs > button.active { position: relative; color: var(--primary) !important; background: color-mix(in srgb, var(--primary) 8%, var(--card)) !important; }
   body.baba-app-mode .baba-tabs > button.active::before { content: ""; position: absolute; top: 9px; bottom: 9px; left: -8px; width: 3px; border-radius: 3px; background: var(--primary); }
-  body.baba-app-mode .baba-more-nav { display: block !important; width: 100%; flex: 0 0 auto; }
+  body.baba-app-mode .baba-more-nav { display: none !important; }
   body.baba-app-mode .baba-more-menu { left: calc(100% + 8px); bottom: 0; width: 210px; }
   body.baba-app-mode .baba-shell { width: auto; max-width: none; margin-left: 240px; padding-right: 24px; }
 }

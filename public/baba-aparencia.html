@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F8FAFC">
+  <link rel="icon" type="image/png" href="icons/baba-icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/baba-icon-180.png">
+  <title>Aparência - Baba Psyzon</title>
+  <link href="theme-system.css?v=20260806-theme-3" rel="stylesheet">
+  <link href="baba-aparencia.css?v=20260806-1" rel="stylesheet">
+  <script src="vendor/lucide.min.js?v=1.29.0" defer></script>
+  <script src="theme-provider.js?v=20260806-theme-3"></script>
+</head>
+<body class="baba-appearance-page">
+  <header class="appearance-topbar">
+    <div class="appearance-topbar__inner">
+      <a class="appearance-back" href="baba.html" aria-label="Voltar ao Baba">
+        <i data-lucide="arrow-left"></i>
+        <span>Voltar</span>
+      </a>
+      <a class="appearance-brand" href="baba.html">
+        <img src="icons/baba-icon-192.png" alt="Baba Psyzon">
+        <span><strong>Baba Psyzon</strong><small>Configurações</small></span>
+      </a>
+      <span class="appearance-mode" data-theme-current>Claro</span>
+    </div>
+  </header>
+
+  <main class="appearance-shell">
+    <header class="appearance-heading">
+      <span>Preferências</span>
+      <h1>Aparência</h1>
+    </header>
+
+    <section class="appearance-panel theme-settings-card" data-theme-settings aria-labelledby="appearance-title">
+      <div class="theme-settings-heading">
+        <span><i data-lucide="palette"></i><h2 id="appearance-title">Interface</h2></span>
+        <small class="theme-settings-current" data-theme-current>Claro</small>
+      </div>
+      <div class="theme-settings-grid">
+        <div class="theme-setting">
+          <span>Modo</span>
+          <div class="theme-segmented" style="--segments: 3">
+            <label><input type="radio" name="mode" value="system"><span>Sistema</span></label>
+            <label><input type="radio" name="mode" value="light"><span>Claro</span></label>
+            <label><input type="radio" name="mode" value="dark"><span>Escuro</span></label>
+          </div>
+        </div>
+        <div class="theme-setting">
+          <span>Densidade</span>
+          <div class="theme-segmented" style="--segments: 3">
+            <label><input type="radio" name="density" value="compact"><span>Compacta</span></label>
+            <label><input type="radio" name="density" value="normal"><span>Normal</span></label>
+            <label><input type="radio" name="density" value="comfortable"><span>Confortável</span></label>
+          </div>
+        </div>
+        <div class="theme-setting">
+          <span>Raio dos componentes</span>
+          <div class="theme-segmented" style="--segments: 3">
+            <label><input type="radio" name="radius" value="small"><span>Pequeno</span></label>
+            <label><input type="radio" name="radius" value="medium"><span>Médio</span></label>
+            <label><input type="radio" name="radius" value="large"><span>Grande</span></label>
+          </div>
+        </div>
+        <div class="theme-setting">
+          <span>Animações</span>
+          <div class="theme-segmented" style="--segments: 2">
+            <label><input type="radio" name="motion" value="full"><span>Ativadas</span></label>
+            <label><input type="radio" name="motion" value="reduced"><span>Reduzidas</span></label>
+          </div>
+        </div>
+        <label class="theme-setting">
+          <span>Idioma</span>
+          <select name="language" aria-label="Idioma da interface">
+            <option value="pt-BR">Português (Brasil)</option>
+          </select>
+        </label>
+      </div>
+      <div class="theme-settings-actions">
+        <button class="secondary" type="button" data-theme-reset><i data-lucide="rotate-ccw"></i><span>Restaurar padrão</span></button>
+      </div>
+    </section>
+  </main>
+
+  <script src="site-version.js?v=6.1.2" defer></script>
+</body>
+</html>

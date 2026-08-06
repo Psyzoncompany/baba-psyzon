@@ -7588,8 +7588,9 @@
       ));
     els.historyCountLabel.textContent = `${finished.length} salvos`;
     if (!finished.length) {
+      els.historyDetail.classList.add('baba-empty');
       setHTML(els.historyList, '<div class="baba-empty">Nenhum baba finalizado ainda.</div>');
-      setHTML(els.historyDetail, '<div class="baba-empty">Finalize um baba para consultar os detalhes.</div>');
+      setHTML(els.historyDetail, 'Finalize um baba para consultar os detalhes.');
       return;
     }
 
@@ -7619,7 +7620,8 @@
 
     const selected = finished.find((baba) => baba.id === selectedHistoryId);
     if (selected && !selected.__detailLoaded && window.BabaRepository?.loadBaba) {
-      setHTML(els.historyDetail, '<div class="baba-empty">Carregando placares, times e gols...</div>');
+      els.historyDetail.classList.add('baba-empty');
+      setHTML(els.historyDetail, 'Carregando placares, times e gols...');
       if (!loadingHistoryIds.has(selected.id)) {
         loadingHistoryIds.add(selected.id);
         window.BabaRepository.loadBaba(selected.id)
@@ -7633,6 +7635,7 @@
 
   function renderHistoryDetail(baba) {
     if (!baba) return;
+    els.historyDetail.classList.remove('baba-empty');
     els.historyDetailLabel.textContent = baba.dataCompleta;
     const championNames = baba.campeaoDoBaba?.nomes?.join(', ') || 'Sem campeão';
     const championPlayerNames = (baba.campeaoDoBaba?.jogadores || []).map((id) => (

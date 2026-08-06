@@ -1255,6 +1255,10 @@ body.baba-player-mode .baba-organizer-fab {
   width: 100%;
 }
 
+.baba-desktop-nav-item {
+  display: none;
+}
+
 .baba-more-menu {
   position: absolute;
   z-index: var(--z-dropdown);
@@ -6361,6 +6365,73 @@ button.baba-history-item.active {
   .baba-standings-table.is-manual .baba-table__row {
     grid-template-columns: 3rem minmax(10rem, 1.7fr) repeat(5, minmax(3rem, .55fr));
   }
+
+  .baba-standings-table {
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    background: var(--surface-glass-strong);
+  }
+
+  .baba-standings-table .baba-table__row {
+    min-height: 4rem;
+    gap: 0;
+    padding: 0 .75rem;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    background: var(--surface-glass-strong);
+    box-shadow: none;
+    transform: none;
+  }
+
+  .baba-standings-table .baba-table__row + .baba-table__row {
+    border-top: 1px solid var(--border-soft);
+  }
+
+  .baba-standings-table .baba-table__row[data-team-number]:hover {
+    border-color: transparent;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .baba-standings-table .baba-table__head {
+    min-height: 2.75rem;
+    background: var(--surface-subtle);
+  }
+
+  .baba-standings-table .baba-table__head > span:nth-child(n + 3),
+  .baba-standings-table .baba-standings-stat {
+    border-left: 1px solid var(--border-soft);
+  }
+
+  .baba-standings-table .baba-table__head > span:nth-child(n + 3) {
+    height: 1.5rem;
+    padding-left: .75rem;
+  }
+
+  .baba-standings-table .baba-position-label,
+  .baba-standings-table .baba-standings-team {
+    padding-right: .75rem;
+  }
+
+  .baba-standings-table .baba-standings-stat {
+    min-height: 4rem;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .baba-standings-table .baba-standings-stat--points {
+    color: var(--team-color-dark);
+    background: transparent;
+  }
+
+  .baba-standings-table .baba-position-badge {
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radius-xs);
+  }
 }
 
 @media (max-width: 560px) {
@@ -6525,50 +6596,65 @@ button.baba-history-item.active {
 }
 
 .baba-history-hero {
-  display: flex;
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 1.25rem;
-  border: 1px solid rgba(132, 196, 184, .22);
-  border-radius: 1.25rem;
-  color: #f8fafc;
-  background:
-    radial-gradient(circle at 90% 0%, rgba(211, 239, 102, .22), transparent 34%),
-    linear-gradient(135deg, #052c36, #0b5960);
-  box-shadow: 0 16px 34px rgba(4, 49, 58, .18);
+  gap: 1.5rem;
+  padding: 1.35rem 1.5rem;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  background: var(--surface-glass-strong);
+  box-shadow: var(--shadow-xs);
+}
+
+.baba-history-hero::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: .3rem;
+  background: var(--color-primary);
+  content: "";
 }
 
 .baba-history-hero h3 {
-  margin: .25rem 0;
-  color: #fff;
-  font-size: clamp(1.25rem, 3vw, 1.8rem);
+  margin: .1rem 0;
+  color: var(--color-text);
+  font-size: clamp(1.25rem, 3vw, 1.65rem);
 }
 
 .baba-history-hero p,
 .baba-history-hero small {
   margin: 0;
-  color: rgba(235, 248, 246, .75);
+  color: var(--color-text-muted);
 }
 
 .baba-history-kpis {
   display: grid;
   grid-template-columns: repeat(3, minmax(4.4rem, 1fr));
-  gap: .55rem;
+  gap: 0;
+  padding: .35rem;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--surface-subtle);
 }
 
 .baba-history-kpis span {
   display: grid;
   gap: .08rem;
-  padding: .65rem .8rem;
-  border: 1px solid rgba(255, 255, 255, .12);
-  border-radius: .85rem;
+  min-width: 4.8rem;
+  padding: .55rem .8rem;
   text-align: center;
-  background: rgba(255, 255, 255, .08);
+}
+
+.baba-history-kpis span + span {
+  border-left: 1px solid var(--border-soft);
 }
 
 .baba-history-kpis b {
-  color: #d3ef66;
+  color: var(--color-primary);
   font-size: 1.15rem;
 }
 
@@ -6714,7 +6800,7 @@ button.baba-history-item.active {
 
   .baba-history-hero {
     align-items: stretch;
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .baba-history-teams {

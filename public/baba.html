@@ -14,10 +14,10 @@
   <meta name="theme-color" content="#f4f8fc">
   <title>Baba Psyzon</title>
   <link href="apple-ui-font.css?v=20260723-1" rel="stylesheet">
-  <link href="baba-ui.css?v=20260805-baba-management-3" rel="stylesheet">
-  <link href="theme-system.css?v=20260806-theme-2" rel="stylesheet">
+  <link href="baba-ui.css?v=20260806-baba-visual-1" rel="stylesheet">
+  <link href="theme-system.css?v=20260806-theme-3" rel="stylesheet">
   <script src="vendor/lucide.min.js?v=1.29.0" defer></script>
-  <script src="theme-provider.js?v=20260806-theme-2"></script>
+  <script src="theme-provider.js?v=20260806-theme-3"></script>
   <script>
     window.BABA_AI_ENDPOINT = window.BABA_AI_ENDPOINT || '/api/baba-import/analyze';
     if (window.location.protocol !== 'file:') {
@@ -264,6 +264,12 @@
       <button type="button" data-tab="table"><i class="baba-tab-icon" data-lucide="table-2"></i><span>Tabela</span></button>
       <button type="button" data-tab="ranking"><i class="baba-tab-icon" data-lucide="chart-no-axes-column-increasing"></i><span>Ranking</span></button>
       <button type="button" data-tab="history"><i class="baba-tab-icon" data-lucide="history"></i><span>Histórico</span></button>
+      <button class="baba-desktop-nav-item" type="button" data-tab="teams"><i class="baba-tab-icon" data-lucide="users"></i><span>Times</span></button>
+      <button class="baba-desktop-nav-item" type="button" data-tab="goals"><i class="baba-tab-icon" data-lucide="target"></i><span>Metas</span></button>
+      <button class="baba-desktop-nav-item organizer-only" type="button" data-tab="organizer"><i class="baba-tab-icon" data-lucide="shield-check"></i><span>Organizador</span></button>
+      <a class="baba-desktop-nav-item baba-desktop-nav-item--utility" href="baba-aparencia.html"><i class="baba-tab-icon" data-lucide="palette"></i><span>Aparência</span></a>
+      <button class="baba-desktop-nav-item" type="button" data-action="reset-mode"><i class="baba-tab-icon" data-lucide="refresh-cw"></i><span>Trocar acesso</span></button>
+      <button class="baba-desktop-nav-item baba-desktop-nav-item--danger" type="button" data-action="logout"><i class="baba-tab-icon" data-lucide="log-out"></i><span>Sair</span></button>
       <div class="baba-more-nav">
         <button id="baba-more-toggle" type="button" aria-haspopup="true" aria-controls="baba-more-menu" aria-expanded="false">
           <i class="baba-tab-icon" data-lucide="ellipsis"></i><span>Mais</span>
@@ -273,7 +279,7 @@
           <button type="button" data-tab="teams" role="menuitem"><i class="baba-tab-icon" data-lucide="users"></i><span>Times</span></button>
           <button type="button" data-tab="goals" role="menuitem"><i class="baba-tab-icon" data-lucide="target"></i><span>Metas</span></button>
           <button class="organizer-only" type="button" data-tab="organizer" role="menuitem"><i class="baba-tab-icon" data-lucide="shield-check"></i><span>Organizador</span></button>
-          <a href="configuracoes.html#appearance-title" role="menuitem"><i class="baba-tab-icon" data-lucide="palette"></i><span>Aparência</span></a>
+          <a href="baba-aparencia.html" role="menuitem"><i class="baba-tab-icon" data-lucide="palette"></i><span>Aparência</span></a>
           <button type="button" data-action="reset-mode" role="menuitem"><i class="baba-tab-icon" data-lucide="refresh-cw"></i><span>Trocar acesso</span></button>
           <button type="button" data-action="logout" role="menuitem"><i class="baba-tab-icon" data-lucide="log-out"></i><span>Sair</span></button>
         </div>
@@ -1441,7 +1447,7 @@
   <script src="pdf-report.js?v=20260805-baba-management-5"></script>
   <script src="baba-management-core.js?v=20260805-baba-management-5"></script>
   <script src="baba.js?v=20260805-baba-management-5" defer></script>
-  <script src="site-version.js?v=6.1.1" defer></script>
+  <script src="site-version.js?v=6.1.2" defer></script>
 </body>
 
 </html>

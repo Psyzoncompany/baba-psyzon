@@ -41,7 +41,7 @@ test('tokens cobrem o tema minimalista em claro e escuro sem glassmorphism', () 
 });
 
 test('Aparencia oferece todos os controles e os modulos carregam o provedor', () => {
-  const settings = read('configuracoes.html');
+  const settings = read('baba-aparencia.html');
   assert.match(settings, /data-theme-settings/);
   assert.doesNotMatch(settings, /Glassmorphism/);
   assert.match(settings, /value="system"/);
@@ -49,10 +49,11 @@ test('Aparencia oferece todos os controles e os modulos carregam o provedor', ()
   assert.match(settings, /value="comfortable"/);
   assert.match(settings, /value="reduced"/);
   assert.match(settings, /Português \(Brasil\)/);
-  assert.match(read('baba.html'), /configuracoes\.html#appearance-title/);
+  assert.match(read('baba.html'), /baba-aparencia\.html/);
+  assert.doesNotMatch(read('configuracoes.html'), /data-theme-settings/);
 
   [
-    'baba.html', 'index.html', 'central.html', 'clientes.html', 'configuracoes.html',
+    'baba.html', 'baba-aparencia.html', 'index.html', 'central.html', 'clientes.html', 'configuracoes.html',
     'contas.html', 'historico.html', 'HistoricoPedidos.html', 'investimentos.html',
     'login.html', 'mesa-tatica.html', 'processos.html', 'relatorios.html', 'versoes.html',
   ].forEach((file) => {
@@ -71,4 +72,15 @@ test('carregamento visual evita observadores e prefetch em massa', () => {
   assert.doesNotMatch(preloader, /warmAll|SITE_PAGES|ui-liquid\.css|theme-toggle\.js/);
   assert.match(preloader, /mouseover/);
   assert.match(preloader, /touchstart/);
+});
+
+test('desktop exibe navegacao completa e historico remove o estado vazio', () => {
+  const html = read('baba.html');
+  const app = read('baba.js');
+  const css = read('theme-system.css');
+  assert.match(html, /baba-desktop-nav-item[^>]*data-tab="teams"/);
+  assert.match(html, /baba-desktop-nav-item[^>]*data-tab="goals"/);
+  assert.match(css, /body\.baba-app-mode \.baba-more-nav \{ display: none !important; \}/);
+  assert.match(app, /historyDetail\.classList\.remove\('baba-empty'\)/);
+  assert.match(read('baba-ui.css'), /\.baba-standings-table \{[\s\S]*gap: 0;/);
 });
