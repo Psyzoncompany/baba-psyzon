@@ -17,9 +17,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
   <link href="apple-ui-font.css?v=20260723-1" rel="stylesheet">
 <link href="style.css" rel="stylesheet">
-<link href="theme-system.css?v=20260806-theme-1" rel="stylesheet">
-<script src="vendor/lucide.min.js?v=1.29.0"></script>
-<script src="theme-provider.js?v=20260806-theme-1"></script>
+<link href="theme-system.css?v=20260806-theme-2" rel="stylesheet">
+<script src="vendor/lucide.min.js?v=1.29.0" defer></script>
+<script src="theme-provider.js?v=20260806-theme-2"></script>
     <style>
         body {
             font-family: var(--font-site, "Baba Apple UI", sans-serif);
@@ -40,18 +40,18 @@
         }
 
         .bg-login {
-            background:
-                radial-gradient(1100px 500px at 10% -10%, rgba(6, 182, 212, 0.18), transparent 60%),
-                radial-gradient(800px 450px at 100% 0%, rgba(59, 130, 246, 0.2), transparent 55%),
-                linear-gradient(160deg, #020617 0%, #0b1220 45%, #111827 100%);
+            background: var(--background);
         }
 
         .glass-pro {
-            background: linear-gradient(160deg, rgba(15, 23, 42, .82), rgba(17, 24, 39, .62));
-            border: 1px solid rgba(148, 163, 184, 0.25);
-            box-shadow: 0 30px 80px rgba(2, 6, 23, .55);
-            backdrop-filter: blur(14px);
+            color: var(--text);
+            background: var(--card);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-card-token);
+            backdrop-filter: none;
         }
+
+        .glass-pro .text-white { color: var(--text) !important; }
     </style>
 </head>
 
@@ -252,8 +252,7 @@
         });
 
     </script>
-    <script src="theme-toggle.js"></script>
-    <script src="site-preloader.js?v=6.1.0" defer></script>
+    <script src="site-preloader.js?v=6.1.1" defer></script>
 </body>
 
 </html>

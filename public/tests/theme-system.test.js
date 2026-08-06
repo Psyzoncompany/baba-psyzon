@@ -9,7 +9,6 @@ const read = (file) => fs.readFileSync(path.join(publicRoot, file), 'utf8');
 test('ThemeProvider persiste preferencias e usa o modo do sistema', () => {
   const provider = read('theme-provider.js');
   assert.match(provider, /psyzon_ui_preferences_v1/);
-  assert.match(provider, /theme: 'minimal'/);
   assert.match(provider, /mode: 'system'/);
   assert.match(provider, /density: 'normal'/);
   assert.match(provider, /radius: 'medium'/);
@@ -19,8 +18,9 @@ test('ThemeProvider persiste preferencias e usa o modo do sistema', () => {
   assert.match(provider, /psyzon-theme-change/);
 });
 
-test('tokens cobrem temas minimalista e glass em claro e escuro', () => {
+test('tokens cobrem o tema minimalista em claro e escuro sem glassmorphism', () => {
   const css = read('theme-system.css');
+  const provider = read('theme-provider.js');
   [
     '--primary: #2563eb',
     '--background: #f8fafc',
@@ -32,17 +32,18 @@ test('tokens cobrem temas minimalista e glass em claro e escuro', () => {
     '--danger: #dc2626',
   ].forEach((token) => assert.match(css, new RegExp(token)));
   assert.match(css, /data-color-mode="dark"/);
-  assert.match(css, /data-theme="glass"\]\[data-color-mode="light"/);
-  assert.match(css, /data-theme="glass"\]\[data-color-mode="dark"/);
+  assert.doesNotMatch(css, /data-theme="glass"/);
+  assert.doesNotMatch(provider, /MutationObserver/);
   assert.match(css, /fonts\/InterVariable\.woff2/);
   assert.match(css, /--control-height: 44px/);
+  assert.match(css, /body\.baba-app-mode \.baba-tabs \{[\s\S]*display: flex !important/);
+  assert.match(css, /\.baba-organizer-intro[\s\S]*background: var\(--card\) !important/);
 });
 
 test('Aparencia oferece todos os controles e os modulos carregam o provedor', () => {
   const settings = read('configuracoes.html');
   assert.match(settings, /data-theme-settings/);
-  assert.match(settings, /Minimalista/);
-  assert.match(settings, /Glassmorphism/);
+  assert.doesNotMatch(settings, /Glassmorphism/);
   assert.match(settings, /value="system"/);
   assert.match(settings, /value="compact"/);
   assert.match(settings, /value="comfortable"/);
@@ -59,5 +60,15 @@ test('Aparencia oferece todos os controles e os modulos carregam o provedor', ()
     assert.match(html, /theme-system\.css/, `${file} precisa carregar os tokens`);
     assert.match(html, /theme-provider\.js/, `${file} precisa carregar o ThemeProvider`);
     assert.match(html, /vendor\/lucide\.min\.js/, `${file} precisa carregar Lucide`);
+    assert.match(html, /vendor\/lucide\.min\.js[^>]* defer/, `${file} precisa carregar Lucide sem bloquear a pagina`);
   });
+});
+
+test('carregamento visual evita observadores e prefetch em massa', () => {
+  const provider = read('theme-provider.js');
+  const preloader = read('site-preloader.js');
+  assert.doesNotMatch(provider, /MutationObserver/);
+  assert.doesNotMatch(preloader, /warmAll|SITE_PAGES|ui-liquid\.css|theme-toggle\.js/);
+  assert.match(preloader, /mouseover/);
+  assert.match(preloader, /touchstart/);
 });

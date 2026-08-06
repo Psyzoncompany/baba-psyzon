@@ -1,5 +1,5 @@
 (() => {
-  const SITE_VERSION = '6.1.0';
+  const SITE_VERSION = '6.1.1';
   const scriptUrl = new URL(document.currentScript?.src || 'site-version.js', window.location.href);
   const versionsUrl = new URL('versoes.html', scriptUrl);
 

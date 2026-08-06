@@ -4,7 +4,6 @@
   const STORAGE_KEY = 'psyzon_ui_preferences_v1';
   const LEGACY_BABA_THEME_KEY = 'psyzon_baba_theme';
   const DEFAULTS = Object.freeze({
-    theme: 'minimal',
     mode: 'system',
     density: 'normal',
     radius: 'medium',
@@ -12,7 +11,6 @@
     language: 'pt-BR',
   });
   const OPTIONS = Object.freeze({
-    theme: new Set(['minimal', 'glass']),
     mode: new Set(['system', 'light', 'dark']),
     density: new Set(['compact', 'normal', 'comfortable']),
     radius: new Set(['small', 'medium', 'large']),
@@ -55,7 +53,7 @@
   function apply({ announce = false } = {}) {
     const root = document.documentElement;
     const colorMode = resolvedMode();
-    root.dataset.theme = preferences.theme;
+    root.dataset.theme = 'minimal';
     root.dataset.colorMode = colorMode;
     root.dataset.density = preferences.density;
     root.dataset.radius = preferences.radius;
@@ -136,13 +134,6 @@
     apply();
     wireSettings();
     renderIcons();
-    const observer = new MutationObserver((mutations) => {
-      const needsIcons = mutations.some((mutation) => Array.from(mutation.addedNodes).some((node) => (
-        node.nodeType === 1 && (node.matches?.('[data-lucide]') || node.querySelector?.('[data-lucide]'))
-      )));
-      if (needsIcons) renderIcons();
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
   }
 
   window.ThemeProvider = Object.freeze({

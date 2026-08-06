@@ -119,30 +119,6 @@
   --shadow-elevated-token: 0 18px 46px rgba(0, 0, 0, .38);
 }
 
-:root[data-theme="glass"][data-color-mode="light"] {
-  --background: #edf4fb;
-  --card: rgba(255, 255, 255, .72);
-  --secondary: rgba(255, 255, 255, .82);
-  --border: rgba(255, 255, 255, .8);
-  --text: #10243f;
-  --text-secondary: #5f7189;
-  --surface-subtle-token: rgba(242, 247, 252, .76);
-  --surface-muted-token: rgba(231, 239, 247, .7);
-  --shadow-card-token: 0 14px 34px rgba(33, 63, 96, .12), inset 0 1px 0 rgba(255, 255, 255, .88);
-}
-
-:root[data-theme="glass"][data-color-mode="dark"] {
-  --background: #07111d;
-  --card: rgba(18, 33, 49, .76);
-  --secondary: rgba(24, 43, 61, .86);
-  --border: rgba(177, 205, 229, .16);
-  --text: #f8fafc;
-  --text-secondary: #b5c2d0;
-  --surface-subtle-token: rgba(24, 47, 67, .78);
-  --surface-muted-token: rgba(30, 55, 76, .76);
-  --shadow-card-token: 0 16px 40px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(255, 255, 255, .06);
-}
-
 :root[data-density="compact"] { --density-space: 12px; --control-height: 40px; }
 :root[data-density="comfortable"] { --density-space: 24px; --control-height: 48px; }
 :root[data-radius="small"] { --component-radius: 6px; --card-radius: 8px; }
@@ -182,15 +158,6 @@ h1, h2, h3, h4, h5, h6, strong, b { color: inherit; letter-spacing: 0 !important
   backdrop-filter: none !important;
 }
 :root[data-theme="minimal"] :is(.glass-card, .glass-card-fullscreen, .glass-surface, .card, .panel, .widget, .box)::before { content: none !important; }
-:root[data-theme="glass"] :is(.glass-card, .glass-surface, .card--glass, .baba-card, .baba-topbar, .baba-modal__panel) {
-  border-color: var(--border) !important;
-  color: var(--text) !important;
-  background: var(--card) !important;
-  box-shadow: var(--shadow-card-token) !important;
-  -webkit-backdrop-filter: blur(22px) saturate(135%) !important;
-  backdrop-filter: blur(22px) saturate(135%) !important;
-}
-
 button, .btn, .button, a.button, .btn-shine, .glass-button,
 .baba-btn, .baba-primary, .baba-secondary, .baba-mini-btn, .baba-export-btn,
 .baba-manage-button, .baba-backup-btn, .baba-draw-button, .baba-live-main-btn,
@@ -243,6 +210,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary) !import
 input::placeholder, textarea::placeholder { color: var(--text-secondary) !important; opacity: .78; }
 
 :is(.desktop-topbar, .baba-topbar) { background: var(--card) !important; }
+.baba-online-pill,
+.baba-sync-strip,
+.baba-more-menu { border-color: var(--border) !important; background: var(--card) !important; box-shadow: var(--shadow-card-token) !important; backdrop-filter: none !important; }
 .desktop-topbar { top: 0 !important; padding: 0 !important; border-bottom: 1px solid var(--border); }
 .desktop-topbar-inner {
   min-height: 64px !important;
@@ -310,6 +280,59 @@ tbody tr:hover, .baba-table__row:hover { background: color-mix(in srgb, var(--pr
 .tactical-page .tactical-tool:hover { color: var(--text) !important; border-color: color-mix(in srgb, var(--primary) 35%, var(--border)) !important; }
 .tactical-page .tactical-tool[aria-pressed="true"] { color: var(--primary) !important; border-color: var(--primary) !important; background: color-mix(in srgb, var(--primary) 8%, var(--card)) !important; }
 
+/* Solid surfaces for modules that still expose legacy visual class names. */
+:root[data-theme="minimal"] :is(.btn-shine, [class*="bg-gradient-"])::before { display: none !important; }
+:root[data-theme="minimal"] [class*="bg-gradient-"] { background-image: none !important; }
+:root[data-theme="minimal"] :is(
+  .baba-choice--organizer, .baba-choice--player, .baba-choice--tactical, .baba-hero,
+  .baba-organizer-intro, .baba-draw-overlay__panel, .baba-history-team,
+  .baba-manual-team-card, .baba-draw-status-bar, .baba-draw-progress,
+  .baba-draw-ready, .baba-draw-results
+) {
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+  background: var(--card) !important;
+  background-image: none !important;
+  box-shadow: var(--shadow-card-token) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+:root[data-theme="minimal"] :is(.baba-tabs > button, .baba-more-nav > button):hover,
+:root[data-theme="minimal"] :is(.baba-tabs > button, .baba-more-nav > button).active {
+  border-color: color-mix(in srgb, var(--primary) 18%, var(--border)) !important;
+  color: var(--primary) !important;
+  background: color-mix(in srgb, var(--primary) 8%, var(--card)) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+:root[data-theme="minimal"] :is(.team-pill, .baba-team-link, .baba-team, .baba-queue-list .baba-row:first-child) {
+  background: var(--team-surface-start, var(--surface-subtle-token)) !important;
+  background-image: none !important;
+}
+:root[data-theme="minimal"] .baba-choice--tactical .baba-choice-icon { background: var(--color-info-soft) !important; }
+:root[data-theme="minimal"] .baba-google-access,
+:root[data-theme="minimal"] .baba-timer { background: var(--primary) !important; background-image: none !important; }
+:root[data-theme="minimal"] .baba-table__row.is-last:not(.is-first) { background: var(--color-danger-soft) !important; }
+:root[data-theme="minimal"] .baba-organizer-intro > div:first-child > span { color: var(--primary) !important; letter-spacing: 0 !important; }
+:root[data-theme="minimal"] .baba-organizer-intro h1 { color: var(--text) !important; }
+:root[data-theme="minimal"] .baba-organizer-intro p { color: var(--text-secondary) !important; }
+:root[data-theme="minimal"] .baba-organizer-intro__badge {
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+  background: var(--surface-subtle-token) !important;
+}
+:root[data-theme="minimal"] .baba-organizer-intro__badge i { background: var(--success) !important; }
+:root[data-theme="minimal"] .baba-goal-celebration__card {
+  background: color-mix(in srgb, var(--team-color, var(--primary)) 44%, #0f172a) !important;
+  background-image: none !important;
+}
+:root[data-theme="minimal"] .baba-skeleton { background: var(--surface-muted-token) !important; background-image: none !important; }
+:root[data-theme="minimal"] .baba-history-item__date,
+:root[data-theme="minimal"] .baba-history-hero { color: #fff !important; background: var(--primary) !important; background-image: none !important; box-shadow: none !important; }
+:root[data-theme="minimal"] :is(#force-logout-all-btn, #clear-data-btn) { color: #fff !important; background: var(--danger) !important; background-image: none !important; }
+:root[data-theme="minimal"] :is(.brand-icon, .stat-icon, .progress-fill, .btn-primary) { background: var(--primary) !important; background-image: none !important; }
+:root[data-theme="minimal"] .tactical-page .tactical-court-frame { background: #166534 !important; background-image: none !important; }
+
 .lucide { width: 20px; height: 20px; flex: 0 0 auto; stroke: currentColor; }
 .baba-more-menu a { display: flex; min-height: 42px; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; color: var(--text-secondary); font-size: .82rem; font-weight: 600; text-decoration: none; }
 .baba-more-menu a:hover { color: var(--text); background: var(--secondary-hover); }
@@ -330,6 +353,7 @@ tbody tr:hover, .baba-table__row:hover { background: color-mix(in srgb, var(--pr
 
 @media (min-width: 1100px) {
   body.baba-app-mode .baba-tabs {
+    display: flex !important;
     position: fixed !important;
     z-index: 850;
     top: 88px;
@@ -337,21 +361,23 @@ tbody tr:hover, .baba-table__row:hover { background: color-mix(in srgb, var(--pr
     left: 16px;
     width: 212px;
     max-width: none;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: flex-start;
+    grid-template-columns: none !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
     gap: 4px;
     padding: 12px;
     border: 1px solid var(--border) !important;
     border-radius: var(--card-radius) !important;
     background: var(--card) !important;
     box-shadow: var(--shadow-card-token) !important;
+    overflow: visible !important;
   }
   body.baba-app-mode .baba-tabs > button,
-  body.baba-app-mode .baba-more-nav > button { width: 100%; min-height: 44px; justify-content: flex-start; border: 0 !important; border-radius: 8px !important; color: var(--text-secondary) !important; background: transparent !important; box-shadow: none !important; }
+  body.baba-app-mode .baba-more-nav > button { display: flex !important; width: 100%; min-height: 44px; flex: 0 0 auto; justify-content: flex-start; border: 0 !important; border-radius: 8px !important; color: var(--text-secondary) !important; background: transparent !important; box-shadow: none !important; }
   body.baba-app-mode .baba-tabs > button.active { position: relative; color: var(--primary) !important; background: color-mix(in srgb, var(--primary) 8%, var(--card)) !important; }
   body.baba-app-mode .baba-tabs > button.active::before { content: ""; position: absolute; top: 9px; bottom: 9px; left: -8px; width: 3px; border-radius: 3px; background: var(--primary); }
-  body.baba-app-mode .baba-more-nav { width: 100%; }
+  body.baba-app-mode .baba-more-nav { display: block !important; width: 100%; flex: 0 0 auto; }
   body.baba-app-mode .baba-more-menu { left: calc(100% + 8px); bottom: 0; width: 210px; }
   body.baba-app-mode .baba-shell { width: auto; max-width: none; margin-left: 240px; padding-right: 24px; }
 }
