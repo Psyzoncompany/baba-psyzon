@@ -287,6 +287,62 @@
     });
   }
 
+  function reportIconKind(label, index = 0) {
+    const text = cleanText(label).toLowerCase();
+    if (/desativ|exclu|cancel/.test(text)) return 'disabled';
+    if (/pendent|derrota|alert/.test(text)) return 'pending';
+    if (/esper|valor|saldo|finance/.test(text)) return 'wallet';
+    if (/pag|vit[oó]ria|confirm|jogador|goleiro|ranking/.test(text)) return 'check';
+    return index === 0 ? 'check' : 'wallet';
+  }
+
+  function drawCompactReportHeader(doc, report, margin, pageWidth, headerY = 10) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.8);
+    setColor(doc, 'setTextColor', COLORS.emerald);
+    doc.text(cleanText(report.eyebrow || report.brand || 'Baba Psyzon').toUpperCase(), margin, headerY);
+    doc.setFontSize(16);
+    setColor(doc, 'setTextColor', COLORS.text);
+    doc.text(cleanText(report.title), margin, headerY + 8);
+    doc.setFontSize(7.2);
+    doc.setFont('helvetica', 'normal');
+    setColor(doc, 'setTextColor', COLORS.muted);
+    doc.text(
+      `${cleanText(report.subtitle)} - gerado em ${cleanText(report.generatedAt || new Date().toLocaleString('pt-BR'))}`,
+      margin,
+      headerY + 14,
+    );
+    setColor(doc, 'setDrawColor', [210, 225, 238]);
+    doc.setLineWidth(.45);
+    doc.line(margin, headerY + 17, pageWidth - margin, headerY + 17);
+    return headerY + 20;
+  }
+
+  function drawCompactReportSummary(doc, report, margin, contentWidth, summaryY, maxItems = 4) {
+    const items = (report.summary || []).slice(0, maxItems);
+    if (!items.length) return summaryY;
+    const summaryGap = 2.6;
+    const cardWidth = (contentWidth - (summaryGap * Math.max(0, items.length - 1))) / items.length;
+    const cardHeight = 15.5;
+    items.forEach((item, index) => {
+      const x = margin + (index * (cardWidth + summaryGap));
+      setColor(doc, 'setFillColor', [251, 253, 255]);
+      setColor(doc, 'setDrawColor', [211, 224, 238]);
+      doc.setLineWidth(.5);
+      doc.roundedRect(x, summaryY, cardWidth, cardHeight, 2.5, 2.5, 'FD');
+      const label = cleanText(item?.[0]);
+      drawPaymentIcon(doc, x + 3.2, summaryY + 3.5, reportIconKind(label, index));
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.2);
+      setColor(doc, 'setTextColor', [91, 109, 137]);
+      doc.text(doc.splitTextToSize(label.toUpperCase(), cardWidth - 17)[0] || '-', x + 14.2, summaryY + 6.1);
+      doc.setFontSize(9.8);
+      setColor(doc, 'setTextColor', [25, 38, 60]);
+      doc.text(doc.splitTextToSize(cleanText(item?.[1]), cardWidth - 17)[0] || '-', x + 14.2, summaryY + 11.7);
+    });
+    return summaryY + cardHeight;
+  }
+
   function createPaymentReport(report, JsPdf) {
     const doc = new JsPdf({
       orientation: 'landscape',
@@ -310,53 +366,11 @@
     });
     doc.setLanguage?.('pt-BR');
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.8);
-    setColor(doc, 'setTextColor', COLORS.emerald);
-    doc.text(cleanText(report.eyebrow || report.brand || 'Baba Psyzon').toUpperCase(), margin, headerY);
-    doc.setFontSize(16);
-    setColor(doc, 'setTextColor', COLORS.text);
-    doc.text(cleanText(report.title), margin, headerY + 8);
-    doc.setFontSize(7.2);
-    doc.setFont('helvetica', 'normal');
-    setColor(doc, 'setTextColor', COLORS.muted);
-    doc.text(
-      `${cleanText(report.subtitle)} - gerado em ${cleanText(report.generatedAt || new Date().toLocaleString('pt-BR'))}`,
-      margin,
-      headerY + 14,
-    );
-    setColor(doc, 'setDrawColor', [210, 225, 238]);
-    doc.setLineWidth(.45);
-    doc.line(margin, headerY + 17, pageWidth - margin, headerY + 17);
-
-    const summaryY = headerY + 20;
-    const summaryGap = 2.6;
-    const cardWidth = (contentWidth - (summaryGap * 3)) / 4;
-    const cardHeight = 15.5;
-    (report.summary || []).slice(0, 4).forEach((item, index) => {
-      const x = margin + (index * (cardWidth + summaryGap));
-      setColor(doc, 'setFillColor', [251, 253, 255]);
-      setColor(doc, 'setDrawColor', [211, 224, 238]);
-      doc.setLineWidth(.5);
-      doc.roundedRect(x, summaryY, cardWidth, cardHeight, 2.5, 2.5, 'FD');
-      const label = cleanText(item?.[0]);
-      drawPaymentIcon(
-        doc,
-        x + 3.2,
-        summaryY + 3.5,
-        /pend/i.test(label) ? 'pending' : (/esper/i.test(label) ? 'wallet' : 'check'),
-      );
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(6.2);
-      setColor(doc, 'setTextColor', [91, 109, 137]);
-      doc.text(label.toUpperCase(), x + 14.2, summaryY + 6.1);
-      doc.setFontSize(9.8);
-      setColor(doc, 'setTextColor', [25, 38, 60]);
-      doc.text(cleanText(item?.[1]), x + 14.2, summaryY + 11.7);
-    });
+    const summaryY = drawCompactReportHeader(doc, report, margin, pageWidth, headerY);
+    const summaryBottom = drawCompactReportSummary(doc, report, margin, contentWidth, summaryY, 4);
 
     const sections = (report.sections || []).slice(0, 4);
-    const sectionTop = summaryY + cardHeight + 2.4;
+    const sectionTop = summaryBottom + 2.4;
     const sectionGap = 2.6;
     const footerY = pageHeight - 10.5;
     const tableBottom = footerY - 4;
@@ -393,14 +407,7 @@
       setColor(doc, 'setFillColor', [247, 250, 253]);
       doc.roundedRect(x + .3, y + .3, sectionWidth - .6, headerHeight, 2.5, 2.5, 'F');
       const sectionLabel = `${cleanText(section.icon)} ${cleanText(section.title)}`;
-      drawPaymentIcon(
-        doc,
-        x + 3.2,
-        y + 2.3,
-        /desativ|user-x/i.test(sectionLabel)
-          ? 'disabled'
-          : (sectionIndex === 0 ? 'check' : (sectionIndex === 1 ? 'pending' : 'wallet')),
-      );
+      drawPaymentIcon(doc, x + 3.2, y + 2.3, reportIconKind(sectionLabel, sectionIndex));
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.6);
       setColor(doc, 'setTextColor', [26, 37, 57]);
@@ -503,7 +510,7 @@
     });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 10;
+    const margin = 14;
     const contentWidth = pageWidth - (margin * 2);
 
     doc.setProperties({
@@ -515,54 +522,12 @@
     });
     doc.setLanguage?.('pt-BR');
 
-    setColor(doc, 'setFillColor', [3, 19, 29]);
-    doc.roundedRect(margin, 8, contentWidth, 35, 3.5, 3.5, 'F');
-    setColor(doc, 'setDrawColor', [184, 164, 111]);
-    doc.setLineWidth(.8);
-    doc.line(margin + 1, 9, margin + contentWidth - 1, 9);
-    setColor(doc, 'setFillColor', [18, 74, 75]);
-    doc.circle(pageWidth - margin - 20, 25, 22, 'F');
-    setColor(doc, 'setDrawColor', [205, 230, 88]);
-    doc.setLineWidth(.8);
-    doc.roundedRect(pageWidth - margin - 47, 14, 31, 21, 2.5, 2.5, 'S');
-    doc.line(pageWidth - margin - 47, 21, pageWidth - margin - 16, 21);
-    doc.line(pageWidth - margin - 37, 14, pageWidth - margin - 37, 35);
-    doc.line(pageWidth - margin - 27, 14, pageWidth - margin - 27, 35);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.2);
-    setColor(doc, 'setTextColor', [205, 230, 88]);
-    doc.text(cleanText(report.eyebrow || report.brand || 'Baba Psyzon').toUpperCase(), margin + 6, 17);
-    doc.setFontSize(18);
-    setColor(doc, 'setTextColor', COLORS.white);
-    doc.text(cleanText(report.title), margin + 6, 28);
-    doc.setFontSize(7.5);
-    setColor(doc, 'setTextColor', [218, 226, 232]);
-    doc.text(`${cleanText(report.subtitle)} - gerado em ${cleanText(report.generatedAt)}`, margin + 6, 35);
-
-    const summaries = (report.summary || []).slice(0, 5);
-    const summaryGap = 2.2;
-    const summaryTop = 46;
-    const summaryHeight = 14;
-    const summaryWidth = (contentWidth - (summaryGap * Math.max(0, summaries.length - 1))) / Math.max(1, summaries.length);
-    summaries.forEach((item, index) => {
-      const x = margin + (index * (summaryWidth + summaryGap));
-      setColor(doc, 'setFillColor', [248, 251, 253]);
-      setColor(doc, 'setDrawColor', [210, 225, 238]);
-      doc.setLineWidth(.4);
-      doc.roundedRect(x, summaryTop, summaryWidth, summaryHeight, 2.3, 2.3, 'FD');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(5.7);
-      setColor(doc, 'setTextColor', COLORS.muted);
-      doc.text(cleanText(item?.[0]).toUpperCase(), x + 4, summaryTop + 5.2);
-      doc.setFontSize(8.5);
-      setColor(doc, 'setTextColor', COLORS.text);
-      doc.text(doc.splitTextToSize(cleanText(item?.[1]), summaryWidth - 8)[0] || '-', x + 4, summaryTop + 10.5);
-    });
+    const summaryTop = drawCompactReportHeader(doc, report, margin, pageWidth, 10);
+    const summaryBottom = drawCompactReportSummary(doc, report, margin, contentWidth, summaryTop, 4);
 
     const sections = (report.sections || []).slice(0, 4);
     const panelGap = 3;
-    const panelTop = 63;
+    const panelTop = summaryBottom + 2.4;
     const footerY = pageHeight - 7;
     const panelWidth = (contentWidth - panelGap) / 2;
     const panelHeight = ((footerY - panelTop - 4) - panelGap) / 2;
@@ -581,19 +546,18 @@
       setColor(doc, 'setDrawColor', [210, 225, 238]);
       doc.setLineWidth(.45);
       doc.roundedRect(x, y, panelWidth, panelHeight, 2.8, 2.8, 'FD');
-      setColor(doc, 'setFillColor', [7, 45, 57]);
+      setColor(doc, 'setFillColor', [247, 250, 253]);
       doc.roundedRect(x + .2, y + .2, panelWidth - .4, 13, 2.6, 2.6, 'F');
-      setColor(doc, 'setFillColor', index === 0 ? [205, 230, 88] : [184, 164, 111]);
-      doc.roundedRect(x + 3, y + 2.3, 5.5, 5.5, 1.4, 1.4, 'F');
+      drawPaymentIcon(doc, x + 3.2, y + 2.3, reportIconKind(`${section.icon} ${section.title}`, index));
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.2);
-      setColor(doc, 'setTextColor', COLORS.white);
-      doc.text(doc.splitTextToSize(cleanText(section.title), panelWidth - 15)[0] || '-', x + 11, y + 5.5);
+      setColor(doc, 'setTextColor', [26, 37, 57]);
+      doc.text(doc.splitTextToSize(cleanText(section.title), panelWidth - 17)[0] || '-', x + 13.5, y + 5.7);
       if (section.note) {
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(5.4);
-        setColor(doc, 'setTextColor', [188, 217, 220]);
-        doc.text(doc.splitTextToSize(cleanText(section.note), panelWidth - 15)[0] || '', x + 11, y + 10);
+        doc.setFontSize(6.2);
+        setColor(doc, 'setTextColor', [91, 109, 137]);
+        doc.text(doc.splitTextToSize(cleanText(section.note), panelWidth - 17)[0] || '', x + 13.5, y + 10.3);
       }
 
       const tableY = y + 14;
@@ -704,100 +668,36 @@
     doc.setLanguage?.('pt-BR');
 
     const drawHero = () => {
-      const heroHeight = 35;
-      setColor(doc, 'setFillColor', [3, 19, 29]);
-      doc.roundedRect(margin, cursorY, contentWidth, heroHeight, 3.5, 3.5, 'F');
-      setColor(doc, 'setDrawColor', [78, 99, 106]);
-      doc.setLineWidth(.65);
-      doc.roundedRect(margin, cursorY, contentWidth, heroHeight, 3.5, 3.5, 'S');
-
-      setColor(doc, 'setFillColor', [17, 35, 40]);
-      setColor(doc, 'setDrawColor', [74, 91, 92]);
-      doc.roundedRect(margin + 5, cursorY + 4.5, 9, 9, 2.2, 2.2, 'FD');
-      setColor(doc, 'setDrawColor', [222, 193, 25]);
-      doc.setLineWidth(.65);
-      doc.roundedRect(margin + 7.6, cursorY + 7.1, 4.4, 3.7, .6, .6, 'S');
-      doc.line(margin + 8.2, cursorY + 7.8, margin + 11.25, cursorY + 7.8);
-
-      setColor(doc, 'setTextColor', [20, 200, 160]);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
-      doc.text(cleanText(report.eyebrow || report.brand || 'Relatório').toUpperCase(), margin + 16, cursorY + 8);
-
-      setColor(doc, 'setTextColor', COLORS.white);
-      doc.setFontSize(16);
-      doc.text(cleanText(report.title), margin + 16, cursorY + 16.5);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.text(doc.splitTextToSize(cleanText(report.subtitle), 145).slice(0, 2), margin + 16, cursorY + 23);
-      doc.setFontSize(7);
-      setColor(doc, 'setTextColor', [190, 210, 226]);
-      doc.text(`Atualizado em ${cleanText(report.generatedAt || new Date().toLocaleString('pt-BR'))}`, margin + 16, cursorY + 31);
-      cursorY += heroHeight + 6;
+      cursorY = drawCompactReportHeader(doc, report, margin, pageWidth, 10);
     };
 
     const drawSummary = () => {
-      const items = Array.isArray(report.summary) ? report.summary : [];
-      if (!items.length) return;
-      const columns = Math.min(6, Math.max(1, items.length));
-      const gap = 3;
-      const cardWidth = (contentWidth - (gap * (columns - 1))) / columns;
-      const cardHeight = 16;
-
-      items.forEach((item, index) => {
-        if (index > 0 && index % columns === 0) cursorY += cardHeight + gap;
-        const column = index % columns;
-        const x = margin + (column * (cardWidth + gap));
-        setColor(doc, 'setFillColor', COLORS.surface);
-        setColor(doc, 'setDrawColor', COLORS.line);
-        doc.setLineWidth(.25);
-        doc.roundedRect(x, cursorY, cardWidth, cardHeight, 2.5, 2.5, 'FD');
-        setColor(doc, 'setFillColor', index === 1 ? COLORS.emerald : COLORS.navySoft);
-        doc.roundedRect(x, cursorY, 2.2, cardHeight, 1.1, 1.1, 'F');
-
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(6.7);
-        setColor(doc, 'setTextColor', COLORS.muted);
-        doc.text(cleanText(item?.[0]).toUpperCase(), x + 5, cursorY + 5.5);
-
-        doc.setFontSize(9.5);
-        setColor(doc, 'setTextColor', COLORS.text);
-        const valueLines = doc.splitTextToSize(cleanText(item?.[1]), cardWidth - 8).slice(0, 2);
-        doc.text(valueLines, x + 5, cursorY + 11.5);
-      });
-      cursorY += cardHeight + 5;
+      cursorY = drawCompactReportSummary(doc, report, margin, contentWidth, cursorY, 4) + 2.4;
     };
 
     const drawSectionHeader = (section, index, width, x, y) => {
       const title = cleanText(section.title);
-      setColor(doc, 'setFillColor', COLORS.emeraldSoft);
-      setColor(doc, 'setDrawColor', [197, 230, 218]);
-      doc.setLineWidth(.25);
-      doc.roundedRect(x, y, width, 12, 2.2, 2.2, 'FD');
-      setColor(doc, 'setFillColor', COLORS.emerald);
-      doc.roundedRect(x + 2.5, y + 1.8, 5.4, 5.4, 1.4, 1.4, 'F');
-      setColor(doc, 'setTextColor', COLORS.white);
+      setColor(doc, 'setFillColor', [247, 250, 253]);
+      doc.roundedRect(x + .3, y + .3, width - .6, 12, 2.2, 2.2, 'F');
+      drawPaymentIcon(doc, x + 3.2, y + 2, reportIconKind(`${section.icon} ${title}`, index - 1));
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(6.5);
-      doc.text(String(index), x + 5.2, y + 5.5, { align: 'center' });
       setColor(doc, 'setTextColor', COLORS.text);
       doc.setFontSize(width < 95 ? 7.2 : 9);
-      doc.text(doc.splitTextToSize(title, width - 14)[0] || '-', x + 10, y + 5.1);
+      doc.text(doc.splitTextToSize(title, width - 17)[0] || '-', x + 13.5, y + 5.4);
       if (section.note) {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(width < 95 ? 5.2 : 6.2);
         setColor(doc, 'setTextColor', COLORS.muted);
-        doc.text(doc.splitTextToSize(cleanText(section.note), width - 14)[0] || '', x + 10, y + 9.6);
+        doc.text(doc.splitTextToSize(cleanText(section.note), width - 17)[0] || '', x + 13.5, y + 10);
       }
     };
 
     const drawTableHeader = (columns, widths, width, x, y) => {
-      setColor(doc, 'setFillColor', COLORS.navy);
-      doc.roundedRect(x, y, width, 7, 2, 2, 'F');
+      setColor(doc, 'setFillColor', [235, 242, 249]);
+      doc.rect(x + .3, y, width - .6, 7, 'F');
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(columns.length >= 7 ? 4.2 : (width < 95 ? 4.8 : 6.2));
-      setColor(doc, 'setTextColor', COLORS.white);
+      setColor(doc, 'setTextColor', [75, 96, 125]);
       let curX = x;
       columns.forEach((column, i) => {
         const alignRight = isNumericColumn(column) || /valor|saldo/i.test(cleanText(column));
@@ -831,6 +731,11 @@
       const x = margin + (col * (sectionWidth + gapX));
       const y = cursorY + (row * (sectionHeight + 4));
       let currentY = y;
+
+      setColor(doc, 'setFillColor', COLORS.white);
+      setColor(doc, 'setDrawColor', [210, 225, 238]);
+      doc.setLineWidth(.45);
+      doc.roundedRect(x, y, sectionWidth, sectionHeight, 2.8, 2.8, 'FD');
 
       drawSectionHeader(section, i + 1, sectionWidth, x, currentY);
       currentY += 13;

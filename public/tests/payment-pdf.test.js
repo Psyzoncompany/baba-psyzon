@@ -54,7 +54,13 @@ test('gera PDF de pagamento com etiquetas independentes de novato, convidado e g
 test('PDF de pagamento usa cabecalho compacto e comporta dezoito jogadores por card', () => {
   const source = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'pdf-report.js'), 'utf8');
   assert.doesNotMatch(source, /drawPaymentHeroVector/);
-  assert.match(source, /const summaryY = headerY \+ 20/);
+  assert.match(source, /function drawCompactReportHeader/);
+  assert.match(source, /function drawCompactReportSummary/);
+  assert.match(source, /const summaryY = drawCompactReportHeader/);
+  assert.match(source, /const summaryTop = drawCompactReportHeader/);
+  assert.match(source, /cursorY = drawCompactReportHeader/);
+  assert.equal((source.match(/drawCompactReportHeader\(/g) || []).length, 4);
+  assert.equal((source.match(/drawCompactReportSummary\(/g) || []).length, 4);
   assert.match(source, /availableRowsHeight \/ 2\.9/);
 
   const rows = Array.from({ length: 18 }, (_, index) => [index + 1, `Jogador ${index + 1}`, 'JOGADOR', 'R$ 15,00']);
