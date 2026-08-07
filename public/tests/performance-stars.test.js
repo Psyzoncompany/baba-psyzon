@@ -66,7 +66,7 @@ test('goleiro prioriza menos derrotas e depois mais vitorias', () => {
   assert.ok(moreWins > safer);
 });
 
-test('ranking de melhores prioriza estrelas e usa IDB no desempate', () => {
+test('ranking de melhores prioriza estrelas e usa a pontuação interna no desempate', () => {
   const players = [
     { jogadorId: 'a', nome: 'A', totalVitorias: 8, totalGols: 4 },
     { jogadorId: 'b', nome: 'B', totalVitorias: 7, totalGols: 8 },
@@ -88,8 +88,12 @@ test('interface e PDF compartilham celula estruturada de jogador', () => {
   const css = fs.readFileSync(path.resolve(__dirname, '..', 'baba-ui.css'), 'utf8');
   assert.match(app, /function pdfPlayerCell/);
   assert.match(app, /function playerNameWithStarsHTML/);
-  assert.match(app, /function playerPerformanceEvolution/);
   assert.match(app, /id: 'stars', label: 'Melhores'/);
+  assert.doesNotMatch(app, /Índice de Desempenho do Baba|\bIDB(?: goleiro)?\b/);
+  assert.doesNotMatch(css, /baba-performance-panel|baba-performance-score|baba-performance-progress/);
+  assert.match(app, /const rankingPdfSections = \{/);
+  assert.match(app, /columns: \['Pos', 'Goleiro', 'Derrotas', 'Vitórias', 'Empates', 'Jogos', 'Sofridos', 'Babas'\]/);
+  assert.match(html, /Exportar este ranking/);
   assert.match(app, /href="#baba-performance-star"/);
   assert.doesNotMatch(app, /[★☆⭐]/);
   assert.match(html, /id="baba-star-half-mask"/);
@@ -99,6 +103,7 @@ test('interface e PDF compartilham celula estruturada de jogador', () => {
   assert.match(pdf, /function drawPdfPlayerCell/);
   assert.match(pdf, /function drawPdfStar/);
   assert.match(pdf, /function clipPolygonAtLeftHalf/);
+  assert.doesNotMatch(pdf, /goleiros\?/);
   assert.doesNotMatch(pdf, /doc\.clip\(/);
 });
 

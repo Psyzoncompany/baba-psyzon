@@ -114,7 +114,7 @@ test('interface usa modais canonicos e persistencia idempotente nas seis correco
   assert.match(app, /Carregando o ultimo baba/);
   assert.match(app, /openFinishedGameEditor\(actionButton\.dataset\.gameNumber, actionButton\.dataset\.babaId \|\| null\)/);
   assert.match(app, /if \(baba\.__detailLoaded\) return calculateDailyRanking\(baba\)/);
-  assert.match(app, /columns: \['Pos', 'Goleiro', 'Derrotas', 'Vitórias', 'Jogos', 'Babas'\]/);
+  assert.match(app, /columns: \['Pos', 'Goleiro', 'Derrotas', 'Vitórias', 'Empates', 'Jogos', 'Sofridos', 'Babas'\]/);
   assert.doesNotMatch(app, /melhor goleiro pelo criterio de menos gols sofridos/);
   assert.match(persistence, /const deletedPlayerIds = new Set\(\)/);
   assert.match(persistence, /const remotePlayerDocumentIds = new Map\(\)/);

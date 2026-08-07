@@ -4645,107 +4645,10 @@ button.baba-history-item.active {
   max-width: 100%;
 }
 
-.baba-performance-panel {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-md);
-  background: var(--surface-subtle);
-}
-
-.baba-performance-panel header,
-.baba-performance-progress-copy {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.baba-performance-panel header > span {
-  display: grid;
-  min-width: 0;
-  gap: var(--space-1);
-}
-
-.baba-performance-panel header strong { font-size: var(--font-size-lg); }
-
-.baba-performance-score {
-  flex: 0 0 auto;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
-  color: var(--color-primary);
-  background: var(--card);
-  font-size: var(--font-size-sm);
-}
-
-.baba-performance-scale {
-  display: flex;
-  min-height: 1.6rem;
-  align-items: center;
-}
-
-.baba-performance-scale .baba-performance-star {
-  width: 1.4rem;
-  height: 1.4rem;
-}
-
-.baba-performance-progress {
-  overflow: hidden;
-  height: .45rem;
-  border-radius: var(--radius-pill);
-  background: var(--surface-muted);
-}
-
-.baba-performance-progress i {
-  display: block;
-  width: 0;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--color-primary);
-  transition: width var(--transition-base);
-}
-
-.baba-performance-progress-copy { color: var(--color-text-muted); font-size: var(--font-size-xs); }
-.baba-performance-progress-copy b { color: var(--color-text); font-size: inherit; text-align: right; }
-.baba-performance-panel p { margin: 0; font-size: var(--font-size-xs); }
-
-.baba-performance-evolution {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: var(--space-2);
-}
-
-.baba-performance-evolution span {
-  display: grid;
-  min-width: 0;
-  gap: var(--space-1);
-  padding: var(--space-2);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
-  background: var(--card);
-  text-align: center;
-}
-
-.baba-performance-evolution small { font-size: .58rem; }
-.baba-performance-evolution .baba-performance-stars { justify-content: center; gap: 0; }
-.baba-performance-evolution .baba-performance-star { width: .56rem; height: .56rem; }
-.baba-performance-no-history { color: var(--color-text-muted); }
-
 @media (prefers-reduced-motion: reduce) {
   .baba-performance-star,
   .baba-performance-star__shine,
   .baba-performance-star__particles { animation: none !important; transition-duration: 1ms !important; }
-}
-
-@media (max-width: 560px) {
-  .baba-performance-panel header,
-  .baba-performance-progress-copy { align-items: flex-start; }
-  .baba-performance-progress-copy { display: grid; }
-  .baba-performance-progress-copy b { text-align: left; }
-  .baba-performance-evolution { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 .baba-player-detail-content {

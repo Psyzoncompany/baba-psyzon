@@ -69,7 +69,6 @@
     currentHistory: 24,
     dailyScorers: 26,
     rankings: 8,
-    goalkeeper: 8,
   };
   const BABA_ASSISTANT_QUICK_QUESTIONS = [
     'Quem fez mais gols?',
@@ -2695,7 +2694,9 @@
       pdfPlayerCell(stats.jogadorId, stats.nome || playerName(stats.jogadorId), baba, ratings.get(stats.jogadorId)),
       stats.derrotas || 0,
       stats.vitorias || 0,
+      stats.empates || 0,
       stats.jogos || 0,
+      stats.golsSofridos || 0,
       stats.totalBabas || 0,
     ], pdfPlayerTeam(baba, stats.jogadorId)));
   }
@@ -3003,6 +3004,7 @@
       const generalStats = calculateGeneralRanking();
       const dailyStats = calculateCurrentBabaRanking(baba);
       const historyStats = calculateMonthlyRanking(monthlyHistoryKey, { includeActive: false });
+      const generalRatings = generalPerformanceMap();
       const monthlyRatings = performanceMap(Object.values(monthlyStats), {
         completedBabas: completedBabaCount((item) => monthKeyFromISO(item.dataISO) === currentMonth),
         cacheKey: `pdf-month-${currentMonth}`,
@@ -3015,65 +3017,67 @@
         completedBabas: completedBabaCount((item) => monthKeyFromISO(item.dataISO) === monthlyHistoryKey),
         cacheKey: `pdf-history-${monthlyHistoryKey}`,
       });
-      report.title = 'Rankings do baba';
-      report.subtitle = `Criterio atual: ${metricLabel}`;
-      report.icon = 'chart';
-      report.summary = [
-        ...baseSummary,
-        ['Criterio', metricLabel],
-      ];
-      report.sections = [
-        {
-          title: `Mês - ${monthLabel(currentMonth)}`,
-          note: 'Menos derrotas, depois mais vitórias',
+      const rankingColumns = ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'];
+      const metricNote = `Classificado por ${metricLabel.toLowerCase()}`;
+      const rankingPdfSections = {
+        monthly: {
+          title: `Ranking do mês - ${monthLabel(currentMonth)}`,
+          note: metricNote,
           icon: 'calendar',
-          highlightTop: true,
-          maxRows: PDF_ROW_LIMITS.rankings,
-          columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
+          columns: rankingColumns,
           rows: rankingRowsForPdf(sortRanking(monthlyStats, rankingMode, monthlyRatings, baba), baba, monthlyRatings),
           empty: 'Sem dados no ranking do mês.',
         },
-        {
+        general: {
           title: 'Ranking geral',
-          note: 'Tabela completa',
+          note: metricNote,
           icon: 'chart',
-          highlightTop: true,
-          maxRows: PDF_ROW_LIMITS.rankings,
-          columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
-          rows: rankingRowsForPdf(sortRanking(generalStats, rankingMode, generalPerformanceMap(), baba), baba, generalPerformanceMap()),
+          columns: rankingColumns,
+          rows: rankingRowsForPdf(sortRanking(generalStats, rankingMode, generalRatings, baba), baba, generalRatings),
           empty: 'Sem dados no ranking geral.',
         },
-        {
+        daily: {
           title: 'Ranking do dia',
-          note: 'Tabela completa',
+          note: metricNote,
           icon: 'target',
-          highlightTop: true,
-          maxRows: PDF_ROW_LIMITS.rankings,
-          columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
+          columns: rankingColumns,
           rows: rankingRowsForPdf(sortRanking(dailyStats, rankingMode, dailyRatings, baba), baba, dailyRatings),
           empty: 'Sem dados no ranking do dia.',
         },
-        {
-          title: 'Melhor goleiro',
-          note: 'Tabela completa',
+        goalkeeper: {
+          title: 'Ranking de goleiros',
+          note: 'Menos derrotas, depois mais vitórias',
           icon: 'shield',
-          highlightTop: true,
-          maxRows: PDF_ROW_LIMITS.goalkeeper,
-          columns: ['Pos', 'Goleiro', 'Derrotas', 'Vitórias', 'Jogos', 'Babas'],
-          rows: goalkeeperRowsForPdf(calculateGoalkeeperRanking({ includeActive: false })),
+          columns: ['Pos', 'Goleiro', 'Derrotas', 'Vitórias', 'Empates', 'Jogos', 'Sofridos', 'Babas'],
+          rows: goalkeeperRowsForPdf(calculateGoalkeeperRanking({ includeActive: false }), baba),
           empty: 'Sem jogos com goleiros ainda.',
         },
-        {
-          title: `Histórico - ${monthLabel(monthlyHistoryKey)}`,
-          note: 'Tabela completa',
+        history: {
+          title: `Histórico mensal - ${monthLabel(monthlyHistoryKey)}`,
+          note: metricNote,
           icon: 'history',
-          highlightTop: true,
-          maxRows: PDF_ROW_LIMITS.rankings,
-          columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
+          columns: rankingColumns,
           rows: rankingRowsForPdf(sortRanking(historyStats, rankingMode, historyRatings, baba), baba, historyRatings),
           empty: 'Sem histórico mensal para exportar.',
         },
+      };
+      const selectedScope = rankingPdfSections[rankingScope] ? rankingScope : 'monthly';
+      const selectedSection = rankingPdfSections[selectedScope];
+      const goalkeeperReport = selectedScope === 'goalkeeper';
+      report.title = selectedSection.title;
+      report.subtitle = goalkeeperReport ? selectedSection.note : `Critério atual: ${metricLabel}`;
+      report.fileName = `ranking-${selectedScope}-${baba?.dataISO || todayISO()}.pdf`;
+      report.icon = selectedSection.icon;
+      report.summary = [
+        ...baseSummary,
+        ['Critério', goalkeeperReport ? 'Menos derrotas' : metricLabel],
       ];
+      report.sections = [{
+        ...selectedSection,
+        wide: true,
+        highlightTop: true,
+        maxRows: goalkeeperReport ? 24 : 26,
+      }];
       return report;
     }
 
@@ -5575,7 +5579,7 @@
     const value = Math.max(0, Math.min(5, Number(performance?.displayStars ?? performance?.stars ?? 0)));
     const tone = performance?.displayTone || performance?.tone || 'gray';
     const title = performance?.title || 'Sem estrela';
-    const label = `${title}: ${String(value).replace('.', ',')} de 5 estrelas${performance?.score !== undefined ? ` - score ${performance.score}` : ''}`;
+    const label = `${title}: ${String(value).replace('.', ',')} de 5 estrelas`;
     const icons = Array.from({ length: 5 }, (_, index) => {
       const filled = value >= index + 1;
       const half = !filled && value >= index + 0.5;
@@ -5611,85 +5615,6 @@
       starTone: rating?.displayTone || rating?.tone || 'none',
       goalkeeper: Boolean(rating?.goalkeeper),
     };
-  }
-
-  function playerPerformanceEvolution(playerId, goalkeeper = false) {
-    const engine = window.BabaPerformanceStars;
-    if (!engine || !playerId) return [];
-    const cumulative = {};
-    const evolution = [];
-    const finished = state.babas
-      .filter((baba) => baba.status === 'finalizado')
-      .sort((a, b) => String(a.dataISO || '').localeCompare(String(b.dataISO || '')) || Number(a.finalizadoEm || 0) - Number(b.finalizadoEm || 0));
-
-    finished.forEach((baba, index) => {
-      Object.values(getFinishedBabaRanking(baba)).forEach((stats) => {
-        if (goalkeeper) {
-          const games = Number(stats.goalkeeperGames || 0);
-          if (!games) return;
-          const id = stats.jogadorId || stats.playerId;
-          const target = cumulative[id] || {
-            jogadorId: id,
-            nome: stats.nome,
-            jogos: 0,
-            vitorias: 0,
-            empates: 0,
-            derrotas: 0,
-            golsSofridos: 0,
-            totalBabas: 0,
-          };
-          target.jogos += games;
-          target.vitorias += Number(stats.totalVitorias || 0);
-          target.empates += Number(stats.totalEmpates || 0);
-          target.derrotas += Number(stats.totalDerrotas || 0);
-          target.golsSofridos += Number(stats.goalsConceded || 0);
-          target.totalBabas += 1;
-          cumulative[id] = target;
-          return;
-        }
-        mergeRankingStats(cumulative, stats);
-      });
-      if (!goalkeeper) Object.values(cumulative).forEach(finalizeStats);
-      const rated = engine.mapRatings(
-        Object.values(cumulative).filter((stats) => isPlayerVisibleInRanking(stats.jogadorId)),
-        { completedBabas: index + 1, goalkeeper },
-      ).get(playerId);
-      if (rated) evolution.push({ date: baba.dataISO, stars: rated.displayStars, title: rated.title, tone: rated.displayTone });
-    });
-    return evolution.slice(-6);
-  }
-
-  function playerPerformancePanelHTML(playerId, baba, performance) {
-    if (!performance) return `
-      <section class="baba-performance-panel">
-        <div><strong>Índice de Desempenho do Baba</strong><small>Aguardando babas finalizados para calcular a média.</small></div>
-      </section>
-    `;
-    const stars = Number(performance.displayStars ?? performance.stars ?? 0);
-    const scale = performanceStarsHTML(performance);
-    const eligibility = performance.eligible
-      ? `${Math.round(performance.ratio * 100)}% da média comparativa`
-      : `Faltam ${performance.missingGames} jogo${performance.missingGames === 1 ? '' : 's'} para liberar as estrelas`;
-    const evolution = playerPerformanceEvolution(playerId, Boolean(performance.goalkeeper));
-    const evolutionHTML = evolution.length
-      ? `<div class="baba-performance-evolution" aria-label="Histórico recente de estrelas">${evolution.map((item) => `<span title="${escapeHTML(formatDate(item.date))}"><small>${escapeHTML(String(item.date || '').slice(5).split('-').reverse().join('/'))}</small>${performanceStarsHTML({ displayStars: item.stars, displayTone: item.tone, title: item.title }, { compact: true })}</span>`).join('')}</div>`
-      : '<small class="baba-performance-no-history">A evolução aparecerá após os próximos babas.</small>';
-    const rule = performance.goalkeeper
-      ? 'Goleiro: menos derrotas e mais vitórias, com proteção por número de jogos.'
-      : 'Jogador de linha: vitórias, empates e gols comparados à média do grupo.';
-    return `
-      <section class="baba-performance-panel is-${performance.tone}">
-        <header>
-          <span><small>Índice de Desempenho do Baba</small><strong>${escapeHTML(performance.title)}</strong></span>
-          <b class="baba-performance-score">${performance.score} pts</b>
-        </header>
-        <div class="baba-performance-scale" aria-label="${stars} de 5 estrelas">${scale}</div>
-        <div class="baba-performance-progress"><i style="width:${performance.progress}%"></i></div>
-        <div class="baba-performance-progress-copy"><span>${escapeHTML(eligibility)}</span><b>${performance.progress}% para o próximo nível</b></div>
-        <p>${escapeHTML(rule)}</p>
-        ${evolutionHTML}
-      </section>
-    `;
   }
 
   function render() {
@@ -7245,7 +7170,6 @@
     const team = getPlayerTeam(baba, player.id);
     const today = calculateCurrentBabaRanking(baba)[player.id] || makeEmptyPlayerStats(player.id, player.nome);
     const general = calculateGeneralRanking()[player.id] || makeEmptyPlayerStats(player.id, player.nome);
-    const performance = defaultPlayerPerformance(player.id, baba);
     const editingHistory = baba.status === 'finalizado';
     const canManage = isOrganizer() && (editingHistory || (baba.id === state.activeBabaId && baba.status !== 'finalizado'));
     const teamOptions = (baba.teams || []).filter((item) => item.id !== team?.id).map((item) => (
@@ -7273,7 +7197,6 @@
         <span class="baba-player-stat"><small>Vitórias no histórico</small><b>${general.totalVitorias}</b></span>
         <span class="baba-player-stat"><small>Aproveitamento geral</small><b>${general.aproveitamento}%</b></span>
       </div>
-      ${playerPerformancePanelHTML(player.id, baba, performance)}
       ${canManage ? `
         <div class="baba-player-management">
           <strong>Gerenciar neste baba</strong>
@@ -7640,7 +7563,15 @@
     $$('[data-ranking-card]').forEach((card) => {
       card.classList.toggle('hidden', card.dataset.rankingCard !== rankingScope);
     });
-    $('.baba-ranking-toolbar')?.classList.toggle('hidden', rankingScope === 'goalkeeper');
+    const goalkeeperActive = rankingScope === 'goalkeeper';
+    els.rankingFilterControls?.classList.toggle('hidden', goalkeeperActive);
+    const toolbarCopy = $('[data-ranking-toolbar-copy]');
+    if (toolbarCopy) {
+      const title = toolbarCopy.querySelector('strong');
+      const subtitle = toolbarCopy.querySelector('span');
+      if (title) title.textContent = goalkeeperActive ? 'Ranking de goleiros' : 'Ordenar ranking';
+      if (subtitle) subtitle.textContent = goalkeeperActive ? 'Menos derrotas, mais vitórias' : 'Escolha o critério';
+    }
   }
 
   function renderMonthlyHistory() {
@@ -7815,7 +7746,6 @@
                 ${stat('baba-chart', `${stats.mediaGols} media`)}
                 ${stat('baba-trophy', `${stats.totalTitulosBaba} títulos`)}
                 ${stat('baba-table-icon', `${stats.aproveitamento}%`)}
-                ${stat('baba-chart', `${Number(rating?.score || 0)} IDB`)}
               </div>
             </div>
           </div>
@@ -7855,7 +7785,6 @@
                 <span><svg aria-hidden="true" focusable="false"><use href="#baba-play"></use></svg>${stats.jogos} jogos</span>
                 <span><svg aria-hidden="true" focusable="false"><use href="#baba-save"></use></svg>${stats.golsSofridos} sofridos</span>
                 <span><svg aria-hidden="true" focusable="false"><use href="#baba-calendar"></use></svg>${stats.totalBabas} babas</span>
-                <span><svg aria-hidden="true" focusable="false"><use href="#baba-chart"></use></svg>${Number(rating?.score || 0)} IDB goleiro</span>
               </div>
             </div>
           </div>

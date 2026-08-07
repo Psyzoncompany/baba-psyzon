@@ -177,7 +177,7 @@
   }
 
   function isNumericColumn(label) {
-    return /^(#|pos|pts|gp|gc|sg|v|e|d|gols?|jogos?|linha|goleiros?|babas?|tit\.?|m[eé]dia|aprov\.?|%)$/i.test(cleanText(label));
+    return /^(#|pos|pts|gp|gc|sg|v|e|d|gols?|jogos?|linha|goleiros|babas?|tit\.?|m[eé]dia|aprov\.?|%)$/i.test(cleanText(label));
   }
 
   function columnWeight(label) {
