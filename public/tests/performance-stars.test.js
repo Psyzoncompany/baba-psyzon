@@ -121,5 +121,6 @@ test('PDF desenha estrelas inteiras, vazias e meia estrela como vetores', () => 
     }],
   });
   assert.equal(document.getNumberOfPages(), 1);
+  assert.ok(document.internal.pageSize.getHeight() > document.internal.pageSize.getWidth());
   assert.ok(document.output('arraybuffer').byteLength > 1000);
 });

@@ -644,9 +644,10 @@
     if (!report || !Array.isArray(report.sections)) throw new Error('Os dados do relatório estão incompletos.');
     if (report.type === 'payments') return createPaymentReport(report, JsPdf);
     if (report.type === 'standings') return createStandingsReport(report, JsPdf);
+    const portraitRanking = report.type === 'rankings' && report.sections.length === 1;
 
     const doc = new JsPdf({
-      orientation: 'landscape',
+      orientation: portraitRanking ? 'portrait' : 'landscape',
       unit: 'mm',
       format: 'a4',
       compress: true,
@@ -654,7 +655,7 @@
     });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 14;
+    const margin = portraitRanking ? 12 : 14;
     const contentWidth = pageWidth - (margin * 2);
     let cursorY = margin;
 
