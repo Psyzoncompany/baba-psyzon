@@ -66,6 +66,21 @@ test('goleiro prioriza menos derrotas e depois mais vitorias', () => {
   assert.ok(moreWins > safer);
 });
 
+test('ranking de melhores prioriza estrelas e usa IDB no desempate', () => {
+  const players = [
+    { jogadorId: 'a', nome: 'A', totalVitorias: 8, totalGols: 4 },
+    { jogadorId: 'b', nome: 'B', totalVitorias: 7, totalGols: 8 },
+    { jogadorId: 'c', nome: 'C', totalVitorias: 10, totalGols: 2 },
+  ];
+  const ratings = new Map([
+    ['a', { displayStars: 4, score: 70, ratio: 1.5 }],
+    ['b', { displayStars: 4.5, score: 65, ratio: 1.6 }],
+    ['c', { displayStars: 4, score: 80, ratio: 1.45 }],
+  ]);
+  const sorted = players.slice().sort((a, b) => stars.comparePerformance(a, b, ratings.get(a.jogadorId), ratings.get(b.jogadorId)));
+  assert.deepEqual(sorted.map((player) => player.jogadorId), ['b', 'c', 'a']);
+});
+
 test('interface e PDF compartilham celula estruturada de jogador', () => {
   const app = fs.readFileSync(path.resolve(__dirname, '..', 'baba.js'), 'utf8');
   const pdf = fs.readFileSync(path.resolve(__dirname, '..', 'pdf-report.js'), 'utf8');
@@ -74,6 +89,7 @@ test('interface e PDF compartilham celula estruturada de jogador', () => {
   assert.match(app, /function pdfPlayerCell/);
   assert.match(app, /function playerNameWithStarsHTML/);
   assert.match(app, /function playerPerformanceEvolution/);
+  assert.match(app, /id: 'stars', label: 'Melhores'/);
   assert.match(app, /href="#baba-performance-star"/);
   assert.doesNotMatch(app, /[★☆⭐]/);
   assert.match(html, /id="baba-star-half-mask"/);
@@ -82,6 +98,8 @@ test('interface e PDF compartilham celula estruturada de jogador', () => {
   assert.match(css, /prefers-reduced-motion/);
   assert.match(pdf, /function drawPdfPlayerCell/);
   assert.match(pdf, /function drawPdfStar/);
+  assert.match(pdf, /function clipPolygonAtLeftHalf/);
+  assert.doesNotMatch(pdf, /doc\.clip\(/);
 });
 
 test('PDF desenha estrelas inteiras, vazias e meia estrela como vetores', () => {

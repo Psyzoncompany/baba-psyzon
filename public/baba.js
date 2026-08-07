@@ -48,6 +48,7 @@
     { id: 'baixa', label: 'Baixa', value: 1 },
   ];
   const RANKING_MODES = [
+    { id: 'stars', label: 'Melhores', icon: 'baba-trophy' },
     { id: 'goals', label: 'Gols', icon: 'baba-ball' },
     { id: 'wins', label: 'Vitórias', icon: 'baba-check' },
     { id: 'losses', label: 'Derrotas', icon: 'baba-x' },
@@ -3029,7 +3030,7 @@
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
-          rows: rankingRowsForPdf(sortRanking(monthlyStats, rankingMode), baba, monthlyRatings),
+          rows: rankingRowsForPdf(sortRanking(monthlyStats, rankingMode, monthlyRatings, baba), baba, monthlyRatings),
           empty: 'Sem dados no ranking do mês.',
         },
         {
@@ -3039,7 +3040,7 @@
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
-          rows: rankingRowsForPdf(sortRanking(generalStats, rankingMode), baba, generalPerformanceMap()),
+          rows: rankingRowsForPdf(sortRanking(generalStats, rankingMode, generalPerformanceMap(), baba), baba, generalPerformanceMap()),
           empty: 'Sem dados no ranking geral.',
         },
         {
@@ -3049,7 +3050,7 @@
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
-          rows: rankingRowsForPdf(sortRanking(dailyStats, rankingMode), baba, dailyRatings),
+          rows: rankingRowsForPdf(sortRanking(dailyStats, rankingMode, dailyRatings, baba), baba, dailyRatings),
           empty: 'Sem dados no ranking do dia.',
         },
         {
@@ -3069,7 +3070,7 @@
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
-          rows: rankingRowsForPdf(sortRanking(historyStats, rankingMode), baba, historyRatings),
+          rows: rankingRowsForPdf(sortRanking(historyStats, rankingMode, historyRatings, baba), baba, historyRatings),
           empty: 'Sem histórico mensal para exportar.',
         },
       ];
@@ -7004,7 +7005,12 @@
 
   function getDailyRankingList(baba, metric = 'goals') {
     const ranking = calculateCurrentBabaRanking(baba);
-    return sortRanking(ranking, metric);
+    if (metric !== 'stars') return sortRanking(ranking, metric);
+    const ratingMap = performanceMap(Object.values(ranking), {
+      completedBabas: baba?.status === 'finalizado' ? 1 : 0,
+      cacheKey: `daily-ranking-${baba?.id || 'none'}`,
+    });
+    return sortRanking(ranking, metric, ratingMap, baba);
   }
 
   function calculateCurrentBabaRanking(baba) {
@@ -7578,12 +7584,10 @@
     renderRankingScopeControls();
     const generalRanking = calculateGeneralRanking();
     const dailyRanking = calculateCurrentBabaRanking(baba);
-    const general = sortRanking(generalRanking, rankingMode);
-    const daily = sortRanking(dailyRanking, rankingMode);
     const currentMonth = activeMonthKey(baba);
     const monthlyRanking = calculateMonthlyRanking(currentMonth, { includeActive: false });
-    const monthly = sortRanking(monthlyRanking, rankingMode);
     const goalkeepers = calculateGoalkeeperRanking({ includeActive: false });
+    const generalRatings = generalPerformanceMap();
     const monthlyRatings = performanceMap(Object.values(monthlyRanking), {
       completedBabas: completedBabaCount((item) => monthKeyFromISO(item.dataISO) === currentMonth),
       cacheKey: `month-${currentMonth}`,
@@ -7592,6 +7596,9 @@
       completedBabas: baba?.status === 'finalizado' ? 1 : 0,
       cacheKey: `daily-${baba?.id || 'none'}`,
     });
+    const general = sortRanking(generalRanking, rankingMode, generalRatings, baba);
+    const daily = sortRanking(dailyRanking, rankingMode, dailyRatings, baba);
+    const monthly = sortRanking(monthlyRanking, rankingMode, monthlyRatings, baba);
     if (els.monthlyRankingLabel) els.monthlyRankingLabel.textContent = `${monthLabel(currentMonth)} - babas salvos`;
     if (els.monthlyRankingList) {
       setHTML(els.monthlyRankingList, renderRankingList(monthly, rankingEmptyMessage('neste mes'), {
@@ -7603,7 +7610,7 @@
     setHTML(els.rankingList, renderRankingList(general, rankingEmptyMessage('no ranking geral'), {
       expandKey: 'general',
       metric: rankingMode,
-      ratingMap: generalPerformanceMap(),
+      ratingMap: generalRatings,
     }));
     setHTML(els.dailyRankingList, renderRankingList(daily, rankingEmptyMessage('no baba atual'), {
       expandKey: 'daily',
@@ -7648,11 +7655,12 @@
     setHTML(els.monthlyHistoryTabs, keys.map((key) => `
       <button class="${key === selectedMonthlyKey ? 'active' : ''}" type="button" data-month-key="${key}">${escapeHTML(monthLabel(key))}</button>
     `).join(''));
-    const ranking = sortRanking(calculateMonthlyRanking(selectedMonthlyKey, { includeActive: false }), rankingMode);
-    const ratingMap = performanceMap(Object.values(calculateMonthlyRanking(selectedMonthlyKey, { includeActive: false })), {
+    const monthlyRanking = calculateMonthlyRanking(selectedMonthlyKey, { includeActive: false });
+    const ratingMap = performanceMap(Object.values(monthlyRanking), {
       completedBabas: completedBabaCount((item) => monthKeyFromISO(item.dataISO) === selectedMonthlyKey),
       cacheKey: `history-month-${selectedMonthlyKey}`,
     });
+    const ranking = sortRanking(monthlyRanking, rankingMode, ratingMap, getDisplayedBaba());
     setHTML(els.monthlyHistoryRanking, renderRankingList(ranking, rankingEmptyMessage('neste mês'), {
       expandKey: `month-${selectedMonthlyKey}`,
       metric: rankingMode,
@@ -7661,6 +7669,7 @@
   }
 
   function rankingEmptyMessage(scope) {
+    if (rankingMode === 'stars') return `Ainda não há partidas suficientes para o ranking de melhores jogadores ${scope}.`;
     if (rankingMode === 'goals') return `Ainda não há gols ${scope}.`;
     const option = RANKING_MODES.find((item) => item.id === rankingMode);
     const label = (option?.label || 'dados').toLowerCase();
@@ -7679,7 +7688,13 @@
     setHTML(els.rankingFilterControls, `${select}${buttons}`);
   }
 
-  function rankingMetricValue(stats, metric = 'goals') {
+  function rankingRating(stats, ratingMap = null, baba = getDisplayedBaba()) {
+    if (isBabaGoalkeeper(baba, stats?.jogadorId)) return goalkeeperPerformanceMap().get(stats.jogadorId) || null;
+    return ratingMap?.get(stats?.jogadorId) || (stats?.jogadorId ? defaultPlayerPerformance(stats.jogadorId, baba) : null);
+  }
+
+  function rankingMetricValue(stats, metric = 'goals', rating = null) {
+    if (metric === 'stars') return Number(rating?.displayStars ?? rating?.stars ?? 0);
     if (metric === 'wins') return Number(stats.totalVitorias || 0);
     if (metric === 'losses') return Number(stats.totalDerrotas || 0);
     if (metric === 'worst') return Number(stats.totalDerrotas || 0);
@@ -7688,14 +7703,16 @@
     return Number(stats.totalGols || 0);
   }
 
-  function hasRankingMetric(stats, metric = 'goals') {
+  function hasRankingMetric(stats, metric = 'goals', rating = null) {
+    if (metric === 'stars') return Number(stats.totalJogos || stats.jogos || 0) > 0;
     if (metric === 'worst') return Number(stats.totalJogos || 0) > 0;
     if (metric === 'efficiency') return Number(stats.totalJogos || 0) > 0;
-    return rankingMetricValue(stats, metric) > 0;
+    return rankingMetricValue(stats, metric, rating) > 0;
   }
 
-  function rankingMetricDisplay(stats, metric = 'goals') {
-    const value = rankingMetricValue(stats, metric);
+  function rankingMetricDisplay(stats, metric = 'goals', rating = null) {
+    const value = rankingMetricValue(stats, metric, rating);
+    if (metric === 'stars') return { value: String(value).replace('.', ','), label: value === 1 ? 'estrela' : 'estrelas' };
     if (metric === 'wins') return { value, label: value === 1 ? 'vitória' : 'vitórias' };
     if (metric === 'losses') return { value, label: value === 1 ? 'derrota' : 'derrotas' };
     if (metric === 'worst') {
@@ -7707,10 +7724,18 @@
     return { value, label: value === 1 ? 'gol' : 'gols' };
   }
 
-  function sortRanking(ranking, metric = 'goals') {
+  function sortRanking(ranking, metric = 'goals', ratingMap = null, baba = getDisplayedBaba()) {
     return Object.values(ranking || {})
-      .filter((stats) => isPlayerVisibleInRanking(stats.jogadorId) && hasRankingMetric(stats, metric))
+      .filter((stats) => isPlayerVisibleInRanking(stats.jogadorId) && hasRankingMetric(stats, metric, rankingRating(stats, ratingMap, baba)))
       .sort((a, b) => {
+        if (metric === 'stars') {
+          return window.BabaPerformanceStars.comparePerformance(
+            a,
+            b,
+            rankingRating(a, ratingMap, baba),
+            rankingRating(b, ratingMap, baba),
+          );
+        }
         if (metric === 'wins') {
           return b.totalVitorias - a.totalVitorias || b.totalGols - a.totalGols || b.aproveitamento - a.aproveitamento || a.nome.localeCompare(b.nome);
         }
@@ -7767,11 +7792,11 @@
       const topClass = position <= 3 ? ` baba-ranking-card--top${position}` : '';
       const lastClass = items.length > 1 && index === items.length - 1 ? ' baba-ranking-card--last' : '';
       const icon = position === 1 ? 'baba-trophy' : 'baba-ball';
-      const score = rankingMetricDisplay(stats, metric);
       const playerTeam = getPlayerTeam(contextBaba, stats.jogadorId);
       const rating = isBabaGoalkeeper(contextBaba, stats.jogadorId)
         ? goalkeeperPerformanceMap().get(stats.jogadorId)
         : options.ratingMap?.get(stats.jogadorId);
+      const score = rankingMetricDisplay(stats, metric, rating);
       return `
         <div class="baba-ranking-card${topClass}${lastClass}"${teamNumberDataAttribute(playerTeam)}>
           <div class="baba-ranking-card__main">

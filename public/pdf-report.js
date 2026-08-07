@@ -57,37 +57,56 @@
     none: [203, 213, 225],
   });
 
-  function drawPdfStar(doc, centerX, centerY, radius, tone = 'gray', style = 'fill') {
+  function pdfStarPoints(centerX, centerY, radius) {
     const points = [];
     for (let index = 0; index < 10; index += 1) {
       const angle = (-Math.PI / 2) + (index * Math.PI / 5);
       const pointRadius = index % 2 ? radius * .43 : radius;
       points.push([centerX + (Math.cos(angle) * pointRadius), centerY + (Math.sin(angle) * pointRadius)]);
     }
+    return points;
+  }
+
+  function drawPdfPolygon(doc, points, style) {
+    if (points.length < 3) return;
     const deltas = points.slice(1).map((point, index) => [point[0] - points[index][0], point[1] - points[index][1]]);
     deltas.push([points[0][0] - points[points.length - 1][0], points[0][1] - points[points.length - 1][1]]);
+    doc.lines(deltas, points[0][0], points[0][1], [1, 1], style, true);
+  }
+
+  function clipPolygonAtLeftHalf(points, boundaryX) {
+    const clipped = [];
+    points.forEach((current, index) => {
+      const previous = points[(index + points.length - 1) % points.length];
+      const currentInside = current[0] <= boundaryX;
+      const previousInside = previous[0] <= boundaryX;
+      if (currentInside !== previousInside) {
+        const width = current[0] - previous[0];
+        const ratio = width ? (boundaryX - previous[0]) / width : 0;
+        clipped.push([boundaryX, previous[1] + ((current[1] - previous[1]) * ratio)]);
+      }
+      if (currentInside) clipped.push(current);
+    });
+    return clipped;
+  }
+
+  function drawPdfStar(doc, centerX, centerY, radius, tone = 'gray', style = 'fill') {
+    const points = pdfStarPoints(centerX, centerY, radius);
     const color = STAR_COLORS[tone] || STAR_COLORS.gray;
     if (style === 'empty') {
       setColor(doc, 'setDrawColor', STAR_COLORS.none);
       doc.setLineWidth(.22);
-      doc.lines(deltas, points[0][0], points[0][1], [1, 1], 'S', true);
+      drawPdfPolygon(doc, points, 'S');
       return;
     }
     setColor(doc, 'setFillColor', color);
-    doc.lines(deltas, points[0][0], points[0][1], [1, 1], 'F', true);
+    drawPdfPolygon(doc, points, 'F');
   }
 
   function drawPdfHalfStar(doc, centerX, centerY, radius, tone) {
-    if (doc.saveGraphicsState && doc.restoreGraphicsState && doc.clip) {
-      doc.saveGraphicsState();
-      doc.rect(centerX - radius - .1, centerY - radius - .1, radius + .1, (radius * 2) + .2);
-      doc.clip();
-      doc.discardPath?.();
-      drawPdfStar(doc, centerX, centerY, radius, tone, 'fill');
-      doc.restoreGraphicsState();
-      return;
-    }
-    drawPdfStar(doc, centerX, centerY, radius * .72, tone, 'fill');
+    const halfPoints = clipPolygonAtLeftHalf(pdfStarPoints(centerX, centerY, radius), centerX);
+    setColor(doc, 'setFillColor', STAR_COLORS[tone] || STAR_COLORS.gray);
+    drawPdfPolygon(doc, halfPoints, 'F');
   }
 
   function drawPdfRating(doc, value, x, centerY, radius, tone) {

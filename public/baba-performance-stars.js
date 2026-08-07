@@ -168,6 +168,21 @@
     ]));
   }
 
+  function comparePerformance(statsA, statsB, ratingA = null, ratingB = null) {
+    const starsA = number(ratingA?.displayStars ?? ratingA?.stars);
+    const starsB = number(ratingB?.displayStars ?? ratingB?.stars);
+    const scoreA = number(ratingA?.score);
+    const scoreB = number(ratingB?.score);
+    const ratioA = number(ratingA?.ratio);
+    const ratioB = number(ratingB?.ratio);
+    return starsB - starsA
+      || scoreB - scoreA
+      || ratioB - ratioA
+      || field(statsB, 'totalVitorias', 'vitorias') - field(statsA, 'totalVitorias', 'vitorias')
+      || field(statsB, 'totalGols', 'gols') - field(statsA, 'totalGols', 'gols')
+      || String(statsA?.nome || '').localeCompare(String(statsB?.nome || ''), 'pt-BR');
+  }
+
   const api = Object.freeze({
     CONFIG,
     LEVELS,
@@ -179,6 +194,7 @@
     levelFromRatio,
     calculateRatings,
     mapRatings,
+    comparePerformance,
   });
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
