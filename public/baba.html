@@ -14,7 +14,7 @@
   <meta name="theme-color" content="#f4f8fc">
   <title>Baba Psyzon</title>
   <link href="apple-ui-font.css?v=20260723-1" rel="stylesheet">
-  <link href="baba-ui.css?v=20260806-baba-visual-2" rel="stylesheet">
+  <link href="baba-ui.css?v=20260807-performance-stars-1" rel="stylesheet">
   <link href="theme-system.css?v=20260806-theme-5" rel="stylesheet">
   <script src="vendor/lucide.min.js?v=1.29.0" defer></script>
   <script src="theme-provider.js?v=20260806-theme-5"></script>
@@ -216,6 +216,32 @@
     </symbol>
     <symbol id="baba-arrow-down" viewBox="0 0 24 24">
       <path d="M12 5v14m0 0 6-6m-6 6-6-6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <defs>
+      <linearGradient id="baba-star-gray" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#e2e8f0" /><stop offset=".48" stop-color="#64748b" /><stop offset="1" stop-color="#cbd5e1" />
+      </linearGradient>
+      <linearGradient id="baba-star-bronze" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#f2bd72" /><stop offset=".42" stop-color="#a85a20" /><stop offset=".72" stop-color="#d78a42" /><stop offset="1" stop-color="#713615" />
+      </linearGradient>
+      <linearGradient id="baba-star-silver" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#ffffff" /><stop offset=".35" stop-color="#94a3b8" /><stop offset=".68" stop-color="#e2e8f0" /><stop offset="1" stop-color="#64748b" />
+      </linearGradient>
+      <linearGradient id="baba-star-gold" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#fff3a3" /><stop offset=".3" stop-color="#f6c842" /><stop offset=".62" stop-color="#c8860a" /><stop offset=".82" stop-color="#ffe57a" /><stop offset="1" stop-color="#9a6100" />
+      </linearGradient>
+      <linearGradient id="baba-star-diamond" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0" stop-color="#0891b2" /><stop offset=".28" stop-color="#67e8f9" /><stop offset=".5" stop-color="#ffffff" /><stop offset=".7" stop-color="#93c5fd" /><stop offset="1" stop-color="#2563eb" />
+      </linearGradient>
+      <linearGradient id="baba-star-shine" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#fff" stop-opacity="0" /><stop offset=".5" stop-color="#fff" stop-opacity=".92" /><stop offset="1" stop-color="#fff" stop-opacity="0" />
+      </linearGradient>
+      <mask id="baba-star-half-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+        <rect x="0" y="0" width="12" height="24" fill="#fff" />
+      </mask>
+    </defs>
+    <symbol id="baba-performance-star" viewBox="0 0 24 24">
+      <path d="m12 2.65 2.84 5.76 6.36.92-4.6 4.49 1.08 6.33L12 17.16l-5.68 2.99 1.08-6.33-4.6-4.49 6.36-.92L12 2.65Z" stroke-linejoin="round" />
     </symbol>
   </svg>
 
@@ -1450,7 +1476,8 @@
   <script src="vendor/jspdf.umd.min.js"></script>
   <script src="pdf-report.js?v=20260806-baba-management-7"></script>
   <script src="baba-management-core.js?v=20260805-baba-management-5"></script>
-  <script src="baba.js?v=20260806-baba-management-7" defer></script>
+  <script src="baba-performance-stars.js?v=20260807-1"></script>
+  <script src="baba.js?v=20260807-performance-stars-1" defer></script>
   <script src="site-version.js?v=6.1.5" defer></script>
 </body>
 

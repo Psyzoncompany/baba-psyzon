@@ -248,6 +248,7 @@
   let selectedMonthlyKey = null;
   let rankingMode = 'goals';
   let rankingScope = 'monthly';
+  let performanceCache = null;
   const expandedRankingKeys = new Set();
   const loadingHistoryIds = new Set();
   const renderedHTMLCache = new WeakMap();
@@ -1667,19 +1668,20 @@
 
   function playerPaymentNameHTML(playerId, baba = getActiveBaba(), options = {}) {
     const name = options.name || playerName(playerId, baba);
-    const state = playerPaymentState(playerId, baba, options);
+    const paymentState = playerPaymentState(playerId, baba, options);
     const team = getPlayerTeam(baba, playerId);
-    if (!state) return `<span class="baba-player-identity"${teamNumberDataAttribute(team)}>${escapeHTML(name)}</span>`;
+    const identity = playerNameWithStarsHTML(playerId, baba, { name, rating: options.rating });
+    if (!paymentState) return `<span class="baba-player-identity"${teamNumberDataAttribute(team)}>${identity}</span>`;
     const label = ({
       paid: 'Pago',
       unpaid: 'Não pagou',
       novice: 'Novato',
       guest: 'Convidado',
       disabled: 'Desativado',
-    })[state] || 'Não pagou';
+    })[paymentState] || 'Não pagou';
     return `
-      <span class="baba-player-payment is-${state}"${teamNumberDataAttribute(team)}>
-        <span class="baba-player-payment__name">${escapeHTML(name)}</span>
+      <span class="baba-player-payment is-${paymentState}"${teamNumberDataAttribute(team)}>
+        <span class="baba-player-payment__name">${identity}</span>
         <span class="baba-player-payment__status">${label}</span>
       </span>
     `;
@@ -2667,10 +2669,15 @@
     }).join('')}</span>`;
   }
 
-  function rankingRowsForPdf(items = [], baba = getActiveBaba()) {
+  function performanceForPdfPlayer(stats, baba, ratingMap = null) {
+    if (isBabaGoalkeeper(baba, stats.jogadorId)) return goalkeeperPerformanceMap().get(stats.jogadorId) || null;
+    return ratingMap?.get(stats.jogadorId) || defaultPlayerPerformance(stats.jogadorId, baba);
+  }
+
+  function rankingRowsForPdf(items = [], baba = getActiveBaba(), ratingMap = null) {
     return items.map((stats, index) => pdfTeamRow([
       index + 1,
-      stats.nome || playerName(stats.jogadorId),
+      pdfPlayerCell(stats.jogadorId, stats.nome || playerName(stats.jogadorId), baba, performanceForPdfPlayer(stats, baba, ratingMap)),
       stats.totalGols || 0,
       stats.totalVitorias || 0,
       stats.totalEmpates || 0,
@@ -2681,9 +2688,10 @@
   }
 
   function goalkeeperRowsForPdf(items = [], baba = getActiveBaba()) {
+    const ratings = goalkeeperPerformanceMap();
     return items.map((stats, index) => pdfTeamRow([
       index + 1,
-      stats.nome || playerName(stats.jogadorId),
+      pdfPlayerCell(stats.jogadorId, stats.nome || playerName(stats.jogadorId), baba, ratings.get(stats.jogadorId)),
       stats.derrotas || 0,
       stats.vitorias || 0,
       stats.jogos || 0,
@@ -2692,11 +2700,16 @@
   }
 
   function scorersRowsForPdf(baba = getActiveBaba(), limit = null) {
-    const rows = getDailyRankingList(baba, 'goals')
+    const ranking = calculateCurrentBabaRanking(baba);
+    const ratings = performanceMap(Object.values(ranking), {
+      completedBabas: baba?.status === 'finalizado' ? 1 : 0,
+      cacheKey: `pdf-daily-${baba?.id || 'none'}`,
+    });
+    const rows = sortRanking(ranking, 'goals')
       .filter((stats) => stats.totalGols > 0)
       .map((stats, index) => pdfTeamRow([
         index + 1,
-        stats.nome,
+        pdfPlayerCell(stats.jogadorId, stats.nome, baba, performanceForPdfPlayer(stats, baba, ratings)),
         stats.totalGols,
         stats.totalVitorias,
         stats.mediaGols,
@@ -2729,17 +2742,20 @@
       const fieldPlayers = Math.max(0, players.length - goalkeepers);
       return pdfTeamRow([
         team.name,
-        players.map((player) => player.nome).join(', ') || '-',
+        players.length ? {
+          type: 'roster',
+          players: players.map((player) => pdfPlayerCell(player.id, player.nome, baba)),
+        } : '-',
         fieldPlayers,
         goalkeepers,
       ], team);
     });
   }
 
-  function goalRankingRowsForPdf(items = [], baba = getActiveBaba()) {
+  function goalRankingRowsForPdf(items = [], baba = getActiveBaba(), ratingMap = null) {
     return items.map((stats, index) => pdfTeamRow([
       index + 1,
-      stats.nome || playerName(stats.jogadorId),
+      pdfPlayerCell(stats.jogadorId, stats.nome || playerName(stats.jogadorId), baba, performanceForPdfPlayer(stats, baba, ratingMap)),
       stats.totalGols || 0,
       stats.totalVitorias || 0,
       `${stats.aproveitamento || 0}%`,
@@ -2760,7 +2776,7 @@
       .sort((a, b) => a.nome.localeCompare(b.nome))
       .map((player, index) => pdfTeamRow([
         index + 1,
-        player.nome,
+        pdfPlayerCell(player.id, player.nome, baba),
         playerPaymentTypeLabel(player, baba),
         mode === 'novice'
           ? 'NOVATO'
@@ -2881,6 +2897,12 @@
     }
 
     if (type === 'standings') {
+      const dailyStats = calculateCurrentBabaRanking(baba);
+      const generalStats = calculateGeneralRanking();
+      const dailyRatings = performanceMap(Object.values(dailyStats), {
+        completedBabas: baba?.status === 'finalizado' ? 1 : 0,
+        cacheKey: `pdf-standings-daily-${baba?.id || 'none'}`,
+      });
       report.title = 'Tabela de times';
       report.subtitle = `Classificação, elencos e rankings por gols - ${reportContextLabel(baba)}`;
       report.icon = 'table';
@@ -2919,7 +2941,7 @@
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'Aprov.', 'Babas'],
-          rows: goalRankingRowsForPdf(getDailyRankingList(baba, 'goals')),
+          rows: goalRankingRowsForPdf(sortRanking(dailyStats, 'goals'), baba, dailyRatings),
           empty: 'Sem gols registrados no baba atual.',
         },
         {
@@ -2929,7 +2951,7 @@
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'Aprov.', 'Babas'],
-          rows: goalRankingRowsForPdf(sortRanking(calculateGeneralRanking(), 'goals')),
+          rows: goalRankingRowsForPdf(sortRanking(generalStats, 'goals'), baba, generalPerformanceMap()),
           empty: 'Sem dados no ranking geral.',
         },
       ];
@@ -2976,6 +2998,22 @@
     }
 
     if (type === 'rankings') {
+      const monthlyStats = calculateMonthlyRanking(currentMonth, { includeActive: false });
+      const generalStats = calculateGeneralRanking();
+      const dailyStats = calculateCurrentBabaRanking(baba);
+      const historyStats = calculateMonthlyRanking(monthlyHistoryKey, { includeActive: false });
+      const monthlyRatings = performanceMap(Object.values(monthlyStats), {
+        completedBabas: completedBabaCount((item) => monthKeyFromISO(item.dataISO) === currentMonth),
+        cacheKey: `pdf-month-${currentMonth}`,
+      });
+      const dailyRatings = performanceMap(Object.values(dailyStats), {
+        completedBabas: baba?.status === 'finalizado' ? 1 : 0,
+        cacheKey: `pdf-daily-ranking-${baba?.id || 'none'}`,
+      });
+      const historyRatings = performanceMap(Object.values(historyStats), {
+        completedBabas: completedBabaCount((item) => monthKeyFromISO(item.dataISO) === monthlyHistoryKey),
+        cacheKey: `pdf-history-${monthlyHistoryKey}`,
+      });
       report.title = 'Rankings do baba';
       report.subtitle = `Criterio atual: ${metricLabel}`;
       report.icon = 'chart';
@@ -2991,7 +3029,7 @@
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
-          rows: rankingRowsForPdf(sortRanking(calculateMonthlyRanking(currentMonth, { includeActive: false }), rankingMode)),
+          rows: rankingRowsForPdf(sortRanking(monthlyStats, rankingMode), baba, monthlyRatings),
           empty: 'Sem dados no ranking do mês.',
         },
         {
@@ -3001,7 +3039,7 @@
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
-          rows: rankingRowsForPdf(sortRanking(calculateGeneralRanking(), rankingMode)),
+          rows: rankingRowsForPdf(sortRanking(generalStats, rankingMode), baba, generalPerformanceMap()),
           empty: 'Sem dados no ranking geral.',
         },
         {
@@ -3011,7 +3049,7 @@
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
-          rows: rankingRowsForPdf(getDailyRankingList(baba, rankingMode)),
+          rows: rankingRowsForPdf(sortRanking(dailyStats, rankingMode), baba, dailyRatings),
           empty: 'Sem dados no ranking do dia.',
         },
         {
@@ -3031,7 +3069,7 @@
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'],
-          rows: rankingRowsForPdf(sortRanking(calculateMonthlyRanking(monthlyHistoryKey, { includeActive: false }), rankingMode)),
+          rows: rankingRowsForPdf(sortRanking(historyStats, rankingMode), baba, historyRatings),
           empty: 'Sem histórico mensal para exportar.',
         },
       ];
@@ -5083,7 +5121,7 @@
       const goals = Number(ranking[player.id]?.totalGols || 0);
       return `
         <label class="baba-history-edit-player"${teamNumberDataAttribute(team)}>
-          <span><strong>${escapeHTML(player.nome)}</strong><small>${escapeHTML(team?.name || 'Sem time')}</small></span>
+          <span><strong>${playerNameWithStarsHTML(player.id, baba, { name: player.nome })}</strong><small>${escapeHTML(team?.name || 'Sem time')}</small></span>
           <input type="number" min="0" max="99" step="1" inputmode="numeric" value="${goals}" data-history-player-goals="${escapeHTML(player.id)}" aria-label="Gols de ${escapeHTML(player.nome)}">
         </label>
       `;
@@ -5302,6 +5340,9 @@
     target.totalJogos += Number(stats.totalJogos || 0);
     target.totalBabas += Number(stats.totalBabas || 0);
     target.totalTitulosBaba += Number(stats.totalTitulosBaba || 0);
+    target.totalMvps += Number(stats.totalMvps || 0);
+    target.totalCartoesAmarelos += Number(stats.totalCartoesAmarelos || 0);
+    target.totalCartoesVermelhos += Number(stats.totalCartoesVermelhos || 0);
     target.goalkeeperGames = Number(target.goalkeeperGames || 0) + Number(stats.goalkeeperGames || 0);
     target.goalsConceded = Number(target.goalsConceded || 0) + Number(stats.goalsConceded || 0);
     ranking[stats.jogadorId] = target;
@@ -5457,6 +5498,9 @@
       totalJogos: 0,
       totalBabas: 0,
       totalTitulosBaba: 0,
+      totalMvps: 0,
+      totalCartoesAmarelos: 0,
+      totalCartoesVermelhos: 0,
       goalkeeperGames: 0,
       goalsConceded: 0,
       mediaGols: 0,
@@ -5478,7 +5522,177 @@
     return stats;
   }
 
+  function completedBabaCount(predicate = null) {
+    return state.babas.filter((baba) => baba.status === 'finalizado' && (!predicate || predicate(baba))).length;
+  }
+
+  function resetPerformanceCache() {
+    performanceCache = { general: null, goalkeeper: null, scoped: new Map() };
+  }
+
+  function performanceMap(items, { completedBabas = 0, goalkeeper = false, cacheKey = '' } = {}) {
+    const engine = window.BabaPerformanceStars;
+    if (!engine) return new Map();
+    if (!performanceCache) resetPerformanceCache();
+    if (cacheKey && performanceCache.scoped.has(cacheKey)) return performanceCache.scoped.get(cacheKey);
+    const map = engine.mapRatings(items, { completedBabas, goalkeeper });
+    if (cacheKey) performanceCache.scoped.set(cacheKey, map);
+    return map;
+  }
+
+  function generalPerformanceMap() {
+    if (!performanceCache) resetPerformanceCache();
+    if (!performanceCache.general) {
+      performanceCache.general = performanceMap(Object.values(calculateGeneralRanking()), {
+        completedBabas: completedBabaCount(),
+        cacheKey: 'general-field',
+      });
+    }
+    return performanceCache.general;
+  }
+
+  function goalkeeperPerformanceMap() {
+    if (!performanceCache) resetPerformanceCache();
+    if (!performanceCache.goalkeeper) {
+      performanceCache.goalkeeper = performanceMap(calculateGoalkeeperRanking({ includeActive: false }), {
+        completedBabas: completedBabaCount(),
+        goalkeeper: true,
+        cacheKey: 'general-goalkeeper',
+      });
+    }
+    return performanceCache.goalkeeper;
+  }
+
+  function defaultPlayerPerformance(playerId, baba = getDisplayedBaba()) {
+    if (!playerId) return null;
+    return isBabaGoalkeeper(baba, playerId)
+      ? goalkeeperPerformanceMap().get(playerId) || null
+      : generalPerformanceMap().get(playerId) || null;
+  }
+
+  function performanceStarsHTML(performance, { compact = false } = {}) {
+    const value = Math.max(0, Math.min(5, Number(performance?.displayStars ?? performance?.stars ?? 0)));
+    const tone = performance?.displayTone || performance?.tone || 'gray';
+    const title = performance?.title || 'Sem estrela';
+    const label = `${title}: ${String(value).replace('.', ',')} de 5 estrelas${performance?.score !== undefined ? ` - score ${performance.score}` : ''}`;
+    const icons = Array.from({ length: 5 }, (_, index) => {
+      const filled = value >= index + 1;
+      const half = !filled && value >= index + 0.5;
+      const stateClass = filled ? 'is-full' : (half ? 'is-half' : 'is-empty');
+      const mask = half ? ' mask="url(#baba-star-half-mask)"' : '';
+      return `
+        <span class="baba-performance-star ${stateClass}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <use class="baba-performance-star__empty" href="#baba-performance-star"></use>
+            ${filled || half ? `<use class="baba-performance-star__fill" href="#baba-performance-star"${mask}></use><use class="baba-performance-star__shine" href="#baba-performance-star"${mask}></use>` : ''}
+            <g class="baba-performance-star__particles">
+              <circle cx="4" cy="5" r="1"></circle><circle cx="20" cy="7" r=".8"></circle><circle cx="19" cy="19" r=".65"></circle>
+            </g>
+          </svg>
+        </span>
+      `;
+    }).join('');
+    return `<span class="baba-performance-stars is-${tone}${compact ? ' is-compact' : ''}" role="img" aria-label="${escapeHTML(label)}" title="${escapeHTML(label)}">${icons}</span>`;
+  }
+
+  function playerNameWithStarsHTML(playerId, baba = getDisplayedBaba(), options = {}) {
+    const name = options.name || playerName(playerId, baba);
+    const performance = options.rating === undefined ? defaultPlayerPerformance(playerId, baba) : options.rating;
+    return `<span class="baba-player-name-line"><span class="baba-player-name-text">${escapeHTML(name)}</span>${performanceStarsHTML(performance, { compact: true })}</span>`;
+  }
+
+  function pdfPlayerCell(playerId, name, baba = getDisplayedBaba(), performance = undefined) {
+    const rating = performance === undefined ? defaultPlayerPerformance(playerId, baba) : performance;
+    return {
+      type: 'player',
+      text: name || playerName(playerId, baba),
+      stars: Number(rating?.displayStars ?? rating?.stars ?? 0),
+      starTone: rating?.displayTone || rating?.tone || 'none',
+      goalkeeper: Boolean(rating?.goalkeeper),
+    };
+  }
+
+  function playerPerformanceEvolution(playerId, goalkeeper = false) {
+    const engine = window.BabaPerformanceStars;
+    if (!engine || !playerId) return [];
+    const cumulative = {};
+    const evolution = [];
+    const finished = state.babas
+      .filter((baba) => baba.status === 'finalizado')
+      .sort((a, b) => String(a.dataISO || '').localeCompare(String(b.dataISO || '')) || Number(a.finalizadoEm || 0) - Number(b.finalizadoEm || 0));
+
+    finished.forEach((baba, index) => {
+      Object.values(getFinishedBabaRanking(baba)).forEach((stats) => {
+        if (goalkeeper) {
+          const games = Number(stats.goalkeeperGames || 0);
+          if (!games) return;
+          const id = stats.jogadorId || stats.playerId;
+          const target = cumulative[id] || {
+            jogadorId: id,
+            nome: stats.nome,
+            jogos: 0,
+            vitorias: 0,
+            empates: 0,
+            derrotas: 0,
+            golsSofridos: 0,
+            totalBabas: 0,
+          };
+          target.jogos += games;
+          target.vitorias += Number(stats.totalVitorias || 0);
+          target.empates += Number(stats.totalEmpates || 0);
+          target.derrotas += Number(stats.totalDerrotas || 0);
+          target.golsSofridos += Number(stats.goalsConceded || 0);
+          target.totalBabas += 1;
+          cumulative[id] = target;
+          return;
+        }
+        mergeRankingStats(cumulative, stats);
+      });
+      if (!goalkeeper) Object.values(cumulative).forEach(finalizeStats);
+      const rated = engine.mapRatings(
+        Object.values(cumulative).filter((stats) => isPlayerVisibleInRanking(stats.jogadorId)),
+        { completedBabas: index + 1, goalkeeper },
+      ).get(playerId);
+      if (rated) evolution.push({ date: baba.dataISO, stars: rated.displayStars, title: rated.title, tone: rated.displayTone });
+    });
+    return evolution.slice(-6);
+  }
+
+  function playerPerformancePanelHTML(playerId, baba, performance) {
+    if (!performance) return `
+      <section class="baba-performance-panel">
+        <div><strong>Índice de Desempenho do Baba</strong><small>Aguardando babas finalizados para calcular a média.</small></div>
+      </section>
+    `;
+    const stars = Number(performance.displayStars ?? performance.stars ?? 0);
+    const scale = performanceStarsHTML(performance);
+    const eligibility = performance.eligible
+      ? `${Math.round(performance.ratio * 100)}% da média comparativa`
+      : `Faltam ${performance.missingGames} jogo${performance.missingGames === 1 ? '' : 's'} para liberar as estrelas`;
+    const evolution = playerPerformanceEvolution(playerId, Boolean(performance.goalkeeper));
+    const evolutionHTML = evolution.length
+      ? `<div class="baba-performance-evolution" aria-label="Histórico recente de estrelas">${evolution.map((item) => `<span title="${escapeHTML(formatDate(item.date))}"><small>${escapeHTML(String(item.date || '').slice(5).split('-').reverse().join('/'))}</small>${performanceStarsHTML({ displayStars: item.stars, displayTone: item.tone, title: item.title }, { compact: true })}</span>`).join('')}</div>`
+      : '<small class="baba-performance-no-history">A evolução aparecerá após os próximos babas.</small>';
+    const rule = performance.goalkeeper
+      ? 'Goleiro: menos derrotas e mais vitórias, com proteção por número de jogos.'
+      : 'Jogador de linha: vitórias, empates e gols comparados à média do grupo.';
+    return `
+      <section class="baba-performance-panel is-${performance.tone}">
+        <header>
+          <span><small>Índice de Desempenho do Baba</small><strong>${escapeHTML(performance.title)}</strong></span>
+          <b class="baba-performance-score">${performance.score} pts</b>
+        </header>
+        <div class="baba-performance-scale" aria-label="${stars} de 5 estrelas">${scale}</div>
+        <div class="baba-performance-progress"><i style="width:${performance.progress}%"></i></div>
+        <div class="baba-performance-progress-copy"><span>${escapeHTML(eligibility)}</span><b>${performance.progress}% para o próximo nível</b></div>
+        <p>${escapeHTML(rule)}</p>
+        ${evolutionHTML}
+      </section>
+    `;
+  }
+
   function render() {
+    resetPerformanceCache();
     const scrollPosition = { x: window.scrollX, y: window.scrollY };
     const baba = getDisplayedBaba();
     const activeBase = baba ? {
@@ -6037,7 +6251,7 @@
       const playerCard = `
         <button class="baba-team-player-card" type="button" data-player-detail-id="${playerId}" data-player-detail-team-id="${team.id}" data-player-detail-baba-id="${baba.id}"${teamNumberDataAttribute(team)}>
           <span class="baba-team-player-card__identity">
-            <strong>${escapeHTML(player?.nome || playerName(playerId, baba))}</strong>
+            <strong>${playerNameWithStarsHTML(playerId, baba, { name: player?.nome || playerName(playerId, baba) })}</strong>
             <small>${typeLabel}</small>
           </span>
           <span class="baba-team-player-card__hint">${isOrganizer() ? 'Ver e gerenciar' : 'Ver desempenho'} ›</span>
@@ -6254,7 +6468,7 @@
     return `
       <button class="baba-team-player-card" type="button" data-player-detail-id="${playerId}" data-player-detail-team-id="${team.id}" data-player-detail-baba-id="${baba.id}"${teamNumberDataAttribute(team)} aria-label="Abrir detalhes de ${escapeHTML(name)}">
         <span class="baba-player-row__avatar" aria-hidden="true">${escapeHTML(playerInitials(name))}</span>
-        <span class="baba-player-row__copy"><strong>${escapeHTML(name)}</strong><small>${position}</small></span>
+        <span class="baba-player-row__copy"><strong>${playerNameWithStarsHTML(playerId, baba, { name })}</strong><small>${position}</small></span>
         ${goalkeeper
           ? '<span class="baba-goalkeeper-badge"><svg aria-hidden="true"><use href="#baba-shield"></use></svg>GOLEIRO</span>'
           : '<span class="baba-player-row__chevron" aria-hidden="true">›</span>'}
@@ -6406,7 +6620,7 @@
             const goalkeeper = player?.tipo === 'goleiro';
             return `<div class="baba-draw-reveal-player ${goalkeeper ? 'is-goalkeeper' : ''}">
               <span class="baba-draw-reveal-player__avatar">${escapeHTML(playerInitials(name))}</span>
-              <span class="baba-draw-reveal-player__copy"><strong>${escapeHTML(name)}</strong><small>${goalkeeper ? 'Goleiro' : (player?.visitante ? 'Visitante' : 'Jogador de linha')}</small></span>
+              <span class="baba-draw-reveal-player__copy"><strong>${playerNameWithStarsHTML(playerId, baba, { name })}</strong><small>${goalkeeper ? 'Goleiro' : (player?.visitante ? 'Visitante' : 'Jogador de linha')}</small></span>
               ${goalkeeper ? '<span class="baba-goalkeeper-badge"><svg aria-hidden="true"><use href="#baba-shield"></use></svg>GOLEIRO</span>' : '<svg width="16" height="16" aria-hidden="true"><use href="#baba-check"></use></svg>'}
             </div>`;
           }).join('')}
@@ -6933,7 +7147,7 @@
       return `
         <button class="baba-team-player-card" type="button" data-player-detail-id="${playerId}" data-player-detail-team-id="${team.id}" data-player-detail-baba-id="${baba.id}"${teamNumberDataAttribute(team)}>
           <span class="baba-team-player-card__identity">
-            <strong>${escapeHTML(player?.nome || playerName(playerId, baba))}</strong>
+            <strong>${playerNameWithStarsHTML(playerId, baba, { name: player?.nome || playerName(playerId, baba) })}</strong>
             <small>${player?.tipo === 'goleiro' ? 'Goleiro' : (player?.visitante ? 'Visitante' : 'Jogador')}</small>
           </span>
           <div class="baba-player-mini-stats">
@@ -7025,6 +7239,7 @@
     const team = getPlayerTeam(baba, player.id);
     const today = calculateCurrentBabaRanking(baba)[player.id] || makeEmptyPlayerStats(player.id, player.nome);
     const general = calculateGeneralRanking()[player.id] || makeEmptyPlayerStats(player.id, player.nome);
+    const performance = defaultPlayerPerformance(player.id, baba);
     const editingHistory = baba.status === 'finalizado';
     const canManage = isOrganizer() && (editingHistory || (baba.id === state.activeBabaId && baba.status !== 'finalizado'));
     const teamOptions = (baba.teams || []).filter((item) => item.id !== team?.id).map((item) => (
@@ -7040,7 +7255,7 @@
       <div class="baba-player-profile">
         <span class="baba-player-profile__avatar">${escapeHTML(playerInitials(player.nome))}</span>
         <span class="baba-player-profile__copy">
-          <strong>${escapeHTML(player.nome)}</strong>
+          <strong>${playerNameWithStarsHTML(player.id, baba, { name: player.nome })}</strong>
           <span>${typeLabel} · ${escapeHTML(team?.name || 'Sem time')}</span>
         </span>
       </div>
@@ -7052,6 +7267,7 @@
         <span class="baba-player-stat"><small>Vitórias no histórico</small><b>${general.totalVitorias}</b></span>
         <span class="baba-player-stat"><small>Aproveitamento geral</small><b>${general.aproveitamento}%</b></span>
       </div>
+      ${playerPerformancePanelHTML(player.id, baba, performance)}
       ${canManage ? `
         <div class="baba-player-management">
           <strong>Gerenciar neste baba</strong>
@@ -7360,29 +7576,44 @@
   function renderRankings(baba) {
     renderRankingFilters();
     renderRankingScopeControls();
-    const general = sortRanking(calculateGeneralRanking(), rankingMode);
-    const daily = getDailyRankingList(baba, rankingMode);
+    const generalRanking = calculateGeneralRanking();
+    const dailyRanking = calculateCurrentBabaRanking(baba);
+    const general = sortRanking(generalRanking, rankingMode);
+    const daily = sortRanking(dailyRanking, rankingMode);
     const currentMonth = activeMonthKey(baba);
-    const monthly = sortRanking(calculateMonthlyRanking(currentMonth, { includeActive: false }), rankingMode);
+    const monthlyRanking = calculateMonthlyRanking(currentMonth, { includeActive: false });
+    const monthly = sortRanking(monthlyRanking, rankingMode);
     const goalkeepers = calculateGoalkeeperRanking({ includeActive: false });
+    const monthlyRatings = performanceMap(Object.values(monthlyRanking), {
+      completedBabas: completedBabaCount((item) => monthKeyFromISO(item.dataISO) === currentMonth),
+      cacheKey: `month-${currentMonth}`,
+    });
+    const dailyRatings = performanceMap(Object.values(dailyRanking), {
+      completedBabas: baba?.status === 'finalizado' ? 1 : 0,
+      cacheKey: `daily-${baba?.id || 'none'}`,
+    });
     if (els.monthlyRankingLabel) els.monthlyRankingLabel.textContent = `${monthLabel(currentMonth)} - babas salvos`;
     if (els.monthlyRankingList) {
       setHTML(els.monthlyRankingList, renderRankingList(monthly, rankingEmptyMessage('neste mes'), {
         expandKey: 'monthly-current',
         metric: rankingMode,
+        ratingMap: monthlyRatings,
       }));
     }
     setHTML(els.rankingList, renderRankingList(general, rankingEmptyMessage('no ranking geral'), {
       expandKey: 'general',
       metric: rankingMode,
+      ratingMap: generalPerformanceMap(),
     }));
     setHTML(els.dailyRankingList, renderRankingList(daily, rankingEmptyMessage('no baba atual'), {
       expandKey: 'daily',
       metric: rankingMode,
+      ratingMap: dailyRatings,
     }));
     if (els.goalkeeperRankingList) {
       setHTML(els.goalkeeperRankingList, renderGoalkeeperRankingList(goalkeepers, 'Ainda não há jogos com goleiros para montar este ranking.', {
         expandKey: 'goalkeepers',
+        ratingMap: goalkeeperPerformanceMap(),
       }));
     }
     renderMonthlyHistory();
@@ -7418,9 +7649,14 @@
       <button class="${key === selectedMonthlyKey ? 'active' : ''}" type="button" data-month-key="${key}">${escapeHTML(monthLabel(key))}</button>
     `).join(''));
     const ranking = sortRanking(calculateMonthlyRanking(selectedMonthlyKey, { includeActive: false }), rankingMode);
+    const ratingMap = performanceMap(Object.values(calculateMonthlyRanking(selectedMonthlyKey, { includeActive: false })), {
+      completedBabas: completedBabaCount((item) => monthKeyFromISO(item.dataISO) === selectedMonthlyKey),
+      cacheKey: `history-month-${selectedMonthlyKey}`,
+    });
     setHTML(els.monthlyHistoryRanking, renderRankingList(ranking, rankingEmptyMessage('neste mês'), {
       expandKey: `month-${selectedMonthlyKey}`,
       metric: rankingMode,
+      ratingMap,
     }));
   }
 
@@ -7533,6 +7769,9 @@
       const icon = position === 1 ? 'baba-trophy' : 'baba-ball';
       const score = rankingMetricDisplay(stats, metric);
       const playerTeam = getPlayerTeam(contextBaba, stats.jogadorId);
+      const rating = isBabaGoalkeeper(contextBaba, stats.jogadorId)
+        ? goalkeeperPerformanceMap().get(stats.jogadorId)
+        : options.ratingMap?.get(stats.jogadorId);
       return `
         <div class="baba-ranking-card${topClass}${lastClass}"${teamNumberDataAttribute(playerTeam)}>
           <div class="baba-ranking-card__main">
@@ -7540,7 +7779,7 @@
             <div>
               <div class="baba-ranking-title">
                 <svg aria-hidden="true" focusable="false"><use href="#${icon}"></use></svg>
-                <strong>${playerPaymentNameHTML(stats.jogadorId, contextBaba, { name: stats.nome, force: Boolean(contextBaba) })}</strong>
+                <strong>${playerPaymentNameHTML(stats.jogadorId, contextBaba, { name: stats.nome, force: Boolean(contextBaba), rating })}</strong>
               </div>
               <div class="stats">
                 ${stat('baba-ball', `${stats.totalGols} gols`)}
@@ -7551,6 +7790,7 @@
                 ${stat('baba-chart', `${stats.mediaGols} media`)}
                 ${stat('baba-trophy', `${stats.totalTitulosBaba} títulos`)}
                 ${stat('baba-table-icon', `${stats.aproveitamento}%`)}
+                ${stat('baba-chart', `${Number(rating?.score || 0)} IDB`)}
               </div>
             </div>
           </div>
@@ -7573,6 +7813,7 @@
       const topClass = position <= 3 ? ` baba-ranking-card--top${position}` : '';
       const lastClass = items.length > 1 && index === items.length - 1 ? ' baba-ranking-card--last' : '';
       const playerTeam = getPlayerTeam(contextBaba, stats.jogadorId);
+      const rating = options.ratingMap?.get(stats.jogadorId) || goalkeeperPerformanceMap().get(stats.jogadorId);
       return `
         <div class="baba-ranking-card baba-goalkeeper-card${topClass}${lastClass}"${teamNumberDataAttribute(playerTeam)}>
           <div class="baba-ranking-card__main">
@@ -7580,7 +7821,7 @@
             <div>
               <div class="baba-ranking-title">
                 <svg aria-hidden="true" focusable="false"><use href="#${position === 1 ? 'baba-trophy' : 'baba-save'}"></use></svg>
-                <strong>${playerPaymentNameHTML(stats.jogadorId, contextBaba, { name: stats.nome, force: Boolean(contextBaba) })}</strong>
+                <strong>${playerPaymentNameHTML(stats.jogadorId, contextBaba, { name: stats.nome, force: Boolean(contextBaba), rating })}</strong>
               </div>
               <div class="stats">
                 <span><svg aria-hidden="true" focusable="false"><use href="#baba-x"></use></svg>${stats.derrotas} derrotas</span>
@@ -7589,6 +7830,7 @@
                 <span><svg aria-hidden="true" focusable="false"><use href="#baba-play"></use></svg>${stats.jogos} jogos</span>
                 <span><svg aria-hidden="true" focusable="false"><use href="#baba-save"></use></svg>${stats.golsSofridos} sofridos</span>
                 <span><svg aria-hidden="true" focusable="false"><use href="#baba-calendar"></use></svg>${stats.totalBabas} babas</span>
+                <span><svg aria-hidden="true" focusable="false"><use href="#baba-chart"></use></svg>${Number(rating?.score || 0)} IDB goleiro</span>
               </div>
             </div>
           </div>
@@ -7661,14 +7903,15 @@
     els.historyDetail.classList.remove('baba-empty');
     els.historyDetailLabel.textContent = baba.dataCompleta;
     const championNames = baba.campeaoDoBaba?.nomes?.join(', ') || 'Sem campeão';
-    const championPlayerNames = (baba.campeaoDoBaba?.jogadores || []).map((id) => (
-      getBabaPlayer(baba, id)?.nome
-      || baba.rankingDoBaba?.[id]?.nome
-      || state.playerStats?.[id]?.nome
-      || 'Jogador removido'
-    ));
-    const championPlayers = championPlayerNames.length
-      ? championPlayerNames.map((name) => `<span class="baba-history-champion-chip">${escapeHTML(name)}</span>`).join('')
+    const championPlayersData = (baba.campeaoDoBaba?.jogadores || []).map((id) => ({
+      id,
+      name: getBabaPlayer(baba, id)?.nome
+        || baba.rankingDoBaba?.[id]?.nome
+        || state.playerStats?.[id]?.nome
+        || 'Jogador removido',
+    }));
+    const championPlayers = championPlayersData.length
+      ? championPlayersData.map((player) => `<span class="baba-history-champion-chip">${playerNameWithStarsHTML(player.id, baba, { name: player.name })}</span>`).join('')
       : '<span class="baba-history-muted">Nenhum jogador informado</span>';
     const teams = (baba.teams || []).map((team) => `
       <article class="baba-history-team"${teamNumberDataAttribute(team)}>
@@ -7710,7 +7953,7 @@
           </div>
         </section>
         <section class="baba-history-section">
-          <div class="baba-history-section__title"><strong>Jogadores campeões</strong><small>${championPlayerNames.length} jogadores</small></div>
+          <div class="baba-history-section__title"><strong>Jogadores campeões</strong><small>${championPlayersData.length} jogadores</small></div>
           <div class="baba-history-champions">${championPlayers}</div>
         </section>
         <section class="baba-history-section">

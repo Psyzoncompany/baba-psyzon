@@ -41,8 +41,105 @@
     if (value?.type === 'match' && Array.isArray(value.teams)) {
       return value.teams.map((team) => team?.name || 'Time').join(' x ');
     }
+    if (value?.type === 'roster' && Array.isArray(value.players)) {
+      return value.players.map((player) => player?.text || 'Jogador').join(', ');
+    }
     if (typeof value === 'object' && value.text !== undefined) return cleanText(value.text);
     return String(value).replace(/\s+/g, ' ').trim() || '-';
+  }
+
+  const STAR_COLORS = Object.freeze({
+    gray: [100, 116, 139],
+    bronze: [180, 108, 38],
+    silver: [113, 128, 150],
+    gold: [211, 153, 25],
+    diamond: [10, 166, 190],
+    none: [203, 213, 225],
+  });
+
+  function drawPdfStar(doc, centerX, centerY, radius, tone = 'gray', style = 'fill') {
+    const points = [];
+    for (let index = 0; index < 10; index += 1) {
+      const angle = (-Math.PI / 2) + (index * Math.PI / 5);
+      const pointRadius = index % 2 ? radius * .43 : radius;
+      points.push([centerX + (Math.cos(angle) * pointRadius), centerY + (Math.sin(angle) * pointRadius)]);
+    }
+    const deltas = points.slice(1).map((point, index) => [point[0] - points[index][0], point[1] - points[index][1]]);
+    deltas.push([points[0][0] - points[points.length - 1][0], points[0][1] - points[points.length - 1][1]]);
+    const color = STAR_COLORS[tone] || STAR_COLORS.gray;
+    if (style === 'empty') {
+      setColor(doc, 'setDrawColor', STAR_COLORS.none);
+      doc.setLineWidth(.22);
+      doc.lines(deltas, points[0][0], points[0][1], [1, 1], 'S', true);
+      return;
+    }
+    setColor(doc, 'setFillColor', color);
+    doc.lines(deltas, points[0][0], points[0][1], [1, 1], 'F', true);
+  }
+
+  function drawPdfHalfStar(doc, centerX, centerY, radius, tone) {
+    if (doc.saveGraphicsState && doc.restoreGraphicsState && doc.clip) {
+      doc.saveGraphicsState();
+      doc.rect(centerX - radius - .1, centerY - radius - .1, radius + .1, (radius * 2) + .2);
+      doc.clip();
+      doc.discardPath?.();
+      drawPdfStar(doc, centerX, centerY, radius, tone, 'fill');
+      doc.restoreGraphicsState();
+      return;
+    }
+    drawPdfStar(doc, centerX, centerY, radius * .72, tone, 'fill');
+  }
+
+  function drawPdfRating(doc, value, x, centerY, radius, tone) {
+    const rating = Math.max(0, Math.min(5, Number(value) || 0));
+    const step = radius * 2.05;
+    for (let index = 0; index < 5; index += 1) {
+      const centerX = x + (index * step);
+      drawPdfStar(doc, centerX, centerY, radius, tone, 'empty');
+      if (rating >= index + 1) drawPdfStar(doc, centerX, centerY, radius, tone, 'fill');
+      else if (rating >= index + .5) drawPdfHalfStar(doc, centerX, centerY, radius, tone);
+    }
+  }
+
+  function drawPdfPlayerCell(doc, value, x, y, width, rowHeight, { padding = 2.5 } = {}) {
+    const name = cleanText(value);
+    const stars = Math.max(0, Math.min(5, Number(value?.stars || 0)));
+    const radius = Math.max(.55, Math.min(1.05, rowHeight * .16));
+    const starStep = radius * 2.05;
+    const starWidth = (5 * starStep) + .5;
+    const availableTextWidth = Math.max(5, width - (padding * 2) - starWidth);
+    const text = doc.splitTextToSize(name, availableTextWidth)[0] || '-';
+    const baseline = y + (rowHeight * .67);
+    setColor(doc, 'setTextColor', COLORS.text);
+    doc.text(text, x + padding, baseline);
+    let starX = x + padding + Math.min(doc.getTextWidth(text), availableTextWidth) + radius + .7;
+    drawPdfRating(doc, stars, starX, y + (rowHeight * .5), radius, value?.starTone);
+  }
+
+  function drawPdfRosterCell(doc, value, x, y, width, rowHeight) {
+    const players = Array.isArray(value?.players) ? value.players : [];
+    const right = x + width - 2;
+    let cursor = x + 2;
+    const commaWidth = doc.getTextWidth(', ');
+    players.some((player, index) => {
+      const stars = Math.max(0, Math.min(5, Number(player?.stars || 0)));
+      const radius = Math.max(.48, Math.min(.85, rowHeight * .14));
+      const starStep = radius * 2;
+      const name = cleanText(player);
+      const remaining = right - cursor - (5 * starStep) - (index < players.length - 1 ? commaWidth : 0);
+      if (remaining < 4) return true;
+      const text = doc.splitTextToSize(name, remaining)[0] || '-';
+      doc.text(text, cursor, y + (rowHeight * .67));
+      cursor += doc.getTextWidth(text) + radius + .4;
+      drawPdfRating(doc, stars, cursor, y + (rowHeight * .5), radius, player?.starTone);
+      cursor += 5 * starStep;
+      if (index < players.length - 1 && cursor + commaWidth <= right) {
+        setColor(doc, 'setTextColor', COLORS.text);
+        doc.text(', ', cursor, y + (rowHeight * .67));
+        cursor += commaWidth;
+      }
+      return cursor >= right;
+    });
   }
 
   function cleanFileName(value) {
@@ -334,13 +431,18 @@
           let cellX = x;
           row.slice(0, 4).forEach((cell, cellIndex) => {
             const rightAligned = cellIndex === 3;
+            doc.setFont('helvetica', cellIndex === 0 ? 'bold' : 'normal');
+            doc.setFontSize(rowHeight < 5 ? 5.7 : 6.5);
+            if (cell?.type === 'player') {
+              drawPdfPlayerCell(doc, cell, cellX, currentY, widths[cellIndex], rowHeight, { padding: 3 });
+              cellX += widths[cellIndex];
+              return;
+            }
             if (cellIndex === 2) {
               drawPaymentClassificationBadges(doc, cell, cellX, currentY, widths[cellIndex], rowHeight);
               cellX += widths[cellIndex];
               return;
             }
-            doc.setFont('helvetica', cellIndex === 0 ? 'bold' : 'normal');
-            doc.setFontSize(rowHeight < 5 ? 5.7 : 6.5);
             setColor(doc, 'setTextColor', [20, 37, 58]);
             const value = doc.splitTextToSize(cleanText(cell), widths[cellIndex] - 5)[0] || '-';
             doc.text(
@@ -518,9 +620,20 @@
         row.slice(0, columns.length).forEach((cell, cellIndex) => {
           const numeric = isNumericColumn(columns[cellIndex]);
           const maxWidth = Math.max(3, widths[cellIndex] - 3);
-          const value = doc.splitTextToSize(cleanText(cell), maxWidth)[0] || '-';
           doc.setFont('helvetica', cellIndex === 0 ? 'bold' : 'normal');
           doc.setFontSize(columns.length >= 7 ? 4.7 : (rowHeight < 5 ? 4.8 : 5.4));
+          if (cell?.type === 'player') {
+            drawPdfPlayerCell(doc, cell, cellX, currentY, widths[cellIndex], rowHeight, { padding: 1.5 });
+            cellX += widths[cellIndex];
+            return;
+          }
+          if (cell?.type === 'roster') {
+            setColor(doc, 'setTextColor', COLORS.text);
+            drawPdfRosterCell(doc, cell, cellX, currentY, widths[cellIndex], rowHeight);
+            cellX += widths[cellIndex];
+            return;
+          }
+          const value = doc.splitTextToSize(cleanText(cell), maxWidth)[0] || '-';
           setColor(doc, 'setTextColor', COLORS.text);
           doc.text(
             value,
@@ -754,6 +867,17 @@
           const text = cleanText(cell);
           doc.setFont('helvetica', cellIndex === 0 || (section.highlightTop && rowIndex === 0) ? 'bold' : 'normal');
           doc.setFontSize(Math.min(columns.length >= 6 ? 5.8 : 6.4, Math.max(4, rowHeight * 1.05)));
+          if (cell?.type === 'player') {
+            drawPdfPlayerCell(doc, cell, curX, currentY, widths[cellIndex], rowHeight);
+            curX += widths[cellIndex];
+            return;
+          }
+          if (cell?.type === 'roster') {
+            setColor(doc, 'setTextColor', COLORS.text);
+            drawPdfRosterCell(doc, cell, curX, currentY, widths[cellIndex], rowHeight);
+            curX += widths[cellIndex];
+            return;
+          }
           setColor(doc, 'setTextColor', /^-\s*(R\$)?/i.test(text) ? COLORS.danger : COLORS.text);
           doc.text(
             doc.splitTextToSize(text, Math.max(7, widths[cellIndex] - 4)).slice(0, 1),

@@ -32,6 +32,11 @@
   --density-space: 16px;
   --motion-duration: 300ms;
   --motion-easing: cubic-bezier(.2, .8, .2, 1);
+  --star-gray: #64748b;
+  --star-bronze: #b46c26;
+  --star-silver: #718096;
+  --star-gold: #d39919;
+  --star-diamond: #0891b2;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -117,6 +122,11 @@
   --overlay-token: rgba(0, 0, 0, .72);
   --shadow-card-token: 0 1px 2px rgba(0, 0, 0, .28), 0 8px 22px rgba(0, 0, 0, .16);
   --shadow-elevated-token: 0 18px 46px rgba(0, 0, 0, .38);
+  --star-gray: #94a3b8;
+  --star-bronze: #d38a45;
+  --star-silver: #cbd5e1;
+  --star-gold: #f4c84a;
+  --star-diamond: #22d3ee;
 }
 
 :root[data-density="compact"] { --density-space: 12px; --control-height: 40px; }
