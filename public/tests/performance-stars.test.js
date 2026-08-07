@@ -101,6 +101,8 @@ test('interface e PDF compartilham celula estruturada de jogador', () => {
   assert.match(css, /@keyframes baba-diamond-float/);
   assert.match(css, /prefers-reduced-motion/);
   assert.match(pdf, /function drawPdfPlayerCell/);
+  assert.match(pdf, /portraitRanking \? 10\.5 : 6\.5/);
+  assert.match(pdf, /portraitRanking \? 1\.35 : 1\.05/);
   assert.match(pdf, /function drawPdfStar/);
   assert.match(pdf, /function clipPolygonAtLeftHalf/);
   assert.doesNotMatch(pdf, /goleiros\?/);

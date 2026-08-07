@@ -120,10 +120,10 @@
     }
   }
 
-  function drawPdfPlayerCell(doc, value, x, y, width, rowHeight, { padding = 2.5 } = {}) {
+  function drawPdfPlayerCell(doc, value, x, y, width, rowHeight, { padding = 2.5, maxRadius = 1.05 } = {}) {
     const name = cleanText(value);
     const stars = Math.max(0, Math.min(5, Number(value?.stars || 0)));
-    const radius = Math.max(.55, Math.min(1.05, rowHeight * .16));
+    const radius = Math.max(.55, Math.min(maxRadius, rowHeight * .16));
     const starStep = radius * 2.05;
     const starWidth = (5 * starStep) + .5;
     const availableTextWidth = Math.max(5, width - (padding * 2) - starWidth);
@@ -697,7 +697,7 @@
       setColor(doc, 'setFillColor', [235, 242, 249]);
       doc.rect(x + .3, y, width - .6, 7, 'F');
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(columns.length >= 7 ? 4.2 : (width < 95 ? 4.8 : 6.2));
+      doc.setFontSize(portraitRanking ? 6 : (columns.length >= 7 ? 4.2 : (width < 95 ? 4.8 : 6.2)));
       setColor(doc, 'setTextColor', [75, 96, 125]);
       let curX = x;
       columns.forEach((column, i) => {
@@ -762,12 +762,12 @@
       }
 
       const availableRowsHeight = Math.max(4, sectionHeight - 21);
-      const minRowHeight = 3.25;
+      const minRowHeight = portraitRanking ? 4.5 : 3.25;
       const maxRows = Math.max(1, Math.floor(availableRowsHeight / (minRowHeight + 0.35)));
       const visibleRows = rows.slice(0, maxRows);
       const omitted = sourceRows.length - visibleRows.length;
       const omissionSpace = omitted > 0 ? 3.5 : 0;
-      const rowHeight = Math.min(6.5, Math.max(minRowHeight, (availableRowsHeight - omissionSpace) / visibleRows.length - 0.35));
+      const rowHeight = Math.min(portraitRanking ? 10.5 : 6.5, Math.max(minRowHeight, (availableRowsHeight - omissionSpace) / visibleRows.length - 0.35));
 
       visibleRows.forEach((sourceRow, rowIndex) => {
         const isTop = Boolean(section.highlightTop && rowIndex === 0);
@@ -791,9 +791,13 @@
           const alignRight = isNumericColumn(label) || /valor|saldo/i.test(cleanText(label));
           const text = cleanText(cell);
           doc.setFont('helvetica', cellIndex === 0 || (section.highlightTop && rowIndex === 0) ? 'bold' : 'normal');
-          doc.setFontSize(Math.min(columns.length >= 6 ? 5.8 : 6.4, Math.max(4, rowHeight * 1.05)));
+          doc.setFontSize(portraitRanking
+            ? Math.min(8.2, Math.max(6.2, rowHeight * .82))
+            : Math.min(columns.length >= 6 ? 5.8 : 6.4, Math.max(4, rowHeight * 1.05)));
           if (cell?.type === 'player') {
-            drawPdfPlayerCell(doc, cell, curX, currentY, widths[cellIndex], rowHeight);
+            drawPdfPlayerCell(doc, cell, curX, currentY, widths[cellIndex], rowHeight, {
+              maxRadius: portraitRanking ? 1.35 : 1.05,
+            });
             curX += widths[cellIndex];
             return;
           }
