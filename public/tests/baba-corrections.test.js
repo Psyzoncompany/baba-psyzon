@@ -99,6 +99,57 @@ test('melhor goleiro prioriza menos derrotas e depois mais vitorias', () => {
   assert.deepEqual(sorted.map((item) => item.nome), ['C', 'A', 'B']);
 });
 
+test('pagamento local não é apagado quando o Firebase ainda não devolveu o jogador', () => {
+  const merged = core.mergePaymentRecords({
+    pagamentos: { p1: true, p2: true },
+    paymentUpdatedAtMs: { p1: 200, p2: 300 },
+    atualizadoEm: 300,
+  }, {
+    pagamentos: { p2: false, p3: true },
+    paymentUpdatedAtMs: { p2: 250, p3: 400 },
+    atualizadoEm: 400,
+  });
+
+  assert.equal(merged.pagamentos.p1, true);
+  assert.equal(merged.pagamentos.p2, true);
+  assert.equal(merged.pagamentos.p3, true);
+  assert.equal(merged.paymentUpdatedAtMs.p1, 200);
+  assert.equal(merged.paymentUpdatedAtMs.p3, 400);
+});
+
+test('pagamento é resolvido pela versão individual mais recente', () => {
+  const remoteWins = core.mergePaymentRecords({
+    pagamentos: { p1: true }, paymentUpdatedAtMs: { p1: 100 }, atualizadoEm: 900,
+  }, {
+    pagamentos: { p1: false }, paymentUpdatedAtMs: { p1: 200 }, atualizadoEm: 200,
+  });
+  assert.equal(remoteWins.pagamentos.p1, false);
+
+  const localWinsTie = core.mergePaymentRecords({
+    pagamentos: { p1: true }, paymentUpdatedAtMs: { p1: 200 }, atualizadoEm: 200,
+  }, {
+    pagamentos: { p1: false }, paymentUpdatedAtMs: { p1: 200 }, atualizadoEm: 200,
+  });
+  assert.equal(localWinsTie.pagamentos.p1, true);
+});
+
+test('pagamentos marcados como pagos são recuperados da sincronização antiga', () => {
+  const repaired = core.mergePaymentRecords({
+    pagamentos: { p1: false }, paymentUpdatedAtMs: { p1: 900 }, atualizadoEm: 900,
+  }, {
+    pagamentos: { p1: true }, paymentUpdatedAtMs: { p1: 200 }, atualizadoEm: 200,
+  });
+  assert.equal(repaired.pagamentos.p1, true);
+  assert.equal(repaired.mergeSchemaVersion, 2);
+
+  const intentionalPending = core.mergePaymentRecords({
+    pagamentos: { p1: false }, paymentUpdatedAtMs: { p1: 900 }, atualizadoEm: 900, mergeSchemaVersion: 2,
+  }, {
+    pagamentos: { p1: true }, paymentUpdatedAtMs: { p1: 200 }, atualizadoEm: 200,
+  });
+  assert.equal(intentionalPending.pagamentos.p1, false);
+});
+
 test('interface usa modais canonicos e persistencia idempotente nas seis correcoes', () => {
   const app = read('baba.js');
   const html = read('baba.html');
@@ -122,6 +173,10 @@ test('interface usa modais canonicos e persistencia idempotente nas seis correco
   assert.match(persistence, /remotePlayerDocumentIds\.get\(originalId\)/);
   assert.match(persistence, /statsRevisionSignature/);
   assert.match(persistence, /game\.placarA \?\? game\.scoreA/);
+  assert.match(persistence, /startPlayerStatsSubscription\(\);[\s\S]*startHistorySubscription\(\);[\s\S]*startMonthsSubscription\(\);/);
+  assert.match(persistence, /\.\.\.\(clone\(current\.monthlyStats\) \|\| \{\}\)/);
+  assert.match(app, /const persisted = state\.playerStats/);
+  assert.match(app, /const persisted = state\.monthlyStats\?\.\[monthKey\]/);
 });
 
 test('relatorios genericos com uma, tres ou cinco secoes permanecem em uma pagina', () => {

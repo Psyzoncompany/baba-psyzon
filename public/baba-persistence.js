@@ -1334,28 +1334,14 @@ function mergeRemoteIntoLocal() {
     next.monthlyPayments = { ...localMonthlyPayments };
     Object.entries(remoteMonthlyPayments).forEach(([monthKey, remoteRecord]) => {
       const localRecord = localMonthlyPayments[monthKey] || {};
-      const localPayments = localRecord.pagamentos && typeof localRecord.pagamentos === 'object' ? localRecord.pagamentos : {};
-      const remotePayments = remoteRecord?.pagamentos && typeof remoteRecord.pagamentos === 'object' ? remoteRecord.pagamentos : {};
-      const localTimes = localRecord.paymentUpdatedAtMs && typeof localRecord.paymentUpdatedAtMs === 'object' ? localRecord.paymentUpdatedAtMs : {};
-      const remoteTimes = remoteRecord?.paymentUpdatedAtMs && typeof remoteRecord.paymentUpdatedAtMs === 'object' ? remoteRecord.paymentUpdatedAtMs : {};
-      const pagamentos = {};
-      const paymentUpdatedAtMs = {};
-      new Set([...Object.keys(localPayments), ...Object.keys(remotePayments)]).forEach((playerId) => {
-        const localTime = Number(localTimes[playerId] || localRecord.atualizadoEm || 0);
-        const remoteTime = Number(remoteTimes[playerId] || remoteRecord?.atualizadoEm || 0);
-        const useLocal = Object.prototype.hasOwnProperty.call(localPayments, playerId) && localTime > remoteTime;
-        pagamentos[playerId] = Boolean(useLocal ? localPayments[playerId] : remotePayments[playerId]);
-        paymentUpdatedAtMs[playerId] = Math.max(localTime, remoteTime);
-      });
-      next.monthlyPayments[monthKey] = {
-        pagamentos,
-        paymentUpdatedAtMs,
-        atualizadoEm: Math.max(Number(localRecord.atualizadoEm || 0), Number(remoteRecord?.atualizadoEm || 0)),
-      };
+      next.monthlyPayments[monthKey] = window.BabaManagementCore.mergePaymentRecords(localRecord, remoteRecord);
     });
   }
   if (window.__babaRemotePlayerStats) next.playerStats = clone(window.__babaRemotePlayerStats);
-  next.monthlyStats = Object.fromEntries(monthStatsCache.entries());
+  next.monthlyStats = {
+    ...(clone(current.monthlyStats) || {}),
+    ...Object.fromEntries(monthStatsCache.entries()),
+  };
   const metadata = window.__babaRemoteMetadata || [];
   const localBabas = replaceHistoryOnNextMerge
     ? (current.babas || []).filter((baba) => baba.id === activeBabaId && baba.status !== 'finalizado')
@@ -1656,6 +1642,9 @@ function startV2Subscriptions() {
   if (v2SubscriptionsStarted) return;
   v2SubscriptionsStarted = true;
   startPlayersSubscription();
+  startPlayerStatsSubscription();
+  startHistorySubscription();
+  startMonthsSubscription();
 }
 
 function activateView(viewName) {
@@ -2009,6 +1998,32 @@ async function softDeletePlayer(playerId) {
   }
 }
 
+async function setMonthlyPayment(monthKey, playerId, paid, updatedAtMs = now()) {
+  const monthId = safeId(monthKey, '');
+  const playerDocumentId = safeId(playerId, '');
+  if (!monthId || !/^\d{4}-\d{2}$/.test(monthId) || !playerDocumentId) {
+    throw new Error('Pagamento mensal invalido.');
+  }
+  const timestamp = Math.max(1, Number(updatedAtMs || now()));
+  const batch = writeBatch(db);
+  batch.set(accountDoc('months', monthId), {
+    id: monthId,
+    monthKey: monthId,
+    schemaVersion: SCHEMA_VERSION,
+    updatedAtMs: timestamp,
+    deleted: false,
+  }, { merge: true });
+  batch.set(accountDoc('months', monthId, 'payments', playerDocumentId), {
+    playerId: String(playerId),
+    paid: Boolean(paid),
+    updatedAtMs: timestamp,
+    schemaVersion: SCHEMA_VERSION,
+    deleted: false,
+  }, { merge: true });
+  await batch.commit();
+  return { playerId: String(playerId), paid: Boolean(paid), updatedAtMs: timestamp };
+}
+
 window.BabaRepository = {
   schemaVersion: SCHEMA_VERSION,
   loadBaba,
@@ -2020,6 +2035,7 @@ window.BabaRepository = {
   migrateLegacyState,
   restoreLegacyBackup,
   softDeletePlayer,
+  setMonthlyPayment,
   diagnoseStateSize: diagnoseBabaStateSize,
   estimateJsonSize,
   isApplyingRemote: () => applyingRemote,

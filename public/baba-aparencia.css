@@ -219,6 +219,31 @@
   gap: 12px;
 }
 
+.team-theme-name {
+  grid-column: 1 / -1;
+}
+
+.team-theme-access-note {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--warning);
+  border-radius: 8px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--warning) 9%, var(--card));
+  font-size: .825rem;
+  font-weight: 600;
+}
+
+.team-theme-card.is-readonly {
+  box-shadow: none;
+}
+
+.team-theme-card.is-readonly :is(input, select) {
+  color: var(--text);
+  opacity: 1;
+  cursor: default;
+}
+
 .team-theme-card__fields label,
 .team-theme-color {
   display: grid;

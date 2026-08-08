@@ -85,7 +85,7 @@ test('desktop exibe navegacao completa e historico remove o estado vazio', () =>
   assert.match(read('baba-ui.css'), /\.baba-standings-table \{[\s\S]*gap: 0;/);
 });
 
-test('mobile preserva o menu Mais e aparencia personaliza cores e escudos', () => {
+test('mobile preserva o menu Mais e somente o organizador personaliza os times', () => {
   const css = read('theme-system.css');
   const html = read('baba-aparencia.html');
   const teamTheme = read('baba-team-theme.js');
@@ -100,8 +100,14 @@ test('mobile preserva o menu Mais e aparencia personaliza cores e escudos', () =
   assert.match(teamTheme, /psyzon_baba_team_theme_v1/);
   assert.match(teamTheme, /--team-\$\{team\.number\}-custom-color/);
   assert.match(teamAppearance, /data-team-color/);
+  assert.match(teamAppearance, /data-team-name/);
   assert.match(teamAppearance, /data-team-logo/);
   assert.match(teamAppearance, /data-team-upload/);
+  assert.match(teamAppearance, /Somente o organizador/);
+  assert.match(teamTheme, /function canManage\(\)/);
+  assert.match(teamTheme, /if \(!canManage\(\)\) return null/);
+  assert.match(teamTheme, /baba-team-1-flamengo\.jpg/);
+  assert.match(teamTheme, /baba-team-2-palmeiras\.webp/);
   assert.match(read('baba.js'), /BabaTeamTheme\?\.getTeam/);
 });
 

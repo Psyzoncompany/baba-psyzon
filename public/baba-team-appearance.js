@@ -27,6 +27,12 @@
     announce.timeout = window.setTimeout(() => { status.textContent = ''; }, 2600);
   }
 
+  function ensureOrganizer() {
+    if (api.canManage()) return true;
+    announce('Somente o organizador pode alterar nomes, cores e escudos.');
+    return false;
+  }
+
   function logoOptions(team) {
     const isCustom = team.logo.startsWith('data:image/');
     return [
@@ -36,32 +42,39 @@
   }
 
   function render() {
+    const canManage = api.canManage();
+    document.querySelector('[data-team-reset-all]')?.toggleAttribute('hidden', !canManage);
+    document.querySelector('[data-team-access-note]')?.toggleAttribute('hidden', canManage);
     grid.innerHTML = api.getTeams().map((team) => `
-      <article class="team-theme-card" data-team-number="${team.number}" data-team-editor="${team.number}">
+      <article class="team-theme-card${canManage ? '' : ' is-readonly'}" data-team-number="${team.number}" data-team-editor="${team.number}">
         <header class="team-theme-card__header">
           <span class="team-theme-card__crest"><img src="${escapeHTML(team.logo)}" alt="Escudo do ${escapeHTML(team.name)}"></span>
           <span><strong>${escapeHTML(team.name)}</strong><small>${escapeHTML(team.club)}</small></span>
         </header>
         <div class="team-theme-card__fields">
+          <label class="team-theme-name">
+            <span>Nome do time</span>
+            <input type="text" maxlength="32" value="${escapeHTML(team.name)}" data-team-name="${team.number}" aria-label="Nome do time ${team.number}" ${canManage ? '' : 'disabled'}>
+          </label>
           <label class="team-theme-color">
             <span>Cor do time</span>
             <span class="team-theme-color__control">
-              <input type="color" value="${escapeHTML(team.color)}" data-team-color="${team.number}" aria-label="Cor do ${escapeHTML(team.name)}">
+              <input type="color" value="${escapeHTML(team.color)}" data-team-color="${team.number}" aria-label="Cor do ${escapeHTML(team.name)}" ${canManage ? '' : 'disabled'}>
               <output>${escapeHTML(team.color)}</output>
             </span>
           </label>
           <label>
             <span>Escudo</span>
-            <select data-team-logo="${team.number}" aria-label="Escudo do ${escapeHTML(team.name)}">${logoOptions(team)}</select>
+            <select data-team-logo="${team.number}" aria-label="Escudo do ${escapeHTML(team.name)}" ${canManage ? '' : 'disabled'}>${logoOptions(team)}</select>
           </label>
         </div>
-        <div class="team-theme-card__actions">
+        ${canManage ? `<div class="team-theme-card__actions">
           <label class="team-theme-upload">
             <input type="file" accept="image/png,image/jpeg,image/webp" data-team-upload="${team.number}">
             <span>Enviar escudo</span>
           </label>
           <button class="secondary" type="button" data-team-reset="${team.number}">Restaurar</button>
-        </div>
+        </div>` : ''}
       </article>
     `).join('');
   }
@@ -100,6 +113,7 @@
   }
 
   grid.addEventListener('input', (event) => {
+    if (!ensureOrganizer()) return;
     const input = event.target.closest('[data-team-color]');
     if (!input) return;
     const number = Number(input.dataset.teamColor);
@@ -108,6 +122,16 @@
   });
 
   grid.addEventListener('change', async (event) => {
+    if (!ensureOrganizer()) return;
+    const nameInput = event.target.closest('[data-team-name]');
+    if (nameInput) {
+      const updated = api.setTeam(Number(nameInput.dataset.teamName), { name: nameInput.value });
+      if (!updated) return;
+      render();
+      announce('Nome do time atualizado.');
+      return;
+    }
+
     const colorInput = event.target.closest('[data-team-color]');
     if (colorInput) {
       api.setTeam(Number(colorInput.dataset.teamColor), { color: colorInput.value });
@@ -138,12 +162,14 @@
   grid.addEventListener('click', (event) => {
     const reset = event.target.closest('[data-team-reset]');
     if (!reset) return;
+    if (!ensureOrganizer()) return;
     api.resetTeam(Number(reset.dataset.teamReset));
     render();
     announce('Time restaurado.');
   });
 
   document.querySelector('[data-team-reset-all]')?.addEventListener('click', () => {
+    if (!ensureOrganizer()) return;
     api.resetAll();
     render();
     announce('Todos os times foram restaurados.');

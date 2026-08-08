@@ -2,9 +2,10 @@
   'use strict';
 
   const STORAGE_KEY = 'psyzon_baba_team_theme_v1';
+  const MODE_KEY = 'psyzon_baba_mode';
   const DEFAULT_TEAMS = Object.freeze([
-    Object.freeze({ number: 1, name: 'Time 1', club: 'Flamengo', color: '#E12A3F', logo: 'img/baba-team-1-flamengo.png' }),
-    Object.freeze({ number: 2, name: 'Time 2', club: 'Palmeiras', color: '#078B56', logo: 'img/baba-team-2-palmeiras.png' }),
+    Object.freeze({ number: 1, name: 'Time 1', club: 'Flamengo', color: '#E12A3F', logo: 'img/baba-team-1-flamengo.jpg' }),
+    Object.freeze({ number: 2, name: 'Time 2', club: 'Palmeiras', color: '#078B56', logo: 'img/baba-team-2-palmeiras.webp' }),
     Object.freeze({ number: 3, name: 'Time 3', club: 'Vasco', color: '#B8A46F', logo: 'img/baba-team-3-vasco.png' }),
     Object.freeze({ number: 4, name: 'Time 4', club: 'Corinthians', color: '#111827', logo: 'img/baba-team-4-corinthians.png' }),
     Object.freeze({ number: 5, name: 'Time 5', club: 'Azul', color: '#2563A8', logo: 'img/baba-time-5.png' }),
@@ -14,6 +15,33 @@
 
   function storage() {
     return window.__nativeLS || window.localStorage;
+  }
+
+  function getStoredMode() {
+    try {
+      return window.sessionStorage?.getItem(MODE_KEY)
+        || window.localStorage?.getItem(MODE_KEY)
+        || '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function isForcedViewer() {
+    const search = String(window.location?.search || '').toLowerCase();
+    return /(?:[?&](?:view|modo)=(?:player|viewer|visualizador|jogador)|[?&](?:publico|share)=)/.test(search);
+  }
+
+  function canManage() {
+    return !isForcedViewer() && getStoredMode() === 'organizer';
+  }
+
+  function normalizeName(value, fallback) {
+    const candidate = String(value ?? '')
+      .replace(/[<>\u0000-\u001F\u007F]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return candidate ? Array.from(candidate).slice(0, 32).join('') : fallback;
   }
 
   function normalizeColor(value, fallback) {
@@ -36,6 +64,7 @@
         : {};
       return {
         ...fallback,
+        name: normalizeName(value.name, fallback.name),
         color: normalizeColor(value.color, fallback.color),
         logo: normalizeLogo(value.logo, fallback.logo),
       };
@@ -54,6 +83,7 @@
 
   function persist() {
     const payload = Object.fromEntries(teams.map((team) => [team.number, {
+      name: team.name,
       color: team.color,
       logo: team.logo,
     }]));
@@ -101,12 +131,14 @@
   }
 
   function setTeam(number, patch) {
+    if (!canManage()) return null;
     const index = teams.findIndex((team) => team.number === Number(number));
     if (index < 0) return null;
     const fallback = DEFAULT_TEAMS[index];
     const current = teams[index];
     teams[index] = {
       ...current,
+      name: normalizeName(patch?.name ?? current.name, fallback.name),
       color: normalizeColor(patch?.color ?? current.color, fallback.color),
       logo: normalizeLogo(patch?.logo ?? current.logo, fallback.logo),
     };
@@ -116,6 +148,7 @@
   }
 
   function resetTeam(number) {
+    if (!canManage()) return null;
     const index = DEFAULT_TEAMS.findIndex((team) => team.number === Number(number));
     if (index < 0) return null;
     teams[index] = { ...DEFAULT_TEAMS[index] };
@@ -125,6 +158,7 @@
   }
 
   function resetAll() {
+    if (!canManage()) return null;
     teams = normalize(null);
     persist();
     apply({ announce: true });
@@ -136,6 +170,7 @@
     getTeams,
     getDefaultTeams,
     getTeam,
+    canManage,
     setTeam,
     resetTeam,
     resetAll,

@@ -18,7 +18,7 @@
   <link href="theme-system.css?v=20260806-theme-5" rel="stylesheet">
   <script src="vendor/lucide.min.js?v=1.29.0" defer></script>
   <script src="theme-provider.js?v=20260806-theme-5"></script>
-  <script src="baba-team-theme.js?v=20260806-1"></script>
+  <script src="baba-team-theme.js?v=20260807-team-identity-1"></script>
   <script>
     window.BABA_AI_ENDPOINT = window.BABA_AI_ENDPOINT || '/api/baba-import/analyze';
     if (window.location.protocol !== 'file:') {
@@ -966,8 +966,8 @@
     (() => {
       const STORAGE_KEY = 'psyzon_baba_state_v1';
       const TEAM_ASSETS = [
-        { name: 'Time 1', club: 'Flamengo', logo: 'img/baba-team-1-flamengo.png', legacy: 'Barcelona' },
-        { name: 'Time 2', club: 'Palmeiras', logo: 'img/baba-team-2-palmeiras.png', legacy: 'Arsenal' },
+        { name: 'Time 1', club: 'Flamengo', logo: 'img/baba-team-1-flamengo.jpg', legacy: 'Barcelona' },
+        { name: 'Time 2', club: 'Palmeiras', logo: 'img/baba-team-2-palmeiras.webp', legacy: 'Arsenal' },
         { name: 'Time 3', club: 'Vasco', logo: 'img/baba-team-3-vasco.png', legacy: 'Real Madrid' },
         { name: 'Time 4', club: 'Corinthians', logo: 'img/baba-team-4-corinthians.png', legacy: 'PSG' },
         { name: 'Time 5', logo: 'img/baba-time-5.png', legacy: 'Chelsea' },
@@ -1059,6 +1059,7 @@
               ? safe.paymentUpdatedAtMs
               : {},
             atualizadoEm: Number(safe.atualizadoEm || safe.updatedAt || Date.now()),
+            mergeSchemaVersion: Math.max(0, Number(safe.mergeSchemaVersion || 0)),
           };
           return records;
         }, {});
@@ -1082,10 +1083,20 @@
                   return;
                 }
                 const number = normalizeTeamNumber(team, index);
-                const asset = TEAM_ASSETS[(number - 1) % TEAM_ASSETS.length];
-                team.name = `Time ${number}`;
+                const asset = assetForTeamNumber(number);
+                team.name = asset.name || `Time ${number}`;
                 team.logo = asset.logo;
               });
+              const namesById = new Map(baba.teams.map((team) => [team.id, team.name]));
+              [...(baba.jogos || []), baba.jogoAtual].filter(Boolean).forEach((game) => {
+                game.timeANome = namesById.get(game.timeA) || game.timeANome;
+                game.timeBNome = namesById.get(game.timeB) || game.timeBNome;
+              });
+              if (Array.isArray(baba.campeaoDoBaba?.times)) {
+                baba.campeaoDoBaba.nomes = baba.campeaoDoBaba.times
+                  .map((teamId) => namesById.get(teamId))
+                  .filter(Boolean);
+              }
             }
             replaceLegacyDeep(baba);
           });
@@ -1383,9 +1394,9 @@
         button.dataset.teamNumber = String(number);
         button.innerHTML = `
           <span class="baba-team-link-logo team-pill__crest"><img src="${asset.logo}" alt="Escudo do ${asset.club || asset.name}" loading="lazy"></span>
-          <span class="baba-team-link-text team-pill__name">Time ${number}</span>
+          <span class="baba-team-link-text team-pill__name">${asset.name || `Time ${number}`}</span>
         `;
-        button.title = `Ver jogadores do Time ${number}${asset.club ? ` · ${asset.club}` : ''}`;
+        button.title = `Ver jogadores do ${asset.name || `Time ${number}`}${asset.club ? ` · ${asset.club}` : ''}`;
         button.closest('.baba-team')?.setAttribute('data-team-number', String(number));
         button.dataset.teamEnhancementKey = enhancementKey;
       }
@@ -1472,12 +1483,12 @@
   <script type="module" src="baba-access.js?v=20260805-baba-management-3"></script>
   <script type="module" src="baba-import-persistence.js?v=20260803-baba-management-1"></script>
   <script type="module" src="baba-import-ui.js?v=20260803-baba-management-1"></script>
-  <script type="module" src="baba-persistence.js?v=20260805-baba-management-3"></script>
+  <script type="module" src="baba-persistence.js?v=20260808-sync-integrity-1"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
   <script src="pdf-report.js?v=20260807-unified-reports-3"></script>
-  <script src="baba-management-core.js?v=20260805-baba-management-5"></script>
+  <script src="baba-management-core.js?v=20260808-sync-integrity-1"></script>
   <script src="baba-performance-stars.js?v=20260807-2"></script>
-  <script src="baba.js?v=20260807-performance-stars-4" defer></script>
+  <script src="baba.js?v=20260808-sync-integrity-1" defer></script>
   <script src="site-version.js?v=6.1.5" defer></script>
 </body>
 

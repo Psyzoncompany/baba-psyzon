@@ -162,6 +162,44 @@
     ));
   }
 
+  function mergePaymentRecords(localRecord = {}, remoteRecord = {}) {
+    const localPayments = localRecord?.pagamentos && typeof localRecord.pagamentos === 'object'
+      ? localRecord.pagamentos
+      : {};
+    const remotePayments = remoteRecord?.pagamentos && typeof remoteRecord.pagamentos === 'object'
+      ? remoteRecord.pagamentos
+      : {};
+    const localTimes = localRecord?.paymentUpdatedAtMs && typeof localRecord.paymentUpdatedAtMs === 'object'
+      ? localRecord.paymentUpdatedAtMs
+      : {};
+    const remoteTimes = remoteRecord?.paymentUpdatedAtMs && typeof remoteRecord.paymentUpdatedAtMs === 'object'
+      ? remoteRecord.paymentUpdatedAtMs
+      : {};
+    const pagamentos = {};
+    const paymentUpdatedAtMs = {};
+
+    new Set([...Object.keys(localPayments), ...Object.keys(remotePayments)]).forEach((playerId) => {
+      const hasLocal = Object.prototype.hasOwnProperty.call(localPayments, playerId);
+      const hasRemote = Object.prototype.hasOwnProperty.call(remotePayments, playerId);
+      const localTime = Number(localTimes[playerId] || localRecord?.atualizadoEm || 0);
+      const remoteTime = Number(remoteTimes[playerId] || remoteRecord?.atualizadoEm || 0);
+      const recoverLegacyPaid = Number(localRecord?.mergeSchemaVersion || 0) < 2
+        && hasRemote
+        && Boolean(remotePayments[playerId])
+        && !Boolean(localPayments[playerId]);
+      const useLocal = hasLocal && !recoverLegacyPaid && (!hasRemote || localTime >= remoteTime);
+      pagamentos[playerId] = Boolean(useLocal ? localPayments[playerId] : remotePayments[playerId]);
+      paymentUpdatedAtMs[playerId] = useLocal ? localTime : remoteTime;
+    });
+
+    return {
+      pagamentos,
+      paymentUpdatedAtMs,
+      atualizadoEm: Math.max(Number(localRecord?.atualizadoEm || 0), Number(remoteRecord?.atualizadoEm || 0)),
+      mergeSchemaVersion: 2,
+    };
+  }
+
   return Object.freeze({
     parseScore,
     scorerSelections,
@@ -169,5 +207,6 @@
     rewriteHistoricalRosters,
     setHistoricalPlayerGoals,
     sortGoalkeeperRanking,
+    mergePaymentRecords,
   });
 });

@@ -36,8 +36,8 @@
     description: 'O jogador deixa de ser novato quando o organizador remove manualmente a condição.',
   });
   const TEAM_VISUALS = [
-    { logo: 'img/baba-team-1-flamengo.png', accent: '#d53445' },
-    { logo: 'img/baba-team-2-palmeiras.png', accent: '#148552' },
+    { logo: 'img/baba-team-1-flamengo.jpg', accent: '#d53445' },
+    { logo: 'img/baba-team-2-palmeiras.webp', accent: '#148552' },
     { logo: 'img/baba-team-3-vasco.png', accent: '#b8a46f' },
     { logo: 'img/baba-team-4-corinthians.png', accent: '#111827' },
     { logo: 'img/baba-time-5.png', accent: '#2563a8' },
@@ -689,6 +689,7 @@
           ? safe.paymentUpdatedAtMs
           : {},
         atualizadoEm: Number(safe.atualizadoEm || safe.updatedAt || Date.now()),
+        mergeSchemaVersion: Math.max(0, Number(safe.mergeSchemaVersion || 0)),
       };
       return records;
     }, {});
@@ -801,6 +802,65 @@
     finalizeStats(target);
   }
 
+  const persistedStatFields = [
+    'totalGols',
+    'totalVitorias',
+    'totalEmpates',
+    'totalDerrotas',
+    'totalJogos',
+    'totalBabas',
+    'totalTitulosBaba',
+    'goalkeeperGames',
+    'goalsConceded',
+  ];
+
+  function addStatsToRanking(ranking, stats) {
+    const playerId = stats?.jogadorId || stats?.playerId;
+    if (!ranking || !playerId) return;
+    const target = ranking[playerId] || makeEmptyPlayerStats(playerId, stats.nome || playerName(playerId));
+    persistedStatFields.forEach((field) => {
+      target[field] = Number(target[field] || 0) + Number(stats[field] || 0);
+    });
+    target.jogadorId = playerId;
+    target.nome = stats.nome || target.nome || playerName(playerId);
+    ranking[playerId] = target;
+    finalizeStats(target);
+  }
+
+  function forEachPersistedBabaStat(baba, callback) {
+    Object.values(calculateDailyRanking(baba)).forEach(callback);
+    const goalkeeperRanking = {};
+    collectGoalkeeperRankingFromBaba(goalkeeperRanking, baba);
+    Object.values(goalkeeperRanking).forEach((stats) => callback({
+      jogadorId: stats.jogadorId,
+      nome: stats.nome,
+      goalkeeperGames: Number(stats.jogos || 0),
+      goalsConceded: Number(stats.golsSofridos || 0),
+    }));
+  }
+
+  function revisePersistedStatsForBaba(previousBaba, nextBaba) {
+    const hasGeneralStats = Boolean(state.playerStats && Object.keys(state.playerStats).length);
+    const previousMonth = monthKeyFromISO(previousBaba?.dataISO);
+    const nextMonth = monthKeyFromISO(nextBaba?.dataISO);
+    const previousMonthlyStats = previousMonth ? state.monthlyStats?.[previousMonth] : null;
+    const nextMonthlyStats = nextMonth ? state.monthlyStats?.[nextMonth] : null;
+    if (!hasGeneralStats && !previousMonthlyStats && !nextMonthlyStats) return;
+
+    if (previousBaba?.status === 'finalizado') {
+      forEachPersistedBabaStat(previousBaba, (stats) => {
+        if (hasGeneralStats) subtractStatsFromRanking(state.playerStats, stats);
+        if (previousMonthlyStats) subtractStatsFromRanking(previousMonthlyStats, stats);
+      });
+    }
+    if (nextBaba?.status === 'finalizado') {
+      forEachPersistedBabaStat(nextBaba, (stats) => {
+        if (hasGeneralStats) addStatsToRanking(state.playerStats, stats);
+        if (nextMonthlyStats) addStatsToRanking(nextMonthlyStats, stats);
+      });
+    }
+  }
+
   function applyDeletedBabaToPersistedStats(baba) {
     const monthKey = monthKeyFromISO(baba?.dataISO);
     const hasGeneralStats = state.playerStats && Object.keys(state.playerStats).length;
@@ -808,21 +868,9 @@
 
     if (!hasGeneralStats && !monthlyStats) return;
 
-    Object.values(calculateDailyRanking(baba)).forEach((stats) => {
+    forEachPersistedBabaStat(baba, (stats) => {
       if (hasGeneralStats) subtractStatsFromRanking(state.playerStats, stats);
       if (monthlyStats) subtractStatsFromRanking(monthlyStats, stats);
-    });
-
-    const goalkeeperRanking = {};
-    collectGoalkeeperRankingFromBaba(goalkeeperRanking, baba);
-    Object.values(goalkeeperRanking).forEach((stats) => {
-      const mapped = {
-        jogadorId: stats.jogadorId,
-        goalkeeperGames: Number(stats.jogos || 0),
-        goalsConceded: Number(stats.golsSofridos || 0),
-      };
-      if (hasGeneralStats) subtractStatsFromRanking(state.playerStats, mapped);
-      if (monthlyStats) subtractStatsFromRanking(monthlyStats, mapped);
     });
 
     if (!hasFinishedBabas()) state.playerStats = {};
@@ -1480,8 +1528,40 @@
     const number = highestTeamNumber + 1;
     return {
       id: `team_${number}`,
-      name: TEAM_NAMES[number - 1] || `Time ${number}`,
+      name: configuredTeamName(number),
     };
+  }
+
+  function configuredTeamName(number) {
+    return window.BabaTeamTheme?.getTeam?.(number)?.name
+      || TEAM_NAMES[number - 1]
+      || `Time ${number}`;
+  }
+
+  function applyConfiguredTeamIdentities() {
+    (state.babas || []).forEach((baba) => {
+      const namesById = new Map();
+      (baba.teams || []).forEach((team) => {
+        if (team?.id !== VISITOR_TEAM_ID && team?.tipo !== 'visitante') {
+          const number = getTeamNumber(team);
+          if (number) {
+            const configured = window.BabaTeamTheme?.getTeam?.(number);
+            team.name = configured?.name || configuredTeamName(number);
+            if (configured?.logo) team.logo = configured.logo;
+          }
+        }
+        if (team?.id && team?.name) namesById.set(team.id, team.name);
+      });
+      [...(baba.jogos || []), baba.jogoAtual].filter(Boolean).forEach((game) => {
+        game.timeANome = namesById.get(game.timeA) || game.timeANome;
+        game.timeBNome = namesById.get(game.timeB) || game.timeBNome;
+      });
+      if (Array.isArray(baba.campeaoDoBaba?.times)) {
+        baba.campeaoDoBaba.nomes = baba.campeaoDoBaba.times
+          .map((teamId) => namesById.get(teamId))
+          .filter(Boolean);
+      }
+    });
   }
 
   function ensureVisitorTeam(baba) {
@@ -1621,7 +1701,7 @@
       ? state.monthlyPayments
       : {};
     if (!state.monthlyPayments[key]) {
-      state.monthlyPayments[key] = { pagamentos: {}, paymentUpdatedAtMs: {}, atualizadoEm: Date.now() };
+      state.monthlyPayments[key] = { pagamentos: {}, paymentUpdatedAtMs: {}, atualizadoEm: Date.now(), mergeSchemaVersion: 2 };
     }
     const record = state.monthlyPayments[key];
     record.pagamentos = record.pagamentos && typeof record.pagamentos === 'object' && !Array.isArray(record.pagamentos)
@@ -1631,6 +1711,7 @@
       ? record.paymentUpdatedAtMs
       : {};
     record.atualizadoEm = Number(record.atualizadoEm || Date.now());
+    record.mergeSchemaVersion = Math.max(0, Number(record.mergeSchemaVersion || 0));
     return record;
   }
 
@@ -2073,6 +2154,7 @@
     if (baba.status === 'finalizado' && !babaId) return showToast('Abra o historico para corrigir este baba.');
     const team = getTeam(baba, teamId);
     if (!team) return;
+    const previousBaba = baba.status === 'finalizado' ? JSON.parse(JSON.stringify(baba)) : null;
     const stats = getManualTeamStats(team);
     const amount = Number(delta || 0);
     if (field === 'goals') {
@@ -2087,7 +2169,10 @@
     team.manualStats = stats;
     applyManualStatsToTeam(team);
     refreshBabaDerivedData(baba);
-    if (baba.status === 'finalizado') saveState('Estatisticas do historico atualizadas.');
+    if (baba.status === 'finalizado') {
+      revisePersistedStatsForBaba(previousBaba, baba);
+      saveState('Estatisticas do historico atualizadas.');
+    }
     else scheduleManualStatsSave();
   }
 
@@ -3973,11 +4058,21 @@
     record.pagamentos[playerId] = !isPlayerPaidThisMonth(playerId, baba);
     record.paymentUpdatedAtMs[playerId] = changedAt;
     record.atualizadoEm = changedAt;
+    record.mergeSchemaVersion = 2;
     if (baba) {
       baba.pagamentos = baba.pagamentos && typeof baba.pagamentos === 'object' && !Array.isArray(baba.pagamentos) ? baba.pagamentos : {};
       baba.pagamentos[playerId] = record.pagamentos[playerId];
     }
     saveState(record.pagamentos[playerId] ? `${player.nome} pagou o mês atual.` : `${player.nome} ficou pendente no mês atual.`);
+    window.BabaRepository?.setMonthlyPayment?.(
+      currentPaymentMonthKey(),
+      playerId,
+      record.pagamentos[playerId],
+      changedAt,
+    ).catch((error) => {
+      console.error('Falha ao salvar pagamento mensal imediatamente:', error);
+      showToast('Pagamento salvo neste dispositivo e aguardando sincronização.');
+    });
     window.BabaPublicSync?.flushPending?.();
   }
 
@@ -4016,7 +4111,9 @@
 
     const linePlayersPerTeam = 4;
     const teamCount = Math.min(TEAM_NAMES.length, Math.max(2, Math.ceil(fieldPlayers.length / linePlayersPerTeam)));
-    const teams = TEAM_NAMES.slice(0, teamCount).map((name, index) => makeEmptyTeam(`team_${index + 1}`, name));
+    const teams = Array.from({ length: teamCount }, (_, index) => (
+      makeEmptyTeam(`team_${index + 1}`, configuredTeamName(index + 1))
+    ));
 
     teams.forEach((team, index) => {
       const start = index * linePlayersPerTeam;
@@ -4113,6 +4210,7 @@
     const editingHistory = Boolean(babaId && baba?.status === 'finalizado');
     if (!baba || (baba.status === 'finalizado' && !editingHistory)) return showToast('Este baba nao pode mais ser alterado.');
     if (!targetTeam || !player) return showToast('Jogador ou time nao encontrado.');
+    const previousBaba = editingHistory ? JSON.parse(JSON.stringify(baba)) : null;
 
     const previousTeam = getPlayerTeam(baba, playerId);
     if (editingHistory) window.BabaManagementCore.rewriteHistoricalRosters(baba, playerId, targetTeam.id);
@@ -4138,7 +4236,10 @@
       player.foraDoBaba = false;
     }
     if (isManualMode(baba)) ensureManualStats(baba);
-    if (editingHistory) refreshBabaDerivedData(baba);
+    if (editingHistory) {
+      refreshBabaDerivedData(baba);
+      revisePersistedStatsForBaba(previousBaba, baba);
+    }
     else {
       refreshPreparedMatchRosters(baba);
       baba.rankingDoBaba = calculateDailyRanking(baba);
@@ -4176,12 +4277,16 @@
     if (!baba || (baba.status === 'finalizado' && !editingHistory)) return showToast('Este baba nao pode mais ser alterado.');
     if (!player || !team) return showToast('Jogador nao encontrado em um time.');
     if (!window.confirm(`Retirar ${player.nome} do ${team.name}? A presenca no baba sera mantida.`)) return;
+    const previousBaba = editingHistory ? JSON.parse(JSON.stringify(baba)) : null;
 
     if (editingHistory) window.BabaManagementCore.rewriteHistoricalRosters(baba, playerId, null);
     else preserveStartedMatchRosters(baba);
     team.jogadores = (team.jogadores || []).filter((id) => id !== playerId);
     if (isManualMode(baba)) ensureManualStats(baba);
-    if (editingHistory) refreshBabaDerivedData(baba);
+    if (editingHistory) {
+      refreshBabaDerivedData(baba);
+      revisePersistedStatsForBaba(previousBaba, baba);
+    }
     else {
       refreshPreparedMatchRosters(baba);
       baba.rankingDoBaba = calculateDailyRanking(baba);
@@ -4971,6 +5076,7 @@
     const baba = getBabaById(selectedGameEdit.babaId);
     const game = (baba?.jogos || []).find((item) => String(item.numeroJogo) === String(selectedGameEdit.gameNumber));
     if (!baba || !game) return closeGameEditModal();
+    const previousBaba = baba.status === 'finalizado' ? JSON.parse(JSON.stringify(baba)) : null;
     let scoreA;
     let scoreB;
     try {
@@ -5016,6 +5122,7 @@
     game.vencedor = game.empate ? null : (scoreA > scoreB ? game.timeA : game.timeB);
     game.perdedor = game.empate ? null : (scoreA > scoreB ? game.timeB : game.timeA);
     refreshBabaDerivedData(baba);
+    if (previousBaba) revisePersistedStatsForBaba(previousBaba, baba);
     closeGameEditModal();
     saveState(`Jogo ${game.numeroJogo} corrigido para ${scoreA} x ${scoreB}.`);
   }
@@ -5057,6 +5164,7 @@
     }
     if (isManualMode(baba)) ensureManualStats(baba);
 
+    const previousBaba = JSON.parse(JSON.stringify(baba));
     const champions = calculateChampions(baba);
     baba.campeaoDoBaba = {
       times: champions.map((team) => team.id),
@@ -5067,6 +5175,7 @@
     baba.rankingDoBaba = calculateDailyRanking(baba);
     baba.status = 'finalizado';
     baba.finalizadoEm = Date.now();
+    revisePersistedStatsForBaba(previousBaba, baba);
     saveState('Baba finalizado e salvo no histórico.');
     setActiveTab('history');
   }
@@ -5205,6 +5314,7 @@
     refreshBabaDerivedData(edited);
     const index = state.babas.findIndex((baba) => baba.id === edited.id);
     if (index < 0) return closeHistorySummaryEditor();
+    revisePersistedStatsForBaba(source, edited);
     state.babas[index] = edited;
     closeHistorySummaryEditor();
     saveState(`Historico de ${edited.dataCompleta} atualizado.`);
@@ -5324,6 +5434,17 @@
   }
 
   function calculateGeneralRanking() {
+    const persisted = state.playerStats && typeof state.playerStats === 'object' && !Array.isArray(state.playerStats)
+      ? state.playerStats
+      : {};
+    if (Object.keys(persisted).length) {
+      const ranking = JSON.parse(JSON.stringify(persisted));
+      Object.entries(ranking).forEach(([playerId, stats]) => {
+        stats.jogadorId = stats.jogadorId || stats.playerId || playerId;
+        finalizeStats(stats);
+      });
+      return ranking;
+    }
     if (!hasFinishedBabas()) return {};
     const ranking = {};
     state.babas.filter((baba) => baba.status === 'finalizado').forEach((baba) => {
@@ -5354,12 +5475,17 @@
   }
 
   function calculateMonthlyRanking(monthKey, { includeActive = false } = {}) {
-    const ranking = {};
-    state.babas
-      .filter((baba) => baba.status === 'finalizado' && monthKeyFromISO(baba.dataISO) === monthKey)
-      .forEach((baba) => {
-        Object.values(getFinishedBabaRanking(baba)).forEach((stats) => mergeRankingStats(ranking, stats));
-      });
+    const persisted = state.monthlyStats?.[monthKey];
+    const ranking = persisted && typeof persisted === 'object' && !Array.isArray(persisted)
+      ? JSON.parse(JSON.stringify(persisted))
+      : {};
+    if (!Object.keys(ranking).length) {
+      state.babas
+        .filter((baba) => baba.status === 'finalizado' && monthKeyFromISO(baba.dataISO) === monthKey)
+        .forEach((baba) => {
+          Object.values(getFinishedBabaRanking(baba)).forEach((stats) => mergeRankingStats(ranking, stats));
+        });
+    }
 
     const active = getActiveBaba();
     if (includeActive && active && active.status !== 'finalizado' && monthKeyFromISO(active.dataISO) === monthKey) {
@@ -5434,38 +5560,57 @@
 
   function calculateGoalkeeperRanking({ includeActive = false } = {}) {
     const ranking = {};
-    state.babas
-      .filter((baba) => baba.status === 'finalizado')
-      .forEach((baba) => {
-        const savedGoalkeepers = Object.values(getFinishedBabaRanking(baba))
-          .filter((stats) => Number(stats.goalkeeperGames || 0) > 0);
-        if (!savedGoalkeepers.length) {
-          collectGoalkeeperRankingFromBaba(ranking, baba);
-          return;
-        }
-        savedGoalkeepers.forEach((stats) => {
-          const playerId = stats.jogadorId || stats.playerId;
-          if (!ranking[playerId]) {
-            ranking[playerId] = {
-              jogadorId: playerId,
-              nome: stats.nome || stats.name || playerName(playerId, baba),
-              jogos: 0,
-              vitorias: 0,
-              empates: 0,
-              derrotas: 0,
-              golsSofridos: 0,
-              totalBabas: 0,
-              _babas: new Set(),
-            };
-          }
-          ranking[playerId].jogos += Number(stats.goalkeeperGames || 0);
-          ranking[playerId].vitorias += Number(stats.totalVitorias || 0);
-          ranking[playerId].empates += Number(stats.totalEmpates || 0);
-          ranking[playerId].derrotas += Number(stats.totalDerrotas || 0);
-          ranking[playerId].golsSofridos += Number(stats.goalsConceded || 0);
-          ranking[playerId]._babas.add(baba.id);
-        });
+    const persistedGoalkeepers = Object.values(state.playerStats || {})
+      .filter((stats) => Number(stats.goalkeeperGames || 0) > 0);
+    if (persistedGoalkeepers.length) {
+      persistedGoalkeepers.forEach((stats) => {
+        const playerId = stats.jogadorId || stats.playerId;
+        ranking[playerId] = {
+          jogadorId: playerId,
+          nome: stats.nome || stats.name || playerName(playerId),
+          jogos: Number(stats.goalkeeperGames || 0),
+          vitorias: Number(stats.totalVitorias || 0),
+          empates: Number(stats.totalEmpates || 0),
+          derrotas: Number(stats.totalDerrotas || 0),
+          golsSofridos: Number(stats.goalsConceded || 0),
+          totalBabas: Number(stats.totalBabas || 0),
+          _babas: new Set(),
+        };
       });
+    } else {
+      state.babas
+        .filter((baba) => baba.status === 'finalizado')
+        .forEach((baba) => {
+          const savedGoalkeepers = Object.values(getFinishedBabaRanking(baba))
+            .filter((stats) => Number(stats.goalkeeperGames || 0) > 0);
+          if (!savedGoalkeepers.length) {
+            collectGoalkeeperRankingFromBaba(ranking, baba);
+            return;
+          }
+          savedGoalkeepers.forEach((stats) => {
+            const playerId = stats.jogadorId || stats.playerId;
+            if (!ranking[playerId]) {
+              ranking[playerId] = {
+                jogadorId: playerId,
+                nome: stats.nome || stats.name || playerName(playerId, baba),
+                jogos: 0,
+                vitorias: 0,
+                empates: 0,
+                derrotas: 0,
+                golsSofridos: 0,
+                totalBabas: 0,
+                _babas: new Set(),
+              };
+            }
+            ranking[playerId].jogos += Number(stats.goalkeeperGames || 0);
+            ranking[playerId].vitorias += Number(stats.totalVitorias || 0);
+            ranking[playerId].empates += Number(stats.totalEmpates || 0);
+            ranking[playerId].derrotas += Number(stats.totalDerrotas || 0);
+            ranking[playerId].golsSofridos += Number(stats.goalsConceded || 0);
+            ranking[playerId]._babas.add(baba.id);
+          });
+        });
+    }
 
     const active = getActiveBaba();
     if (includeActive && active && active.status !== 'finalizado') {
@@ -5474,7 +5619,7 @@
 
     const eligible = Object.values(ranking)
       .map((stats) => {
-        stats.totalBabas = stats._babas?.size || 0;
+        stats.totalBabas = Number(stats.totalBabas || stats._babas?.size || 0);
         delete stats._babas;
         stats.mediaSofridos = stats.jogos ? Number((stats.golsSofridos / stats.jogos).toFixed(2)) : 0;
         return stats;
@@ -5485,6 +5630,7 @@
 
   function getAvailableMonthKeys() {
     const keys = new Set();
+    Object.keys(state.monthlyStats || {}).forEach((key) => keys.add(key));
     state.babas.filter((baba) => baba.status === 'finalizado').forEach((baba) => {
       const key = monthKeyFromISO(baba.dataISO);
       if (key) keys.add(key);
@@ -5528,7 +5674,10 @@
   }
 
   function completedBabaCount(predicate = null) {
-    return state.babas.filter((baba) => baba.status === 'finalizado' && (!predicate || predicate(baba))).length;
+    const loadedCount = state.babas.filter((baba) => baba.status === 'finalizado' && (!predicate || predicate(baba))).length;
+    if (predicate) return loadedCount;
+    const persistedCount = Math.max(0, ...Object.values(state.playerStats || {}).map((stats) => Number(stats.totalBabas || 0)));
+    return Math.max(loadedCount, persistedCount);
   }
 
   function resetPerformanceCache() {
@@ -9141,6 +9290,7 @@
     applyBabaTheme(savedTheme);
     window.ThemeProvider?.subscribe?.(({ resolvedMode }) => applyBabaTheme(resolvedMode));
     window.BabaTeamTheme?.subscribe?.(() => {
+      applyConfiguredTeamIdentities();
       render();
       window.BabaHtmlTools?.polishDom?.();
     });

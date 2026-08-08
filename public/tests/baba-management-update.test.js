@@ -48,9 +48,12 @@ test('PDF de pagamento separa pagos, pendentes, novatos e desativados', () => {
 
 test('sincronização de pagamento resolve conflitos por jogador e acompanha o mês em tempo real', () => {
   const persistence = read('baba-persistence.js');
+  const core = read('baba-management-core.js');
   assert.match(persistence, /paymentUpdatedAtMs/);
   assert.match(persistence, /function startMonthPaymentsSubscription/);
-  assert.match(persistence, /const useLocal = .*localTime > remoteTime/);
+  assert.match(core, /const hasLocal = Object\.prototype\.hasOwnProperty/);
+  assert.match(core, /!hasRemote \|\| localTime >= remoteTime/);
+  assert.match(persistence, /function setMonthlyPayment/);
   assert.match(persistence, /flushPending: flushPendingSave/);
 });
 
