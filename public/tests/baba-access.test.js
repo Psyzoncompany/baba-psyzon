@@ -12,7 +12,7 @@ function readPublic(file) {
 
 test('login Google usa popup sem recarregar a pagina e informa mudancas de autenticacao', () => {
   const source = readPublic('firebase-config.js');
-  const login = readPublic('login.html');
+  const baba = readPublic('baba.html');
 
   assert.match(source, /setPersistence\(auth, browserLocalPersistence\)/);
   assert.match(source, /return signInWithPopup\(auth, googleProvider\)/);
@@ -22,10 +22,9 @@ test('login Google usa popup sem recarregar a pagina e informa mudancas de auten
   assert.match(source, /window\.isLocalMode = false/);
   assert.doesNotMatch(source, /browserSessionPersistence/);
   assert.doesNotMatch(source, /signInWithRedirect|getRedirectResult/);
-  assert.match(login, /id="google-login-btn"/);
-  assert.match(login, /id="commission-email"/);
-  assert.match(login, /id="commission-password"/);
-  assert.match(login, /id="commission-login-btn"/);
+  assert.match(baba, /id="organizer-google-login"/);
+  assert.match(baba, /id="organizer-email-login"/);
+  assert.match(baba, /id="organizer-password-login"/);
   assert.match(source, /signInWithEmailAndPassword/);
 });
 
@@ -36,12 +35,12 @@ test('estado, modo e tela ficam isolados pela conta Google no armazenamento nati
     'psyzon_baba_mode',
     'psyzon_baba_last_view',
     'psyzon_baba_theme',
-    'psyzon_baba_player_access_v1',
   ];
 
   for (const key of requiredKeys) assert.match(source, new RegExp(`['\"]${key}['\"]`));
   assert.match(source, /const scopedKey = `\$\{key\}:\$\{accountId\}`/);
   assert.match(source, /psyzon_baba_legacy_storage_owner/);
+  assert.match(readPublic('baba-access.js'), /psyzon_baba_player_access_v1/);
 });
 
 test('acesso administrativo nao usa mais senha fixa e restaura a ultima tela', () => {
@@ -107,7 +106,7 @@ test('regras isolam cada conta e permitem validar somente o hash do codigo publi
   assert.match(rules, /function ownsAccount\(accountId\)/);
   assert.match(rules, /sign_in_provider == 'google\.com'/);
   assert.match(rules, /firebase\.identities\["google\.com"\] != null/);
-  assert.match(rules, /match \/users\/\{userId\}/);
+  assert.doesNotMatch(rules, /match \/users\/\{userId\}/);
   assert.match(rules, /match \/baba_accounts\/\{accountId\}/);
   assert.match(rules, /match \/baba_access_config\/\{accountId\}/);
   assert.match(rules, /match \/baba_access_codes\/\{codeHash\}/);

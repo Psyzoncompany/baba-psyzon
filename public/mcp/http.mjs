@@ -50,7 +50,7 @@ app.post('/mcp', async (req, res) => {
 app.all('/mcp', (_req, res) => res.status(405).set('Allow', 'POST').json({ error: 'Use POST no endpoint MCP.' }));
 
 const httpServer = app.listen(config.port, config.host, () => {
-  console.error(`Sitey Caixa MCP HTTP em http://${config.host}:${config.port}/mcp. Escrita: ${config.writesEnabled ? 'ativada' : 'desativada'}.`);
+  console.error(`Baba Psyzon MCP HTTP em http://${config.host}:${config.port}/mcp. Escrita: ${config.writesEnabled ? 'ativada' : 'desativada'}.`);
 });
 
 process.on('SIGINT', async () => {

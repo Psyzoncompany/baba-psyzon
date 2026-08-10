@@ -50,12 +50,9 @@ test('Aparencia oferece todos os controles e os modulos carregam o provedor', ()
   assert.match(settings, /value="reduced"/);
   assert.match(settings, /Português \(Brasil\)/);
   assert.match(read('baba.html'), /baba-aparencia\.html/);
-  assert.doesNotMatch(read('configuracoes.html'), /data-theme-settings/);
 
   [
-    'baba.html', 'baba-aparencia.html', 'index.html', 'central.html', 'clientes.html', 'configuracoes.html',
-    'contas.html', 'historico.html', 'HistoricoPedidos.html', 'investimentos.html',
-    'login.html', 'mesa-tatica.html', 'processos.html', 'relatorios.html', 'versoes.html',
+    'baba.html', 'baba-aparencia.html', 'mesa-tatica.html',
   ].forEach((file) => {
     const html = read(file);
     assert.match(html, /theme-system\.css/, `${file} precisa carregar os tokens`);
@@ -65,13 +62,9 @@ test('Aparencia oferece todos os controles e os modulos carregam o provedor', ()
   });
 });
 
-test('carregamento visual evita observadores e prefetch em massa', () => {
+test('carregamento visual evita observadores desnecessarios', () => {
   const provider = read('theme-provider.js');
-  const preloader = read('site-preloader.js');
   assert.doesNotMatch(provider, /MutationObserver/);
-  assert.doesNotMatch(preloader, /warmAll|SITE_PAGES|ui-liquid\.css|theme-toggle\.js/);
-  assert.match(preloader, /mouseover/);
-  assert.match(preloader, /touchstart/);
 });
 
 test('desktop exibe navegacao completa e historico remove o estado vazio', () => {

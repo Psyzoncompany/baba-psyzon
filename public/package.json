@@ -1,16 +1,12 @@
 {
-  "name": "sitey-caixa",
+  "name": "baba-psyzon",
   "version": "2.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
     "api": "node server.js",
     "mcp": "node mcp/stdio.mjs",
     "mcp:http": "node mcp/http.mjs",
-    "lint": "next lint && node --check baba-import-core.js && node --check baba-import-ui.js && node --check baba-team-theme.js && node --check baba-team-appearance.js && node --check site-version.js && node --check site-preloader.js && node --input-type=module --check < baba-import-persistence.js && node --input-type=module --check < baba-persistence.js && node --input-type=module --check < baba-access.js && node --input-type=module --check < firebase-config.js && node --check scripts/migrate-baba-import-schema.mjs && node --check server.js && node --check mcp/config.mjs && node --check mcp/firebase-admin.mjs && node --check mcp/confirmation.mjs && node --check mcp/repository.mjs && node --check mcp/server.mjs && node --check mcp/stdio.mjs && node --check mcp/http.mjs",
-    "typecheck": "tsc --noEmit",
+    "lint": "node --check baba-import-core.js && node --check baba-import-ui.js && node --check baba-team-theme.js && node --check baba-team-appearance.js && node --check site-version.js && node --input-type=module --check < baba-import-persistence.js && node --input-type=module --check < baba-persistence.js && node --input-type=module --check < baba-access.js && node --input-type=module --check < firebase-config.js && node --check scripts/migrate-baba-import-schema.mjs && node --check server.js && node --check mcp/config.mjs && node --check mcp/firebase-admin.mjs && node --check mcp/confirmation.mjs && node --check mcp/repository.mjs && node --check mcp/server.mjs && node --check mcp/stdio.mjs && node --check mcp/http.mjs",
     "test": "node --test tests/*.test.js",
     "migrate:baba-import": "node scripts/migrate-baba-import-schema.mjs",
     "migrate:baba-import:down": "node scripts/migrate-baba-import-schema.mjs --down --confirm-down"
@@ -19,48 +15,26 @@
     "@modelcontextprotocol/express": "^2.0.0",
     "@modelcontextprotocol/node": "^2.0.0",
     "@modelcontextprotocol/server": "^2.0.0",
-    "autoprefixer": "^10.4.24",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "firebase-admin": "^14.2.0",
     "jspdf": "^4.2.1",
     "lucide": "^1.29.0",
-    "next": "14.2.30",
     "node-fetch": "^3.3.2",
-    "postcss": "^8.5.6",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "tailwindcss": "^4.2.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@modelcontextprotocol/client": "^2.0.0",
-    "@tailwindcss/postcss": "^4.3.3",
-    "@tailwindcss/vite": "^4.3.3",
-    "@types/node": "^20.17.19",
-    "@types/react": "^18.3.18",
-    "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react": "^5.1.4",
-    "eslint": "^8.57.1",
-    "eslint-config-next": "14.2.30",
-    "typescript": "^5.7.3"
+    "@types/node": "^20.17.19"
   },
-  "description": "Sitey Caixa e gestão do Baba com integração MCP",
+  "description": "Baba Psyzon com integracao Firebase e MCP",
   "main": "server.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Psyzoncompany/sitey-caixa.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "engines": {
     "node": ">=20"
-  },
-  "bugs": {
-    "url": "https://github.com/Psyzoncompany/sitey-caixa/issues"
-  },
-  "homepage": "https://github.com/Psyzoncompany/sitey-caixa#readme"
+  }
 }

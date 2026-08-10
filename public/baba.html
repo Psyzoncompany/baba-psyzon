@@ -34,7 +34,8 @@
     } else {
       window.BackendInitialized = true;
       window.firebaseAuth = {
-        logout: () => { window.location.href = 'login.html'; },
+        logout: async () => {},
+        waitUntilReady: async () => null,
         currentUser: () => null,
       };
     }

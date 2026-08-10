@@ -249,6 +249,8 @@
   let rankingMode = 'goals';
   let rankingScope = 'monthly';
   let performanceCache = null;
+  let authoritativeHistoryRankings = null;
+  let authoritativeHistoryRankingsPromise = null;
   const expandedRankingKeys = new Set();
   const loadingHistoryIds = new Set();
   const renderedHTMLCache = new WeakMap();
@@ -5198,6 +5200,7 @@
     const ok = confirm(`Excluir o baba de ${baba.dataCompleta} do historico?`);
     if (!ok) return;
     state.babas = state.babas.filter((item) => item.id !== babaId);
+    authoritativeHistoryRankings?.delete(babaId);
     if (selectedHistoryId === babaId) selectedHistoryId = null;
     if (state.activeBabaId === babaId) {
       state.activeBabaId = state.babas.find((item) => item.status !== 'finalizado')?.id || null;
@@ -5752,7 +5755,8 @@
   function playerNameWithStarsHTML(playerId, baba = getDisplayedBaba(), options = {}) {
     const name = options.name || playerName(playerId, baba);
     const performance = options.rating === undefined ? defaultPlayerPerformance(playerId, baba) : options.rating;
-    return `<span class="baba-player-name-line"><span class="baba-player-name-text">${escapeHTML(name)}</span>${performanceStarsHTML(performance, { compact: true })}</span>`;
+    const babaId = options.babaId || baba?.id || '';
+    return `<span class="baba-player-name-line is-clickable" role="button" tabindex="0" data-player-detail-id="${escapeHTML(playerId)}"${babaId ? ` data-player-detail-baba-id="${escapeHTML(babaId)}"` : ''} aria-label="Abrir card de ${escapeHTML(name)}"><span class="baba-player-name-text">${escapeHTML(name)}</span>${performanceStarsHTML(performance, { compact: true })}</span>`;
   }
 
   function pdfPlayerCell(playerId, name, baba = getDisplayedBaba(), performance = undefined) {
@@ -5849,7 +5853,10 @@
       matchMode: baba?.matchMode,
     }, () => renderDashboard(baba));
     renderComponent('standings', { teams: baba?.teams, currentGame: baba?.jogoAtual, matchMode: baba?.matchMode }, () => renderStandings(baba));
-    renderComponent('daily-scorers', activeBase, () => renderDailyTopScorers(baba));
+    renderComponent('daily-scorers', {
+      ...activeBase,
+      expanded: expandedRankingKeys.has('daily-top-scorers'),
+    }, () => renderDailyTopScorers(baba));
     renderComponent('current-games', { id: baba?.id, games: baba?.jogos, teams: baba?.teams, matchMode: baba?.matchMode }, () => renderCurrentGames(baba));
     renderComponent('rankings', {
       babas: state.babas,

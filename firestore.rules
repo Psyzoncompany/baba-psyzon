@@ -19,10 +19,6 @@ service cloud.firestore {
       return linkedGoogleAccount() && request.auth.uid == accountId;
     }
 
-    match /users/{userId} {
-      allow read, create, update, delete: if ownsAccount(userId);
-    }
-
     function isSchemaV2() {
       return request.resource.data.schemaVersion == 2;
     }
@@ -51,34 +47,10 @@ service cloud.firestore {
         ]);
     }
 
-    match /orders/{orderId} {
-      allow read, write: if signedIn();
-    }
-
     match /orders_public/baba_live_state {
       allow read: if true;
       allow create, update: if validPointer();
       allow delete: if false;
-    }
-
-    match /orders_public/{orderId} {
-      allow read: if true;
-      allow write: if signedIn();
-    }
-
-    match /order_clients/{token} {
-      allow read: if true;
-      allow write: if signedIn();
-    }
-
-    match /order_feedback/{token} {
-      allow read: if true;
-      allow write: if signedIn();
-
-      match /items/{itemId} {
-        allow read, create: if true;
-        allow update, delete: if false;
-      }
     }
 
     match /babas/{babaId} {

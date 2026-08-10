@@ -74,6 +74,7 @@ let backoffUntil = 0;
 let latestPointerData = null;
 let lastPointerSignature = '';
 let replaceHistoryOnNextMerge = false;
+let allHistoryRankingsPromise = null;
 
 function now() {
   return Date.now();
@@ -479,6 +480,7 @@ function babaMetadata(baba, currentGameId = null, timestamp = now()) {
     currentQueue: [...(baba.filaTimes || [])],
     filaTimes: [...(baba.filaTimes || [])],
     campeaoDoBaba: baba.campeaoDoBaba || null,
+    rankingDoBaba: baba.status === 'finalizado' ? (baba.rankingDoBaba || {}) : null,
     lastResult: baba.lastResult || null,
     pendingTieBreak: baba.pendingTieBreak || null,
     teamRevealIndex: Number(baba.teamRevealIndex || 0),
@@ -1647,6 +1649,67 @@ function startV2Subscriptions() {
   startMonthsSubscription();
 }
 
+async function loadAllHistoryRankings() {
+  if (allHistoryRankingsPromise) return allHistoryRankingsPromise;
+  allHistoryRankingsPromise = (async () => {
+    await startRepository();
+    if (!activeAccountId) throw new Error('Conta do Baba ainda nao identificada.');
+
+    const metadata = new Map();
+    let cursor = null;
+    let pageCount = 0;
+    do {
+      const constraints = [orderBy('criadoEm', 'desc')];
+      if (cursor) constraints.push(startAfter(cursor));
+      constraints.push(limit(RECENT_BABA_LIMIT));
+      const snapshot = await getDocs(query(accountCollection('babas'), ...constraints));
+      snapshot.docs.forEach((item) => {
+        const data = item.data() || {};
+        if (!data.deleted && data.status === 'finalizado') metadata.set(data.id || item.id, data);
+      });
+      cursor = snapshot.docs[snapshot.docs.length - 1] || null;
+      pageCount += 1;
+      if (snapshot.size < RECENT_BABA_LIMIT || pageCount >= 200) break;
+    } while (cursor);
+
+    const rows = [...metadata.entries()];
+    const result = {};
+    for (let index = 0; index < rows.length; index += 6) {
+      const batch = rows.slice(index, index + 6);
+      const rankings = await Promise.all(batch.map(async ([babaId, meta]) => {
+        const embedded = meta.rankingDoBaba && typeof meta.rankingDoBaba === 'object'
+          ? meta.rankingDoBaba
+          : null;
+        if (embedded && Object.keys(embedded).length) return embedded;
+        if (finishedBabaStatsCache.has(babaId)) return finishedBabaStatsCache.get(babaId) || {};
+        const snapshot = await getDocs(query(
+          accountCollection('babas', safeId(babaId), 'stats'),
+          limit(QUERY_LIMITS.stats),
+        ));
+        const ranking = {};
+        snapshot.docs.forEach((item) => {
+          const data = item.data() || {};
+          if (!data.deleted) ranking[data.jogadorId || data.playerId || item.id] = data;
+        });
+        finishedBabaStatsCache.set(babaId, ranking);
+        return ranking;
+      }));
+      batch.forEach(([babaId, meta], batchIndex) => {
+        result[babaId] = {
+          id: babaId,
+          dataISO: meta.dataISO || meta.dateKey || '',
+          ranking: clone(rankings[batchIndex]) || {},
+        };
+      });
+    }
+    return result;
+  })().catch((error) => {
+    allHistoryRankingsPromise = null;
+    throw error;
+  });
+  return allHistoryRankingsPromise;
+}
+
 function activateView(viewName) {
   const view = String(viewName || 'dashboard');
   if (view === 'goals') startPurchaseGoalsSubscription();
@@ -2028,6 +2091,7 @@ window.BabaRepository = {
   schemaVersion: SCHEMA_VERSION,
   loadBaba,
   loadMonthStats,
+  loadAllHistoryRankings,
   loadMonthPayments,
   loadMoreHistory,
   refreshAccountData,
