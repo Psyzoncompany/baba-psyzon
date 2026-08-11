@@ -1,4 +1,4 @@
-const CACHE_NAME = 'baba-psyzon-static-v1';
+const CACHE_NAME = 'baba-psyzon-static-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.webmanifest',
@@ -27,6 +27,18 @@ function isSensitiveRequest(url) {
     || url.pathname === '/mcp';
 }
 
+async function cacheAndReturn(request, response) {
+  if (!response.ok || response.type !== 'basic') return response;
+  const cacheCopy = response.clone();
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(request, cacheCopy);
+  } catch (error) {
+    console.warn('[Baba Psyzon] Não foi possível atualizar o cache estático.', error);
+  }
+  return response;
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
@@ -35,10 +47,7 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
-          return response;
-        })
+        .then((response) => cacheAndReturn(request, response))
         .catch(() => caches.match(request).then((cached) => cached || caches.match('/'))),
     );
     return;
@@ -47,10 +56,7 @@ self.addEventListener('fetch', (event) => {
   if (!['style', 'script', 'image', 'font'].includes(request.destination)) return;
   event.respondWith(
     caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-      if (response.ok && response.type === 'basic') {
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
-      }
-      return response;
+      return cacheAndReturn(request, response);
     })),
   );
 });
