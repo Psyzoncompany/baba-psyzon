@@ -8121,12 +8121,7 @@
     const safeTab = !isOrganizer() && tab === 'organizer' ? 'dashboard' : tab;
     localStorage.setItem(VIEW_KEY, safeTab);
     document.body.dataset.babaView = safeTab;
-    $$('.baba-tabs [data-tab], .app-mobile-navigation [data-tab], #baba-more-menu [data-tab]').forEach((button) => {
-      const active = button.dataset.tab === safeTab;
-      button.classList.toggle('active', active);
-      if (active) button.setAttribute('aria-current', 'page');
-      else button.removeAttribute('aria-current');
-    });
+    $$('.baba-tabs [data-tab], #baba-more-menu [data-tab]').forEach((button) => button.classList.toggle('active', button.dataset.tab === safeTab));
     const isMoreTab = ['teams', 'goals', 'organizer'].includes(safeTab);
     els.moreToggle?.classList.toggle('active', isMoreTab);
     closeMoreMenu();
