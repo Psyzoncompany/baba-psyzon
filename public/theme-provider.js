@@ -60,6 +60,7 @@
     root.dataset.motion = preferences.motion;
     root.lang = preferences.language === 'pt-BR' ? 'pt-br' : preferences.language;
     root.style.colorScheme = colorMode;
+    if (document.body) document.body.dataset.theme = colorMode;
     document.body?.classList.toggle('baba-dark-theme', colorMode === 'dark');
 
     const themeColor = colorMode === 'dark' ? '#09090B' : '#F8FAFC';

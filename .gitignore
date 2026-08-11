@@ -1,5 +1,9 @@
 # Dependências instaladas na raiz para as Vercel Functions.
 node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+.next-dev.log
 
 # Credenciais locais nunca devem entrar no Git.
 .env

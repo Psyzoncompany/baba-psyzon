@@ -1,19 +1,24 @@
 {
   "name": "Baba Psyzon",
   "short_name": "Baba Psyzon",
-  "start_url": "./baba.html",
+  "description": "Gestão de times, jogos, gols, pagamentos, rankings e estratégias do Baba Psyzon.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#f4f8fc",
-  "theme_color": "#f4f8fc",
+  "orientation": "any",
+  "background_color": "#f5f7fa",
+  "theme_color": "#2563eb",
+  "categories": ["sports", "productivity"],
   "icons": [
     {
-      "src": "icons/baba-icon-192.png",
+      "src": "/icons/baba-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/baba-icon-512.png",
+      "src": "/icons/baba-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
