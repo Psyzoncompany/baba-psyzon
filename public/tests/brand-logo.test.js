@@ -34,6 +34,14 @@ test('todas as telas do Baba usam a nova logo oficial', () => {
 });
 
 test('icones instalaveis sao derivados da nova logo nas dimensoes corretas', () => {
+  const manifest = JSON.parse(read('manifest.webmanifest'));
+
+  assert.deepEqual(manifest.icons[0], {
+    src: 'img/logo-baba.svg',
+    sizes: 'any',
+    type: 'image/svg+xml',
+    purpose: 'any maskable',
+  });
   assert.deepEqual(pngSize('icons/baba-icon-180.png'), { width: 180, height: 180 });
   assert.deepEqual(pngSize('icons/baba-icon-192.png'), { width: 192, height: 192 });
   assert.deepEqual(pngSize('icons/baba-icon-512.png'), { width: 512, height: 512 });
