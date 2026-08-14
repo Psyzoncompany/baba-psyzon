@@ -158,7 +158,10 @@ body.tactical-page.baba-dark-theme {
   height: 2.75rem;
   flex: 0 0 auto;
   object-fit: contain;
-  filter: drop-shadow(0 6px 10px rgba(2, 25, 30, .2));
+  border: 1px solid rgba(37, 99, 235, .25);
+  border-radius: .8rem;
+  background: #0911e1;
+  box-shadow: 0 7px 18px rgba(9, 17, 225, .22);
 }
 
 .tactical-page .tactical-brand-copy {

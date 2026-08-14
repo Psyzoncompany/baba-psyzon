@@ -1086,7 +1086,10 @@ body.baba-player-mode .baba-organizer-fab {
   height: 3.25rem;
   flex: 0 0 auto;
   object-fit: contain;
-  filter: drop-shadow(0 5px 8px rgba(15, 35, 58, .14));
+  border: 1px solid rgba(37, 99, 235, .22);
+  border-radius: 1rem;
+  background: #0911e1;
+  box-shadow: 0 8px 20px rgba(9, 17, 225, .2);
 }
 
 .baba-brand__copy {
