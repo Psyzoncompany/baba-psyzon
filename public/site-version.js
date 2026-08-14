@@ -1,5 +1,5 @@
 (() => {
-  const SITE_VERSION = '6.1.5';
+  const SITE_VERSION = '6.2.0';
   window.PSYZON_SITE_VERSION = SITE_VERSION;
 
   function ensureStyles() {

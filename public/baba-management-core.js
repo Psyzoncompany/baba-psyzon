@@ -5,6 +5,52 @@
 })(typeof window !== 'undefined' ? window : globalThis, () => {
   'use strict';
 
+  function shuffleItems(items = [], random = Math.random) {
+    const list = [...items];
+    for (let index = list.length - 1; index > 0; index -= 1) {
+      const sampled = Number(random());
+      const unit = Number.isFinite(sampled) ? Math.min(Math.max(sampled, 0), 0.9999999999999999) : Math.random();
+      const randomIndex = Math.floor(unit * (index + 1));
+      [list[index], list[randomIndex]] = [list[randomIndex], list[index]];
+    }
+    return list;
+  }
+
+  function buildRandomTeamGroups(players = [], options = {}) {
+    const fieldPlayersPerTeam = Math.max(1, Number(options.fieldPlayersPerTeam || 4));
+    const minTeams = Math.max(1, Number(options.minTeams || 1));
+    const maxTeams = Math.max(minTeams, Number(options.maxTeams || Number.MAX_SAFE_INTEGER));
+    const random = typeof options.random === 'function' ? options.random : Math.random;
+    const seenIds = new Set();
+    const uniquePlayers = (Array.isArray(players) ? players : []).filter((player) => {
+      const id = String(player?.id || '');
+      if (!id || seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    });
+    if (!uniquePlayers.length) return [];
+
+    const fieldPlayers = shuffleItems(uniquePlayers.filter((player) => player.tipo !== 'goleiro'), random);
+    const goalkeepers = shuffleItems(uniquePlayers.filter((player) => player.tipo === 'goleiro'), random);
+    const requiredByFieldPlayers = Math.max(1, Math.ceil(fieldPlayers.length / fieldPlayersPerTeam));
+    const teamCount = Math.min(maxTeams, Math.max(minTeams, requiredByFieldPlayers));
+    const groups = Array.from({ length: teamCount }, () => []);
+
+    fieldPlayers.forEach((player, index) => {
+      const teamIndex = index < teamCount * fieldPlayersPerTeam
+        ? Math.floor(index / fieldPlayersPerTeam)
+        : index % teamCount;
+      groups[teamIndex].push(player);
+    });
+
+    const goalkeeperTeamOrder = shuffleItems(Array.from({ length: teamCount }, (_, index) => index), random);
+    goalkeepers.forEach((player, index) => {
+      groups[goalkeeperTeamOrder[index % goalkeeperTeamOrder.length]].push(player);
+    });
+
+    return groups.map((group) => shuffleItems(group, random));
+  }
+
   function parseScore(value) {
     const text = String(value ?? '').trim();
     if (!/^\d{1,2}$/.test(text)) throw new Error('O placar deve ser um numero inteiro entre 0 e 99.');
@@ -201,6 +247,8 @@
   }
 
   return Object.freeze({
+    shuffleItems,
+    buildRandomTeamGroups,
     parseScore,
     scorerSelections,
     buildGoalEvents,

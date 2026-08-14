@@ -484,6 +484,7 @@ function babaMetadata(baba, currentGameId = null, timestamp = now()) {
     lastResult: baba.lastResult || null,
     pendingTieBreak: baba.pendingTieBreak || null,
     teamRevealIndex: Number(baba.teamRevealIndex || 0),
+    drawBatchCount: Number(baba.drawBatchCount || 0),
     importId: baba.importId || null,
     importSource: baba.importId ? 'intelligent-text-import' : null,
     observations: baba.observacoes || '',
@@ -500,7 +501,11 @@ function participantDocuments(state, baba, timestamp = now()) {
   const fixed = new Map((state.players || []).map((player) => [player.id, player]));
   const visitors = new Map((baba.visitantes || []).map((player) => [player.id, player]));
   const teamByPlayer = new Map();
-  (baba.teams || []).forEach((team) => (team.jogadores || []).forEach((id) => teamByPlayer.set(id, team.id)));
+  const rosterOrderByPlayer = new Map();
+  (baba.teams || []).forEach((team) => (team.jogadores || []).forEach((id, index) => {
+    teamByPlayer.set(id, team.id);
+    rosterOrderByPlayer.set(id, index);
+  }));
   const ids = new Set([
     ...(baba.jogadoresPresentes || []),
     ...visitors.keys(),
@@ -523,6 +528,7 @@ function participantDocuments(state, baba, timestamp = now()) {
       typedName: flags.typedName || player.nome || '',
       active: player.ativo !== false,
       teamId: teamByPlayer.get(playerId) || null,
+      rosterOrder: rosterOrderByPlayer.has(playerId) ? rosterOrderByPlayer.get(playerId) : null,
       joinedAt: Number(player.criadoEm || baba.criadoEm || timestamp),
       schemaVersion: SCHEMA_VERSION,
       deleted: false,
@@ -1240,11 +1246,20 @@ function restoreBabaFromSnapshots(babaId, snapshots) {
   } = snapshots;
   if (!metaSnapshot.exists() || metaSnapshot.data().deleted) return null;
   const meta = metaSnapshot.data();
-  const participants = participantsSnapshot.docs.map((item) => item.data()).filter((item) => !item.deleted);
+  const participants = participantsSnapshot.docs.map((item, index) => ({
+    ...item.data(),
+    restoreOrder: index,
+  })).filter((item) => !item.deleted);
   const teams = teamsSnapshot.docs.map((item) => ({ ...item.data(), jogadores: [] })).filter((item) => !item.deleted);
-  participants.forEach((participant) => {
-    const team = teams.find((item) => item.id === participant.teamId);
-    if (team) team.jogadores.push(participant.playerId);
+  teams.forEach((team) => {
+    team.jogadores = participants
+      .filter((participant) => participant.teamId === team.id)
+      .sort((left, right) => {
+        const leftOrder = Number.isFinite(Number(left.rosterOrder)) ? Number(left.rosterOrder) : Number.MAX_SAFE_INTEGER;
+        const rightOrder = Number.isFinite(Number(right.rosterOrder)) ? Number(right.rosterOrder) : Number.MAX_SAFE_INTEGER;
+        return leftOrder - rightOrder || left.restoreOrder - right.restoreOrder;
+      })
+      .map((participant) => participant.playerId);
   });
   teams.sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
   teams.forEach((team) => ['order', 'schemaVersion', 'deleted', 'updatedAtMs'].forEach((field) => delete team[field]));
@@ -1297,6 +1312,7 @@ function restoreBabaFromSnapshots(babaId, snapshots) {
     lastResult: meta.lastResult || null,
     pendingTieBreak: meta.pendingTieBreak || null,
     teamRevealIndex: Number(meta.teamRevealIndex || 0),
+    drawBatchCount: Number(meta.drawBatchCount || 0),
     importId: meta.importId || null,
     observacoes: meta.observations || '',
     importedTotalGoals: meta.importedTotalGoals ?? null,

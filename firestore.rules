@@ -41,7 +41,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           'id', 'dateKey', 'dataISO', 'dataCompleta', 'dia', 'mes', 'ano', 'status', 'matchMode',
           'currentGameId', 'currentQueue', 'filaTimes', 'campeaoDoBaba', 'lastResult',
-          'pendingTieBreak', 'teamRevealIndex', 'criadoEm', 'finalizadoEm', 'schemaVersion',
+          'pendingTieBreak', 'teamRevealIndex', 'drawBatchCount', 'criadoEm', 'finalizadoEm', 'schemaVersion',
           'statsApplied', 'deleted', 'updatedAtMs', 'importId', 'importSource', 'observations',
           'importedTotalGoals'
         ]);
@@ -66,7 +66,7 @@ service cloud.firestore {
           && request.resource.data.playerId == participantId
           && request.resource.data.keys().hasOnly([
             'playerId', 'name', 'nameSnapshot', 'type', 'present', 'visitor', 'active',
-            'teamId', 'joinedAt', 'schemaVersion', 'deleted', 'updatedAtMs', 'guest',
+            'teamId', 'rosterOrder', 'joinedAt', 'schemaVersion', 'deleted', 'updatedAtMs', 'guest',
             'goalkeeper', 'novice', 'typedName', 'importId'
           ])
           && (!request.resource.data.keys().hasAny(['importId']) || isImportAdmin());
@@ -80,7 +80,7 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly([
             'id', 'name', 'tipo', 'order', 'status', 'pontos', 'golsPro', 'golsContra',
             'vitorias', 'empates', 'derrotas', 'logo', 'manualStats', 'schemaVersion', 'deleted', 'updatedAtMs',
-            'vestColor', 'colete', 'importId'
+            'vestColor', 'colete', 'importId', 'drawBatch', 'sorteadoEm', 'lateArrival'
           ])
           && (!request.resource.data.keys().hasAny(['importId']) || isImportAdmin());
         allow delete: if false;

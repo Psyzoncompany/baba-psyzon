@@ -132,6 +132,7 @@
     playersAdminList: $('#players-admin-list'),
     presentList: $('#present-list'),
     presentCountLabel: $('#present-count-label'),
+    continuePresentDraw: $('#continue-present-draw'),
     activeStatus: $('#active-status-label'),
     activeSubtitle: $('#active-baba-subtitle'),
     fieldTeamA: $('#field-team-a'),
@@ -645,13 +646,17 @@
     return true;
   }
 
-  function shuffle(items) {
-    const list = [...items];
-    for (let index = list.length - 1; index > 0; index -= 1) {
-      const randomIndex = Math.floor(Math.random() * (index + 1));
-      [list[index], list[randomIndex]] = [list[randomIndex], list[index]];
+  function secureRandom() {
+    if (window.crypto?.getRandomValues) {
+      const value = new Uint32Array(1);
+      window.crypto.getRandomValues(value);
+      return value[0] / 4294967296;
     }
-    return list;
+    return Math.random();
+  }
+
+  function shuffle(items) {
+    return window.BabaManagementCore.shuffleItems(items, secureRandom);
   }
 
   function readState() {
@@ -2102,6 +2107,7 @@
       lastResult: null,
       pendingTieBreak: null,
       teamRevealIndex: 0,
+      drawBatchCount: 0,
       undoStack: [],
       criadoEm: Date.now(),
       finalizadoEm: null,
@@ -4098,13 +4104,7 @@
       return;
     }
 
-    const goalkeepers = shuffle(presentPlayers.filter((player) => player.tipo === 'goleiro'));
-    const fieldPlayers = shuffle(presentPlayers.filter((player) => player.tipo !== 'goleiro'));
-    const rodrigol = presentPlayers.find((player) => String(player.nome || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .trim()
-      .toLowerCase() === 'rodrigol');
+    const fieldPlayers = presentPlayers.filter((player) => player.tipo !== 'goleiro');
 
     if (fieldPlayers.length < 8) {
       showToast('Marque pelo menos 8 jogadores de linha para deixar Time 1 e Time 2 completos.');
@@ -4112,38 +4112,18 @@
     }
 
     const linePlayersPerTeam = 4;
-    const teamCount = Math.min(TEAM_NAMES.length, Math.max(2, Math.ceil(fieldPlayers.length / linePlayersPerTeam)));
-    const teams = Array.from({ length: teamCount }, (_, index) => (
-      makeEmptyTeam(`team_${index + 1}`, configuredTeamName(index + 1))
-    ));
-
-    teams.forEach((team, index) => {
-      const start = index * linePlayersPerTeam;
-      team.jogadores.push(...fieldPlayers.slice(start, start + linePlayersPerTeam).map((player) => player.id));
+    const groups = window.BabaManagementCore.buildRandomTeamGroups(presentPlayers, {
+      fieldPlayersPerTeam: linePlayersPerTeam,
+      minTeams: 2,
+      maxTeams: TEAM_NAMES.length,
+      random: secureRandom,
     });
-
-    fieldPlayers.slice(teamCount * linePlayersPerTeam).forEach((player, index) => {
-      teams[index % teams.length].jogadores.push(player.id);
-    });
-
-    goalkeepers.forEach((player, index) => {
-      teams[index % teams.length].jogadores.push(player.id);
-    });
-
-    if (rodrigol) {
-      const sourceTeam = teams.find((team) => team.jogadores.includes(rodrigol.id));
-      const eligibleTeams = teams.slice(0, Math.min(3, teams.length));
-      const targetTeam = eligibleTeams[Math.floor(Math.random() * eligibleTeams.length)];
-      if (sourceTeam && targetTeam && sourceTeam.id !== targetTeam.id) {
-        const sourceIndex = sourceTeam.jogadores.indexOf(rodrigol.id);
-        const targetIndex = targetTeam.jogadores.findIndex((playerId) => playerId !== rodrigol.id);
-        if (sourceIndex >= 0 && targetIndex >= 0) {
-          const swappedPlayerId = targetTeam.jogadores[targetIndex];
-          sourceTeam.jogadores[sourceIndex] = swappedPlayerId;
-          targetTeam.jogadores[targetIndex] = rodrigol.id;
-        }
-      }
-    }
+    const drawTimestamp = Date.now();
+    const teams = groups.map((players, index) => makeEmptyTeam(`team_${index + 1}`, configuredTeamName(index + 1), {
+      jogadores: players.map((player) => player.id),
+      drawBatch: 1,
+      sorteadoEm: drawTimestamp,
+    }));
 
     if (visitorPlayers.length) {
       teams.push(makeEmptyTeam(VISITOR_TEAM_ID, VISITOR_TEAM_NAME, {
@@ -4159,6 +4139,7 @@
     baba.lastResult = null;
     baba.pendingTieBreak = null;
     baba.teamRevealIndex = 0;
+    baba.drawBatchCount = 1;
     baba.status = 'times';
     baba.undoStack = [];
     if (isManualMode(baba)) {
@@ -4184,24 +4165,44 @@
       return;
     }
 
-    const identity = getNextTeamIdentity(baba);
-    const team = makeEmptyTeam(identity.id, identity.name, {
-      jogadores: availablePlayers.map((player) => player.id),
+    const firstNewTeamIndex = baba.teams.length;
+    const nextBatch = Math.max(
+      Number(baba.drawBatchCount || 0),
+      ...(baba.teams || []).map((team) => Number(team.drawBatch || 1)),
+    ) + 1;
+    const groups = window.BabaManagementCore.buildRandomTeamGroups(availablePlayers, {
+      fieldPlayersPerTeam: 4,
+      minTeams: 1,
+      random: secureRandom,
     });
-    if (isManualMode(baba)) {
-      team.manualStats = makeEmptyManualTeamStats();
-      applyManualStatsToTeam(team);
-    }
-    baba.teams.push(team);
-    baba.filaTimes = Array.from(new Set([...(baba.filaTimes || []), team.id]));
+    const drawTimestamp = Date.now();
+    const newTeams = groups.map((players) => {
+      const identity = getNextTeamIdentity(baba);
+      const team = makeEmptyTeam(identity.id, identity.name, {
+        jogadores: players.map((player) => player.id),
+        drawBatch: nextBatch,
+        sorteadoEm: drawTimestamp,
+        lateArrival: true,
+      });
+      if (isManualMode(baba)) {
+        team.manualStats = makeEmptyManualTeamStats();
+        applyManualStatsToTeam(team);
+      }
+      baba.teams.push(team);
+      return team;
+    });
+    const newTeamIds = newTeams.map((team) => team.id);
+    baba.filaTimes = Array.from(new Set([...(baba.filaTimes || []), ...newTeamIds]));
     if (baba.pendingTieBreak) {
-      baba.pendingTieBreak.queue = Array.from(new Set([...(baba.pendingTieBreak.queue || baba.filaTimes || []), team.id]));
+      baba.pendingTieBreak.queue = Array.from(new Set([...(baba.pendingTieBreak.queue || baba.filaTimes || []), ...newTeamIds]));
     }
-    baba.teamRevealIndex = baba.teams.length - 1;
+    baba.teamRevealIndex = firstNewTeamIndex;
+    baba.drawBatchCount = nextBatch;
     if (isManualMode(baba)) ensureManualStats(baba);
     baba.rankingDoBaba = calculateDailyRanking(baba);
-    saveState(`${team.name} criado com ${availablePlayers.length} jogador${availablePlayers.length === 1 ? '' : 'es'} que ${availablePlayers.length === 1 ? 'chegou' : 'chegaram'} depois. O time entrou no fim da fila.`);
     setActiveTab('teams');
+    saveState(`Sorteio ${nextBatch} concluido: ${availablePlayers.length} jogador${availablePlayers.length === 1 ? '' : 'es'} que ${availablePlayers.length === 1 ? 'chegou' : 'chegaram'} depois ${availablePlayers.length === 1 ? 'entrou' : 'entraram'} em ${newTeams.length} novo${newTeams.length === 1 ? '' : 's'} time${newTeams.length === 1 ? '' : 's'}, no fim da fila.`);
+    beginDrawExperience(baba, { startIndex: firstNewTeamIndex });
   }
 
   function assignPlayerToTeam(playerId, teamId, babaId = null) {
@@ -6108,7 +6109,18 @@
         || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR', { sensitivity: 'base' })
       ));
     const present = new Set(baba?.jogadoresPresentes || []);
-    els.presentCountLabel.textContent = `${present.size} marcados`;
+    const assignedIds = new Set((baba?.teams || []).flatMap((team) => team.jogadores || []));
+    const assignedPresentCount = [...present].filter((playerId) => assignedIds.has(playerId)).length;
+    const pendingDrawCount = [...present].filter((playerId) => !assignedIds.has(playerId)).length;
+    els.presentCountLabel.textContent = baba?.teams?.length
+      ? `${assignedPresentCount} em times · ${pendingDrawCount} aguardando sorteio`
+      : `${present.size} marcados para o primeiro sorteio`;
+    if (els.continuePresentDraw) {
+      els.continuePresentDraw.disabled = !isOrganizer() || !baba || (baba.teams?.length ? pendingDrawCount < 1 : present.size < 1);
+      els.continuePresentDraw.innerHTML = baba?.teams?.length
+        ? `<svg class="baba-btn-icon" aria-hidden="true"><use href="#baba-shuffle"></use></svg>Sortear recem-chegados${pendingDrawCount ? ` (${pendingDrawCount})` : ''}`
+        : `<svg class="baba-btn-icon" aria-hidden="true"><use href="#baba-next"></use></svg>Revisar primeiro sorteio${present.size ? ` (${present.size})` : ''}`;
+    }
 
     if (!activePlayers.length) {
       setHTML(els.presentList, '<div class="baba-empty">Cadastre jogadores para montar a lista de presença.</div>');
@@ -6317,8 +6329,8 @@
     const lateArrivalCount = getUnassignedPresentPlayers(baba).length;
     const createLateTeamHTML = isOrganizer() ? `
       <button class="baba-secondary" type="button" data-action="export-teams-txt" title="Exportar nomes e times em TXT para identificação por IA">Exportar times em TXT</button>
-      <button class="baba-secondary" type="button" data-action="create-late-team" ${lateArrivalCount ? '' : 'disabled'} title="${lateArrivalCount ? `${lateArrivalCount} jogador${lateArrivalCount === 1 ? '' : 'es'} presente${lateArrivalCount === 1 ? '' : 's'} e sem time` : 'Marque os jogadores que chegaram depois como presentes'}">
-        Adicionar novo time${lateArrivalCount ? ` (${lateArrivalCount})` : ''}
+      <button class="baba-secondary" type="button" data-action="create-late-team" ${lateArrivalCount ? '' : 'disabled'} title="${lateArrivalCount ? `Sortear somente ${lateArrivalCount} jogador${lateArrivalCount === 1 ? '' : 'es'} que ${lateArrivalCount === 1 ? 'chegou' : 'chegaram'} depois` : 'Marque os jogadores que chegaram depois como presentes'}">
+        Sortear recem-chegados${lateArrivalCount ? ` (${lateArrivalCount})` : ''}
       </button>
     ` : '';
 
@@ -6382,7 +6394,7 @@
     const renderTeamCard = (team, position, { reveal = false } = {}) => `
       <article class="baba-team ${reveal ? 'baba-team--reveal' : ''} ${team.retiradoDoBaba ? 'is-withdrawn' : ''}"${teamNumberDataAttribute(team)}>
         <div>
-          <small>${fullyRevealed ? 'Time sorteado' : `Time ${position + 1} de ${baba.teams.length}`}</small>
+          <small>${fullyRevealed ? (Number(team.drawBatch || 1) > 1 ? `Sorteio ${team.drawBatch} · recem-chegados` : 'Time sorteado') : `Time ${position + 1} de ${baba.teams.length}`}</small>
           <h3>${teamDetailButton(baba, team)}</h3>
         </div>
         ${hasStartedMatch ? `<div class="baba-team__stats">
@@ -6570,7 +6582,7 @@
         <header class="baba-team-result__header">
           ${teamShieldHTML(team)}
           <span class="baba-team-result__identity">
-            <small>Time sorteado</small>
+            <small>${Number(team.drawBatch || 1) > 1 ? `Sorteio ${team.drawBatch} · recem-chegados` : 'Time sorteado'}</small>
             <strong>${escapeHTML(team.name)}</strong>
             ${playerCountText}
           </span>
@@ -6620,7 +6632,7 @@
     setHTML(els.drawActionBar, `
       <div class="baba-draw-action-bar__secondary">
         <button type="button" data-action="open-present-editor"><svg aria-hidden="true"><use href="#baba-users"></use></svg>Editar jogadores</button>
-        <button type="button" data-action="create-late-team" ${lateArrivalCount && !drawExperience ? '' : 'disabled'} title="${lateArrivalCount ? `${lateArrivalCount} jogador(es) presente(s) e sem time` : 'Nenhum jogador presente esta sem time'}"><svg aria-hidden="true"><use href="#baba-plus"></use></svg>Adicionar novo time${lateArrivalCount ? ` (${lateArrivalCount})` : ''}</button>
+        <button type="button" data-action="create-late-team" ${lateArrivalCount && !drawExperience ? '' : 'disabled'} title="${lateArrivalCount ? `Sortear somente ${lateArrivalCount} jogador(es) presente(s) e sem time` : 'Nenhum jogador presente esta sem time'}"><svg aria-hidden="true"><use href="#baba-shuffle"></use></svg>Sortear recem-chegados${lateArrivalCount ? ` (${lateArrivalCount})` : ''}</button>
       </div>
       <div class="baba-draw-action-bar__primary">
         ${manual
@@ -6645,18 +6657,21 @@
     const team = baba.teams[experience.currentIndex];
     if (!team) return finalizeDrawExperience();
     const visual = teamVisualMeta(team);
-    const total = baba.teams.length;
+    const firstIndex = Number(experience.firstIndex || 0);
+    const lastIndex = Number.isFinite(experience.lastIndex) ? experience.lastIndex : baba.teams.length - 1;
+    const total = Math.max(1, lastIndex - firstIndex + 1);
+    const batchPosition = experience.currentIndex - firstIndex;
     const playerIds = team.jogadores || [];
     const shownPlayerIds = playerIds.slice(0, experience.visiblePlayers);
     const teamProgress = experience.phase === 'complete'
       ? 1
       : experience.phase === 'reveal' && playerIds.length ? experience.visiblePlayers / playerIds.length : experience.phase === 'shuffle' ? .35 : .08;
-    const overallProgress = ((experience.currentIndex + teamProgress) / total) * 100;
+    const overallProgress = ((batchPosition + teamProgress) / total) * 100;
 
     els.drawOverlay.classList.remove('hidden');
     document.body.classList.add('baba-draw-modal-open');
     els.drawOverlay.dataset.teamNumber = String(visual.number);
-    els.drawOverlayStep.textContent = `Sorteando time ${experience.currentIndex + 1} de ${total}`;
+    els.drawOverlayStep.textContent = `Sorteando time ${batchPosition + 1} de ${total}`;
     els.drawOverlayProgressBar.value = Math.max(2, overallProgress);
     els.drawSkipButton.classList.toggle('hidden', experience.phase === 'complete');
     els.drawCloseButton.classList.toggle('hidden', experience.phase !== 'complete');
@@ -6711,9 +6726,9 @@
       </div>
     `);
     setHTML(els.drawOverlayActions, experience.phase === 'complete' ? `
-      <button class="is-primary" type="button" data-action="${experience.currentIndex === total - 1 ? 'finish-draw-experience' : 'advance-draw-experience'}">
-        <svg class="baba-btn-icon" aria-hidden="true"><use href="#${experience.currentIndex === total - 1 ? 'baba-check' : 'baba-next'}"></use></svg>
-        ${experience.currentIndex === total - 1 ? 'Conferir resultado' : 'Ver próximo time'}
+      <button class="is-primary" type="button" data-action="${experience.currentIndex === lastIndex ? 'finish-draw-experience' : 'advance-draw-experience'}">
+        <svg class="baba-btn-icon" aria-hidden="true"><use href="#${experience.currentIndex === lastIndex ? 'baba-check' : 'baba-next'}"></use></svg>
+        ${experience.currentIndex === lastIndex ? 'Conferir resultado' : 'Ver próximo time'}
       </button>
     ` : '');
   }
@@ -6855,16 +6870,19 @@
     }
   }
 
-  function beginDrawExperience(baba = getActiveBaba(), { review = false } = {}) {
+  function beginDrawExperience(baba = getActiveBaba(), { review = false, startIndex = 0 } = {}) {
     if (!baba?.teams?.length) return;
+    const firstIndex = Math.min(Math.max(Number(startIndex || 0), 0), baba.teams.length - 1);
     drawSequenceToken += 1;
     drawExperience = {
       babaId: baba.id,
-      currentIndex: 0,
+      currentIndex: firstIndex,
+      firstIndex,
+      lastIndex: baba.teams.length - 1,
       phase: 'countdown',
       countdown: 3,
       visiblePlayers: 0,
-      revealedTeamIds: new Set(),
+      revealedTeamIds: new Set(baba.teams.slice(0, firstIndex).map((team) => team.id)),
       opener: document.activeElement,
       review,
     };
@@ -6894,7 +6912,7 @@
   function advanceDrawExperience() {
     const baba = getActiveBaba();
     if (!drawExperience || !baba || drawExperience.phase !== 'complete') return;
-    if (drawExperience.currentIndex >= baba.teams.length - 1) return finalizeDrawExperience();
+    if (drawExperience.currentIndex >= drawExperience.lastIndex) return finalizeDrawExperience();
     drawSequenceToken += 1;
     drawExperience.currentIndex += 1;
     drawExperience.phase = 'countdown';
@@ -9142,6 +9160,13 @@
         if (!requireOrganizer()) return;
         els.presentModal.classList.remove('hidden');
         return window.requestAnimationFrame(() => els.presentModal.querySelector('input, button')?.focus({ preventScroll: true }));
+      }
+      if (actionButton?.dataset.action === 'continue-present-draw') {
+        if (!requireOrganizer()) return;
+        const baba = getActiveBaba();
+        els.presentModal.classList.add('hidden');
+        if (baba?.teams?.length) return createLateArrivalTeam(baba);
+        return setActiveTab('teams');
       }
       if (actionButton?.dataset.action === 'open-team-management') return openTeamDetail(actionButton.dataset.teamId);
       if (actionButton?.dataset.action === 'export-teams-txt') return exportTeamsTxt();

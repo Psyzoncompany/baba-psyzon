@@ -4877,6 +4877,23 @@ button.baba-history-item.active {
   gap: .1rem;
 }
 
+.baba-present-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .baba-present-modal__actions {
+    flex-direction: column;
+  }
+
+  .baba-present-modal__actions > button {
+    width: 100%;
+  }
+}
+
 .baba-draw-overlay {
   padding: 0;
 }

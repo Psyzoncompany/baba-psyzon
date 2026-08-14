@@ -117,6 +117,17 @@ test('pagamento local não é apagado quando o Firebase ainda não devolveu o jo
   assert.equal(merged.paymentUpdatedAtMs.p3, 400);
 });
 
+test('persistencia preserva a ordem sorteada e os lotes de quem chegou depois', () => {
+  const persistence = read('baba-persistence.js');
+  const rules = fs.readFileSync(path.resolve(publicRoot, '..', 'firestore.rules'), 'utf8');
+
+  assert.match(persistence, /rosterOrderByPlayer/);
+  assert.match(persistence, /left\.rosterOrder/);
+  assert.match(persistence, /drawBatchCount/);
+  assert.match(rules, /'teamId', 'rosterOrder'/);
+  assert.match(rules, /'drawBatch', 'sorteadoEm', 'lateArrival'/);
+});
+
 test('pagamento é resolvido pela versão individual mais recente', () => {
   const remoteWins = core.mergePaymentRecords({
     pagamentos: { p1: true }, paymentUpdatedAtMs: { p1: 100 }, atualizadoEm: 900,
