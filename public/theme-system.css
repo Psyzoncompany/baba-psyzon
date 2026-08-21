@@ -482,3 +482,61 @@ body.baba-app-mode :is(.baba-manual-team-card, .baba-manual-stepper, .baba-manua
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }
 :root[data-motion="reduced"] *, :root[data-motion="reduced"] *::before, :root[data-motion="reduced"] *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+
+/* Organizer refresh: compact top navigation replaces the legacy sidebar. */
+@media (min-width: 1101px) {
+  body.baba-app-mode .baba-tabs {
+    position: relative !important;
+    z-index: auto;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: auto;
+    max-width: none;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: stretch !important;
+    gap: 4px;
+    margin: 6px !important;
+    padding: 4px !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    border-radius: var(--card-radius) !important;
+    box-shadow: none !important;
+  }
+
+  body.baba-app-mode .baba-tabs > button,
+  body.baba-app-mode .baba-more-nav > button {
+    display: flex !important;
+    width: auto;
+    min-height: 42px;
+    flex: 1 0 auto;
+    justify-content: center;
+    border-radius: 999px !important;
+  }
+
+  body.baba-app-mode .baba-tabs > button.active::before {
+    display: none;
+  }
+
+  body.baba-app-mode .baba-more-nav {
+    display: block !important;
+    flex: 0 0 5.2rem;
+  }
+
+  body.baba-app-mode .baba-more-menu {
+    top: calc(100% + 8px);
+    right: 0;
+    bottom: auto;
+    left: auto;
+  }
+
+  body.baba-app-mode .baba-shell {
+    width: min(calc(100% - 2rem), var(--content-max));
+    max-width: var(--content-max);
+    margin-right: auto;
+    margin-left: auto;
+    padding-right: 0;
+  }
+}

@@ -273,40 +273,27 @@
         </div>
       </div>
 
-      <nav class="baba-nav baba-header-actions" aria-label="Ações da conta">
-        <button class="baba-manage-button organizer-only" type="button" data-header-tab="organizer">
-          <i data-lucide="settings-2"></i>
-          <span>Gerenciar baba</span>
-        </button>
-        <button id="baba-theme-toggle" class="baba-icon-button" type="button" title="Ativar tema escuro" aria-label="Ativar tema escuro" aria-pressed="false">
-          <i data-lucide="sun-moon"></i>
-        </button>
-        <button id="mode-reset-btn" class="baba-icon-button" type="button" title="Trocar modo" aria-label="Trocar modo">
-          <i data-lucide="refresh-cw"></i>
-        </button>
+      <nav class="baba-nav baba-header-actions" aria-label="Ações rápidas">
+        <button id="baba-theme-toggle" class="baba-icon-button" type="button" title="Alternar tema" aria-label="Alternar tema" aria-pressed="false"><i data-lucide="sun-moon"></i></button>
+        <button id="mode-reset-btn" class="baba-icon-button" type="button" title="Trocar acesso" aria-label="Trocar acesso"><i data-lucide="refresh-cw"></i></button>
       </nav>
     </div>
 
     <nav class="baba-tabs" aria-label="Áreas do Baba">
       <button class="active" type="button" data-tab="dashboard"><i class="baba-tab-icon" data-lucide="radio"></i><span>Ao vivo</span></button>
+      <button type="button" data-tab="teams"><i class="baba-tab-icon" data-lucide="users-round"></i><span>Times</span></button>
       <button type="button" data-tab="table"><i class="baba-tab-icon" data-lucide="table-2"></i><span>Tabela</span></button>
       <button type="button" data-tab="ranking"><i class="baba-tab-icon" data-lucide="chart-no-axes-column-increasing"></i><span>Ranking</span></button>
       <button type="button" data-tab="history"><i class="baba-tab-icon" data-lucide="history"></i><span>Histórico</span></button>
-      <button class="baba-desktop-nav-item" type="button" data-tab="teams"><i class="baba-tab-icon" data-lucide="users"></i><span>Times</span></button>
-      <button class="baba-desktop-nav-item" type="button" data-tab="goals"><i class="baba-tab-icon" data-lucide="target"></i><span>Metas</span></button>
-      <button class="baba-desktop-nav-item organizer-only" type="button" data-tab="organizer"><i class="baba-tab-icon" data-lucide="shield-check"></i><span>Organizador</span></button>
-      <a class="baba-desktop-nav-item baba-desktop-nav-item--utility" href="baba-aparencia.html"><i class="baba-tab-icon" data-lucide="palette"></i><span>Aparência</span></a>
-      <button class="baba-desktop-nav-item" type="button" data-action="reset-mode"><i class="baba-tab-icon" data-lucide="refresh-cw"></i><span>Trocar acesso</span></button>
-      <button class="baba-desktop-nav-item baba-desktop-nav-item--danger" type="button" data-action="logout"><i class="baba-tab-icon" data-lucide="log-out"></i><span>Sair</span></button>
+      <button class="organizer-only" type="button" data-tab="organizer"><i class="baba-tab-icon" data-lucide="sliders-horizontal"></i><span>Organizar</span></button>
+      <button class="organizer-only" type="button" data-tab="access"><i class="baba-tab-icon" data-lucide="key-round"></i><span>Comissão</span></button>
+      <button class="organizer-only" type="button" data-tab="players"><i class="baba-tab-icon" data-lucide="badge-dollar-sign"></i><span>Jogadores</span></button>
       <div class="baba-more-nav">
         <button id="baba-more-toggle" type="button" aria-haspopup="true" aria-controls="baba-more-menu" aria-expanded="false">
           <i class="baba-tab-icon" data-lucide="ellipsis"></i><span>Mais</span>
           <i class="baba-tab-chevron" data-lucide="chevron-down"></i>
         </button>
         <div id="baba-more-menu" class="baba-more-menu hidden" role="menu">
-          <button type="button" data-tab="teams" role="menuitem"><i class="baba-tab-icon" data-lucide="users"></i><span>Times</span></button>
-          <button type="button" data-tab="goals" role="menuitem"><i class="baba-tab-icon" data-lucide="target"></i><span>Metas</span></button>
-          <button class="organizer-only" type="button" data-tab="organizer" role="menuitem"><i class="baba-tab-icon" data-lucide="shield-check"></i><span>Organizador</span></button>
           <a href="baba-aparencia.html" role="menuitem"><i class="baba-tab-icon" data-lucide="palette"></i><span>Aparência</span></a>
           <button type="button" data-action="reset-mode" role="menuitem"><i class="baba-tab-icon" data-lucide="refresh-cw"></i><span>Trocar acesso</span></button>
           <button type="button" data-action="logout" role="menuitem"><i class="baba-tab-icon" data-lucide="log-out"></i><span>Sair</span></button>
@@ -314,6 +301,30 @@
       </div>
     </nav>
   </header>
+
+  <nav class="baba-bottom-nav hidden" aria-label="Navegação principal">
+    <button class="active" type="button" data-tab="dashboard"><i data-lucide="radio"></i><span>Ao vivo</span></button>
+    <button class="organizer-only" type="button" data-tab="organizer"><i data-lucide="sliders-horizontal"></i><span>Organizar</span></button>
+    <button class="organizer-only" type="button" data-tab="access"><i data-lucide="key-round"></i><span>Comissão</span></button>
+    <button class="organizer-only" type="button" data-tab="players"><i data-lucide="users"></i><span>Jogadores</span></button>
+    <button type="button" data-bottom-more aria-haspopup="true" aria-controls="baba-mobile-more-menu" aria-expanded="false"><i data-lucide="menu"></i><span>Mais</span></button>
+  </nav>
+
+  <div id="baba-mobile-more-menu" class="baba-mobile-more-menu hidden" role="dialog" aria-modal="true" aria-label="Mais opções">
+    <button class="baba-mobile-more-menu__backdrop" type="button" data-close-bottom-more aria-label="Fechar menu"></button>
+    <section>
+      <header><strong>Mais opções</strong><button type="button" data-close-bottom-more aria-label="Fechar"><i data-lucide="x"></i></button></header>
+      <div>
+        <button type="button" data-tab="teams"><i data-lucide="users-round"></i><span><strong>Times</strong><small>Sorteio e escalações</small></span></button>
+        <button type="button" data-tab="table"><i data-lucide="table-2"></i><span><strong>Tabela</strong><small>Pontos e resultados</small></span></button>
+        <button type="button" data-tab="ranking"><i data-lucide="chart-no-axes-column-increasing"></i><span><strong>Ranking</strong><small>Desempenho dos jogadores</small></span></button>
+        <button type="button" data-tab="history"><i data-lucide="history"></i><span><strong>Histórico</strong><small>Babas já finalizados</small></span></button>
+        <a href="baba-aparencia.html"><i data-lucide="palette"></i><span><strong>Aparência</strong><small>Cores, times e identidade</small></span></a>
+        <button type="button" data-action="reset-mode"><i data-lucide="refresh-cw"></i><span><strong>Trocar acesso</strong><small>Entrar em outro modo</small></span></button>
+        <button class="danger" type="button" data-action="logout"><i data-lucide="log-out"></i><span><strong>Sair</strong><small>Encerrar esta sessão</small></span></button>
+      </div>
+    </section>
+  </div>
 
   <main class="baba-shell">
     <section id="mode-gateway" class="baba-gateway">
@@ -545,7 +556,7 @@
           <div>
             <span>PAINEL ADMINISTRATIVO</span>
             <h1>Organização do baba</h1>
-            <p>Operação da partida, importação de resultados e gestão financeira em um só lugar.</p>
+            <p>Comandos essenciais para preparar, acompanhar e finalizar o baba com rapidez.</p>
           </div>
           <div class="baba-organizer-intro__badge"><i aria-hidden="true"></i> Ambiente do organizador</div>
         </header>
@@ -572,62 +583,64 @@
               <button id="finish-baba-btn" type="button">Finalizar Baba</button>
               <button id="reset-current-btn" class="danger" type="button">Resetar Baba Atual</button>
             </div>
+            <div class="baba-organizer-shortcuts" aria-label="Áreas administrativas">
+              <button type="button" data-open-view="access">
+                <span class="baba-organizer-shortcuts__icon"><i data-lucide="key-round"></i></span>
+                <span><strong>Código e comissão</strong><small>Gerencie o código dos jogadores e o acesso da equipe.</small></span>
+                <i data-lucide="chevron-right"></i>
+              </button>
+              <button type="button" data-open-view="players">
+                <span class="baba-organizer-shortcuts__icon"><i data-lucide="users"></i></span>
+                <span><strong>Jogadores e pagamentos</strong><small>Cadastre pessoas e controle as mensalidades.</small></span>
+                <i data-lucide="chevron-right"></i>
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="baba-view" data-view="access">
+        <header class="baba-section-hero baba-section-hero--access">
+          <span class="baba-section-hero__icon"><i data-lucide="key-round"></i></span>
+          <div><span>SEGURANÇA E EQUIPE</span><h1>Código e acesso da comissão</h1><p>Compartilhe o acesso dos jogadores e configure a entrada da comissão em uma área separada e segura.</p></div>
+        </header>
+        <div class="baba-access-management-layout organizer-only">
+          <article class="baba-card baba-access-feature-card">
+            <div class="baba-card__head"><h2><svg class="baba-card-icon" aria-hidden="true"><use href="#baba-users"></use></svg>Código dos jogadores</h2><span>ACESSO DE LEITURA</span></div>
             <section class="baba-player-access-admin" aria-labelledby="player-access-admin-title">
-              <div><strong id="player-access-admin-title">Código dos jogadores</strong><small>Este código é fixo para a conta e não muda ao consultar novamente.</small></div>
+              <div><strong id="player-access-admin-title">Código fixo da conta</strong><small>Envie este código para quem acompanha o baba. Ele não muda ao consultar novamente.</small></div>
               <output id="player-access-code-output">Nenhum código gerado neste dispositivo</output>
               <div>
-                <button id="generate-player-code" type="button">Consultar código fixo</button>
+                <button id="generate-player-code" class="baba-primary" type="button">Consultar código</button>
                 <button id="copy-player-code" type="button" disabled>Copiar código</button>
               </div>
               <small id="player-access-admin-feedback" aria-live="polite"></small>
             </section>
+          </article>
+
+          <article class="baba-card baba-access-feature-card">
+            <div class="baba-card__head"><h2><svg class="baba-card-icon" aria-hidden="true"><use href="#baba-shield"></use></svg>Acesso da comissão</h2><span>LOGIN ADMINISTRATIVO</span></div>
             <form id="commission-access-form" class="baba-commission-access" aria-labelledby="commission-access-title">
-              <div>
-                <strong id="commission-access-title">Acesso da comissão</strong>
-                <small>Crie uma senha para a comissão entrar nos mesmos dados sem usar sua conta Google.</small>
-              </div>
+              <div><strong id="commission-access-title">Credenciais da comissão</strong><small>Crie uma senha para a comissão trabalhar nos mesmos dados sem usar sua conta Google.</small></div>
               <label for="commission-access-email">Login (e-mail da conta)</label>
               <input id="commission-access-email" type="email" autocomplete="username" readonly>
               <label for="commission-access-password">Nova senha</label>
               <input id="commission-access-password" type="password" autocomplete="new-password" minlength="8" required placeholder="Mínimo de 8 caracteres">
               <label for="commission-access-password-confirm">Confirmar nova senha</label>
               <input id="commission-access-password-confirm" type="password" autocomplete="new-password" minlength="8" required placeholder="Repita a senha">
-              <button id="save-commission-access" type="submit">Criar acesso da comissão</button>
+              <button id="save-commission-access" class="baba-primary" type="submit">Salvar acesso da comissão</button>
               <small id="commission-access-feedback" aria-live="polite"></small>
             </form>
           </article>
+        </div>
+      </section>
 
-          <article id="baba-import-card" class="baba-card baba-card--wide baba-import-card organizer-only" aria-labelledby="baba-import-title">
-            <div class="baba-card__head">
-              <div>
-                <h2 id="baba-import-title"><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-chart"></use></svg>Importar novo baba com IA</h2>
-                <span>O relatório será estruturado, validado e revisado antes de chegar ao banco.</span>
-              </div>
-              <span id="baba-import-status" class="baba-import-status" role="status">Aguardando relatório</span>
-            </div>
-            <div id="baba-import-root" class="baba-import-root">
-              <label class="baba-import-label" for="baba-import-text">Relatório do baba</label>
-              <textarea id="baba-import-text" class="baba-import-text" rows="13" maxlength="100000" spellcheck="true" placeholder="Cole aqui o texto recebido pelo WhatsApp, copiado de PDF ou digitado manualmente..."></textarea>
-              <div class="baba-import-toolbar">
-                <button id="baba-import-analyze" class="baba-start-baba-btn" type="button">Analisar informações</button>
-                <label class="baba-import-auto" for="baba-import-auto-save">
-                  <input id="baba-import-auto-save" type="checkbox">
-                  <span>Salvar automaticamente apenas com alta confiança</span>
-                </label>
-              </div>
-              <p id="baba-import-feedback" class="baba-import-feedback" aria-live="polite"></p>
-              <section id="baba-import-review" class="baba-import-review hidden" aria-label="Conferência da importação"></section>
-              <details class="baba-import-management">
-                <summary>Aliases e histórico de importações</summary>
-                <div class="baba-import-management__actions">
-                  <button id="baba-import-load-aliases" type="button">Atualizar aliases</button>
-                  <button id="baba-import-load-history" type="button">Atualizar histórico</button>
-                </div>
-                <div id="baba-import-aliases" class="baba-import-management__list"></div>
-                <div id="baba-import-history" class="baba-import-management__list"></div>
-              </details>
-            </div>
-          </article>
+      <section class="baba-view" data-view="players">
+        <header class="baba-section-hero baba-section-hero--players">
+          <span class="baba-section-hero__icon"><i data-lucide="users"></i></span>
+          <div><span>CADASTRO E FINANCEIRO</span><h1>Jogadores e pagamentos</h1><p>Cadastre, filtre e acompanhe as mensalidades sem misturar essas tarefas com o controle das partidas.</p></div>
+        </header>
+        <div class="baba-players-management-layout">
 
           <article class="baba-card baba-card--wide baba-player-payment-card organizer-only">
             <div class="baba-card__head">
@@ -661,69 +674,6 @@
               </section>
             </div>
           </article>
-        </div>
-      </section>
-
-      <section class="baba-view" data-view="goals">
-        <div class="baba-goals-page">
-          <div id="goals-summary" class="baba-goals-summary"></div>
-
-          <div class="baba-goals-layout">
-            <article class="baba-card baba-goal-form-card organizer-only">
-              <div class="baba-card__head">
-                <h2 id="goal-form-title"><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-plus"></use></svg>Nova meta de compra</h2>
-                <span id="goal-form-subtitle">Produto do Baba</span>
-              </div>
-              <form id="goal-form" class="baba-goal-form">
-                <label class="baba-goal-photo-field">
-                  <input id="goal-image" type="file" accept="image/*">
-                  <span id="goal-image-preview" class="baba-goal-photo-preview">
-                    <svg aria-hidden="true" focusable="false"><use href="#baba-image"></use></svg>
-                    <span>Adicionar foto</span>
-                  </span>
-                </label>
-                <label>
-                  <span>Nome do produto</span>
-                  <input id="goal-name" type="text" placeholder="Ex: Bola oficial, rede, coletes" required>
-                </label>
-                <label>
-                  <span>Descrição</span>
-                  <textarea id="goal-description" placeholder="Detalhe marca, tamanho, prioridade ou observações"></textarea>
-                </label>
-                <label>
-                  <span>Prioridade</span>
-                  <select id="goal-priority">
-                    <option value="alta">Alta</option>
-                    <option value="media" selected>Media</option>
-                    <option value="baixa">Baixa</option>
-                  </select>
-                </label>
-                <div class="baba-goal-money-grid">
-                  <label>
-                    <span>Valor</span>
-                    <input id="goal-target" type="number" min="0" step="0.01" placeholder="0,00" required>
-                  </label>
-                  <label>
-                    <span>Valor arrecadado</span>
-                    <input id="goal-collected" type="number" min="0" step="0.01" placeholder="0,00">
-                  </label>
-                </div>
-                <div class="baba-goal-form-actions">
-                  <button id="goal-submit-btn" class="baba-primary" type="submit">Cadastrar meta</button>
-                  <button id="goal-cancel-edit-btn" class="baba-secondary hidden" type="button">Cancelar</button>
-                </div>
-              </form>
-            </article>
-
-            <article class="baba-card baba-card--wide">
-              <div class="baba-card__head">
-                <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-target"></use></svg>Metas de compras</h2>
-                <span id="goals-count-label">0 metas</span>
-              </div>
-              <div id="goals-list" class="baba-goals-list"></div>
-            </article>
-
-          </div>
         </div>
       </section>
 
@@ -1485,10 +1435,7 @@
   </script>
 
 
-  <script src="baba-import-core.js?v=20260801-import-3"></script>
   <script type="module" src="baba-access.js?v=20260805-baba-management-3"></script>
-  <script type="module" src="baba-import-persistence.js?v=20260803-baba-management-1"></script>
-  <script type="module" src="baba-import-ui.js?v=20260803-baba-management-1"></script>
   <script type="module" src="baba-persistence.js?v=20260808-sync-integrity-1"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
   <script src="pdf-report.js?v=20260807-unified-reports-3"></script>

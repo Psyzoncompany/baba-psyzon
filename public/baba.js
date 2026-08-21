@@ -3,7 +3,7 @@
   const TEAM_NAMES = ['Time 1', 'Time 2', 'Time 3', 'Time 4', 'Time 5'];
   const MODE_KEY = 'psyzon_baba_mode';
   const VIEW_KEY = 'psyzon_baba_last_view';
-  const VALID_VIEWS = new Set(['dashboard', 'table', 'ranking', 'history', 'teams', 'goals', 'organizer']);
+  const VALID_VIEWS = new Set(['dashboard', 'table', 'ranking', 'history', 'teams', 'organizer', 'access', 'players']);
   const BABA_THEME_KEY = 'psyzon_baba_theme';
   const BACKUP_SCHEMA = 'baba-amigos-backup';
   const BACKUP_VERSION = 1;
@@ -114,6 +114,9 @@
     logoutBtn: $('#baba-logout-btn'),
     moreToggle: $('#baba-more-toggle'),
     moreMenu: $('#baba-more-menu'),
+    bottomNav: $('.baba-bottom-nav'),
+    bottomMoreToggle: $('[data-bottom-more]'),
+    mobileMoreMenu: $('#baba-mobile-more-menu'),
     headerManage: $('[data-header-tab="organizer"]'),
     createToday: $('#create-today-btn'),
     organizerCreateToday: $('#organizer-create-today-btn'),
@@ -1866,11 +1869,12 @@
     document.body.classList.toggle('baba-locked-viewer', isForcedViewerMode());
     els.gateway.classList.add('hidden');
     els.app.classList.remove('hidden');
+    els.bottomNav?.classList.remove('hidden');
     closeOrganizerPassword();
     closePlayerCode();
     const candidateView = options.view || localStorage.getItem(VIEW_KEY) || 'dashboard';
     const savedView = VALID_VIEWS.has(candidateView) ? candidateView : 'dashboard';
-    setActiveTab(nextMode === 'player' && savedView === 'organizer' ? 'dashboard' : savedView);
+    setActiveTab(nextMode === 'player' && ['organizer', 'access', 'players'].includes(savedView) ? 'dashboard' : savedView);
     if (nextMode === 'organizer') refreshCommissionAccess();
     requestSiteWakeLock();
     render();
@@ -1886,6 +1890,8 @@
     document.body.classList.remove('baba-locked-viewer');
     els.gateway.classList.remove('hidden');
     els.app.classList.add('hidden');
+    els.bottomNav?.classList.add('hidden');
+    els.mobileMoreMenu?.classList.add('hidden');
     closeOrganizerPassword();
     closePlayerCode();
   }
@@ -2184,12 +2190,38 @@
     else scheduleManualStatsSave();
   }
 
+  function normalizePlayerNameKey(value) {
+    return String(value || '')
+      .normalize('NFKC')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toLocaleLowerCase('pt-BR');
+  }
+
+  function findPlayerWithSameName(name, baba = getActiveBaba()) {
+    const key = normalizePlayerNameKey(name);
+    if (!key) return null;
+    return [
+      ...(state.players || []),
+      ...(baba?.visitantes || []),
+    ].find((player) => normalizePlayerNameKey(player?.nome) === key) || null;
+  }
+
   function addPlayer(event) {
     event.preventDefault();
     if (!requireOrganizer()) return;
-    const nome = els.playerName.value.trim();
+    const nome = els.playerName.value.trim().replace(/\s+/g, ' ');
     if (!nome) return;
     const type = els.playerType.value;
+    const duplicate = findPlayerWithSameName(nome);
+    if (duplicate) {
+      showToast(`Já existe um jogador chamado ${duplicate.nome}.`);
+      els.playerName.setCustomValidity('Este nome já está cadastrado. Use um nome diferente.');
+      els.playerName.reportValidity();
+      els.playerName.select();
+      return;
+    }
+    els.playerName.setCustomValidity('');
 
     if (type === 'visitante') {
       const baba = getActiveBaba();
@@ -8136,12 +8168,16 @@
   }
 
   function setActiveTab(tab) {
-    const safeTab = !isOrganizer() && tab === 'organizer' ? 'dashboard' : tab;
+    const organizerViews = ['organizer', 'access', 'players'];
+    const safeTab = !isOrganizer() && organizerViews.includes(tab) ? 'dashboard' : (VALID_VIEWS.has(tab) ? tab : 'dashboard');
     localStorage.setItem(VIEW_KEY, safeTab);
     document.body.dataset.babaView = safeTab;
-    $$('.baba-tabs [data-tab], #baba-more-menu [data-tab]').forEach((button) => button.classList.toggle('active', button.dataset.tab === safeTab));
-    const isMoreTab = ['teams', 'goals', 'organizer'].includes(safeTab);
+    $$('.baba-tabs [data-tab], #baba-more-menu [data-tab], .baba-bottom-nav [data-tab], #baba-mobile-more-menu [data-tab]').forEach((button) => button.classList.toggle('active', button.dataset.tab === safeTab));
+    const isMoreTab = ['teams', 'table', 'ranking', 'history'].includes(safeTab);
     els.moreToggle?.classList.toggle('active', isMoreTab);
+    els.bottomMoreToggle?.classList.toggle('active', isMoreTab);
+    els.mobileMoreMenu?.classList.add('hidden');
+    els.bottomMoreToggle?.setAttribute('aria-expanded', 'false');
     closeMoreMenu();
     $$('.baba-view').forEach((view) => view.classList.toggle('active', view.dataset.view === safeTab));
     window.BabaRepository?.activateView?.(safeTab);
@@ -8982,6 +9018,7 @@
     els.finishBaba.addEventListener('click', finishBaba);
     els.resetCurrent.addEventListener('click', resetCurrentBaba);
     els.playerForm.addEventListener('submit', addPlayer);
+    els.playerName.addEventListener('input', () => els.playerName.setCustomValidity(''));
     els.goalForm?.addEventListener('submit', addPurchaseGoal);
     els.goalCancelEdit?.addEventListener('click', resetPurchaseGoalForm);
     els.goalImage?.addEventListener('change', previewGoalImage);
@@ -9021,8 +9058,25 @@
       if (event.target === els.historyEditModal) closeHistorySummaryEditor();
     });
 
-    $$('.baba-tabs [data-tab]').forEach((button) => {
+    $$('.baba-tabs [data-tab], .baba-bottom-nav [data-tab], #baba-mobile-more-menu [data-tab]').forEach((button) => {
       button.addEventListener('click', () => setActiveTab(button.dataset.tab));
+    });
+
+    $$('[data-open-view]').forEach((button) => {
+      button.addEventListener('click', () => setActiveTab(button.dataset.openView));
+    });
+
+    els.bottomMoreToggle?.addEventListener('click', () => {
+      const willOpen = els.mobileMoreMenu?.classList.contains('hidden');
+      els.mobileMoreMenu?.classList.toggle('hidden', !willOpen);
+      els.bottomMoreToggle?.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    });
+
+    $$('[data-close-bottom-more]').forEach((button) => {
+      button.addEventListener('click', () => {
+        els.mobileMoreMenu?.classList.add('hidden');
+        els.bottomMoreToggle?.setAttribute('aria-expanded', 'false');
+      });
     });
 
     els.moreToggle?.addEventListener('click', (event) => {
@@ -9055,6 +9109,10 @@
 
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && !els.moreMenu?.classList.contains('hidden')) closeMoreMenu({ restoreFocus: true });
+      if (event.key === 'Escape' && !els.mobileMoreMenu?.classList.contains('hidden')) {
+        els.mobileMoreMenu.classList.add('hidden');
+        els.bottomMoreToggle?.setAttribute('aria-expanded', 'false');
+      }
       if (event.key === 'Escape' && !els.gameEditModal?.classList.contains('hidden')) closeGameEditModal();
     });
 

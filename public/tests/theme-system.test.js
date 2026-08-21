@@ -67,13 +67,17 @@ test('carregamento visual evita observadores desnecessarios', () => {
   assert.doesNotMatch(provider, /MutationObserver/);
 });
 
-test('desktop exibe navegacao completa e historico remove o estado vazio', () => {
+test('navegacao separa organizacao, comissao e jogadores e remove metas', () => {
   const html = read('baba.html');
   const app = read('baba.js');
   const css = read('theme-system.css');
-  assert.match(html, /baba-desktop-nav-item[^>]*data-tab="teams"/);
-  assert.match(html, /baba-desktop-nav-item[^>]*data-tab="goals"/);
-  assert.match(css, /body\.baba-app-mode \.baba-more-nav \{ display: none !important; \}/);
+  assert.match(html, /data-tab="teams"/);
+  assert.match(html, /data-tab="access"/);
+  assert.match(html, /data-tab="players"/);
+  assert.match(html, /class="baba-bottom-nav/);
+  assert.doesNotMatch(html, /data-tab="goals"/);
+  assert.doesNotMatch(html, /Importar novo baba com IA/);
+  assert.match(css, /compact top navigation replaces the legacy sidebar/);
   assert.match(app, /historyDetail\.classList\.remove\('baba-empty'\)/);
   assert.match(read('baba-ui.css'), /\.baba-standings-table \{[\s\S]*gap: 0;/);
 });

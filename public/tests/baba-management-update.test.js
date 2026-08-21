@@ -33,6 +33,15 @@ test('estados de jogador controlam cobrança e visibilidade sem apagar estatíst
   assert.doesNotMatch(app, /function setPlayerStatus[\s\S]*?delete state\.playerStats/);
 });
 
+test('cadastro bloqueia nomes repetidos sem diferenciar maiúsculas e minúsculas', () => {
+  const app = read('baba.js');
+  assert.match(app, /function normalizePlayerNameKey/);
+  assert.match(app, /\.normalize\('NFKC'\)/);
+  assert.match(app, /\.toLocaleLowerCase\('pt-BR'\)/);
+  assert.match(app, /function findPlayerWithSameName/);
+  assert.match(app, /Já existe um jogador chamado/);
+});
+
 test('PDF de pagamento separa pagos, pendentes, novatos e desativados', () => {
   const app = read('baba.js');
   assert.match(app, /report\.title = 'Lista de pagamento'/);
