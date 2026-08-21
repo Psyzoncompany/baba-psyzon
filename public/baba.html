@@ -14,7 +14,7 @@
   <meta name="theme-color" content="#f4f8fc">
   <title>Baba Psyzon</title>
   <link href="apple-ui-font.css?v=20260723-1" rel="stylesheet">
-  <link href="baba-ui.css?v=20260814-blue-logo-1" rel="stylesheet">
+  <link href="baba-ui.css?v=20260821-ready-sync-1" rel="stylesheet">
   <link href="theme-system.css?v=20260806-theme-5" rel="stylesheet">
   <script src="vendor/lucide.min.js?v=1.29.0" defer></script>
   <script src="theme-provider.js?v=20260806-theme-5"></script>
@@ -29,7 +29,7 @@
 
       const firebaseScript = document.createElement('script');
       firebaseScript.type = 'module';
-      firebaseScript.src = 'firebase-config.js?v=20260801-commission-login-1';
+      firebaseScript.src = 'firebase-config.js?v=20260821-commission-admin-1';
       document.head.appendChild(firebaseScript);
     } else {
       window.BackendInitialized = true;
@@ -598,9 +598,9 @@
             <div class="baba-card__head"><h2><svg class="baba-card-icon" aria-hidden="true"><use href="#baba-users"></use></svg>Código dos jogadores</h2><span>ACESSO DE LEITURA</span></div>
             <section class="baba-player-access-admin" aria-labelledby="player-access-admin-title">
               <div><strong id="player-access-admin-title">Código fixo da conta</strong><small>Envie este código para quem acompanha o baba. Ele não muda ao consultar novamente.</small></div>
-              <output id="player-access-code-output">Nenhum código gerado neste dispositivo</output>
+              <output id="player-access-code-output">Preparando código fixo...</output>
               <div>
-                <button id="generate-player-code" class="baba-primary" type="button">Consultar código</button>
+                <button id="generate-player-code" class="baba-primary" type="button">Recarregar código</button>
                 <button id="copy-player-code" type="button" disabled>Copiar código</button>
               </div>
               <small id="player-access-admin-feedback" aria-live="polite"></small>
@@ -1400,13 +1400,13 @@
   </script>
 
 
-  <script type="module" src="baba-access.js?v=20260805-baba-management-3"></script>
-  <script type="module" src="baba-persistence.js?v=20260808-sync-integrity-1"></script>
+  <script type="module" src="baba-access.js?v=20260821-auto-code-1"></script>
+  <script type="module" src="baba-persistence.js?v=20260821-manual-sync-1"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
   <script src="pdf-report.js?v=20260807-unified-reports-3"></script>
   <script src="baba-management-core.js?v=20260814-arrival-draw-1"></script>
   <script src="baba-performance-stars.js?v=20260807-2"></script>
-  <script src="baba.js?v=20260814-arrival-draw-1" defer></script>
+  <script src="baba.js?v=20260821-ready-sync-1" defer></script>
   <script src="site-version.js?v=6.2.0" defer></script>
 </body>
 

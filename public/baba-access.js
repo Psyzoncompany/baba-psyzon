@@ -83,13 +83,14 @@ async function createAccountCode(accountId, attempt = 0) {
 
 async function generatePlayerCode() {
   const user = auth.currentUser;
-  if (!user) throw new Error('Entre com o Google para gerar o código dos jogadores.');
+  if (!user) throw new Error('Entre com uma conta administrativa para gerar o código dos jogadores.');
   const accountId = safeAccountId(user.uid);
   const configRef = accessConfigRef(accountId);
   const previousConfig = await getDoc(configRef);
   const previousHash = previousConfig.data()?.currentCodeHash;
   let code = '';
   let codeHash = '';
+  let existingCodeConfig = null;
   for (let attempt = 0; !codeHash && attempt < (10 ** CODE_LENGTH); attempt += 1) {
     const candidateCode = await createAccountCode(accountId, attempt);
     const candidateHash = await hashCode(candidateCode);
@@ -97,10 +98,21 @@ async function generatePlayerCode() {
     if (!candidate.exists() || candidate.data()?.accountId === accountId) {
       code = candidateCode;
       codeHash = candidateHash;
+      existingCodeConfig = candidate.data() || null;
     }
   }
   if (!codeHash) throw new Error('Não foi possível reservar um código agora. Tente novamente.');
   const timestamp = Date.now();
+  const currentConfig = previousConfig.data() || {};
+  const alreadyActive = previousHash === codeHash
+    && currentConfig.active === true
+    && Number(currentConfig.expiresAtMs || 0) > timestamp
+    && existingCodeConfig?.active === true
+    && Number(existingCodeConfig.expiresAtMs || 0) > timestamp;
+  if (alreadyActive) {
+    saveAccess(code, accountId);
+    return { code: formatCode(code), accountId, expiresAtMs: currentConfig.expiresAtMs };
+  }
   const batch = writeBatch(db);
   if (previousHash && previousHash !== codeHash) {
     batch.set(accessCodeRef(previousHash), {
@@ -184,6 +196,7 @@ verifiedAccountId = safeAccountId(readSavedAccess()?.accountId);
 
 window.BabaAccessRepository = Object.freeze({
   generatePlayerCode,
+  ensurePlayerCode: generatePlayerCode,
   verifyPlayerCode,
   restorePlayerAccess,
   clearPlayerAccess,

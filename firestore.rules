@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
       return request.auth != null
-        && request.auth.token.firebase.sign_in_provider == 'google.com';
+        && request.auth.token.firebase.identities["google.com"] != null;
     }
 
     function linkedGoogleAccount() {
@@ -39,7 +39,7 @@ service cloud.firestore {
       return isSchemaV2()
         && request.resource.data.id is string
         && request.resource.data.keys().hasOnly([
-          'id', 'dateKey', 'dataISO', 'dataCompleta', 'dia', 'mes', 'ano', 'status', 'matchMode',
+          'id', 'dateKey', 'dataISO', 'dataCompleta', 'dia', 'mes', 'ano', 'status', 'matchMode', 'teamFormationMode',
           'currentGameId', 'currentQueue', 'filaTimes', 'campeaoDoBaba', 'lastResult',
           'pendingTieBreak', 'teamRevealIndex', 'drawBatchCount', 'criadoEm', 'finalizadoEm', 'schemaVersion',
           'statsApplied', 'deleted', 'updatedAtMs', 'importId', 'importSource', 'observations',
@@ -80,7 +80,7 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly([
             'id', 'name', 'tipo', 'order', 'status', 'pontos', 'golsPro', 'golsContra',
             'vitorias', 'empates', 'derrotas', 'logo', 'manualStats', 'schemaVersion', 'deleted', 'updatedAtMs',
-            'vestColor', 'colete', 'importId', 'drawBatch', 'sorteadoEm', 'lateArrival'
+            'vestColor', 'colete', 'importId', 'drawBatch', 'sorteadoEm', 'lateArrival', 'formationMode'
           ])
           && (!request.resource.data.keys().hasAny(['importId']) || isImportAdmin());
         allow delete: if false;

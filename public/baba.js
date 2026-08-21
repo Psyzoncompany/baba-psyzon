@@ -2037,7 +2037,7 @@
     if (els.generatePlayerCode) els.generatePlayerCode.disabled = true;
     if (els.playerAccessAdminFeedback) els.playerAccessAdminFeedback.textContent = 'Gerando código seguro...';
     try {
-      const result = await window.BabaAccessRepository?.generatePlayerCode?.();
+      const result = await window.BabaAccessRepository?.ensurePlayerCode?.();
       if (!result?.code) throw new Error('O gerador de código não foi carregado.');
       els.playerAccessCodeOutput.textContent = result.code;
       els.playerAccessCodeOutput.dataset.code = result.code;
@@ -2052,17 +2052,30 @@
 
   async function restorePlayerAccessCodeForOrganizer() {
     const repository = await waitForAccessRepository();
-    const savedCode = repository?.getSavedPlayerCode?.();
-    if (!savedCode || !els.playerAccessCodeOutput) return;
+    if (!repository || !els.playerAccessCodeOutput || !authenticatedAdmin()) return;
+    if (els.generatePlayerCode) els.generatePlayerCode.disabled = true;
+    if (els.playerAccessAdminFeedback) els.playerAccessAdminFeedback.textContent = 'Preparando o código fixo da conta...';
     try {
-      const result = await repository.verifyPlayerCode(savedCode, { remember: true });
-      if (!result?.valid || mode !== 'organizer') return;
+      const result = await repository.ensurePlayerCode();
+      if (!result?.code || mode !== 'organizer') return;
       els.playerAccessCodeOutput.textContent = result.code;
       els.playerAccessCodeOutput.dataset.code = result.code;
       if (els.copyPlayerCode) els.copyPlayerCode.disabled = false;
-      if (els.playerAccessAdminFeedback) els.playerAccessAdminFeedback.textContent = 'Código ativo restaurado neste dispositivo.';
+      if (els.playerAccessAdminFeedback) els.playerAccessAdminFeedback.textContent = 'Código fixo criado e sincronizado automaticamente.';
     } catch (error) {
-      // A tela administrativa continua utilizável mesmo quando a rede está indisponível.
+      const savedCode = repository.getSavedPlayerCode?.();
+      if (savedCode) {
+        els.playerAccessCodeOutput.textContent = savedCode;
+        els.playerAccessCodeOutput.dataset.code = savedCode;
+        if (els.copyPlayerCode) els.copyPlayerCode.disabled = false;
+      }
+      if (els.playerAccessAdminFeedback) {
+        els.playerAccessAdminFeedback.textContent = savedCode
+          ? 'Exibindo o código salvo. A sincronização será refeita quando a conexão voltar.'
+          : (error?.message || 'Não foi possível preparar o código agora.');
+      }
+    } finally {
+      if (els.generatePlayerCode) els.generatePlayerCode.disabled = false;
     }
   }
 
@@ -6592,13 +6605,18 @@
     const modeLocked = Boolean((baba?.teams || []).length || (baba?.jogos || []).length || baba?.jogoAtual);
     setHTML(els.drawReadyPanel, `
       <div class="baba-draw-ready__content">
-        <span class="baba-draw-ready__icon"><svg aria-hidden="true"><use href="#baba-shuffle"></use></svg></span>
-        <h2>Tudo pronto para o sorteio</h2>
-        <p>Revise os numeros abaixo. A distribuicao dos jogadores e dos goleiros segue exatamente as regras atuais do baba.</p>
-        <div class="baba-draw-ready__metrics">
-          <span class="baba-draw-ready__metric"><strong>${presentPlayers.length}</strong>Presentes</span>
-          <span class="baba-draw-ready__metric"><strong>${estimatedTeams}</strong>Times</span>
-          <span class="baba-draw-ready__metric"><strong>${goalkeepers.length}</strong>Goleiros</span>
+        <div class="baba-draw-ready__summary">
+          <span class="baba-draw-ready__icon"><svg aria-hidden="true"><use href="#baba-shuffle"></use></svg></span>
+          <div class="baba-draw-ready__copy">
+            <span class="baba-draw-ready__eyebrow">Preparacao dos times</span>
+            <h2>Tudo pronto para o sorteio</h2>
+            <p>Confira os participantes e escolha como os resultados serao anotados antes de montar os times.</p>
+          </div>
+          <div class="baba-draw-ready__metrics" aria-label="Resumo do sorteio">
+            <span class="baba-draw-ready__metric"><strong>${presentPlayers.length}</strong><span>Presentes</span></span>
+            <span class="baba-draw-ready__metric"><strong>${estimatedTeams}</strong><span>Times</span></span>
+            <span class="baba-draw-ready__metric"><strong>${goalkeepers.length}</strong><span>Goleiros</span></span>
+          </div>
         </div>
         <div class="baba-match-mode-card">
           <div>
@@ -6607,21 +6625,23 @@
           </div>
           <div class="baba-match-mode-options" role="radiogroup" aria-label="Modo de anotacao">
             <button type="button" data-action="set-match-mode" data-match-mode="ONLINE" aria-pressed="${selectedMode === MATCH_MODES.ONLINE}" ${modeLocked ? 'disabled' : ''}>
-              <span>${selectedMode === MATCH_MODES.ONLINE ? '●' : '○'}</span>
+              <span class="baba-match-mode-radio" aria-hidden="true"></span>
               <strong>Pelo Site</strong>
               <small>Registrar placares e gols durante cada partida.</small>
             </button>
             <button type="button" data-action="set-match-mode" data-match-mode="MANUAL" aria-pressed="${selectedMode === MATCH_MODES.MANUAL}" ${modeLocked ? 'disabled' : ''}>
-              <span>${selectedMode === MATCH_MODES.MANUAL ? '●' : '○'}</span>
+              <span class="baba-match-mode-radio" aria-hidden="true"></span>
               <strong>Manual (Papel/PDF)</strong>
               <small>Anotar no papel e atualizar estatisticas finais no Ao Vivo.</small>
             </button>
           </div>
         </div>
-        ${warning ? `<div class="baba-draw-ready__notice" role="note">${escapeHTML(warning)}</div>` : ''}
-        ${isOrganizer() ? `<button class="baba-draw-ready__button" type="button" data-action="begin-team-draw" ${canDraw ? '' : 'disabled'}>
-          <svg aria-hidden="true"><use href="#baba-shuffle"></use></svg><span>Sortear times</span>
-        </button>` : '<div class="baba-draw-ready__notice" role="note">Aguardando o organizador iniciar o sorteio.</div>'}
+        <div class="baba-draw-ready__footer">
+          ${warning ? `<div class="baba-draw-ready__notice" role="note">${escapeHTML(warning)}</div>` : ''}
+          ${isOrganizer() ? `<button class="baba-draw-ready__button" type="button" data-action="begin-team-draw" ${canDraw ? '' : 'disabled'}>
+            <svg aria-hidden="true"><use href="#baba-shuffle"></use></svg><span>Sortear times</span>
+          </button>` : '<div class="baba-draw-ready__notice" role="note">Aguardando o organizador iniciar o sorteio.</div>'}
+        </div>
       </div>
     `);
   }

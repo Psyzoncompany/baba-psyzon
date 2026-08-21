@@ -476,6 +476,8 @@ function babaMetadata(baba, currentGameId = null, timestamp = now()) {
     ano: baba.ano,
     status: baba.status,
     matchMode: baba.matchMode || 'ONLINE',
+    teamFormationMode: baba.teamFormationMode
+      || ((baba.teams || []).some((team) => team.formationMode === 'manual') ? 'manual' : 'draw'),
     currentGameId,
     currentQueue: [...(baba.filaTimes || [])],
     filaTimes: [...(baba.filaTimes || [])],
@@ -1299,6 +1301,8 @@ function restoreBabaFromSnapshots(babaId, snapshots) {
     ano: meta.ano,
     status: meta.status,
     matchMode: meta.matchMode || 'ONLINE',
+    teamFormationMode: meta.teamFormationMode
+      || (teams.some((team) => team.formationMode === 'manual') ? 'manual' : 'draw'),
     jogadoresPresentes: participants.filter((item) => item.present && !item.visitor).map((item) => item.playerId),
     visitantes: visitors,
     participantFlags,

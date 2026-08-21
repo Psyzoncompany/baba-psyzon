@@ -85,6 +85,19 @@ test('navegacao separa organizacao, comissao e jogadores e remove metas', () => 
   assert.match(read('baba-ui.css'), /\.baba-standings-table \{[\s\S]*gap: 0;/);
 });
 
+test('card de preparacao do sorteio mantem resumo, opcoes e acoes em blocos responsivos', () => {
+  const app = read('baba.js');
+  const css = read('baba-ui.css');
+
+  assert.match(app, /baba-draw-ready__summary/);
+  assert.match(app, /baba-draw-ready__copy/);
+  assert.match(app, /baba-draw-ready__footer/);
+  assert.match(app, /baba-match-mode-radio/);
+  assert.match(css, /\.baba-draw-ready__content\s*\{\s*display: grid;\s*gap:/);
+  assert.match(css, /\.baba-draw-ready__summary[\s\S]*grid-template-columns: auto minmax\(0, 1fr\) auto/);
+  assert.match(css, /\.baba-draw-ready__footer[\s\S]*justify-content: flex-end/);
+});
+
 test('montagem manual cria times vazios e distribui jogadores pelo seletor', () => {
   const html = read('baba.html');
   const app = read('baba.js');

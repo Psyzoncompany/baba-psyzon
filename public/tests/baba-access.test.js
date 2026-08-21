@@ -55,6 +55,7 @@ test('acesso administrativo nao usa mais senha fixa e restaura a ultima tela', (
 
 test('codigo de jogador e fixo por conta, salvo somente como hash e sem expiracao operacional', () => {
   const source = readPublic('baba-access.js');
+  const app = readPublic('baba.js');
 
   assert.match(source, /async function createAccountCode\(accountId, attempt = 0\)/);
   assert.match(source, /`\$\{safeAccountId\(accountId\)\}:\$\{attempt\}`/);
@@ -62,6 +63,11 @@ test('codigo de jogador e fixo por conta, salvo somente como hash e sem expiraca
   assert.match(source, /CODE_EXPIRES_AT_MS = 253402300799000/);
   assert.match(source, /currentCodeHash: codeHash/);
   assert.match(source, /active: true/);
+  assert.match(source, /ensurePlayerCode: generatePlayerCode/);
+  assert.match(source, /const alreadyActive = previousHash === codeHash/);
+  assert.match(source, /if \(alreadyActive\)[\s\S]*saveAccess\(code, accountId\);[\s\S]*return \{ code:/);
+  assert.match(app, /async function restorePlayerAccessCodeForOrganizer\(\)[\s\S]*repository\.ensurePlayerCode\(\)/);
+  assert.match(app, /authenticatedAdmin\(\)[\s\S]*restorePlayerAccessCodeForOrganizer\(\)/);
   assert.doesNotMatch(source, /crypto\.getRandomValues/);
   assert.doesNotMatch(source, /currentCode:\s*code/);
   assert.match(source, /nativeStorage\(\)\.setItem\(PLAYER_ACCESS_KEY, JSON\.stringify\(saved\)\)/);
@@ -81,14 +87,17 @@ test('interface oferece Google, senha vinculada e entrada e geracao de codigo', 
   assert.match(html, /src="(?:\.\/)?baba-access\.js\?v=/);
 });
 
-test('senha da comissao fica vinculada ao mesmo usuario Google', () => {
+test('senha da comissao fica vinculada ao mesmo usuario Google e recebe acesso administrativo completo', () => {
   const source = readPublic('firebase-config.js');
+  const rules = fs.readFileSync(path.join(repositoryRoot, 'firestore.rules'), 'utf8');
 
   assert.match(source, /EmailAuthProvider\.credential/);
   assert.match(source, /linkWithCredential\(user, credential\)/);
   assert.match(source, /updatePassword\(user, normalizedPassword\)/);
   assert.match(source, /normalizedEmail !== String\(user\.email/);
   assert.match(source, /signInProvider !== GoogleAuthProvider\.PROVIDER_ID/);
+  assert.match(rules, /function signedIn\(\)[\s\S]*firebase\.identities\["google\.com"\] != null/);
+  assert.doesNotMatch(rules, /sign_in_provider == 'google\.com'/);
 });
 
 test('ranking de pior jogador prioriza derrotas e desempata pelo menor numero de gols', () => {
@@ -104,7 +113,6 @@ test('regras isolam cada conta e permitem validar somente o hash do codigo publi
 
   assert.match(rules, /function isImportAdmin\(\)\s*\{\s*return signedIn\(\);\s*\}/);
   assert.match(rules, /function ownsAccount\(accountId\)/);
-  assert.match(rules, /sign_in_provider == 'google\.com'/);
   assert.match(rules, /firebase\.identities\["google\.com"\] != null/);
   assert.doesNotMatch(rules, /match \/users\/\{userId\}/);
   assert.match(rules, /match \/baba_accounts\/\{accountId\}/);
@@ -122,6 +130,20 @@ test('persistencia e importacao usam o espaco exclusivo da conta', () => {
   assert.match(importPersistence, /doc\(db, 'baba_accounts', accountId\(\)/);
   assert.doesNotMatch(importPersistence, /doc\(db, 'baba_imports'/);
   assert.doesNotMatch(importPersistence, /collection\(db, 'baba_player_aliases'/);
+});
+
+test('sincronizacao multidispositivo acompanha ao vivo, historico e cadastros da mesma conta', () => {
+  const persistence = readPublic('baba-persistence.js');
+
+  assert.match(persistence, /doc\(db, 'baba_accounts', accountId/);
+  assert.match(persistence, /\['meta', accountDoc\('babas', id\)\]/);
+  for (const part of ['participants', 'teams', 'games', 'goals', 'payments', 'stats']) {
+    assert.match(persistence, new RegExp(`accountCollection\\('babas', id, '${part}'\\)`));
+  }
+  assert.match(persistence, /startPlayersSubscription\(\);[\s\S]*startPlayerStatsSubscription\(\);[\s\S]*startHistorySubscription\(\);[\s\S]*startMonthsSubscription\(\);/);
+  assert.match(persistence, /window\.dispatchEvent\(new CustomEvent\('baba-remote-state-ready'/);
+  assert.match(persistence, /window\.addEventListener\('online', resumePendingSave\)/);
+  assert.match(persistence, /writePendingSave\(queuedSave\)/);
 });
 
 test('jogador espera o historico atual da conta do codigo antes de abrir o painel', () => {
