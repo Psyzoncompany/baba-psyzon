@@ -114,9 +114,6 @@
     logoutBtn: $('#baba-logout-btn'),
     moreToggle: $('#baba-more-toggle'),
     moreMenu: $('#baba-more-menu'),
-    bottomNav: $('.baba-bottom-nav'),
-    bottomMoreToggle: $('[data-bottom-more]'),
-    mobileMoreMenu: $('#baba-mobile-more-menu'),
     headerManage: $('[data-header-tab="organizer"]'),
     createToday: $('#create-today-btn'),
     organizerCreateToday: $('#organizer-create-today-btn'),
@@ -157,11 +154,13 @@
     lastResultPanel: $('#last-result-panel'),
     teamsGrid: $('#teams-grid'),
     drawStatusDescription: $('#draw-status-description'),
+    drawPageTitle: $('#draw-page-title'),
     drawSaveState: $('#draw-save-state'),
     drawReviewButton: $('#draw-review-button'),
     drawSaveButton: $('#draw-save-button'),
     drawProgress: $('#draw-progress'),
     drawReadyPanel: $('#draw-ready-panel'),
+    manualTeamBuilder: $('#manual-team-builder'),
     drawResultsSection: $('#draw-results-section'),
     drawTeamsProgress: $('#draw-teams-progress'),
     drawActionBar: $('#draw-action-bar'),
@@ -212,9 +211,7 @@
     exportBackupJSON: $('#export-backup-json'),
     importBackupJSON: $('#import-backup-json'),
     backupJSONFile: $('#backup-json-file'),
-    organizerFab: $('#baba-organizer-fab'),
     toast: $('#baba-toast'),
-    shareFab: $('#baba-share-fab'),
     presentModal: $('#present-modal'),
     closePresentModal: $('#close-present-modal'),
     goalModal: $('#goal-modal'),
@@ -1869,7 +1866,6 @@
     document.body.classList.toggle('baba-locked-viewer', isForcedViewerMode());
     els.gateway.classList.add('hidden');
     els.app.classList.remove('hidden');
-    els.bottomNav?.classList.remove('hidden');
     closeOrganizerPassword();
     closePlayerCode();
     const candidateView = options.view || localStorage.getItem(VIEW_KEY) || 'dashboard';
@@ -1890,8 +1886,6 @@
     document.body.classList.remove('baba-locked-viewer');
     els.gateway.classList.remove('hidden');
     els.app.classList.add('hidden');
-    els.bottomNav?.classList.add('hidden');
-    els.mobileMoreMenu?.classList.add('hidden');
     closeOrganizerPassword();
     closePlayerCode();
   }
@@ -2794,9 +2788,9 @@
     }).join('')}</span>`;
   }
 
-  function performanceForPdfPlayer(stats, baba, ratingMap = null) {
+  function performanceForPdfPlayer(stats, baba) {
     if (isBabaGoalkeeper(baba, stats.jogadorId)) return goalkeeperPerformanceMap().get(stats.jogadorId) || null;
-    return ratingMap?.get(stats.jogadorId) || defaultPlayerPerformance(stats.jogadorId, baba);
+    return generalPerformanceMap().get(stats.jogadorId) || null;
   }
 
   function rankingRowsForPdf(items = [], baba = getActiveBaba(), ratingMap = null) {
@@ -2828,15 +2822,11 @@
 
   function scorersRowsForPdf(baba = getActiveBaba(), limit = null) {
     const ranking = calculateCurrentBabaRanking(baba);
-    const ratings = performanceMap(Object.values(ranking), {
-      completedBabas: baba?.status === 'finalizado' ? 1 : 0,
-      cacheKey: `pdf-daily-${baba?.id || 'none'}`,
-    });
     const rows = sortRanking(ranking, 'goals')
       .filter((stats) => stats.totalGols > 0)
       .map((stats, index) => pdfTeamRow([
         index + 1,
-        pdfPlayerCell(stats.jogadorId, stats.nome, baba, performanceForPdfPlayer(stats, baba, ratings)),
+        pdfPlayerCell(stats.jogadorId, stats.nome, baba, performanceForPdfPlayer(stats, baba)),
         stats.totalGols,
         stats.totalVitorias,
         stats.mediaGols,
@@ -3026,10 +3016,7 @@
     if (type === 'standings') {
       const dailyStats = calculateCurrentBabaRanking(baba);
       const generalStats = calculateGeneralRanking();
-      const dailyRatings = performanceMap(Object.values(dailyStats), {
-        completedBabas: baba?.status === 'finalizado' ? 1 : 0,
-        cacheKey: `pdf-standings-daily-${baba?.id || 'none'}`,
-      });
+      const canonicalRatings = generalPerformanceMap();
       report.title = 'Tabela de times';
       report.subtitle = `Classificação, elencos e rankings por gols - ${reportContextLabel(baba)}`;
       report.icon = 'table';
@@ -3068,7 +3055,7 @@
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'Aprov.', 'Babas'],
-          rows: goalRankingRowsForPdf(sortRanking(dailyStats, 'goals'), baba, dailyRatings),
+          rows: goalRankingRowsForPdf(sortRanking(dailyStats, 'goals'), baba, canonicalRatings),
           empty: 'Sem gols registrados no baba atual.',
         },
         {
@@ -3078,7 +3065,7 @@
           highlightTop: true,
           maxRows: PDF_ROW_LIMITS.rankings,
           columns: ['Pos', 'Jogador', 'Gols', 'V', 'Aprov.', 'Babas'],
-          rows: goalRankingRowsForPdf(sortRanking(generalStats, 'goals'), baba, generalPerformanceMap()),
+          rows: goalRankingRowsForPdf(sortRanking(generalStats, 'goals'), baba, canonicalRatings),
           empty: 'Sem dados no ranking geral.',
         },
       ];
@@ -3130,18 +3117,9 @@
       const dailyStats = calculateCurrentBabaRanking(baba);
       const historyStats = calculateMonthlyRanking(monthlyHistoryKey, { includeActive: false });
       const generalRatings = generalPerformanceMap();
-      const monthlyRatings = performanceMap(Object.values(monthlyStats), {
-        completedBabas: completedBabaCount((item) => monthKeyFromISO(item.dataISO) === currentMonth),
-        cacheKey: `pdf-month-${currentMonth}`,
-      });
-      const dailyRatings = performanceMap(Object.values(dailyStats), {
-        completedBabas: baba?.status === 'finalizado' ? 1 : 0,
-        cacheKey: `pdf-daily-ranking-${baba?.id || 'none'}`,
-      });
-      const historyRatings = performanceMap(Object.values(historyStats), {
-        completedBabas: completedBabaCount((item) => monthKeyFromISO(item.dataISO) === monthlyHistoryKey),
-        cacheKey: `pdf-history-${monthlyHistoryKey}`,
-      });
+      const monthlyRatings = generalRatings;
+      const dailyRatings = generalRatings;
+      const historyRatings = generalRatings;
       const rankingColumns = ['Pos', 'Jogador', 'Gols', 'V', 'E', 'D', 'Aprov.', 'Tit.'];
       const metricNote = `Classificado por ${metricLabel.toLowerCase()}`;
       const rankingPdfSections = {
@@ -3174,7 +3152,7 @@
           note: 'Menos derrotas, depois mais vitórias',
           icon: 'shield',
           columns: ['Pos', 'Goleiro', 'Derrotas', 'Vitórias', 'Empates', 'Jogos', 'Sofridos', 'Babas'],
-          rows: goalkeeperRowsForPdf(calculateGoalkeeperRanking({ includeActive: false }), baba),
+          rows: goalkeeperRowsForPdf(calculateGoalkeeperRanking({ includeActive: true }), baba),
           empty: 'Sem jogos com goleiros ainda.',
         },
         history: {
@@ -4235,6 +4213,40 @@
     setActiveTab('teams');
     saveState(`Sorteio ${nextBatch} concluido: ${availablePlayers.length} jogador${availablePlayers.length === 1 ? '' : 'es'} que ${availablePlayers.length === 1 ? 'chegou' : 'chegaram'} depois ${availablePlayers.length === 1 ? 'entrou' : 'entraram'} em ${newTeams.length} novo${newTeams.length === 1 ? '' : 's'} time${newTeams.length === 1 ? '' : 's'}, no fim da fila.`);
     beginDrawExperience(baba, { startIndex: firstNewTeamIndex });
+  }
+
+  function createManualTeams(teamCount = 2) {
+    if (!requireOrganizer()) return;
+    const baba = getActiveBaba();
+    if (!baba) return showToast('Crie o baba antes de montar os times.');
+    if (baba.status === 'finalizado') return showToast('Este baba ja foi finalizado.');
+    if ((baba.teams || []).length) return showToast('Os times ja foram criados. Use os seletores para mover os jogadores.');
+
+    const count = Math.max(2, Math.min(TEAM_NAMES.length, Number(teamCount || 2)));
+    const createdAt = Date.now();
+    baba.teams = Array.from({ length: count }, (_, index) => makeEmptyTeam(`team_${index + 1}`, configuredTeamName(index + 1), {
+      jogadores: [],
+      drawBatch: 1,
+      sorteadoEm: createdAt,
+      formationMode: 'manual',
+    }));
+    baba.teamFormationMode = 'manual';
+    baba.filaTimes = getSequentialTeamIds(baba.teams);
+    baba.jogoAtual = null;
+    baba.jogos = [];
+    baba.lastResult = null;
+    baba.pendingTieBreak = null;
+    baba.teamRevealIndex = count - 1;
+    baba.drawBatchCount = 1;
+    baba.status = 'times';
+    baba.undoStack = [];
+    if (isManualMode(baba)) {
+      baba.teams.forEach((team) => {
+        team.manualStats = makeEmptyManualTeamStats();
+        applyManualStatsToTeam(team);
+      });
+    }
+    saveState(`${count} times criados para distribuicao manual dos jogadores.`);
   }
 
   function assignPlayerToTeam(playerId, teamId, babaId = null) {
@@ -5655,7 +5667,7 @@
 
     const eligible = Object.values(ranking)
       .map((stats) => {
-        stats.totalBabas = Number(stats.totalBabas || stats._babas?.size || 0);
+        stats.totalBabas = Number(stats.totalBabas || 0) + Number(stats._babas?.size || 0);
         delete stats._babas;
         stats.mediaSofridos = stats.jogos ? Number((stats.golsSofridos / stats.jogos).toFixed(2)) : 0;
         return stats;
@@ -5730,12 +5742,40 @@
     return map;
   }
 
+  function activeBabaHasPerformanceData(baba = getActiveBaba()) {
+    if (!baba || baba.status === 'finalizado') return false;
+    if (isManualMode(baba)) {
+      return (baba.teams || []).some((team) => {
+        const stats = getManualTeamStats(team);
+        return Number(stats.wins || 0) > 0
+          || Number(stats.draws || 0) > 0
+          || Number(stats.losses || 0) > 0
+          || manualTeamGoals(team) > 0;
+      });
+    }
+    return hasBabaStartedMatch(baba);
+  }
+
+  function calculateCanonicalPerformanceRanking() {
+    const ranking = calculateGeneralRanking();
+    const active = getActiveBaba();
+    if (activeBabaHasPerformanceData(active)) {
+      Object.values(calculateCurrentBabaRanking(active)).forEach((stats) => mergeRankingStats(ranking, stats));
+    }
+    Object.values(ranking).forEach(finalizeStats);
+    return ranking;
+  }
+
+  function canonicalPerformanceBabaCount() {
+    return completedBabaCount() + (activeBabaHasPerformanceData() ? 1 : 0);
+  }
+
   function generalPerformanceMap() {
     if (!performanceCache) resetPerformanceCache();
     if (!performanceCache.general) {
-      performanceCache.general = performanceMap(Object.values(calculateGeneralRanking()), {
-        completedBabas: completedBabaCount(),
-        cacheKey: 'general-field',
+      performanceCache.general = performanceMap(Object.values(calculateCanonicalPerformanceRanking()), {
+        completedBabas: canonicalPerformanceBabaCount(),
+        cacheKey: 'canonical-field',
       });
     }
     return performanceCache.general;
@@ -5744,10 +5784,10 @@
   function goalkeeperPerformanceMap() {
     if (!performanceCache) resetPerformanceCache();
     if (!performanceCache.goalkeeper) {
-      performanceCache.goalkeeper = performanceMap(calculateGoalkeeperRanking({ includeActive: false }), {
-        completedBabas: completedBabaCount(),
+      performanceCache.goalkeeper = performanceMap(calculateGoalkeeperRanking({ includeActive: true }), {
+        completedBabas: canonicalPerformanceBabaCount(),
         goalkeeper: true,
-        cacheKey: 'general-goalkeeper',
+        cacheKey: 'canonical-goalkeeper',
       });
     }
     return performanceCache.goalkeeper;
@@ -6515,7 +6555,7 @@
 
   function renderDrawProgress(baba) {
     if (!els.drawProgress) return;
-    const steps = ['Jogadores presentes', 'Sorteio dos times', 'Conferência', isManualMode(baba) ? 'Atualizar estatísticas' : 'Iniciar jogos'];
+    const steps = ['Jogadores presentes', 'Montagem dos times', 'Conferência', isManualMode(baba) ? 'Atualizar estatísticas' : 'Iniciar jogos'];
     const current = drawCurrentStep(baba);
     setHTML(els.drawProgress, `
       <ol class="baba-draw-steps">
@@ -6586,6 +6626,71 @@
     `);
   }
 
+  function renderManualTeamBuilder(baba) {
+    if (!els.manualTeamBuilder) return;
+    if (!isOrganizer()) {
+      setHTML(els.manualTeamBuilder, '');
+      return;
+    }
+
+    const hasOpenBaba = Boolean(baba && baba.status !== 'finalizado');
+    const teams = hasOpenBaba ? (baba.teams || []).filter((team) => team.id !== VISITOR_TEAM_ID && team.tipo !== 'visitante') : [];
+    const playerIds = Array.from(new Set([
+      ...(baba?.jogadoresPresentes || []),
+      ...(baba?.visitantes || []).filter((player) => player.ativo && !player.foraDoBaba).map((player) => player.id),
+    ]));
+    const players = playerIds
+      .map((playerId) => getBabaPlayer(baba, playerId))
+      .filter(Boolean)
+      .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+    const assignedCount = players.filter((player) => Boolean(getPlayerTeam(baba, player.id))).length;
+    const started = hasBabaStartedMatch(baba);
+
+    if (!teams.length) {
+      const teamCounts = Array.from({ length: Math.max(1, TEAM_NAMES.length - 1) }, (_, index) => index + 2);
+      setHTML(els.manualTeamBuilder, `
+        <div class="baba-manual-team-builder__intro">
+          <span class="baba-manual-team-builder__icon"><svg aria-hidden="true"><use href="#baba-users"></use></svg></span>
+          <div><span class="baba-draw-eyebrow">Alternativa ao sorteio</span><h2 id="manual-team-builder-title">Montar times manualmente</h2><p>Crie os times vazios e escolha o destino de cada jogador presente.</p></div>
+        </div>
+        <div class="baba-manual-team-builder__setup">
+          <label><span>Quantidade de times</span><select id="manual-team-count" ${hasOpenBaba ? '' : 'disabled'}>${teamCounts.map((count) => `<option value="${count}">${count} times</option>`).join('')}</select></label>
+          <button class="baba-primary" type="button" data-action="create-manual-teams" ${hasOpenBaba ? '' : 'disabled'}>Criar times vazios</button>
+          <button class="baba-secondary" type="button" data-action="open-present-editor" ${hasOpenBaba ? '' : 'disabled'}>Editar presentes</button>
+        </div>
+        ${hasOpenBaba ? `<small class="baba-manual-team-builder__hint">${players.length} jogador${players.length === 1 ? '' : 'es'} marcado${players.length === 1 ? '' : 's'} como presente${players.length === 1 ? '' : 's'}.</small>` : '<small class="baba-manual-team-builder__hint">Crie o baba de hoje para liberar a montagem manual.</small>'}
+      `);
+      return;
+    }
+
+    const rows = players.map((player) => {
+      const currentTeam = getPlayerTeam(baba, player.id);
+      const type = player.tipo === 'goleiro' ? 'Goleiro' : (player.visitante ? 'Visitante' : 'Jogador de linha');
+      return `
+        <label class="baba-manual-assignment-row"${currentTeam ? teamNumberDataAttribute(currentTeam) : ''}>
+          <span class="baba-manual-assignment-row__player"><b>${escapeHTML(player.nome)}</b><small>${type}</small></span>
+          <span class="baba-manual-assignment-row__destination">
+            <small>Time</small>
+            <select data-manual-team-player="${escapeHTML(player.id)}" aria-label="Time de ${escapeHTML(player.nome)}">
+              ${currentTeam ? '' : '<option value="" selected disabled>Escolha o time</option>'}
+              ${teams.map((team) => `<option value="${escapeHTML(team.id)}"${currentTeam?.id === team.id ? ' selected' : ''}>${escapeHTML(team.name)}</option>`).join('')}
+            </select>
+          </span>
+        </label>
+      `;
+    }).join('');
+
+    setHTML(els.manualTeamBuilder, `
+      <div class="baba-manual-team-builder__head">
+        <div><span class="baba-draw-eyebrow">Distribuicao manual</span><h2 id="manual-team-builder-title">Colocar jogadores nos times</h2><p>Selecione um time para cada jogador. Ao trocar a opcao, o elenco e salvo automaticamente.</p></div>
+        <span class="baba-manual-team-builder__count"><b>${assignedCount}</b> de ${players.length} distribuidos</span>
+      </div>
+      ${started ? '<div class="baba-manual-team-builder__notice">A mudanca vale para as proximas partidas; jogos encerrados permanecem preservados.</div>' : ''}
+      <div class="baba-manual-assignment-list">${rows || '<div class="baba-empty">Marque os jogadores presentes para distribui-los.</div>'}</div>
+      <div class="baba-manual-team-builder__footer"><button class="baba-secondary" type="button" data-action="open-present-editor">Editar presentes</button><small>${teams.length} times disponiveis</small></div>
+    `);
+  }
+
   function playerResultRowHTML(baba, team, playerId) {
     const player = getBabaPlayer(baba, playerId);
     const name = player?.nome || playerName(playerId, baba);
@@ -6614,7 +6719,7 @@
         <header class="baba-team-result__header">
           ${teamShieldHTML(team)}
           <span class="baba-team-result__identity">
-            <small>${Number(team.drawBatch || 1) > 1 ? `Sorteio ${team.drawBatch} · recem-chegados` : 'Time sorteado'}</small>
+            <small>${team.formationMode === 'manual' || baba.teamFormationMode === 'manual' ? 'Montagem manual' : (Number(team.drawBatch || 1) > 1 ? `Sorteio ${team.drawBatch} · recem-chegados` : 'Time sorteado')}</small>
             <strong>${escapeHTML(team.name)}</strong>
             ${playerCountText}
           </span>
@@ -6664,7 +6769,7 @@
     setHTML(els.drawActionBar, `
       <div class="baba-draw-action-bar__secondary">
         <button type="button" data-action="open-present-editor"><svg aria-hidden="true"><use href="#baba-users"></use></svg>Editar jogadores</button>
-        <button type="button" data-action="create-late-team" ${lateArrivalCount && !drawExperience ? '' : 'disabled'} title="${lateArrivalCount ? `Sortear somente ${lateArrivalCount} jogador(es) presente(s) e sem time` : 'Nenhum jogador presente esta sem time'}"><svg aria-hidden="true"><use href="#baba-shuffle"></use></svg>Sortear recem-chegados${lateArrivalCount ? ` (${lateArrivalCount})` : ''}</button>
+        ${baba.teamFormationMode === 'manual' ? '' : `<button type="button" data-action="create-late-team" ${lateArrivalCount && !drawExperience ? '' : 'disabled'} title="${lateArrivalCount ? `Sortear somente ${lateArrivalCount} jogador(es) presente(s) e sem time` : 'Nenhum jogador presente esta sem time'}"><svg aria-hidden="true"><use href="#baba-shuffle"></use></svg>Sortear recem-chegados${lateArrivalCount ? ` (${lateArrivalCount})` : ''}</button>`}
       </div>
       <div class="baba-draw-action-bar__primary">
         ${manual
@@ -6772,13 +6877,15 @@
     const revealedCount = revealedIds.size;
 
     renderDrawProgress(baba);
+    renderManualTeamBuilder(baba);
+    if (els.drawPageTitle) els.drawPageTitle.textContent = baba?.teamFormationMode === 'manual' ? 'Times montados' : 'Times sorteados';
     els.drawReadyPanel?.classList.toggle('hidden', hasTeams);
     els.drawResultsSection?.classList.toggle('hidden', !hasTeams);
     if (!hasTeams) renderDrawReadyPanel(baba);
 
     if (els.drawStatusDescription) {
       els.drawStatusDescription.textContent = !hasTeams
-        ? 'Marque os presentes e prepare o sorteio dos times.'
+        ? 'Marque os presentes e escolha entre sorteio ou montagem manual.'
         : isDrawing
           ? `Revelando o time ${drawExperience.currentIndex + 1} de ${baba.teams.length}.`
           : baba.status === 'finalizado'
@@ -6787,8 +6894,10 @@
               ? 'Confira os jogadores e atualize as estatísticas no Ao Vivo.'
               : 'Confira os jogadores antes de iniciar o primeiro jogo.';
     }
-    if (els.drawTeamsProgress) els.drawTeamsProgress.textContent = `${revealedCount} de ${baba?.teams?.length || 0} times sorteados`;
-    if (els.drawReviewButton) els.drawReviewButton.classList.toggle('hidden', !hasTeams || isDrawing);
+    if (els.drawTeamsProgress) els.drawTeamsProgress.textContent = baba?.teamFormationMode === 'manual'
+      ? `${baba?.teams?.length || 0} times montados`
+      : `${revealedCount} de ${baba?.teams?.length || 0} times sorteados`;
+    if (els.drawReviewButton) els.drawReviewButton.classList.toggle('hidden', !hasTeams || isDrawing || baba?.teamFormationMode === 'manual');
     if (els.drawSaveButton) {
       const canSave = isOrganizer() && hasTeams && baba.status !== 'finalizado' && !isDrawing;
       els.drawSaveButton.disabled = !canSave;
@@ -7137,17 +7246,29 @@
   function getDailyRankingList(baba, metric = 'goals') {
     const ranking = calculateCurrentBabaRanking(baba);
     if (metric !== 'stars') return sortRanking(ranking, metric);
-    const ratingMap = performanceMap(Object.values(ranking), {
-      completedBabas: baba?.status === 'finalizado' ? 1 : 0,
-      cacheKey: `daily-ranking-${baba?.id || 'none'}`,
-    });
-    return sortRanking(ranking, metric, ratingMap, baba);
+    return sortRanking(ranking, metric, generalPerformanceMap(), baba);
   }
 
   function calculateCurrentBabaRanking(baba) {
     const ranking = calculateDailyRanking(baba || { jogadoresPresentes: [], jogos: [], teams: [] });
     if (isManualMode(baba)) return ranking;
-    const liveEvents = baba?.jogoAtual?.goalEvents || [];
+    const liveMatch = baba?.jogoAtual;
+    const hasLiveMatch = Boolean(liveMatch?.iniciadoEm || liveMatch?.goalEvents?.length);
+    if (hasLiveMatch) {
+      const teamAPlayers = gameTeamPlayers(baba, liveMatch, liveMatch.timeA);
+      const teamBPlayers = gameTeamPlayers(baba, liveMatch, liveMatch.timeB);
+      const scoreA = Number(liveMatch.placarA || 0);
+      const scoreB = Number(liveMatch.placarB || 0);
+      if (scoreA === scoreB) {
+        [...teamAPlayers, ...teamBPlayers].forEach((id) => ensureStats(ranking, id, baba).totalEmpates += 1);
+      } else {
+        const winners = scoreA > scoreB ? teamAPlayers : teamBPlayers;
+        const losers = scoreA > scoreB ? teamBPlayers : teamAPlayers;
+        winners.forEach((id) => ensureStats(ranking, id, baba).totalVitorias += 1);
+        losers.forEach((id) => ensureStats(ranking, id, baba).totalDerrotas += 1);
+      }
+    }
+    const liveEvents = liveMatch?.goalEvents || [];
     liveEvents.forEach((goal) => {
       if (!goal?.jogadorId || goal.external) return;
       ensureStats(ranking, goal.jogadorId, baba).totalGols += 1;
@@ -7715,16 +7836,10 @@
     const dailyRanking = calculateCurrentBabaRanking(baba);
     const currentMonth = activeMonthKey(baba);
     const monthlyRanking = calculateMonthlyRanking(currentMonth, { includeActive: false });
-    const goalkeepers = calculateGoalkeeperRanking({ includeActive: false });
+    const goalkeepers = calculateGoalkeeperRanking({ includeActive: true });
     const generalRatings = generalPerformanceMap();
-    const monthlyRatings = performanceMap(Object.values(monthlyRanking), {
-      completedBabas: completedBabaCount((item) => monthKeyFromISO(item.dataISO) === currentMonth),
-      cacheKey: `month-${currentMonth}`,
-    });
-    const dailyRatings = performanceMap(Object.values(dailyRanking), {
-      completedBabas: baba?.status === 'finalizado' ? 1 : 0,
-      cacheKey: `daily-${baba?.id || 'none'}`,
-    });
+    const monthlyRatings = generalRatings;
+    const dailyRatings = generalRatings;
     const general = sortRanking(generalRanking, rankingMode, generalRatings, baba);
     const daily = sortRanking(dailyRanking, rankingMode, dailyRatings, baba);
     const monthly = sortRanking(monthlyRanking, rankingMode, monthlyRatings, baba);
@@ -7793,10 +7908,7 @@
       <button class="${key === selectedMonthlyKey ? 'active' : ''}" type="button" data-month-key="${key}">${escapeHTML(monthLabel(key))}</button>
     `).join(''));
     const monthlyRanking = calculateMonthlyRanking(selectedMonthlyKey, { includeActive: false });
-    const ratingMap = performanceMap(Object.values(monthlyRanking), {
-      completedBabas: completedBabaCount((item) => monthKeyFromISO(item.dataISO) === selectedMonthlyKey),
-      cacheKey: `history-month-${selectedMonthlyKey}`,
-    });
+    const ratingMap = generalPerformanceMap();
     const ranking = sortRanking(monthlyRanking, rankingMode, ratingMap, getDisplayedBaba());
     setHTML(els.monthlyHistoryRanking, renderRankingList(ranking, rankingEmptyMessage('neste mês'), {
       expandKey: `month-${selectedMonthlyKey}`,
@@ -8172,12 +8284,9 @@
     const safeTab = !isOrganizer() && organizerViews.includes(tab) ? 'dashboard' : (VALID_VIEWS.has(tab) ? tab : 'dashboard');
     localStorage.setItem(VIEW_KEY, safeTab);
     document.body.dataset.babaView = safeTab;
-    $$('.baba-tabs [data-tab], #baba-more-menu [data-tab], .baba-bottom-nav [data-tab], #baba-mobile-more-menu [data-tab]').forEach((button) => button.classList.toggle('active', button.dataset.tab === safeTab));
-    const isMoreTab = ['teams', 'table', 'ranking', 'history'].includes(safeTab);
+    $$('.baba-tabs [data-tab], #baba-more-menu [data-tab]').forEach((button) => button.classList.toggle('active', button.dataset.tab === safeTab));
+    const isMoreTab = ['teams', 'organizer', 'access', 'players'].includes(safeTab);
     els.moreToggle?.classList.toggle('active', isMoreTab);
-    els.bottomMoreToggle?.classList.toggle('active', isMoreTab);
-    els.mobileMoreMenu?.classList.add('hidden');
-    els.bottomMoreToggle?.setAttribute('aria-expanded', 'false');
     closeMoreMenu();
     $$('.baba-view').forEach((view) => view.classList.toggle('active', view.dataset.view === safeTab));
     window.BabaRepository?.activateView?.(safeTab);
@@ -8963,7 +9072,6 @@
       clearQueueDragStyles();
       if (hadDrag) applyTeamQueueOrder(order);
     });
-    wireBabaAssistant();
     document.addEventListener('click', rememberActionButton, true);
     els.enterOrganizer.addEventListener('click', () => {
       if (authenticatedAdmin()) setMode('organizer', { rememberDevice: true });
@@ -8996,13 +9104,6 @@
       els.backupJSONFile?.click();
     });
     els.backupJSONFile?.addEventListener('change', () => importBackupJSON(els.backupJSONFile.files?.[0]));
-    els.organizerFab?.addEventListener('click', () => {
-      if (!requireOrganizer()) return;
-      setActiveTab('organizer');
-      window.requestAnimationFrame(() => {
-        document.querySelector('[data-view="organizer"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    });
     els.createToday.addEventListener('click', () => createBaba(todayISO()));
     els.organizerCreateToday?.addEventListener('click', () => createBaba(todayISO()));
     els.saveHistory.addEventListener('click', () => {
@@ -9022,7 +9123,6 @@
     els.goalForm?.addEventListener('submit', addPurchaseGoal);
     els.goalCancelEdit?.addEventListener('click', resetPurchaseGoalForm);
     els.goalImage?.addEventListener('change', previewGoalImage);
-    els.shareFab.addEventListener('click', shareBabaLink);
     els.closePresentModal.addEventListener('click', () => els.presentModal.classList.add('hidden'));
     els.closeGoalModal.addEventListener('click', closeGoalPicker);
     els.closeTeamDetailModal.addEventListener('click', closeTeamDetail);
@@ -9058,25 +9158,12 @@
       if (event.target === els.historyEditModal) closeHistorySummaryEditor();
     });
 
-    $$('.baba-tabs [data-tab], .baba-bottom-nav [data-tab], #baba-mobile-more-menu [data-tab]').forEach((button) => {
+    $$('.baba-tabs [data-tab], #baba-more-menu [data-tab]').forEach((button) => {
       button.addEventListener('click', () => setActiveTab(button.dataset.tab));
     });
 
     $$('[data-open-view]').forEach((button) => {
       button.addEventListener('click', () => setActiveTab(button.dataset.openView));
-    });
-
-    els.bottomMoreToggle?.addEventListener('click', () => {
-      const willOpen = els.mobileMoreMenu?.classList.contains('hidden');
-      els.mobileMoreMenu?.classList.toggle('hidden', !willOpen);
-      els.bottomMoreToggle?.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-    });
-
-    $$('[data-close-bottom-more]').forEach((button) => {
-      button.addEventListener('click', () => {
-        els.mobileMoreMenu?.classList.add('hidden');
-        els.bottomMoreToggle?.setAttribute('aria-expanded', 'false');
-      });
     });
 
     els.moreToggle?.addEventListener('click', (event) => {
@@ -9109,10 +9196,6 @@
 
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && !els.moreMenu?.classList.contains('hidden')) closeMoreMenu({ restoreFocus: true });
-      if (event.key === 'Escape' && !els.mobileMoreMenu?.classList.contains('hidden')) {
-        els.mobileMoreMenu.classList.add('hidden');
-        els.bottomMoreToggle?.setAttribute('aria-expanded', 'false');
-      }
       if (event.key === 'Escape' && !els.gameEditModal?.classList.contains('hidden')) closeGameEditModal();
     });
 
@@ -9121,6 +9204,8 @@
     window.visualViewport?.addEventListener('resize', positionMoreMenu);
 
     document.addEventListener('change', (event) => {
+      const manualTeamPlayer = event.target.closest('[data-manual-team-player]');
+      if (manualTeamPlayer?.value) return assignPlayerToTeam(manualTeamPlayer.dataset.manualTeamPlayer, manualTeamPlayer.value);
       const gameScore = event.target.closest('[data-game-edit-score]');
       if (gameScore) return updateGameEditScore(gameScore.dataset.gameEditScore, gameScore.value);
       const gameScorer = event.target.closest('[data-game-edit-scorer]');
@@ -9213,6 +9298,7 @@
       }
       if (actionButton?.dataset.action === 'open-dashboard') return setActiveTab('dashboard');
       if (actionButton?.dataset.action === 'begin-team-draw') return drawTeams();
+      if (actionButton?.dataset.action === 'create-manual-teams') return createManualTeams(document.getElementById('manual-team-count')?.value);
       if (actionButton?.dataset.action === 'finish-and-save-draw') return finishBaba();
       if (actionButton?.dataset.action === 'open-present-editor') {
         if (!requireOrganizer()) return;

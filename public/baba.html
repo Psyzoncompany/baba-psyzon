@@ -273,27 +273,38 @@
         </div>
       </div>
 
-      <nav class="baba-nav baba-header-actions" aria-label="Ações rápidas">
-        <button id="baba-theme-toggle" class="baba-icon-button" type="button" title="Alternar tema" aria-label="Alternar tema" aria-pressed="false"><i data-lucide="sun-moon"></i></button>
-        <button id="mode-reset-btn" class="baba-icon-button" type="button" title="Trocar acesso" aria-label="Trocar acesso"><i data-lucide="refresh-cw"></i></button>
+      <nav class="baba-nav baba-header-actions" aria-label="Ações da conta">
+        <button class="baba-manage-button organizer-only" type="button" data-header-tab="organizer">
+          <i data-lucide="settings-2"></i>
+          <span>Gerenciar baba</span>
+        </button>
+        <button id="baba-theme-toggle" class="baba-icon-button" type="button" title="Ativar tema escuro" aria-label="Ativar tema escuro" aria-pressed="false"><i data-lucide="sun-moon"></i></button>
+        <button id="mode-reset-btn" class="baba-icon-button" type="button" title="Trocar modo" aria-label="Trocar modo"><i data-lucide="refresh-cw"></i></button>
       </nav>
     </div>
 
     <nav class="baba-tabs" aria-label="Áreas do Baba">
       <button class="active" type="button" data-tab="dashboard"><i class="baba-tab-icon" data-lucide="radio"></i><span>Ao vivo</span></button>
-      <button type="button" data-tab="teams"><i class="baba-tab-icon" data-lucide="users-round"></i><span>Times</span></button>
       <button type="button" data-tab="table"><i class="baba-tab-icon" data-lucide="table-2"></i><span>Tabela</span></button>
       <button type="button" data-tab="ranking"><i class="baba-tab-icon" data-lucide="chart-no-axes-column-increasing"></i><span>Ranking</span></button>
       <button type="button" data-tab="history"><i class="baba-tab-icon" data-lucide="history"></i><span>Histórico</span></button>
-      <button class="organizer-only" type="button" data-tab="organizer"><i class="baba-tab-icon" data-lucide="sliders-horizontal"></i><span>Organizar</span></button>
-      <button class="organizer-only" type="button" data-tab="access"><i class="baba-tab-icon" data-lucide="key-round"></i><span>Comissão</span></button>
-      <button class="organizer-only" type="button" data-tab="players"><i class="baba-tab-icon" data-lucide="badge-dollar-sign"></i><span>Jogadores</span></button>
+      <button class="baba-desktop-nav-item" type="button" data-tab="teams"><i class="baba-tab-icon" data-lucide="users"></i><span>Times</span></button>
+      <button class="baba-desktop-nav-item organizer-only" type="button" data-tab="organizer"><i class="baba-tab-icon" data-lucide="shield-check"></i><span>Organizador</span></button>
+      <button class="baba-desktop-nav-item organizer-only" type="button" data-tab="access"><i class="baba-tab-icon" data-lucide="key-round"></i><span>Comissão</span></button>
+      <button class="baba-desktop-nav-item organizer-only" type="button" data-tab="players"><i class="baba-tab-icon" data-lucide="badge-dollar-sign"></i><span>Jogadores</span></button>
+      <a class="baba-desktop-nav-item baba-desktop-nav-item--utility" href="baba-aparencia.html"><i class="baba-tab-icon" data-lucide="palette"></i><span>Aparência</span></a>
+      <button class="baba-desktop-nav-item" type="button" data-action="reset-mode"><i class="baba-tab-icon" data-lucide="refresh-cw"></i><span>Trocar acesso</span></button>
+      <button class="baba-desktop-nav-item baba-desktop-nav-item--danger" type="button" data-action="logout"><i class="baba-tab-icon" data-lucide="log-out"></i><span>Sair</span></button>
       <div class="baba-more-nav">
         <button id="baba-more-toggle" type="button" aria-haspopup="true" aria-controls="baba-more-menu" aria-expanded="false">
           <i class="baba-tab-icon" data-lucide="ellipsis"></i><span>Mais</span>
           <i class="baba-tab-chevron" data-lucide="chevron-down"></i>
         </button>
         <div id="baba-more-menu" class="baba-more-menu hidden" role="menu">
+          <button type="button" data-tab="teams" role="menuitem"><i class="baba-tab-icon" data-lucide="users"></i><span>Times</span></button>
+          <button class="organizer-only" type="button" data-tab="organizer" role="menuitem"><i class="baba-tab-icon" data-lucide="shield-check"></i><span>Organizador</span></button>
+          <button class="organizer-only" type="button" data-tab="access" role="menuitem"><i class="baba-tab-icon" data-lucide="key-round"></i><span>Comissão</span></button>
+          <button class="organizer-only" type="button" data-tab="players" role="menuitem"><i class="baba-tab-icon" data-lucide="badge-dollar-sign"></i><span>Jogadores</span></button>
           <a href="baba-aparencia.html" role="menuitem"><i class="baba-tab-icon" data-lucide="palette"></i><span>Aparência</span></a>
           <button type="button" data-action="reset-mode" role="menuitem"><i class="baba-tab-icon" data-lucide="refresh-cw"></i><span>Trocar acesso</span></button>
           <button type="button" data-action="logout" role="menuitem"><i class="baba-tab-icon" data-lucide="log-out"></i><span>Sair</span></button>
@@ -301,30 +312,6 @@
       </div>
     </nav>
   </header>
-
-  <nav class="baba-bottom-nav hidden" aria-label="Navegação principal">
-    <button class="active" type="button" data-tab="dashboard"><i data-lucide="radio"></i><span>Ao vivo</span></button>
-    <button class="organizer-only" type="button" data-tab="organizer"><i data-lucide="sliders-horizontal"></i><span>Organizar</span></button>
-    <button class="organizer-only" type="button" data-tab="access"><i data-lucide="key-round"></i><span>Comissão</span></button>
-    <button class="organizer-only" type="button" data-tab="players"><i data-lucide="users"></i><span>Jogadores</span></button>
-    <button type="button" data-bottom-more aria-haspopup="true" aria-controls="baba-mobile-more-menu" aria-expanded="false"><i data-lucide="menu"></i><span>Mais</span></button>
-  </nav>
-
-  <div id="baba-mobile-more-menu" class="baba-mobile-more-menu hidden" role="dialog" aria-modal="true" aria-label="Mais opções">
-    <button class="baba-mobile-more-menu__backdrop" type="button" data-close-bottom-more aria-label="Fechar menu"></button>
-    <section>
-      <header><strong>Mais opções</strong><button type="button" data-close-bottom-more aria-label="Fechar"><i data-lucide="x"></i></button></header>
-      <div>
-        <button type="button" data-tab="teams"><i data-lucide="users-round"></i><span><strong>Times</strong><small>Sorteio e escalações</small></span></button>
-        <button type="button" data-tab="table"><i data-lucide="table-2"></i><span><strong>Tabela</strong><small>Pontos e resultados</small></span></button>
-        <button type="button" data-tab="ranking"><i data-lucide="chart-no-axes-column-increasing"></i><span><strong>Ranking</strong><small>Desempenho dos jogadores</small></span></button>
-        <button type="button" data-tab="history"><i data-lucide="history"></i><span><strong>Histórico</strong><small>Babas já finalizados</small></span></button>
-        <a href="baba-aparencia.html"><i data-lucide="palette"></i><span><strong>Aparência</strong><small>Cores, times e identidade</small></span></a>
-        <button type="button" data-action="reset-mode"><i data-lucide="refresh-cw"></i><span><strong>Trocar acesso</strong><small>Entrar em outro modo</small></span></button>
-        <button class="danger" type="button" data-action="logout"><i data-lucide="log-out"></i><span><strong>Sair</strong><small>Encerrar esta sessão</small></span></button>
-      </div>
-    </section>
-  </div>
 
   <main class="baba-shell">
     <section id="mode-gateway" class="baba-gateway">
@@ -534,6 +521,8 @@
 
           <section id="draw-ready-panel" class="baba-draw-ready" aria-live="polite"></section>
 
+          <section id="manual-team-builder" class="baba-manual-team-builder organizer-only" aria-labelledby="manual-team-builder-title"></section>
+
           <section id="draw-results-section" class="baba-draw-results" aria-labelledby="draw-results-title">
             <div class="baba-draw-section-heading">
               <div>
@@ -640,40 +629,32 @@
           <span class="baba-section-hero__icon"><i data-lucide="users"></i></span>
           <div><span>CADASTRO E FINANCEIRO</span><h1>Jogadores e pagamentos</h1><p>Cadastre, filtre e acompanhe as mensalidades sem misturar essas tarefas com o controle das partidas.</p></div>
         </header>
-        <div class="baba-players-management-layout">
-
-          <article class="baba-card baba-card--wide baba-player-payment-card organizer-only">
-            <div class="baba-card__head">
-              <h2><svg class="baba-card-icon" aria-hidden="true" focusable="false"><use href="#baba-user-plus"></use></svg>Jogadores e pagamentos</h2>
-              <div class="baba-card__actions">
-                <span>Cadastro, lista e mensalidades</span>
-                <button class="baba-export-btn" type="button" data-export-pdf="payments" title="Exportar pagamentos em PDF">
-                  <svg aria-hidden="true" focusable="false"><use href="#baba-download"></use></svg><span>PDF</span>
-                </button>
+        <div class="baba-players-page organizer-only">
+          <section class="baba-players-toolbar" aria-labelledby="player-management-title">
+            <div class="baba-players-toolbar__heading">
+              <div>
+                <span>GESTÃO DO ELENCO</span>
+                <h2 id="player-management-title">Cadastrar jogadores</h2>
+                <small>Mensal dia 10 · Jogador R$ 15 · Goleiro R$ 7</small>
               </div>
+              <button class="baba-export-btn" type="button" data-export-pdf="payments" title="Exportar pagamentos em PDF">
+                <svg aria-hidden="true" focusable="false"><use href="#baba-download"></use></svg><span>Exportar PDF</span>
+              </button>
             </div>
-            <div class="baba-player-payment-panel">
-              <section class="baba-management-section baba-management-section--single" aria-labelledby="player-management-title">
-                <div class="baba-section-heading">
-                  <div>
-                    <strong id="player-management-title">Cadastrar jogadores e pagamentos</strong>
-                    <small>Mensal dia 10 - Jogador R$ 15 / Goleiro R$ 7</small>
-                  </div>
-                  <div id="payment-summary" class="baba-payment-summary"></div>
-                </div>
-                <form id="player-form" class="baba-player-form">
-                  <input id="player-name" type="text" placeholder="Nome do jogador" required>
-                  <select id="player-type">
-                    <option value="jogador">Jogador de linha</option>
-                    <option value="goleiro">Goleiro</option>
-                    <option value="visitante">Visitante do baba</option>
-                  </select>
-                  <button type="submit">Cadastrar</button>
-                </form>
-                <div id="players-admin-list" class="baba-player-list"></div>
-              </section>
-            </div>
-          </article>
+            <div id="payment-summary" class="baba-payment-summary"></div>
+            <form id="player-form" class="baba-player-form baba-player-form--page">
+              <input id="player-name" type="text" placeholder="Nome do jogador" required>
+              <select id="player-type">
+                <option value="jogador">Jogador de linha</option>
+                <option value="goleiro">Goleiro</option>
+                <option value="visitante">Visitante do baba</option>
+              </select>
+              <button type="submit">Cadastrar jogador</button>
+            </form>
+          </section>
+          <section class="baba-player-directory" aria-label="Lista de jogadores e pagamentos">
+            <div id="players-admin-list" class="baba-player-list"></div>
+          </section>
         </div>
       </section>
 
@@ -901,22 +882,6 @@
       </div>
     </form>
   </div>
-
-  <button id="baba-share-fab" class="baba-share-fab" type="button" aria-label="Compartilhar link do Baba"
-    title="Compartilhar Baba">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" aria-hidden="true" focusable="false">
-      <circle cx="48" cy="48" r="40" fill="currentColor" opacity=".12" />
-      <path d="M61 28 36 43M36 53l25 15" fill="none" stroke="currentColor" stroke-width="7"
-        stroke-linecap="round" />
-      <circle cx="66" cy="25" r="10" fill="currentColor" />
-      <circle cx="30" cy="48" r="10" fill="currentColor" />
-      <circle cx="66" cy="71" r="10" fill="currentColor" />
-    </svg>
-  </button>
-
-  <button id="baba-organizer-fab" class="baba-organizer-fab organizer-only" type="button" aria-label="Abrir pagina do organizador" title="Ir para o organizador">
-    <svg aria-hidden="true" focusable="false"><use href="#baba-organizer-board"></use></svg>
-  </button>
 
   <script id="baba-html-helpers">
     (() => {

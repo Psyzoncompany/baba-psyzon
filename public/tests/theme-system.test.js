@@ -74,12 +74,27 @@ test('navegacao separa organizacao, comissao e jogadores e remove metas', () => 
   assert.match(html, /data-tab="teams"/);
   assert.match(html, /data-tab="access"/);
   assert.match(html, /data-tab="players"/);
-  assert.match(html, /class="baba-bottom-nav/);
+  assert.match(html, /data-header-tab="organizer"/);
+  assert.doesNotMatch(html, /class="baba-bottom-nav/);
+  assert.doesNotMatch(html, /baba-share-fab|baba-organizer-fab/);
   assert.doesNotMatch(html, /data-tab="goals"/);
   assert.doesNotMatch(html, /Importar novo baba com IA/);
-  assert.match(css, /compact top navigation replaces the legacy sidebar/);
+  assert.match(css, /Restore the original upper header/);
+  assert.doesNotMatch(app, /\n\s*wireBabaAssistant\(\);/);
   assert.match(app, /historyDetail\.classList\.remove\('baba-empty'\)/);
   assert.match(read('baba-ui.css'), /\.baba-standings-table \{[\s\S]*gap: 0;/);
+});
+
+test('montagem manual cria times vazios e distribui jogadores pelo seletor', () => {
+  const html = read('baba.html');
+  const app = read('baba.js');
+  const css = read('baba-ui.css');
+  assert.match(html, /id="manual-team-builder"/);
+  assert.match(app, /function createManualTeams/);
+  assert.match(app, /function renderManualTeamBuilder/);
+  assert.match(app, /data-manual-team-player/);
+  assert.match(app, /assignPlayerToTeam\(manualTeamPlayer\.dataset\.manualTeamPlayer/);
+  assert.match(css, /\.baba-manual-assignment-list/);
 });
 
 test('mobile preserva o menu Mais e somente o organizador personaliza os times', () => {

@@ -7443,3 +7443,313 @@ body.baba-app-mode .baba-shell {
     display: none;
   }
 }
+
+/* Direct player directory and manual team assignment --------------------- */
+
+.baba-players-page {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-5);
+}
+
+.baba-players-toolbar {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+  padding: 0 0 var(--space-5);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.baba-players-toolbar__heading,
+.baba-manual-team-builder__head,
+.baba-manual-team-builder__intro,
+.baba-manual-team-builder__footer {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.baba-players-toolbar__heading > div,
+.baba-manual-team-builder__head > div,
+.baba-manual-team-builder__intro > div {
+  display: grid;
+  min-width: 0;
+  gap: .2rem;
+}
+
+.baba-players-toolbar__heading > div > span {
+  color: var(--color-primary);
+  font-size: .66rem;
+  font-weight: 850;
+  letter-spacing: .12em;
+}
+
+.baba-players-toolbar__heading h2,
+.baba-manual-team-builder h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+}
+
+.baba-players-toolbar__heading small,
+.baba-manual-team-builder p,
+.baba-manual-team-builder__hint,
+.baba-manual-team-builder__footer small {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.baba-player-directory,
+.baba-player-directory .baba-player-list {
+  min-width: 0;
+}
+
+.baba-player-directory .baba-player-list {
+  max-height: none;
+  gap: 0;
+  overflow: visible;
+}
+
+.baba-player-directory .baba-admin-section {
+  gap: 0;
+}
+
+.baba-player-directory .baba-player-filter-head {
+  padding: 0 0 var(--space-3);
+}
+
+.baba-player-directory .baba-player-filters {
+  margin: 0;
+  padding: 0 0 var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.baba-player-directory .baba-player-admin {
+  min-height: 4.65rem;
+  padding: var(--space-3) 0;
+  border-width: 0 0 1px;
+  border-color: var(--border-soft);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.baba-player-directory .baba-player-admin:is(.is-paid, .is-unpaid, .is-guest, .is-disabled, .is-novice) {
+  border-inline-start: 0;
+}
+
+.baba-manual-team-builder {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--border-soft));
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--surface-glass-strong) 94%, var(--color-primary-soft)), var(--surface-glass-strong));
+  box-shadow: var(--shadow-xs);
+}
+
+.baba-manual-team-builder:empty {
+  display: none;
+}
+
+.baba-manual-team-builder__icon {
+  display: inline-grid;
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 1rem;
+  color: #fff;
+  background: var(--color-primary);
+}
+
+.baba-manual-team-builder__icon svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.baba-manual-team-builder__intro {
+  justify-content: flex-start;
+}
+
+.baba-manual-team-builder__setup {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) auto auto;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.baba-manual-team-builder__setup label,
+.baba-manual-assignment-row__destination {
+  display: grid;
+  gap: .3rem;
+}
+
+.baba-manual-team-builder__setup label > span,
+.baba-manual-assignment-row__destination > small {
+  color: var(--color-text-muted);
+  font-size: .68rem;
+  font-weight: 750;
+}
+
+.baba-manual-team-builder select {
+  width: 100%;
+  min-height: 2.65rem;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: var(--surface-glass-strong);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  padding-inline: .7rem;
+}
+
+.baba-manual-team-builder__count {
+  flex: 0 0 auto;
+  padding: .5rem .75rem;
+  border-radius: var(--radius-pill);
+  color: var(--color-primary-dark);
+  background: var(--color-primary-soft);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+.baba-manual-team-builder__notice {
+  padding: .7rem .85rem;
+  border-left: 3px solid var(--color-warning);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--color-text-muted);
+  background: var(--color-warning-soft);
+  font-size: var(--font-size-xs);
+}
+
+.baba-manual-assignment-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface-glass-strong);
+}
+
+.baba-manual-assignment-row {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(8.5rem, .72fr);
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.baba-manual-assignment-row:nth-child(odd) {
+  border-right: 1px solid var(--border-soft);
+}
+
+.baba-manual-assignment-row__player {
+  display: grid;
+  min-width: 0;
+  gap: .12rem;
+}
+
+.baba-manual-assignment-row__player b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.baba-manual-assignment-row__player small {
+  color: var(--color-text-muted);
+  font-size: .7rem;
+}
+
+.baba-manual-team-builder__footer {
+  justify-content: flex-start;
+}
+
+@media (max-width: 800px) {
+  .baba-players-toolbar__heading,
+  .baba-manual-team-builder__head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .baba-players-toolbar__heading .baba-export-btn {
+    width: 100%;
+  }
+
+  .baba-players-page .baba-payment-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .baba-players-page .baba-payment-summary article {
+    padding: .7rem .5rem;
+  }
+
+  .baba-players-page .baba-payment-summary article > strong {
+    font-size: 1rem;
+  }
+
+  .baba-player-directory .baba-player-filters,
+  .baba-manual-team-builder__setup,
+  .baba-manual-assignment-list {
+    grid-template-columns: 1fr;
+  }
+
+  .baba-manual-assignment-row:nth-child(odd) {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .baba-players-toolbar {
+    gap: var(--space-3);
+  }
+
+  .baba-players-page .baba-payment-summary {
+    gap: .35rem;
+  }
+
+  .baba-players-page .baba-payment-summary article > span,
+  .baba-players-page .baba-payment-summary article > small {
+    font-size: .57rem;
+  }
+
+  .baba-player-directory .baba-player-admin {
+    gap: var(--space-2);
+    padding-block: .85rem;
+  }
+
+  .baba-player-directory .baba-player-admin__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+  }
+
+  .baba-player-directory .baba-player-status-control {
+    grid-column: 1 / -1;
+  }
+
+  .baba-manual-team-builder {
+    padding: var(--space-3);
+  }
+
+  .baba-manual-team-builder__intro {
+    align-items: flex-start;
+  }
+
+  .baba-manual-team-builder__icon {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .baba-manual-assignment-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+}

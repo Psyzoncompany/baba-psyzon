@@ -109,6 +109,19 @@ test('interface e PDF compartilham celula estruturada de jogador', () => {
   assert.doesNotMatch(pdf, /doc\.clip\(/);
 });
 
+test('telas e PDFs usam uma fonte canonica de estrelas com historico e ao vivo', () => {
+  const app = fs.readFileSync(path.resolve(__dirname, '..', 'baba.js'), 'utf8');
+  assert.match(app, /function calculateCanonicalPerformanceRanking/);
+  assert.match(app, /Object\.values\(calculateCurrentBabaRanking\(active\)\)\.forEach/);
+  assert.match(app, /function canonicalPerformanceBabaCount/);
+  assert.match(app, /calculateGoalkeeperRanking\(\{ includeActive: true \}\)/);
+  assert.match(app, /const monthlyRatings = generalRatings;/);
+  assert.match(app, /const dailyRatings = generalRatings;/);
+  assert.match(app, /const historyRatings = generalRatings;/);
+  assert.doesNotMatch(app, /cacheKey: `pdf-(?:daily|month|history)/);
+  assert.doesNotMatch(app, /cacheKey: `daily-ranking-/);
+});
+
 test('PDF desenha estrelas inteiras, vazias e meia estrela como vetores', () => {
   global.window = { jspdf: { jsPDF } };
   delete require.cache[require.resolve('../pdf-report.js')];

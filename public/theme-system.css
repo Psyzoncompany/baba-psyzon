@@ -483,60 +483,75 @@ body.baba-app-mode :is(.baba-manual-team-card, .baba-manual-stepper, .baba-manua
 }
 :root[data-motion="reduced"] *, :root[data-motion="reduced"] *::before, :root[data-motion="reduced"] *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 
-/* Organizer refresh: compact top navigation replaces the legacy sidebar. */
-@media (min-width: 1101px) {
+/* Restore the original upper header; administrative destinations stay in navigation. */
+body.baba-app-mode {
+  padding-bottom: 0 !important;
+}
+
+body.baba-app-mode .baba-topbar {
+  position: sticky !important;
+  top: var(--space-3) !important;
+  left: auto !important;
+  width: min(calc(100% - 2rem), var(--header-max)) !important;
+  margin: var(--space-3) auto 0 !important;
+  transform: none !important;
+}
+
+body.baba-app-mode .baba-header-main {
+  display: grid !important;
+}
+
+body.baba-app-mode .baba-shell {
+  padding-top: 0 !important;
+}
+
+body.baba-app-mode :is(.baba-bottom-nav, .baba-mobile-more-menu) {
+  display: none !important;
+}
+
+@media (max-width: 1100px) {
   body.baba-app-mode .baba-tabs {
-    position: relative !important;
-    z-index: auto;
-    top: auto;
-    right: auto;
-    bottom: auto;
-    left: auto;
-    width: auto;
-    max-width: none;
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: stretch !important;
-    gap: 4px;
-    margin: 6px !important;
-    padding: 4px !important;
-    overflow-x: auto !important;
-    overflow-y: visible !important;
-    border-radius: var(--card-radius) !important;
-    box-shadow: none !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: var(--space-1) !important;
+    margin: 0 var(--space-4) var(--space-3) !important;
+    padding: .32rem !important;
+    overflow: visible !important;
   }
 
   body.baba-app-mode .baba-tabs > button,
-  body.baba-app-mode .baba-more-nav > button {
-    display: flex !important;
-    width: auto;
-    min-height: 42px;
-    flex: 1 0 auto;
-    justify-content: center;
-    border-radius: 999px !important;
+  body.baba-app-mode .baba-tabs > .baba-more-nav {
+    min-width: 0 !important;
+    min-height: var(--control-md) !important;
+    flex: initial !important;
   }
 
-  body.baba-app-mode .baba-tabs > button.active::before {
-    display: none;
+  body.baba-app-mode .baba-tabs > button[data-tab="dashboard"] {
+    display: inline-flex !important;
+  }
+}
+
+@media (max-width: 768px) {
+  body.baba-app-mode .baba-topbar {
+    top: var(--space-2) !important;
+    width: min(calc(100% - 1rem), var(--header-max)) !important;
+    margin-top: var(--space-2) !important;
   }
 
-  body.baba-app-mode .baba-more-nav {
-    display: block !important;
-    flex: 0 0 5.2rem;
+  body.baba-app-mode .baba-tabs {
+    margin-inline: var(--space-2) !important;
+    margin-bottom: var(--space-2) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  body.baba-app-mode .baba-topbar {
+    width: calc(100% - .6rem) !important;
+    margin-top: .3rem !important;
   }
 
-  body.baba-app-mode .baba-more-menu {
-    top: calc(100% + 8px);
-    right: 0;
-    bottom: auto;
-    left: auto;
-  }
-
-  body.baba-app-mode .baba-shell {
-    width: min(calc(100% - 2rem), var(--content-max));
-    max-width: var(--content-max);
-    margin-right: auto;
-    margin-left: auto;
-    padding-right: 0;
+  body.baba-app-mode .baba-tabs {
+    margin-inline: .25rem !important;
+    padding: .2rem !important;
   }
 }
